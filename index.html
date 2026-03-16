@@ -507,9 +507,9 @@
             route: routeArr,
             timeline: tlArr.map(seg => ({
                 ...seg,
-                start: new Date(seg.start),
-                end: new Date(seg.end)
-            }))
+                start: seg.start ? new Date(seg.start) : new Date(),
+                end:   seg.end   ? new Date(seg.end)   : new Date()
+            })).filter(seg => seg.start instanceof Date && !isNaN(seg.start))
         };
     }
 
@@ -665,12 +665,15 @@
     // --- VALIDATION / FORECAST ---
     function buildTimeline(startStr, route) {
         let [h, m] = startStr.split(':');
-        let ptr = new Date(); ptr.setHours(h, m, 0, 0);
+        let ptr = new Date(); ptr.setHours(parseInt(h), parseInt(m), 0, 0);
         let timeline = [];
         route.forEach(s => {
             let sStart = new Date(ptr);
             ptr.setMinutes(ptr.getMinutes() + s.t);
-            if (s.id !== 'TURN' && s.id !== 'TURN_ORA') timeline.push({id:s.id, start:sStart, end:new Date(ptr)});
+            if (s.id !== 'TURN' && s.id !== 'TURN_ORA') {
+                // Store as ISO strings to survive Firebase serialization
+                timeline.push({id:s.id, start:sStart.toISOString(), end:new Date(ptr).toISOString()});
+            }
         });
         return timeline;
     }
