@@ -375,7 +375,7 @@
                 <datalist id="instructorList"></datalist>
             </div>
             <div class="gap-row">
-                <div><label>פער בטיחות (דק'):</label><input type="number" id="gapV" value="20" oninput="val()"></div>
+                <div><label>פער בטיחות (דק'):</label><input type="number" id="gapV" value="20" oninput="val()" onchange="val()"></div>
                 <div><label>שעת יציאה:</label><input type="time" id="tS" oninput="val()"></div>
             </div>
             <div class="training-counter">
@@ -505,11 +505,23 @@
         return {
             ...t,
             route: routeArr,
-            timeline: tlArr.map(seg => ({
-                ...seg,
-                start: seg.start ? new Date(seg.start) : new Date(),
-                end:   seg.end   ? new Date(seg.end)   : new Date()
-            })).filter(seg => seg.start instanceof Date && !isNaN(seg.start))
+            timeline: tlArr.map(seg => {
+                // Normalize to Date objects anchored to today (same as buildTimeline)
+                let s, e;
+                if (seg.start instanceof Date) {
+                    s = new Date(_anchor); s.setHours(seg.start.getHours(), seg.start.getMinutes(), 0, 0);
+                    e = new Date(_anchor); e.setHours(seg.end.getHours(),   seg.end.getMinutes(),   0, 0);
+                } else if (seg.start) {
+                    // ISO string — extract HH:MM and anchor to today
+                    const sd = new Date(seg.start), ed = new Date(seg.end);
+                    s = new Date(_anchor); s.setHours(sd.getHours(), sd.getMinutes(), 0, 0);
+                    e = new Date(_anchor); e.setHours(ed.getHours(), ed.getMinutes(), 0, 0);
+                } else if (typeof seg.startMin === 'number') {
+                    s = new Date(_anchor); s.setHours(Math.floor(seg.startMin/60), seg.startMin%60, 0, 0);
+                    e = new Date(_anchor); e.setHours(Math.floor(seg.endMin/60),   seg.endMin%60,   0, 0);
+                } else return null;
+                return {id: seg.id, start: s, end: e};
+            }).filter(Boolean)
         };
     }
 
@@ -663,19 +675,27 @@
     }
 
     // --- VALIDATION / FORECAST ---
+    // Anchor date — always today at midnight, so Date subtraction gives correct minutes
+    const _anchor = new Date(); _anchor.setHours(0,0,0,0);
+
     function buildTimeline(startStr, route) {
-        let [h, m] = startStr.split(':');
-        let ptr = new Date(); ptr.setHours(parseInt(h), parseInt(m), 0, 0);
+        const [h, m] = startStr.split(':').map(Number);
+        let ptr = new Date(_anchor); ptr.setHours(h, m, 0, 0);
         let timeline = [];
         route.forEach(s => {
             let sStart = new Date(ptr);
             ptr.setMinutes(ptr.getMinutes() + s.t);
             if (s.id !== 'TURN' && s.id !== 'TURN_ORA') {
-                // Store as ISO strings to survive Firebase serialization
-                timeline.push({id:s.id, start:sStart.toISOString(), end:new Date(ptr).toISOString()});
+                timeline.push({id:s.id, start:sStart, end:new Date(ptr)});
             }
         });
         return timeline;
+    }
+
+    function minToHHMM(m) {
+        const h = Math.floor((m < 0 ? m + 1440 : m) / 60) % 24;
+        const min = ((m % 60) + 60) % 60;
+        return String(h).padStart(2,'0') + ':' + String(min).padStart(2,'0');
     }
 
     function val() {
@@ -684,7 +704,9 @@
         const forecastDiv = document.getElementById('forecast');
         const statusBox = document.getElementById('statusMsg');
         statusBox.style.display = 'none';
+        statusBox.innerHTML = '';
         document.getElementById('saveB').disabled = false;
+        document.getElementById('editSaveB').disabled = false;
 
         if (!startStr || curRoute.length === 0) {
             forecastDiv.innerHTML = "<i>בחר מסלול...</i>"; return;
@@ -709,13 +731,12 @@
         forecastDiv.innerHTML = html;
 
         let conflict = false;
-        const toMin = d => d.getHours() * 60 + d.getMinutes();
         trips.forEach(t => {
             if (t.id === editingTripId) return;
             t.timeline.forEach(old => {
                 myTimeline.forEach(curr => {
                     if (old.id === curr.id) {
-                        const diff = Math.abs(toMin(curr.start) - toMin(old.start));
+                        const diff = Math.abs((curr.start - old.start) / 60000);
                         if (diff < gap) {
                             conflict = true;
                             statusBox.innerHTML = `⚠️ מפגש עם ${t.name} ב-${curr.id} (${Math.round(diff)} דק')`;
@@ -727,6 +748,9 @@
         });
         document.getElementById('saveB').disabled = conflict;
         document.getElementById('editSaveB').disabled = conflict;
+        if (!conflict) {
+            statusBox.style.display = 'none';
+        }
     }
 
     // --- SAVE NEW ---
@@ -799,13 +823,13 @@
         const trip = trips.find(t => t.id === delayTripId);
         if (!trip) return;
         const lastSeg = trip.timeline[trip.timeline.length-1];
-        const origEnd = new Date(lastSeg.end);
+        const origEnd = lastSeg.end instanceof Date ? lastSeg.end : new Date(lastSeg.end || 0);
         const newEnd = new Date(origEnd.getTime() + mins * 60000);
         const origNext = new Date(origEnd.getTime() + 75 * 60000);
         const newNext = new Date(newEnd.getTime() + 75 * 60000);
         document.getElementById('delayPreview').innerHTML =
-            `<b>סיום מקורי:</b> ${origEnd.toTimeString().slice(0,5)} → <b>סיום חדש:</b> ${newEnd.toTimeString().slice(0,5)}<br>
-             <b>נסיעה הבאה מקורית:</b> ${origNext.toTimeString().slice(0,5)} → <b>נסיעה הבאה:</b> ${newNext.toTimeString().slice(0,5)}`;
+            `<b>סיום מקורי:</b> ${origEnd.toTimeString().slice(0,5)} → <b>סיום חדש:</b> ${new Date(origEnd.getTime()+mins*60000).toTimeString().slice(0,5)}<br>
+             <b>נסיעה הבאה מקורית:</b> ${new Date(origEnd.getTime()+75*60000).toTimeString().slice(0,5)} → <b>נסיעה הבאה:</b> ${new Date(origEnd.getTime()+(mins+75)*60000).toTimeString().slice(0,5)}`;
     }
 
     function applyDelay() {
@@ -814,13 +838,16 @@
             if (t.id !== delayTripId) return t;
             const newTimeline = t.timeline.map(seg => ({
                 ...seg,
-                start: new Date(new Date(seg.start).getTime() + mins * 60000),
-                end: new Date(new Date(seg.end).getTime() + mins * 60000)
+                start: new Date((seg.start instanceof Date ? seg.start : new Date(seg.start)).getTime() + mins * 60000),
+                end:   new Date((seg.end   instanceof Date ? seg.end   : new Date(seg.end)).getTime()   + mins * 60000),
+                id: seg.id
             }));
             const [h, m] = t.startStr.split(':');
             const newStart = new Date();
             newStart.setHours(h, parseInt(m) + mins, 0, 0);
-            const newStartStr = newStart.toTimeString().slice(0,5);
+            const tl0 = trip.timeline[0];
+            const tl0start = tl0.start instanceof Date ? tl0.start : new Date(tl0.start || 0);
+            const newStartStr = new Date(tl0start.getTime() + mins*60000).toTimeString().slice(0,5);
             return {...t, timeline: newTimeline, startStr: newStartStr, delayMin: (t.delayMin||0) + mins};
         });
         saveToStorage();
@@ -858,7 +885,7 @@
         }
         trips.forEach(t => {
             const lastSeg = t.timeline[t.timeline.length-1];
-            const endTime = new Date(lastSeg.end);
+            const endTime = lastSeg.end instanceof Date ? lastSeg.end : new Date(lastSeg.end || 0);
             const nextRun = new Date(endTime.getTime() + 75 * 60000);
             const loc = lastSeg.id.includes('N') ? "נווה יעקב" : (lastSeg.id.includes('O') ? "הדסה" : "דיפו");
             const delayTag = t.delayMin > 0 ? `<span style="color:var(--warning); font-size:11px;"> (+${t.delayMin} דק')</span>` : '';
@@ -895,7 +922,8 @@
         // Find global time range across all trips (including full route with TURNs)
         let minT = Infinity, maxT = -Infinity;
         trips.forEach(t => {
-            let ptr = new Date(t.timeline[0].start);
+            const tl0start = t.timeline[0].start instanceof Date ? t.timeline[0].start : new Date(t.timeline[0].start || 0);
+            let ptr = new Date(tl0start);
             ptr = new Date(ptr.getTime()); // copy
             // Use route to rebuild full timeline including TURNs
             let [h, m] = t.startStr.split(':');
@@ -916,7 +944,9 @@
         trips.forEach(t => {
             t.timeline.forEach(seg => {
                 if (!segMap[seg.id]) segMap[seg.id] = [];
-                segMap[seg.id].push({start: new Date(seg.start), end: new Date(seg.end), tripId: t.id});
+                const segS = seg.start instanceof Date ? seg.start : new Date(seg.start || 0);
+                const segE = seg.end   instanceof Date ? seg.end   : new Date(seg.end   || 0);
+                segMap[seg.id].push({start: segS, end: segE, tripId: t.id});
             });
         });
 
@@ -1190,19 +1220,17 @@
         const toMinAbs = function(minOfDay) { return minOfDay; }; // already in minutes-of-day
 
         function shiftTripConflicts(proposedTrip) {
-            // Build a fake timeline for this proposed trip
             const startStr = toHHMM(proposedTrip.startMin);
             const timeline = buildTimeline(startStr, proposedTrip.route);
             const conflicts = [];
             trips.forEach(function(existing) {
                 existing.timeline.forEach(function(oldSeg) {
                     timeline.forEach(function(newSeg) {
-                        if (oldSeg.id !== newSeg.id) return;
-                        const oldMin = oldSeg.start.getHours() * 60 + oldSeg.start.getMinutes();
-                        const newMin = newSeg.start.getHours() * 60 + newSeg.start.getMinutes();
-                        const diff = Math.abs(oldMin - newMin);
-                        if (diff < gap) {
-                            conflicts.push({ name: existing.name, seg: newSeg.id, diff: Math.round(diff) });
+                        if (oldSeg.id === newSeg.id) {
+                            const diff = Math.abs((newSeg.start - oldSeg.start) / 60000);
+                            if (diff < gap) {
+                                conflicts.push({ name: existing.name, seg: newSeg.id, diff: Math.round(diff) });
+                            }
                         }
                     });
                 });
