@@ -497,6 +497,14 @@
     }
 
     // Firebase stores arrays as objects {0:{...},1:{...}} — normalize back to array
+    // Convert HH:MM string or Date to minutes-of-day integer
+    function toMinOfDay(v) {
+        if (typeof v === 'number') return v;
+        const d = (v instanceof Date) ? v : new Date(v);
+        if (isNaN(d)) return 0;
+        return d.getHours() * 60 + d.getMinutes();
+    }
+
     function parseTrip(t) {
         const tlRaw = t.timeline;
         const tlArr = Array.isArray(tlRaw) ? tlRaw : Object.values(tlRaw || {});
@@ -506,22 +514,13 @@
             ...t,
             route: routeArr,
             timeline: tlArr.map(seg => {
-                // Normalize to Date objects anchored to today (same as buildTimeline)
-                let s, e;
-                if (seg.start instanceof Date) {
-                    s = new Date(_anchor); s.setHours(seg.start.getHours(), seg.start.getMinutes(), 0, 0);
-                    e = new Date(_anchor); e.setHours(seg.end.getHours(),   seg.end.getMinutes(),   0, 0);
-                } else if (seg.start) {
-                    // ISO string — extract HH:MM and anchor to today
-                    const sd = new Date(seg.start), ed = new Date(seg.end);
-                    s = new Date(_anchor); s.setHours(sd.getHours(), sd.getMinutes(), 0, 0);
-                    e = new Date(_anchor); e.setHours(ed.getHours(), ed.getMinutes(), 0, 0);
-                } else if (typeof seg.startMin === 'number') {
-                    s = new Date(_anchor); s.setHours(Math.floor(seg.startMin/60), seg.startMin%60, 0, 0);
-                    e = new Date(_anchor); e.setHours(Math.floor(seg.endMin/60),   seg.endMin%60,   0, 0);
-                } else return null;
-                return {id: seg.id, start: s, end: e};
-            }).filter(Boolean)
+                // Store as minutes-of-day — simple, timezone-safe, Firebase-safe
+                return {
+                    id: seg.id,
+                    startMin: typeof seg.startMin === 'number' ? seg.startMin : toMinOfDay(seg.start),
+                    endMin:   typeof seg.endMin   === 'number' ? seg.endMin   : toMinOfDay(seg.end)
+                };
+            }).filter(seg => seg.id)
         };
     }
 
@@ -675,18 +674,15 @@
     }
 
     // --- VALIDATION / FORECAST ---
-    // Anchor date — always today at midnight, so Date subtraction gives correct minutes
-    const _anchor = new Date(); _anchor.setHours(0,0,0,0);
-
     function buildTimeline(startStr, route) {
         const [h, m] = startStr.split(':').map(Number);
-        let ptr = new Date(_anchor); ptr.setHours(h, m, 0, 0);
+        let cur = h * 60 + m;
         let timeline = [];
         route.forEach(s => {
-            let sStart = new Date(ptr);
-            ptr.setMinutes(ptr.getMinutes() + s.t);
+            const segStart = cur;
+            cur += s.t;
             if (s.id !== 'TURN' && s.id !== 'TURN_ORA') {
-                timeline.push({id:s.id, start:sStart, end:new Date(ptr)});
+                timeline.push({id:s.id, startMin:segStart, endMin:cur});
             }
         });
         return timeline;
@@ -712,20 +708,19 @@
             forecastDiv.innerHTML = "<i>בחר מסלול...</i>"; return;
         }
 
-        let [h, m] = startStr.split(':');
-        let ptr = new Date(); ptr.setHours(h, m, 0, 0);
         let myTimeline = [];
         let html = '<b>לו"ז חזוי:</b><br>';
 
+        let [hh, mm] = startStr.split(':').map(Number);
+        let curMin = hh * 60 + mm;
         curRoute.forEach(s => {
-            let sStart = new Date(ptr);
+            const segStart = curMin;
+            curMin += s.t;
             if (s.id !== 'TURN' && s.id !== 'TURN_ORA') {
-                html += `<div class="forecast-entry"><span>${s.id}</span><b>${sStart.toTimeString().slice(0,5)}</b></div>`;
-                ptr.setMinutes(ptr.getMinutes() + s.t);
-                myTimeline.push({id:s.id, start:sStart, end:new Date(ptr)});
+                html += `<div class="forecast-entry"><span>${s.id}</span><b>${minToHHMM(segStart)}</b></div>`;
+                myTimeline.push({id:s.id, startMin:segStart, endMin:curMin});
             } else {
-                html += `<div class="forecast-entry" style="color:var(--danger)"><span>${s.label}</span><b>${sStart.toTimeString().slice(0,5)}</b></div>`;
-                ptr.setMinutes(ptr.getMinutes() + s.t);
+                html += `<div class="forecast-entry" style="color:var(--danger)"><span>${s.label}</span><b>${minToHHMM(segStart)}</b></div>`;
             }
         });
         forecastDiv.innerHTML = html;
@@ -736,7 +731,7 @@
             t.timeline.forEach(old => {
                 myTimeline.forEach(curr => {
                     if (old.id === curr.id) {
-                        const diff = Math.abs((curr.start - old.start) / 60000);
+                        const diff = Math.abs(curr.startMin - old.startMin);
                         if (diff < gap) {
                             conflict = true;
                             statusBox.innerHTML = `⚠️ מפגש עם ${t.name} ב-${curr.id} (${Math.round(diff)} דק')`;
@@ -823,13 +818,13 @@
         const trip = trips.find(t => t.id === delayTripId);
         if (!trip) return;
         const lastSeg = trip.timeline[trip.timeline.length-1];
-        const origEnd = lastSeg.end instanceof Date ? lastSeg.end : new Date(lastSeg.end || 0);
+        const origEndMin = lastSeg.endMin || 0;
         const newEnd = new Date(origEnd.getTime() + mins * 60000);
         const origNext = new Date(origEnd.getTime() + 75 * 60000);
         const newNext = new Date(newEnd.getTime() + 75 * 60000);
         document.getElementById('delayPreview').innerHTML =
-            `<b>סיום מקורי:</b> ${origEnd.toTimeString().slice(0,5)} → <b>סיום חדש:</b> ${new Date(origEnd.getTime()+mins*60000).toTimeString().slice(0,5)}<br>
-             <b>נסיעה הבאה מקורית:</b> ${new Date(origEnd.getTime()+75*60000).toTimeString().slice(0,5)} → <b>נסיעה הבאה:</b> ${new Date(origEnd.getTime()+(mins+75)*60000).toTimeString().slice(0,5)}`;
+            `<b>סיום מקורי:</b> ${minToHHMM(origEndMin)} → <b>סיום חדש:</b> ${minToHHMM(origEndMin+mins)}<br>
+             <b>נסיעה הבאה מקורית:</b> ${minToHHMM(origEndMin+75)} → <b>נסיעה הבאה:</b> ${minToHHMM(origEndMin+mins+75)}`;
     }
 
     function applyDelay() {
@@ -838,16 +833,12 @@
             if (t.id !== delayTripId) return t;
             const newTimeline = t.timeline.map(seg => ({
                 ...seg,
-                start: new Date((seg.start instanceof Date ? seg.start : new Date(seg.start)).getTime() + mins * 60000),
-                end:   new Date((seg.end   instanceof Date ? seg.end   : new Date(seg.end)).getTime()   + mins * 60000),
-                id: seg.id
+                id: seg.id, startMin: (seg.startMin||0) + mins, endMin: (seg.endMin||0) + mins
             }));
             const [h, m] = t.startStr.split(':');
             const newStart = new Date();
             newStart.setHours(h, parseInt(m) + mins, 0, 0);
-            const tl0 = trip.timeline[0];
-            const tl0start = tl0.start instanceof Date ? tl0.start : new Date(tl0.start || 0);
-            const newStartStr = new Date(tl0start.getTime() + mins*60000).toTimeString().slice(0,5);
+            const newStartStr = minToHHMM((trip.timeline[0].startMin||0) + mins);
             return {...t, timeline: newTimeline, startStr: newStartStr, delayMin: (t.delayMin||0) + mins};
         });
         saveToStorage();
@@ -885,8 +876,8 @@
         }
         trips.forEach(t => {
             const lastSeg = t.timeline[t.timeline.length-1];
-            const endTime = lastSeg.end instanceof Date ? lastSeg.end : new Date(lastSeg.end || 0);
-            const nextRun = new Date(endTime.getTime() + 75 * 60000);
+            const endMinVal = lastSeg.endMin || 0;
+            const nextRunMin = endMinVal + 75;
             const loc = lastSeg.id.includes('N') ? "נווה יעקב" : (lastSeg.id.includes('O') ? "הדסה" : "דיפו");
             const delayTag = t.delayMin > 0 ? `<span style="color:var(--warning); font-size:11px;"> (+${t.delayMin} דק')</span>` : '';
             const routeStr = t.timeline.map(x=>x.id).join('➔');
@@ -897,8 +888,8 @@
                     <td data-label="מדריך"><b>${t.name}</b></td>
                     <td data-label="מסלול"><small title="${routeStr}">${routeStr.length > 20 ? routeStr.slice(0,20)+'…' : routeStr}</small></td>
                     <td data-label="יציאה">${t.startStr}${delayTag}</td>
-                    <td data-label="סיום">${endTime.toTimeString().slice(0,5)}</td>
-                    <td data-label="נסיעה הבאה" style="color:var(--danger); font-weight:bold;">${nextRun.toTimeString().slice(0,5)}</td>
+                    <td data-label="סיום">${minToHHMM(endMinVal)}</td>
+                    <td data-label="נסיעה הבאה" style="color:var(--danger); font-weight:bold;">${minToHHMM(nextRunMin)}</td>
                     <td data-label="שיעורים" style="font-weight:bold; color:var(--primary);">${lessons}</td>
                     <td data-label="מיקום">${loc}</td>
                     <td data-label="פעולות">
@@ -922,8 +913,8 @@
         // Find global time range across all trips (including full route with TURNs)
         let minT = Infinity, maxT = -Infinity;
         trips.forEach(t => {
-            const tl0start = t.timeline[0].start instanceof Date ? t.timeline[0].start : new Date(t.timeline[0].start || 0);
-            let ptr = new Date(tl0start);
+            const tl0m = t.timeline[0].startMin || 0;
+            let ptr = new Date(); ptr.setHours(Math.floor(tl0m/60), tl0m%60, 0, 0);
             ptr = new Date(ptr.getTime()); // copy
             // Use route to rebuild full timeline including TURNs
             let [h, m] = t.startStr.split(':');
@@ -944,9 +935,9 @@
         trips.forEach(t => {
             t.timeline.forEach(seg => {
                 if (!segMap[seg.id]) segMap[seg.id] = [];
-                const segS = seg.start instanceof Date ? seg.start : new Date(seg.start || 0);
-                const segE = seg.end   instanceof Date ? seg.end   : new Date(seg.end   || 0);
-                segMap[seg.id].push({start: segS, end: segE, tripId: t.id});
+                const segS = new Date(); segS.setHours(Math.floor((seg.startMin||0)/60),(seg.startMin||0)%60,0,0);
+                const segE = new Date(); segE.setHours(Math.floor((seg.endMin||0)/60),(seg.endMin||0)%60,0,0);
+                segMap[seg.id].push({start:segS, end:segE, tripId:t.id});
             });
         });
 
@@ -1227,7 +1218,7 @@
                 existing.timeline.forEach(function(oldSeg) {
                     timeline.forEach(function(newSeg) {
                         if (oldSeg.id === newSeg.id) {
-                            const diff = Math.abs((newSeg.start - oldSeg.start) / 60000);
+                            const diff = Math.abs(newSeg.startMin - oldSeg.startMin);
                             if (diff < gap) {
                                 conflicts.push({ name: existing.name, seg: newSeg.id, diff: Math.round(diff) });
                             }
