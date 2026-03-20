@@ -261,6 +261,16 @@ window.dispatchEvent(new Event('firebaseReady'));
   </div>
 </div>
 
+<!-- ── INSTRUCTOR MANAGEMENT MODAL ─────────────────── -->
+<div class="confirm-overlay" id="instrModal">
+  <div class="confirm-box" style="max-width:340px;">
+    <h3 style="color:var(--primary);margin-bottom:6px;">⚙️ ניהול מדריכים</h3>
+    <p style="margin:0 0 10px;font-size:13px;color:#666;">לחץ × להסרה מרשימת ההשלמה:</p>
+    <div id="instrList" style="max-height:300px;overflow-y:auto;border:0.5px solid #ddd;border-radius:8px;margin-bottom:14px;"></div>
+    <button onclick="closeInstrModal()" style="width:100%;padding:10px;background:#f0f0f0;color:#444;border:none;border-radius:8px;cursor:pointer;font-size:14px;margin:0;">סגור</button>
+  </div>
+</div>
+
 
 
   <!-- ── HEADER ──────────────────────────────────────── -->
@@ -368,7 +378,10 @@ window.dispatchEvent(new Event('firebaseReady'));
         <!-- Controls -->
         <div class="controls">
           <h3>בחירת מסלול</h3>
-          <input type="text" id="tID" placeholder="שם המדריך" list="instructorList" autocomplete="off">
+          <div style="display:flex;gap:6px;align-items:center;">
+            <input type="text" id="tID" placeholder="שם המדריך" list="instructorList" autocomplete="off" style="margin:0;flex:1;">
+            <button onclick="openInstrModal()" title="ניהול מדריכים" style="width:auto;margin:0;padding:0 10px;height:38px;background:#f0f4f8;border:1px solid #ccc;border-radius:8px;cursor:pointer;font-size:14px;color:#555;white-space:nowrap;">⚙️</button>
+          </div>
           <datalist id="instructorList"></datalist>
           <div class="gap-row">
             <div><label>שעת יציאה:</label><input type="time" id="tS" oninput="val()"></div>
@@ -774,6 +787,43 @@ function closeClearModal(){document.getElementById('confirmClearModal').classLis
 function confirmClearAll(){trips=[];closeClearModal();saveToStorage();renderLog();}
 // legacy alias kept for safety
 function clearAllTrips(){openClearModal();}
+
+// ═══════════════════════════════════════════════════════════
+// INSTRUCTOR MANAGEMENT MODAL
+// ═══════════════════════════════════════════════════════════
+async function openInstrModal(){
+  document.getElementById('instrModal').classList.add('open');
+  await renderInstrList();
+}
+function closeInstrModal(){document.getElementById('instrModal').classList.remove('open');}
+async function renderInstrList(){
+  const listEl=document.getElementById('instrList');
+  if(!window._fbDb){listEl.innerHTML='<div style="padding:14px;font-size:13px;color:#aaa;text-align:center;">Firebase לא זמין</div>';return;}
+  try{
+    const snap=await _fbGet(_fbRef(_db,instrPath()));
+    if(!snap.exists()||!Object.keys(snap.val()).length){
+      listEl.innerHTML='<div style="padding:14px;font-size:13px;color:#aaa;text-align:center;">אין מדריכים שמורים</div>';
+      return;
+    }
+    const names=snap.val();
+    listEl.innerHTML=Object.entries(names).map(([key,name])=>
+      `<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:0.5px solid #f0f0f0;">
+        <span style="font-size:14px;">${name}</span>
+        <button onclick="removeInstructor('${key}')" style="background:none;border:1px solid #ccc;border-radius:50%;width:24px;height:24px;padding:0;cursor:pointer;font-size:14px;line-height:1;color:#888;display:flex;align-items:center;justify-content:center;margin:0;transition:.15s;"
+          onmouseover="this.style.borderColor='var(--danger)';this.style.color='var(--danger)'"
+          onmouseout="this.style.borderColor='#ccc';this.style.color='#888'">×</button>
+      </div>`
+    ).join('');
+  }catch(e){listEl.innerHTML='<div style="padding:14px;font-size:13px;color:var(--danger);">שגיאה בטעינה</div>';}
+}
+async function removeInstructor(key){
+  if(!window._fbDb)return;
+  try{
+    await _fbRef(_db,instrPath()+'/'+key).remove();
+    await loadInstructors();
+    await renderInstrList();
+  }catch(e){}
+}
 
 // ═══════════════════════════════════════════════════════════
 // RENDER LOG
