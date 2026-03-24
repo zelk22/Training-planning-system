@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>מערכת תכנון הדרכה - רכבת V93</title>
+<title>מערכת תכנון הדרכה - רכבת V94</title>
 <style>
 :root {
   --primary:#1a5276; --secondary:#2980b9; --success:#27ae60;
@@ -215,6 +215,62 @@ input,button,select{width:100%;padding:10px;margin:4px 0;border-radius:8px;borde
   .mgmt-table td{display:flex;justify-content:space-between;border:none;padding:4px 0;}
   .mgmt-table td::before{content:attr(data-label);font-weight:bold;color:#555;font-size:12px;}
 }
+/* LOGIN */
+.login-overlay{position:fixed;inset:0;background:linear-gradient(135deg,#1a3a5c,#2980b9);z-index:999;display:flex;align-items:center;justify-content:center;}
+.login-overlay.hidden{display:none;}
+.login-box{background:white;border-radius:20px;padding:36px 32px;max-width:400px;width:92%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.25);}
+.login-logo{font-size:44px;margin-bottom:6px;}
+.login-title{font-size:20px;font-weight:bold;color:#1a5276;margin:0 0 4px;}
+.login-sub{font-size:13px;color:#999;margin:0 0 26px;}
+.login-roles{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px;}
+.role-btn{padding:18px 10px;border-radius:14px;border:2px solid #e0e8f0;background:white;cursor:pointer;font-size:14px;color:#555;width:100%;margin:0;transition:.18s;}
+.role-btn:hover,.role-btn.selected{border-color:#2980b9;background:#eaf4fd;color:#1a5276;}
+.role-icon{font-size:28px;display:block;margin-bottom:5px;}
+.login-step2{display:none;}
+.login-step2.show{display:block;}
+.login-input{width:100%;padding:12px 14px;border:1.5px solid #ddd;border-radius:10px;font-size:15px;text-align:right;direction:rtl;margin:0 0 10px;transition:.15s;}
+.login-input:focus{outline:none;border-color:#2980b9;}
+.login-btn{width:100%;padding:13px;background:#2980b9;color:white;border:none;border-radius:10px;font-size:15px;font-weight:bold;cursor:pointer;margin:0;}
+.login-btn:hover{background:#1a6fa8;}
+.login-err{color:#c0392b;font-size:13px;margin-top:8px;min-height:18px;}
+.login-back{background:none;border:none;color:#999;font-size:12px;cursor:pointer;margin-top:8px;width:auto;padding:4px;display:block;}
+/* USER BADGE */
+.user-badge{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13px;}
+.user-role-tag{font-size:11px;padding:2px 8px;border-radius:12px;background:#eaf4fd;color:#2980b9;}
+.user-name-lbl{font-weight:bold;color:#1a5276;}
+.btn-logout{background:none;border:1px solid #ddd;border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;color:#666;width:auto;margin:0;}
+.btn-logout:hover{border-color:#c0392b;color:#c0392b;}
+/* INSTRUCTOR VIEW */
+.instr-view{display:none;}
+.instr-view.show{display:block;}
+.next-trip-card{background:linear-gradient(135deg,#1a5276,#2980b9);color:white;border-radius:14px;padding:22px 24px;margin-bottom:14px;box-shadow:0 4px 18px rgba(0,0,0,.1);}
+.next-trip-card h3{margin:0 0 2px;font-size:14px;opacity:.8;}
+.next-time{font-size:38px;font-weight:bold;letter-spacing:1px;margin:2px 0;}
+.next-route{font-size:12px;opacity:.75;margin:4px 0 14px;word-break:break-all;}
+.status-btns{display:flex;gap:10px;flex-wrap:wrap;}
+.sbtn{padding:10px 18px;border:2px solid rgba(255,255,255,.5);border-radius:9px;background:rgba(255,255,255,.15);color:white;font-size:13px;font-weight:bold;cursor:pointer;width:auto;margin:0;transition:.15s;}
+.sbtn:hover{background:rgba(255,255,255,.3);}
+.sbtn.active-s{background:white;color:#1a5276;}
+.no-trip-card{background:white;border-radius:14px;padding:28px;text-align:center;color:#aaa;font-size:15px;margin-bottom:14px;border:1px solid #eee;}
+.my-trips-sec{background:white;border-radius:12px;border:1px solid #dce3ec;padding:18px 20px;margin-bottom:14px;box-shadow:0 4px 18px rgba(0,0,0,.07);}
+.my-trips-sec h4{margin:0 0 10px;color:#1a5276;}
+.mtr{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:9px;border:1px solid #eef2f8;margin-bottom:6px;flex-wrap:wrap;}
+.mtr.cur{border-color:#2980b9;background:#eaf4fd;}
+.mtr.done{opacity:.45;}
+.sdot{width:10px;height:10px;border-radius:50%;background:#ccc;flex-shrink:0;}
+.sdot.on{background:#27ae60;animation:pg 1.5s infinite;}
+.sdot.dn{background:#7f8c8d;}
+@keyframes pg{0%,100%{box-shadow:0 0 0 0 rgba(39,174,96,.4)}50%{box-shadow:0 0 0 5px rgba(39,174,96,0)}}
+.team-sec{background:white;border-radius:12px;border:1px solid #dce3ec;padding:18px 20px;margin-bottom:14px;box-shadow:0 4px 18px rgba(0,0,0,.07);}
+.team-sec h4{margin:0 0 10px;color:#1a5276;}
+.tgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;}
+.tcard{border-radius:9px;padding:10px 12px;border:1.5px solid #eee;font-size:13px;}
+.tcard.on{border-color:#27ae60;background:#eafaf1;}
+.tcard.ret{border-color:#bbb;background:#f7f7f7;}
+.tcard.pend{border-color:#e8e8e8;background:white;}
+.tcard-name{font-weight:bold;color:#1a5276;font-size:13px;margin-bottom:2px;}
+.tcard-st{font-size:11px;color:#777;}
+.tcard-t{font-size:11px;color:#2980b9;margin-top:2px;}
 </style>
 
 <!-- Firebase -->
@@ -233,6 +289,35 @@ window.dispatchEvent(new Event('firebaseReady'));
 </script>
 </head>
 <body onload="initApp()">
+
+<!-- ── LOGIN OVERLAY ─────────────────────────────────── -->
+<div class="login-overlay" id="loginOverlay">
+  <div class="login-box">
+    <div class="login-logo">🚇</div>
+    <h2 class="login-title">מערכת תכנון הדרכה</h2>
+    <p class="login-sub">בחר תפקיד להמשך</p>
+    <div id="ls1">
+      <div class="login-roles">
+        <button class="role-btn" id="rbAdmin" onclick="selRole('admin')"><span class="role-icon">🗂️</span>מנהל</button>
+        <button class="role-btn" id="rbInstr" onclick="selRole('instructor')"><span class="role-icon">👤</span>מדריך</button>
+      </div>
+    </div>
+    <div class="login-step2" id="ls2admin">
+      <input type="password" class="login-input" id="adminPass" placeholder="סיסמת מנהל" onkeydown="if(event.key==='Enter')doAdminLogin()">
+      <button class="login-btn" onclick="doAdminLogin()">כניסה</button>
+      <div class="login-err" id="adminErr"></div>
+      <button class="login-back" onclick="backRoles()">← חזרה</button>
+    </div>
+    <div class="login-step2" id="ls2instr">
+      <select class="login-input" id="instrSel" style="cursor:pointer;">
+        <option value="">— בחר את שמך —</option>
+      </select>
+      <button class="login-btn" onclick="doInstrLogin()">כניסה</button>
+      <div class="login-err" id="instrErr"></div>
+      <button class="login-back" onclick="backRoles()">← חזרה</button>
+    </div>
+  </div>
+</div>
 
 <!-- ── DELAY MODAL ──────────────────────────────────── -->
 <div class="modal-overlay" id="delayModal">
@@ -271,16 +356,38 @@ window.dispatchEvent(new Event('firebaseReady'));
   </div>
 </div>
 
-
+<div class="container">
 
   <!-- ── HEADER ──────────────────────────────────────── -->
   <div class="header">
-    <h2>🚇 מערכת תכנון הדרכה <span class="version-badge">V93</span></h2>
-    <span class="saved-indicator" id="savedIndicator">✓ נשמר</span>
+    <h2>🚇 מערכת תכנון הדרכה <span class="version-badge">V94</span></h2>
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+      <span class="saved-indicator" id="savedIndicator">✓ נשמר</span>
+      <div class="user-badge" id="userBadge" style="display:none;">
+        <span class="user-role-tag" id="userRoleTag"></span>
+        <span class="user-name-lbl" id="userNameLbl"></span>
+        <button class="btn-logout" onclick="doLogout()">התנתק</button>
+      </div>
+    </div>
   </div>
 
-  <!-- ══════════════════════════════════════════════════
-       DAY PLANNER — PRIMARY
+  <!-- ══ INSTRUCTOR VIEW ════════════════════════════════ -->
+  <div class="instr-view" id="instrView">
+    <div id="nextTripCard"></div>
+    <div class="my-trips-sec"><h4>📋 הנסיעות שלי היום</h4><div id="myTripsList"></div></div>
+    <div class="team-sec"><h4>👥 סטטוס הצוות</h4><div class="tgrid" id="teamGrid"></div></div>
+    <div class="timeline-section">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <h4 style="margin:0;color:var(--primary);">📊 ציר זמן — כל הצוות</h4>
+      </div>
+      <div style="overflow-x:auto;"><div id="ganttGridInstr"><div class="gantt-empty">אין נסיעות</div></div></div>
+    </div>
+  </div>
+
+  <!-- ══ MANAGER VIEW ═══════════════════════════════════ -->
+  <div id="managerView" style="display:none;">
+
+  <!-- ── DAY PLANNER — PRIMARY
   ══════════════════════════════════════════════════════ -->
   <div class="day-planner-section">
 
@@ -440,6 +547,8 @@ window.dispatchEvent(new Event('firebaseReady'));
     <div style="overflow-x:auto;"><div id="ganttGrid"><div class="gantt-empty">אין נסיעות</div></div></div>
   </div>
 
+  </div><!-- /managerView -->
+
 </div><!-- /container -->
 
 <script>
@@ -472,6 +581,204 @@ function isD4Restricted(startMin){return startMin>=D4_RESTRICT_START&&startMin<D
 function isSouthDeparture(route){
   const first=route.filter(s=>s.id!=='TURN'&&s.id!=='TURN_ORA')[0];
   return first&&first.id==='D4';
+}
+
+// ═══════════════════════════════════════════════════════════
+// AUTH
+// ═══════════════════════════════════════════════════════════
+const ADMIN_PASSWORD='admin1234';
+let currentRole=null, currentUserName=null;
+
+function selRole(role){
+  document.getElementById('rbAdmin').classList.toggle('selected',role==='admin');
+  document.getElementById('rbInstr').classList.toggle('selected',role==='instructor');
+  document.getElementById('ls2admin').classList.toggle('show',role==='admin');
+  document.getElementById('ls2instr').classList.toggle('show',role==='instructor');
+  if(role==='admin')setTimeout(()=>document.getElementById('adminPass').focus(),80);
+}
+function backRoles(){
+  ['rbAdmin','rbInstr'].forEach(id=>document.getElementById(id).classList.remove('selected'));
+  document.getElementById('ls2admin').classList.remove('show');
+  document.getElementById('ls2instr').classList.remove('show');
+  document.getElementById('adminPass').value='';
+  document.getElementById('adminErr').textContent='';
+  document.getElementById('instrErr').textContent='';
+}
+function doAdminLogin(){
+  if(document.getElementById('adminPass').value===ADMIN_PASSWORD){
+    enterApp('admin','מנהל');
+  } else {
+    document.getElementById('adminErr').textContent='סיסמה שגויה';
+    document.getElementById('adminPass').value='';
+    document.getElementById('adminPass').focus();
+  }
+}
+function doInstrLogin(){
+  const name=document.getElementById('instrSel').value;
+  if(!name){document.getElementById('instrErr').textContent='יש לבחור שם';return;}
+  enterApp('instructor',name);
+}
+function enterApp(role,name){
+  currentRole=role; currentUserName=name;
+  document.getElementById('loginOverlay').classList.add('hidden');
+  const badge=document.getElementById('userBadge');
+  badge.style.display='flex';
+  document.getElementById('userRoleTag').textContent=role==='admin'?'מנהל':'מדריך';
+  document.getElementById('userNameLbl').textContent=name;
+  if(role==='admin'){
+    document.getElementById('managerView').style.display='block';
+    document.getElementById('instrView').classList.remove('show');
+  } else {
+    document.getElementById('instrView').classList.add('show');
+    document.getElementById('managerView').style.display='none';
+    startInstrSync();
+  }
+}
+function doLogout(){
+  currentRole=null; currentUserName=null;
+  document.getElementById('loginOverlay').classList.remove('hidden');
+  document.getElementById('userBadge').style.display='none';
+  document.getElementById('managerView').style.display='none';
+  document.getElementById('instrView').classList.remove('show');
+  if(_instrSyncOff){_instrSyncOff();_instrSyncOff=null;}
+  backRoles();
+}
+async function populateInstrSelect(){
+  if(!window._fbDb)return;
+  try{
+    const snap=await _fbGet(_fbRef(_db,instrPath()));
+    const sel=document.getElementById('instrSel');
+    if(!sel)return;
+    const cur=sel.value;
+    sel.innerHTML='<option value="">— בחר את שמך —</option>';
+    if(snap.exists())Object.values(snap.val()).sort().forEach(n=>{
+      const o=document.createElement('option');o.value=n;o.textContent=n;
+      if(n===cur)o.selected=true;
+      sel.appendChild(o);
+    });
+  }catch(e){}
+}
+
+// ═══════════════════════════════════════════════════════════
+// INSTRUCTOR STATUS
+// ═══════════════════════════════════════════════════════════
+const statusPath=()=>'instrStatus/'+currentDate;
+let instrStatuses={};
+let _instrSyncOff=null;
+
+function startInstrSync(){
+  if(_instrSyncOff){_instrSyncOff();_instrSyncOff=null;}
+  const unsubStatus=_fbRef(_db,statusPath()).on('value',s=>{
+    instrStatuses=s.exists()?s.val():{};
+    renderInstrView();
+  });
+  const unsubTrips=_fbRef(_db,dbPath()).on('value',s=>{
+    trips=s.exists()?Object.values(s.val()).map(parseTrip):[];
+    renderInstrView();
+  });
+  _instrSyncOff=()=>{
+    _fbRef(_db,statusPath()).off('value',unsubStatus);
+    _fbRef(_db,dbPath()).off('value',unsubTrips);
+  };
+}
+async function setMyStatus(status,tripIdx){
+  if(!window._fbDb||!currentUserName)return;
+  const nowM=new Date().getHours()*60+new Date().getMinutes();
+  const key=currentUserName.replace(/[.#$[\]/]/g,'_');
+  await _fbRef(_db,statusPath()+'/'+key).set(
+    {name:currentUserName,status,time:toHHMM(nowM),tripIdx:tripIdx??-1}
+  );
+}
+
+// ═══════════════════════════════════════════════════════════
+// INSTRUCTOR VIEW RENDER
+// ═══════════════════════════════════════════════════════════
+function renderInstrView(){
+  if(currentRole!=='instructor')return;
+  const myTrips=[...trips.filter(t=>t.name===currentUserName)]
+    .sort((a,b)=>(a.timeline[0]?.startMin||0)-(b.timeline[0]?.startMin||0));
+  const nowM=new Date().getHours()*60+new Date().getMinutes();
+  const myKey=currentUserName.replace(/[.#$[\]/]/g,'_');
+  const mySt=instrStatuses[myKey]||{status:'pending',tripIdx:-1};
+
+  // ── Next / current trip card ──
+  const upcoming=myTrips.find(t=>(t.timeline[t.timeline.length-1]?.endMin||0)>nowM);
+  const card=document.getElementById('nextTripCard');
+  if(!upcoming){
+    card.innerHTML=`<div class="no-trip-card">✅ אין נסיעות נוספות להיום<br><small style="color:#ccc;">תכנון יעודכן על ידי המנהל</small></div>`;
+  } else {
+    const idx=myTrips.indexOf(upcoming);
+    const s0=upcoming.timeline[0]?.startMin||0;
+    const se=upcoming.timeline[upcoming.timeline.length-1]?.endMin||0;
+    const isOn=mySt.status==='on-trip'&&mySt.tripIdx===idx;
+    const routeLbl=upcoming.timeline.map(s=>s.id).join(' ➔ ');
+    const tripDur=upcoming.route.reduce((a,r)=>a+r.t,0);
+    card.innerHTML=`<div class="next-trip-card">
+      <h3>${isOn?'🟢 בנסיעה כעת':'🚋 הנסיעה הבאה'}</h3>
+      <div class="next-time">${toHHMM(s0)} → ${toHHMM(se)}</div>
+      <div class="next-route">${routeLbl} &nbsp;|&nbsp; ${tripDur} דק' &nbsp;|&nbsp; ${(tripDur/45).toFixed(1)} שיעורים</div>
+      <div class="status-btns">
+        ${!isOn?`<button class="sbtn" onclick="setMyStatus('on-trip',${idx})">✅ יצאתי לנסיעה</button>`:''}
+        ${isOn?`<button class="sbtn active-s" onclick="setMyStatus('returned',${idx})">🏁 חזרתי</button>`:''}
+        <button class="sbtn" style="opacity:.65;font-size:12px;" onclick="setMyStatus('pending',-1)">↺ איפוס</button>
+      </div>
+    </div>`;
+  }
+
+  // ── My trips list ──
+  const ml=document.getElementById('myTripsList');
+  if(!myTrips.length){
+    ml.innerHTML='<div style="color:#aaa;font-size:13px;padding:6px;">לא תוכננו נסיעות להיום</div>';
+  } else {
+    ml.innerHTML=myTrips.map((t,i)=>{
+      const s0=t.timeline[0]?.startMin||0;
+      const se=t.timeline[t.timeline.length-1]?.endMin||0;
+      const isOn=mySt.status==='on-trip'&&mySt.tripIdx===i;
+      const isDone=se<nowM||(mySt.status==='returned'&&mySt.tripIdx===i);
+      const dur=t.route.reduce((a,r)=>a+r.t,0);
+      return`<div class="mtr ${isOn?'cur':isDone?'done':''}">
+        <div class="sdot ${isOn?'on':isDone?'dn':''}"></div>
+        <b style="color:var(--primary);font-size:14px;">${toHHMM(s0)} – ${toHHMM(se)}</b>
+        <span style="font-size:12px;color:#888;">${dur} דק' | ${(dur/45).toFixed(1)} שיעורים</span>
+        <span style="font-size:11px;color:#bbb;width:100%;">${t.timeline.map(s=>s.id).join(' ➔ ')}</span>
+      </div>`;
+    }).join('');
+  }
+
+  // ── Team grid ──
+  const allNames=[...new Set(trips.map(t=>t.name))].sort();
+  const tg=document.getElementById('teamGrid');
+  if(!allNames.length){tg.innerHTML='<div style="color:#aaa;font-size:13px;">אין מדריכים מתוכננים</div>';return;}
+  tg.innerHTML=allNames.map(n=>{
+    const k=n.replace(/[.#$[\]/]/g,'_');
+    const st=instrStatuses[k]||{status:'pending'};
+    const hasT=trips.some(t=>t.name===n);
+    let cls='pend',stTxt='ממתין',timeTxt='';
+    if(hasT){
+      if(st.status==='on-trip'){cls='on';stTxt='🟢 בנסיעה';timeTxt=st.time?`יצא ${st.time}`:''}
+      else if(st.status==='returned'){cls='ret';stTxt='✔️ חזר';timeTxt=st.time||''}
+    } else {cls='pend';stTxt='אין נסיעות';}
+    return`<div class="tcard ${cls}">
+      <div class="tcard-name">${n}</div>
+      <div class="tcard-st">${stTxt}</div>
+      ${timeTxt?`<div class="tcard-t">${timeTxt}</div>`:''}
+    </div>`;
+  }).join('');
+
+  // ── Read-only gantt ──
+  renderGanttInto('ganttGridInstr');
+}
+
+function renderGanttInto(targetId){
+  // swap id temporarily so renderTimeline writes into targetId
+  const main=document.getElementById('ganttGrid');
+  const target=document.getElementById(targetId);
+  if(!main||!target)return;
+  main.id='_gt';
+  target.id='ganttGrid';
+  renderTimeline();
+  target.id=targetId;
+  main.id='ganttGrid';
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -542,6 +849,7 @@ async function loadInstructors(){
     const list=document.getElementById('instructorList');
     list.innerHTML='';
     if(snap.exists())Object.values(snap.val()).forEach(n=>{const o=document.createElement('option');o.value=n;list.appendChild(o);});
+    populateInstrSelect();
   }catch(e){}
 }
 async function saveInstructor(name){
@@ -954,6 +1262,7 @@ function renderTimeline(){
       <div class="gantt-header-ticks" style="position:relative;height:16px;">${tickLabelHtml}</div>
     </div>
     ${rowsHtml}`;
+  if(currentRole==='instructor') renderGanttInto('ganttGridInstr');
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1396,14 +1705,20 @@ async function initApp(){
   document.getElementById('tS').value=new Date().toTimeString().slice(0,5);
   updateDateLabel();
   if(window._fbDb){
-    await loadFromStorage();await loadInstructors();startRealtimeSync();
+    await loadFromStorage();
+    await loadInstructors();
+    startRealtimeSync();
   }else{
     window.addEventListener('firebaseReady',async()=>{
-      await loadFromStorage();await loadInstructors();startRealtimeSync();
+      await loadFromStorage();
+      await loadInstructors();
+      startRealtimeSync();
     });
   }
   startNowLineTimer();
   renderPlannerTable();
+  // show login — don't auto-enter any view
+  document.getElementById('loginOverlay').classList.remove('hidden');
 }
 </script>
 </body>
