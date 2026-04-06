@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>מערכת תכנון הדרכה - רכבת V94</title>
+<title>מערכת תכנון הדרכה - רכבת V95</title>
 <style>
 :root {
   --primary:#1a5276; --secondary:#2980b9; --success:#27ae60;
@@ -271,6 +271,34 @@ input,button,select{width:100%;padding:10px;margin:4px 0;border-radius:8px;borde
 .tcard-name{font-weight:bold;color:#1a5276;font-size:13px;margin-bottom:2px;}
 .tcard-st{font-size:11px;color:#777;}
 .tcard-t{font-size:11px;color:#2980b9;margin-top:2px;}
+/* ── SETTINGS MODAL ──────────────────────────────── */
+.settings-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;display:none;align-items:flex-start;justify-content:center;padding-top:40px;overflow-y:auto;}
+.settings-overlay.open{display:flex;}
+.settings-box{background:white;border-radius:18px;width:min(640px,96vw);padding:0;box-shadow:0 20px 60px rgba(0,0,0,.2);margin-bottom:40px;}
+.settings-head{display:flex;align-items:center;justify-content:space-between;padding:20px 24px 0;}
+.settings-head h3{margin:0;color:var(--primary);font-size:17px;}
+.settings-close{background:none;border:1px solid #ddd;border-radius:50%;width:30px;height:30px;cursor:pointer;font-size:16px;color:#888;display:flex;align-items:center;justify-content:center;padding:0;margin:0;flex-shrink:0;}
+.settings-close:hover{border-color:var(--danger);color:var(--danger);}
+.settings-tabs{display:flex;gap:0;padding:14px 24px 0;border-bottom:2px solid #eef2f8;margin-top:14px;}
+.stab{padding:8px 16px;border:none;background:none;cursor:pointer;font-size:13px;color:#888;border-bottom:2px solid transparent;margin-bottom:-2px;width:auto;margin-top:0;}
+.stab.active{color:var(--primary);border-bottom-color:var(--secondary);font-weight:bold;}
+.stab:hover{color:var(--primary);}
+.settings-body{padding:20px 24px;}
+.settings-panel{display:none;}
+.settings-panel.show{display:block;}
+.sfield-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px;margin-bottom:16px;}
+.sfield{display:flex;flex-direction:column;gap:4px;}
+.sfield label{font-size:12px;font-weight:bold;color:#555;}
+.sfield input{padding:9px 11px;border:1.5px solid #ddd;border-radius:8px;font-size:14px;text-align:center;margin:0;transition:.15s;}
+.sfield input:focus{outline:none;border-color:var(--secondary);}
+.sfield-note{font-size:11px;color:#aaa;margin-top:2px;}
+.ssection-title{font-size:12px;font-weight:bold;color:var(--secondary);text-transform:uppercase;letter-spacing:.5px;margin:16px 0 8px;padding-bottom:4px;border-bottom:1px solid #eef2f8;}
+.settings-footer{display:flex;gap:10px;padding:16px 24px;border-top:1px solid #eef2f8;flex-wrap:wrap;}
+.btn-save-settings{flex:1;padding:11px;background:var(--success);color:white;border:none;border-radius:9px;font-size:14px;font-weight:bold;cursor:pointer;margin:0;}
+.btn-reset-settings{padding:11px 16px;background:#fff3e0;color:var(--warning);border:1.5px solid var(--warning);border-radius:9px;font-size:13px;cursor:pointer;margin:0;white-space:nowrap;}
+.btn-cancel-settings{padding:11px 16px;background:#f5f5f5;color:#666;border:none;border-radius:9px;font-size:13px;cursor:pointer;margin:0;}
+.settings-saved{font-size:12px;color:var(--success);display:none;align-self:center;}
+.settings-saved.show{display:block;}
 </style>
 
 <!-- Firebase -->
@@ -356,11 +384,89 @@ window.dispatchEvent(new Event('firebaseReady'));
   </div>
 </div>
 
+<!-- ── SETTINGS MODAL ──────────────────────────────── -->
+<div class="settings-overlay" id="settingsModal">
+  <div class="settings-box">
+    <div class="settings-head">
+      <h3>⚙️ הגדרות מערכת</h3>
+      <button class="settings-close" onclick="closeSettings()">×</button>
+    </div>
+    <div class="settings-tabs">
+      <button class="stab active" onclick="switchSettingsTab('segs',this)">מקטעים</button>
+      <button class="stab" onclick="switchSettingsTab('turns',this)">סיבובים</button>
+      <button class="stab" onclick="switchSettingsTab('ops',this)">תפעול</button>
+      <button class="stab" onclick="switchSettingsTab('restrict',this)">הגבלות</button>
+    </div>
+    <div class="settings-body">
+
+      <!-- TAB: segments -->
+      <div class="settings-panel show" id="stab-segs">
+        <div class="ssection-title">זמן מעבר במקטע (דקות)</div>
+        <div class="sfield-grid">
+          <div class="sfield"><label>N1 — נווה יעקב</label><input type="number" id="s_N1" min="1" max="120"><div class="sfield-note">ברירת מחדל: 22 דק'</div></div>
+          <div class="sfield"><label>N2 — גבעת המבתר</label><input type="number" id="s_N2" min="1" max="120"><div class="sfield-note">ברירת מחדל: 22 דק'</div></div>
+          <div class="sfield"><label>L1 — קו ירוק צפון</label><input type="number" id="s_L1" min="1" max="120"><div class="sfield-note">ברירת מחדל: 40 דק'</div></div>
+          <div class="sfield"><label>L2 — קו ירוק דרום</label><input type="number" id="s_L2" min="1" max="120"><div class="sfield-note">ברירת מחדל: 40 דק'</div></div>
+          <div class="sfield"><label>O1 — הדסה</label><input type="number" id="s_O1" min="1" max="120"><div class="sfield-note">ברירת מחדל: 6 דק'</div></div>
+          <div class="sfield"><label>O2 — צומת אורה</label><input type="number" id="s_O2" min="1" max="120"><div class="sfield-note">ברירת מחדל: 6 דק'</div></div>
+          <div class="sfield"><label>D3 — דיפו צפון</label><input type="number" id="s_D3" min="1" max="120"><div class="sfield-note">ברירת מחדל: 10 דק'</div></div>
+          <div class="sfield"><label>D4 — דיפו דרום</label><input type="number" id="s_D4" min="1" max="120"><div class="sfield-note">ברירת מחדל: 10 דק'</div></div>
+        </div>
+      </div>
+
+      <!-- TAB: turns -->
+      <div class="settings-panel" id="stab-turns">
+        <div class="ssection-title">זמן סיבוב בתחנת קצה (דקות)</div>
+        <div class="sfield-grid">
+          <div class="sfield"><label>סיבוב נווה יעקב (N1→N2)</label><input type="number" id="s_TURN" min="1" max="60"><div class="sfield-note">ברירת מחדל: 7 דק'</div></div>
+          <div class="sfield"><label>סיבוב אורה (L2→L1)</label><input type="number" id="s_TURN_ORA" min="1" max="60"><div class="sfield-note">ברירת מחדל: 10 דק'</div></div>
+          <div class="sfield"><label>סיבוב הדסה (O2→O1)</label><input type="number" id="s_TURN_HADAS" min="1" max="60"><div class="sfield-note">ברירת מחדל: 7 דק' (כ-TURN)</div></div>
+        </div>
+      </div>
+
+      <!-- TAB: operations -->
+      <div class="settings-panel" id="stab-ops">
+        <div class="ssection-title">ברירות מחדל תפעוליות</div>
+        <div class="sfield-grid">
+          <div class="sfield"><label>פרק בטיחות ברירת מחדל</label><input type="number" id="s_defaultGap" min="0" max="120" step="5"><div class="sfield-note">ברירת מחדל: 40 דק'</div></div>
+          <div class="sfield"><label>אורך משמרת ברירת מחדל</label><input type="number" id="s_shiftLen" min="60" max="720" step="30"><div class="sfield-note">ברירת מחדל: 510 דק' (8.5 ש')</div></div>
+          <div class="sfield"><label>הפסקה מינימלית בין נסיעות</label><input type="number" id="s_minBreak" min="0" max="240" step="5"><div class="sfield-note">ברירת מחדל: 75 דק'</div></div>
+        </div>
+      </div>
+
+      <!-- TAB: restrictions -->
+      <div class="settings-panel" id="stab-restrict">
+        <div class="ssection-title">הגבלת יציאה מ-D4 (דרום)</div>
+        <div class="sfield-grid">
+          <div class="sfield"><label>שעת תחילת הגבלה</label><input type="time" id="s_d4Start" style="text-align:right;"><div class="sfield-note">ברירת מחדל: 06:00</div></div>
+          <div class="sfield"><label>שעת סיום הגבלה</label><input type="time" id="s_d4End" style="text-align:right;"><div class="sfield-note">ברירת מחדל: 19:00</div></div>
+        </div>
+        <div style="font-size:12px;color:#888;background:#fef9e7;padding:10px 12px;border-radius:8px;margin-top:4px;">
+          ⚠️ חזרה לדיפו דרך D4 (L1→D4) מותרת תמיד — ההגבלה חלה רק על יציאה מהדיפו.
+        </div>
+        <div class="ssection-title" style="margin-top:18px;">סיסמת מנהל</div>
+        <div class="sfield-grid">
+          <div class="sfield"><label>סיסמה נוכחית</label><input type="password" id="s_pass1" placeholder="סיסמה חדשה"><div class="sfield-note">השאר ריק לאי-שינוי</div></div>
+          <div class="sfield"><label>אימות סיסמה</label><input type="password" id="s_pass2" placeholder="חזור על הסיסמה"></div>
+        </div>
+        <div class="login-err" id="passErr" style="text-align:right;margin-top:4px;"></div>
+      </div>
+
+    </div>
+    <div class="settings-footer">
+      <button class="btn-reset-settings" onclick="resetSettingsToDefault()">↺ אפס לברירת מחדל</button>
+      <button class="btn-cancel-settings" onclick="closeSettings()">ביטול</button>
+      <button class="btn-save-settings" onclick="saveSettings()">✅ שמור הגדרות</button>
+      <span class="settings-saved" id="settingsSaved">✓ נשמר!</span>
+    </div>
+  </div>
+</div>
+
 <div class="container">
 
   <!-- ── HEADER ──────────────────────────────────────── -->
   <div class="header">
-    <h2>🚇 מערכת תכנון הדרכה <span class="version-badge">V94</span></h2>
+    <h2>🚇 מערכת תכנון הדרכה <span class="version-badge">V95</span></h2>
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
       <span class="saved-indicator" id="savedIndicator">✓ נשמר</span>
       <div class="user-badge" id="userBadge" style="display:none;">
@@ -412,6 +518,7 @@ window.dispatchEvent(new Event('firebaseReady'));
       <button class="btn-add-row" onclick="addPlannerRow()">+ הוסף מדריך</button>
       <button class="btn-generate-all" onclick="generateAllPlanned()">⚡ תכנן אוטומטי</button>
       <button onclick="openInstrModal()" title="ניהול רשימת מדריכים" style="padding:8px 13px;background:#f0f4f8;border:1px solid #ccc;border-radius:8px;cursor:pointer;font-size:13px;color:#555;width:auto;margin:0;white-space:nowrap;">⚙️ מדריכים</button>
+      <button onclick="openSettings()" title="הגדרות מערכת" style="padding:8px 13px;background:#f0f4f8;border:1px solid #ccc;border-radius:8px;cursor:pointer;font-size:13px;color:#555;width:auto;margin:0;white-space:nowrap;">🔧 הגדרות</button>
     </div>
 
     <!-- Instructor Table -->
@@ -576,7 +683,12 @@ const INSTR_COLORS=['#2980b9','#27ae60','#8e44ad','#e67e22','#c0392b','#16a085',
 
 // D4 south departure restriction: 06:00 (360) – 19:00 (1140)
 const D4_RESTRICT_START=360, D4_RESTRICT_END=1140;
-function isD4Restricted(startMin){return startMin>=D4_RESTRICT_START&&startMin<D4_RESTRICT_END;}
+function isD4Restricted(startMin){
+  // use dynamic settings if available, fallback to hardcoded defaults
+  const s=window._d4Start??D4_RESTRICT_START;
+  const e=window._d4End??D4_RESTRICT_END;
+  return startMin>=s&&startMin<e;
+}
 // A route is a "south departure" if it starts at D4 (D4→N2 is the only outgoing path from D4)
 function isSouthDeparture(route){
   const first=route.filter(s=>s.id!=='TURN'&&s.id!=='TURN_ORA')[0];
@@ -605,7 +717,8 @@ function backRoles(){
   document.getElementById('instrErr').textContent='';
 }
 function doAdminLogin(){
-  if(document.getElementById('adminPass').value===ADMIN_PASSWORD){
+  const pwd=window._adminPassword||ADMIN_PASSWORD;
+  if(document.getElementById('adminPass').value===pwd){
     enterApp('admin','מנהל');
   } else {
     document.getElementById('adminErr').textContent='סיסמה שגויה';
@@ -1274,9 +1387,11 @@ function segSelectHtml(selectedVal,includeAny=false){
 }
 
 function addPlannerRow(){
-  const defStart=7*60; // 07:00
+  const defStart=7*60;
+  const shiftLen=_settings.shiftLen||510;
+  const minBreak=_settings.minBreak||75;
   const id=++plannerRowId;
-  plannerRows.push({id,name:'',startMin:defStart,endMin:defStart+510,startSeg:'D3',endSeg:'any',breakMin:75,status:'pending',_tripCount:0});
+  plannerRows.push({id,name:'',startMin:defStart,endMin:defStart+shiftLen,startSeg:'D3',endSeg:'any',breakMin:minBreak,status:'pending',_tripCount:0});
   renderPlannerTable();
 }
 function removePlannerRow(id){
@@ -1288,7 +1403,7 @@ function onShiftStartChange(id,val){
   const row=plannerRows.find(r=>r.id===id);if(!row)return;
   const startMin=timeToMin(val);
   row.startMin=startMin;
-  row.endMin=startMin+510; // auto 8.5h
+  row.endMin=startMin+(_settings.shiftLen||510);
   const endEl=document.getElementById(`pe_${id}`);
   if(endEl)endEl.value=toHHMM(row.endMin);
 }
@@ -1701,15 +1816,146 @@ function resetPlanner(){
 // ═══════════════════════════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
+// SETTINGS
+// ═══════════════════════════════════════════════════════════
+const DEFAULTS={
+  N1:22,N2:22,L1:40,L2:40,O1:6,O2:6,D3:10,D4:10,
+  TURN:7,TURN_ORA:10,TURN_HADAS:7,
+  defaultGap:40,shiftLen:510,minBreak:75,
+  d4Start:'06:00',d4End:'19:00'
+};
+const settingsPath=()=>'settings';
+let _settings={...DEFAULTS};
+
+async function loadSettings(){
+  if(!window._fbDb)return;
+  try{
+    const snap=await _fbGet(_fbRef(_db,settingsPath()));
+    if(snap.exists()){
+      _settings={...DEFAULTS,...snap.val()};
+    } else {
+      _settings={...DEFAULTS};
+    }
+  }catch(e){_settings={...DEFAULTS};}
+  applySettings();
+}
+
+function applySettings(){
+  // Apply to RULES object (used everywhere)
+  RULES.N1=_settings.N1;RULES.N2=_settings.N2;
+  RULES.L1=_settings.L1;RULES.L2=_settings.L2;
+  RULES.O1=_settings.O1;RULES.O2=_settings.O2;
+  RULES.D3=_settings.D3;RULES.D4=_settings.D4;
+  RULES.TURN=_settings.TURN;
+  RULES.TURN_ORA=_settings.TURN_ORA;
+  // TURN_HADAS uses TURN slot (O2→O1 turn)
+  // Apply D4 restriction
+  window._d4Start=timeToMin(_settings.d4Start||'06:00');
+  window._d4End=timeToMin(_settings.d4End||'19:00');
+  // Apply defaults to UI inputs if they exist
+  const gv=document.getElementById('gapV');
+  if(gv&&gv.value==='40')gv.value=_settings.defaultGap;
+}
+
+function isD4RestrictedDyn(startMin){
+  const s=window._d4Start??360;
+  const e=window._d4End??1140;
+  return startMin>=s&&startMin<e;
+}
+
+function openSettings(){
+  // populate fields
+  const f=(id,val)=>{const el=document.getElementById(id);if(el)el.value=val;};
+  f('s_N1',_settings.N1);f('s_N2',_settings.N2);
+  f('s_L1',_settings.L1);f('s_L2',_settings.L2);
+  f('s_O1',_settings.O1);f('s_O2',_settings.O2);
+  f('s_D3',_settings.D3);f('s_D4',_settings.D4);
+  f('s_TURN',_settings.TURN);f('s_TURN_ORA',_settings.TURN_ORA);
+  f('s_TURN_HADAS',_settings.TURN_HADAS??DEFAULTS.TURN_HADAS);
+  f('s_defaultGap',_settings.defaultGap);
+  f('s_shiftLen',_settings.shiftLen);
+  f('s_minBreak',_settings.minBreak);
+  f('s_d4Start',_settings.d4Start||'06:00');
+  f('s_d4End',_settings.d4End||'19:00');
+  document.getElementById('s_pass1').value='';
+  document.getElementById('s_pass2').value='';
+  document.getElementById('passErr').textContent='';
+  document.getElementById('settingsSaved').classList.remove('show');
+  switchSettingsTab('segs',document.querySelector('.stab'));
+  document.getElementById('settingsModal').classList.add('open');
+}
+
+function closeSettings(){
+  document.getElementById('settingsModal').classList.remove('open');
+}
+
+function switchSettingsTab(tab,btn){
+  document.querySelectorAll('.settings-panel').forEach(p=>p.classList.remove('show'));
+  document.querySelectorAll('.stab').forEach(b=>b.classList.remove('active'));
+  document.getElementById('stab-'+tab).classList.add('show');
+  if(btn)btn.classList.add('active');
+}
+
+function getInt(id,def){return parseInt(document.getElementById(id)?.value)||def;}
+function getStr(id,def){return document.getElementById(id)?.value||def;}
+
+async function saveSettings(){
+  // Validate password change
+  const p1=document.getElementById('s_pass1').value;
+  const p2=document.getElementById('s_pass2').value;
+  if(p1||p2){
+    if(p1!==p2){document.getElementById('passErr').textContent='הסיסמאות אינן תואמות';return;}
+    if(p1.length<4){document.getElementById('passErr').textContent='סיסמה קצרה מדי (מינימום 4 תווים)';return;}
+    // update in-memory password — note: for real security use Firebase Auth
+    window._adminPassword=p1;
+    document.getElementById('passErr').textContent='';
+  }
+
+  const newSettings={
+    N1:getInt('s_N1',DEFAULTS.N1),N2:getInt('s_N2',DEFAULTS.N2),
+    L1:getInt('s_L1',DEFAULTS.L1),L2:getInt('s_L2',DEFAULTS.L2),
+    O1:getInt('s_O1',DEFAULTS.O1),O2:getInt('s_O2',DEFAULTS.O2),
+    D3:getInt('s_D3',DEFAULTS.D3),D4:getInt('s_D4',DEFAULTS.D4),
+    TURN:getInt('s_TURN',DEFAULTS.TURN),
+    TURN_ORA:getInt('s_TURN_ORA',DEFAULTS.TURN_ORA),
+    TURN_HADAS:getInt('s_TURN_HADAS',DEFAULTS.TURN_HADAS),
+    defaultGap:getInt('s_defaultGap',DEFAULTS.defaultGap),
+    shiftLen:getInt('s_shiftLen',DEFAULTS.shiftLen),
+    minBreak:getInt('s_minBreak',DEFAULTS.minBreak),
+    d4Start:getStr('s_d4Start',DEFAULTS.d4Start),
+    d4End:getStr('s_d4End',DEFAULTS.d4End),
+  };
+  _settings=newSettings;
+  applySettings();
+  if(window._fbDb){
+    try{await _fbSet(_fbRef(_db,settingsPath()),newSettings);}catch(e){}
+  }
+  const sv=document.getElementById('settingsSaved');
+  sv.classList.add('show');setTimeout(()=>sv.classList.remove('show'),2500);
+}
+
+function resetSettingsToDefault(){
+  if(!confirm('לאפס את כל ההגדרות לברירת מחדל?'))return;
+  _settings={...DEFAULTS};
+  applySettings();
+  if(window._fbDb){
+    try{_fbSet(_fbRef(_db,settingsPath()),DEFAULTS);}catch(e){}
+  }
+  openSettings(); // re-open with default values
+}
+
 async function initApp(){
   document.getElementById('tS').value=new Date().toTimeString().slice(0,5);
   updateDateLabel();
   if(window._fbDb){
+    await loadSettings();
     await loadFromStorage();
     await loadInstructors();
     startRealtimeSync();
   }else{
     window.addEventListener('firebaseReady',async()=>{
+      await loadSettings();
       await loadFromStorage();
       await loadInstructors();
       startRealtimeSync();
@@ -1717,7 +1963,6 @@ async function initApp(){
   }
   startNowLineTimer();
   renderPlannerTable();
-  // show login — don't auto-enter any view
   document.getElementById('loginOverlay').classList.remove('hidden');
 }
 </script>
