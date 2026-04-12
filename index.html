@@ -579,16 +579,6 @@ window.dispatchEvent(new Event('firebaseReady'));
   </div>
 </div>
 
-<!-- ── INSTRUCTOR MANAGEMENT MODAL ─────────────────── -->
-<div class="confirm-overlay" id="instrModal">
-  <div class="confirm-box" style="max-width:340px;">
-    <h3 style="color:var(--primary);margin-bottom:6px;">⚙️ ניהול מדריכים</h3>
-    <p style="margin:0 0 10px;font-size:13px;color:#666;">לחץ × להסרה מרשימת ההשלמה:</p>
-    <div id="instrList" style="max-height:300px;overflow-y:auto;border:0.5px solid #ddd;border-radius:8px;margin-bottom:14px;"></div>
-    <button onclick="closeInstrModal()" style="width:100%;padding:10px;background:#f0f0f0;color:#444;border:none;border-radius:8px;cursor:pointer;font-size:14px;margin:0;">סגור</button>
-  </div>
-</div>
-
 <!-- ── COPY DAY MODAL ──────────────────────────────── -->
 <div class="copy-day-overlay" id="copyDayModal">
   <div class="copy-day-box">
@@ -727,6 +717,7 @@ window.dispatchEvent(new Event('firebaseReady'));
       <button class="stab" onclick="switchSettingsTab('ops',this)">תפעול</button>
       <button class="stab" onclick="switchSettingsTab('restrict',this)">הגבלות</button>
       <button class="stab" onclick="switchSettingsTab('shifts',this)">משמרות ומשימות</button>
+      <button class="stab" onclick="switchSettingsTab('instructors',this)">מדריכים</button>
     </div>
     <div class="settings-body">
 
@@ -784,7 +775,7 @@ window.dispatchEvent(new Event('firebaseReady'));
         <div class="login-err" id="passErr" style="text-align:right;margin-top:4px;"></div>
       </div>
 
-      <!-- ── NEW: SHIFTS & TASKS TAB ── -->
+      <!-- ── SHIFTS & TASKS TAB ── -->
       <div class="settings-panel" id="stab-shifts">
 
         <!-- Shift hours -->
@@ -818,6 +809,19 @@ window.dispatchEvent(new Event('firebaseReady'));
         <div id="taskDefsList" style="margin-bottom:12px;"></div>
         <button onclick="addTaskDef()" style="width:100%;padding:9px;border:2px dashed var(--secondary);background:#eaf2fb;color:var(--secondary);border-radius:8px;cursor:pointer;font-size:13px;font-weight:bold;margin:0;">+ הוסף סוג משימה</button>
 
+      </div>
+
+      <!-- TAB: INSTRUCTORS (NEW SINGLE AREA) -->
+      <div class="settings-panel" id="stab-instructors">
+        <div class="ssection-title">ניהול מדריכים</div>
+        <p style="font-size:12px;color:#555;margin-bottom:12px;">רשימת מדריכים קיימת (3 ראשוניים אקראיים). ניתן לערוך, להסיר או להוסיף מדריך חדש.</p>
+        <div id="instructorsMgmtList" style="max-height:340px;overflow-y:auto;border:1px solid #ddd;border-radius:8px;padding:8px;margin-bottom:14px;background:#fafcff;"></div>
+        
+        <div style="display:flex;gap:8px;align-items:center;">
+          <input type="text" id="newInstructorInput" placeholder="שם מדריך חדש" style="flex:1;padding:9px 12px;border:1.5px solid #ddd;border-radius:8px;font-size:14px;">
+          <button onclick="addNewInstructorFromSettings()" style="padding:9px 22px;background:var(--secondary);color:white;border:none;border-radius:8px;cursor:pointer;font-weight:bold;white-space:nowrap;">+ הוסף מדריך</button>
+        </div>
+        <div style="font-size:11px;color:#888;margin-top:8px;">השמות יופיעו בכל שדות הבחירה במערכת (תכנון, ידני, שיבוץ).</div>
       </div>
 
     </div>
@@ -934,7 +938,6 @@ window.dispatchEvent(new Event('firebaseReady'));
 
       <button class="btn-add-row" onclick="addPlannerRow()">+ הוסף מדריך</button>
       <button class="btn-generate-all" onclick="generateAllPlanned()">⚡ תכנן אוטומטי</button>
-      <button onclick="openInstrModal()" title="ניהול מדריכים" style="padding:8px 13px;background:#f0f4f8;border:1px solid #ccc;border-radius:8px;cursor:pointer;font-size:13px;color:#555;width:auto;margin:0;white-space:nowrap;">⚙️ מדריכים</button>
       <button onclick="openSettings()" title="הגדרות" style="padding:8px 13px;background:#f0f4f8;border:1px solid #ccc;border-radius:8px;cursor:pointer;font-size:13px;color:#555;width:auto;margin:0;white-space:nowrap;">🔧 הגדרות</button>
       <button onclick="openCopyDayModal()" title="העתקת יום" style="padding:8px 13px;background:#f0f4f8;border:1px solid #ccc;border-radius:8px;cursor:pointer;font-size:13px;color:#555;width:auto;margin:0;white-space:nowrap;">📋 העתק יום</button>
       <button onclick="exportPDF()" title="יצוא PDF" style="padding:8px 13px;background:#f0f4f8;border:1px solid #ccc;border-radius:8px;cursor:pointer;font-size:13px;color:#555;width:auto;margin:0;white-space:nowrap;">🖨️ PDF</button>
@@ -1013,10 +1016,7 @@ window.dispatchEvent(new Event('firebaseReady'));
         <!-- Controls -->
         <div class="controls">
           <h3>בחירת מסלול</h3>
-          <div style="display:flex;gap:6px;align-items:center;">
-            <input type="text" id="tID" placeholder="שם המדריך" list="instructorList" autocomplete="off" style="margin:0;flex:1;">
-            <button onclick="openInstrModal()" title="ניהול מדריכים" style="width:auto;margin:0;padding:0 10px;height:38px;background:#f0f4f8;border:1px solid #ccc;border-radius:8px;cursor:pointer;font-size:14px;color:#555;white-space:nowrap;">⚙️</button>
-          </div>
+          <input type="text" id="tID" placeholder="שם המדריך" list="instructorList" autocomplete="off" style="margin:0;flex:1;">
           <datalist id="instructorList"></datalist>
           <div class="gap-row">
             <div><label>שעת יציאה:</label><input type="time" id="tS" oninput="val()"></div>
@@ -1104,12 +1104,10 @@ const INSTR_COLORS=['#2980b9','#27ae60','#8e44ad','#e67e22','#c0392b','#16a085',
 // D4 south departure restriction: 06:00 (360) – 19:00 (1140)
 const D4_RESTRICT_START=360, D4_RESTRICT_END=1140;
 function isD4Restricted(startMin){
-  // use dynamic settings if available, fallback to hardcoded defaults
   const s=window._d4Start??D4_RESTRICT_START;
   const e=window._d4End??D4_RESTRICT_END;
   return startMin>=s&&startMin<e;
 }
-// A route is a "south departure" if it starts at D4 (D4→N2 is the only outgoing path from D4)
 function isSouthDeparture(route){
   const first=route.filter(s=>s.id!=='TURN'&&s.id!=='TURN_ORA')[0];
   return first&&first.id==='D4';
@@ -1166,7 +1164,6 @@ function enterApp(role,name){
     document.getElementById('managerView').style.display='none';
     startInstrSync();
   }
-  // Start schedule sync for both roles
   startSchedSync();
   renderCalendar();
 }
@@ -1237,7 +1234,6 @@ function renderInstrView(){
   const myKey=currentUserName.replace(/[.#$[\]/]/g,'_');
   const mySt=instrStatuses[myKey]||{status:'pending',tripIdx:-1};
 
-  // ── Next / current trip card ──
   const upcoming=myTrips.find(t=>(t.timeline[t.timeline.length-1]?.endMin||0)>nowM);
   const card=document.getElementById('nextTripCard');
   if(!upcoming){
@@ -1261,7 +1257,6 @@ function renderInstrView(){
     </div>`;
   }
 
-  // ── My trips list ──
   const ml=document.getElementById('myTripsList');
   if(!myTrips.length){
     ml.innerHTML='<div style="color:#aaa;font-size:13px;padding:6px;">לא תוכננו נסיעות להיום</div>';
@@ -1281,7 +1276,6 @@ function renderInstrView(){
     }).join('');
   }
 
-  // ── Team grid ──
   const allNames=[...new Set(trips.map(t=>t.name))].sort();
   const tg=document.getElementById('teamGrid');
   if(!allNames.length){tg.innerHTML='<div style="color:#aaa;font-size:13px;">אין מדריכים מתוכננים</div>';return;}
@@ -1301,12 +1295,10 @@ function renderInstrView(){
     </div>`;
   }).join('');
 
-  // ── Read-only gantt ──
   renderGanttInto('ganttGridInstr');
 }
 
 function renderGanttInto(targetId){
-  // swap id temporarily so renderTimeline writes into targetId
   const main=document.getElementById('ganttGrid');
   const target=document.getElementById(targetId);
   if(!main||!target)return;
@@ -1495,7 +1487,6 @@ function val(){
   _hasConflict=false;
   if(!startStr||curRoute.length===0){forecastDiv.innerHTML='<i>בחר מסלול...</i>';saveB.disabled=false;return;}
 
-  // OCC south departure check
   const startMin=timeToMin(startStr);
   if(isSouthDeparture(curRoute)&&isD4Restricted(startMin)){
     occWarn.classList.add('show');
@@ -1510,7 +1501,6 @@ function val(){
   });
   forecastDiv.innerHTML=html;
 
-  // Conflict check
   let conflictMsg='';
   trips.forEach(t=>{
     if(t.id===editingTripId)return;
@@ -1561,11 +1551,10 @@ function _doSaveTrip(){
   saveToStorage();renderLog();resetS();
 }
 function saveTrip(){
-  if(_hasConflict)return; // blocked — use override button
+  if(_hasConflict)return;
   _doSaveTrip();
 }
 function saveTripForce(){
-  // Save despite conflict
   _doSaveTrip();
 }
 function startEdit(tripId){
@@ -1582,7 +1571,7 @@ function startEdit(tripId){
 }
 function saveEditedTrip(){
   if(!editingTripId)return;
-  if(_hasConflict)return; // blocked — use override button
+  if(_hasConflict)return;
   _doSaveEditedTrip();
 }
 function saveEditedTripForce(){
@@ -1633,44 +1622,60 @@ function delTrip(id){trips=trips.filter(t=>t.id!==id);saveToStorage();renderLog(
 function openClearModal(){document.getElementById('confirmClearModal').classList.add('open');}
 function closeClearModal(){document.getElementById('confirmClearModal').classList.remove('open');}
 function confirmClearAll(){trips=[];closeClearModal();saveToStorage();renderLog();}
-// legacy alias kept for safety
-function clearAllTrips(){openClearModal();}
 
 // ═══════════════════════════════════════════════════════════
-// INSTRUCTOR MANAGEMENT MODAL
+// INSTRUCTOR MANAGEMENT — ONLY INSIDE SETTINGS
 // ═══════════════════════════════════════════════════════════
-async function openInstrModal(){
-  document.getElementById('instrModal').classList.add('open');
-  await renderInstrList();
-}
-function closeInstrModal(){document.getElementById('instrModal').classList.remove('open');}
-async function renderInstrList(){
-  const listEl=document.getElementById('instrList');
-  if(!window._fbDb){listEl.innerHTML='<div style="padding:14px;font-size:13px;color:#aaa;text-align:center;">Firebase לא זמין</div>';return;}
+async function renderInstructorsMgmt(){
+  const container=document.getElementById('instructorsMgmtList');
+  if(!container)return;
+  if(!window._fbDb){
+    container.innerHTML='<div style="padding:20px;text-align:center;color:#aaa;">Firebase לא זמין</div>';
+    return;
+  }
   try{
     const snap=await _fbGet(_fbRef(_db,instrPath()));
-    if(!snap.exists()||!Object.keys(snap.val()).length){
-      listEl.innerHTML='<div style="padding:14px;font-size:13px;color:#aaa;text-align:center;">אין מדריכים שמורים</div>';
-      return;
+    let names=snap.exists()?snap.val():{};
+    // Seed 3 random instructors if empty (as requested)
+    if(Object.keys(names).length===0){
+      const seed=["יוסי כהן","מיכל לוי","דוד אברהם"];
+      for(let i=0;i<seed.length;i++){
+        names['seed_'+i]=seed[i];
+      }
+      await _fbSet(_fbRef(_db,instrPath()),names);
     }
-    const names=snap.val();
-    listEl.innerHTML=Object.entries(names).map(([key,name])=>
-      `<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:0.5px solid #f0f0f0;">
-        <span style="font-size:14px;">${name}</span>
-        <button onclick="removeInstructor('${key}')" style="background:none;border:1px solid #ccc;border-radius:50%;width:24px;height:24px;padding:0;cursor:pointer;font-size:14px;line-height:1;color:#888;display:flex;align-items:center;justify-content:center;margin:0;transition:.15s;"
-          onmouseover="this.style.borderColor='var(--danger)';this.style.color='var(--danger)'"
-          onmouseout="this.style.borderColor='#ccc';this.style.color='#888'">×</button>
-      </div>`
-    ).join('');
-  }catch(e){listEl.innerHTML='<div style="padding:14px;font-size:13px;color:var(--danger);">שגיאה בטעינה</div>';}
+    container.innerHTML=Object.entries(names).map(([key,name])=>`
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-bottom:1px solid #f0f0f0;background:white;border-radius:6px;margin:4px 0;">
+        <input type="text" value="${name}" style="flex:1;border:1px solid #ddd;border-radius:6px;padding:6px 10px;margin:0 12px 0 0;font-size:14px;" 
+               onblur="if(this.value.trim())updateInstructorName('${key}',this.value.trim())">
+        <button onclick="removeInstructor('${key}')" style="background:none;border:1px solid #ccc;border-radius:50%;width:28px;height:28px;padding:0;cursor:pointer;font-size:16px;color:#c0392b;line-height:1;">×</button>
+      </div>
+    `).join('') || '<div style="padding:30px;text-align:center;color:#aaa;font-size:13px;">אין מדריכים — הוסף חדש</div>';
+  }catch(e){
+    container.innerHTML='<div style="padding:20px;color:var(--danger);">שגיאה בטעינה</div>';
+  }
+}
+async function updateInstructorName(key,newName){
+  if(!window._fbDb||!newName)return;
+  await _fbRef(_db,instrPath()+'/'+key).set(newName);
+  renderInstructorsMgmt();
+  loadInstructors(); // refresh all datalists
 }
 async function removeInstructor(key){
   if(!window._fbDb)return;
-  try{
-    await _fbRef(_db,instrPath()+'/'+key).remove();
-    await loadInstructors();
-    await renderInstrList();
-  }catch(e){}
+  if(!confirm('להסיר מדריך זה?'))return;
+  await _fbRef(_db,instrPath()+'/'+key).remove();
+  renderInstructorsMgmt();
+  loadInstructors();
+}
+function addNewInstructorFromSettings(){
+  const input=document.getElementById('newInstructorInput');
+  const name=input.value.trim();
+  if(name){
+    saveInstructor(name);
+    input.value='';
+    renderInstructorsMgmt();
+  }
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1717,7 +1722,6 @@ function renderTimeline(){
   const grid=document.getElementById('ganttGrid');
   if(trips.length===0){grid.innerHTML='<div class="gantt-empty">אין נסיעות להצגה</div>';return;}
 
-  // Compute time range in minutes-of-day
   let minM=Infinity,maxM=-Infinity;
   trips.forEach(t=>{
     if(!t.timeline||!t.timeline.length)return;
@@ -1730,7 +1734,6 @@ function renderTimeline(){
 
   const gap=parseInt(document.getElementById('gapV').value)||40;
 
-  // Build conflict map (by segment id → list of {startMin, tripId})
   const segMap={};
   trips.forEach(t=>t.timeline.forEach(seg=>{
     if(!segMap[seg.id])segMap[seg.id]=[];
@@ -1740,29 +1743,24 @@ function renderTimeline(){
     return (segMap[segId]||[]).some(o=>o.tripId!==myId&&Math.abs(o.startMin-startMin)<gap);
   }
 
-  // Tick marks every 15 min
   const ticks=[];
   for(let m=Math.ceil(minM/15)*15;m<=maxM;m+=15)ticks.push(m);
 
-  // Now line
   const nowM=new Date().getHours()*60+new Date().getMinutes();
   const nowPct=((nowM-minM)/span)*100;
   const showNow=nowM>=minM&&nowM<=maxM;
 
-  // Header row (tick labels)
   const tickLabelHtml=ticks.map(m=>{
     const pct=((m-minM)/span)*100;
     return `<div style="position:absolute;left:${pct}%;transform:translateX(-50%);font-size:9px;color:#999;white-space:nowrap;">${toHHMM(m)}</div>`;
   }).join('');
 
-  // Tick lines (inside track, applied per-row)
   const tickLineHtml=ticks.map(m=>{
     const pct=((m-minM)/span)*100;
     return `<div style="position:absolute;top:0;bottom:0;left:${pct}%;width:1px;background:#e8e8e8;pointer-events:none;z-index:0;"></div>`;
   }).join('');
   const nowLineHtml=showNow?`<div style="position:absolute;top:-2px;bottom:-2px;left:${nowPct}%;width:2px;background:rgba(231,76,60,.6);z-index:4;pointer-events:none;"><div style="position:absolute;top:-16px;left:50%;transform:translateX(-50%);font-size:9px;color:#e74c3c;white-space:nowrap;font-weight:bold;">עכשיו</div></div>`:'';
 
-  // Build rows
   const rowsHtml=trips.map(t=>{
     const blocks=t.timeline.map(seg=>{
       const l=((seg.startMin-minM)/span)*100;
@@ -1775,10 +1773,7 @@ function renderTimeline(){
       const lbl=w>5?seg.id:'';
       return `<div style="position:absolute;left:${l}%;width:${Math.max(w,1)}%;height:100%;background:${bg};border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:bold;color:white;overflow:hidden;z-index:2;${cfStyle}" title="${seg.id}: ${toHHMM(seg.startMin)}–${toHHMM(seg.endMin)}">${lbl}</div>`;
     }).join('');
-    // Add TURN segments too (from route, not timeline)
     const turnBlocks=[];
-    let cur2=t.timeline.length>0?t.timeline[0].startMin:0;
-    // rebuild timeline including turns for display
     let ptr2=t.timeline.length>0?t.timeline[0].startMin:0;
     t.route.forEach(s=>{
       if(s.id==='TURN'||s.id==='TURN_ORA'){
@@ -1843,7 +1838,6 @@ function onPlannerField(id,field,val){
 function onPlannerName(id,val){
   const row=plannerRows.find(r=>r.id===id);if(!row)return;
   row.name=val;
-  // Auto-detect start segment from instructor's last trip today
   if(val.trim()&&trips.length>0){
     const last=[...trips].filter(t=>t.name===val.trim()).sort((a,b)=>b.id-a.id)[0];
     if(last&&last.timeline.length>0){
@@ -1902,16 +1896,11 @@ function renderPlannerTable(){
 // ═══════════════════════════════════════════════════════════
 // MULTI-INSTRUCTOR SCHEDULING ALGORITHM
 // ═══════════════════════════════════════════════════════════
-
-// Build timeline from minute offset (no string conversion needed)
 function buildTimelineFromMin(startMin,route){
   let cur=startMin,tl=[];
   route.forEach(s=>{const ss=cur;cur+=s.t;if(s.id!=='TURN'&&s.id!=='TURN_ORA')tl.push({id:s.id,startMin:ss,endMin:cur});});
   return tl;
 }
-
-// Check if a candidate timeline conflicts with any existing timeline
-// Returns: { hasConflict: bool, maxJump: number (how many minutes to shift forward to clear) }
 function checkConflicts(candidateTl,existingTls,gap){
   let maxJump=0,hasConflict=false;
   for(const ex of existingTls){
@@ -1921,7 +1910,6 @@ function checkConflicts(candidateTl,existingTls,gap){
           const diff=Math.abs(cand.startMin-old.startMin);
           if(diff<gap){
             hasConflict=true;
-            // Jump forward so cand.startMin reaches old.startMin + gap
             const jump=(old.startMin+gap)-cand.startMin;
             if(jump>maxJump)maxJump=jump;
           }
@@ -1931,8 +1919,6 @@ function checkConflicts(candidateTl,existingTls,gap){
   }
   return{hasConflict,maxJump};
 }
-
-// Find the earliest valid start >= afterMin for the given route
 function findNonConflictingStart(route,afterMin,shiftEndMin,existingTls,gap){
   const dur=route.reduce((s,r)=>s+r.t,0);
   let tryStart=afterMin;
@@ -1942,10 +1928,8 @@ function findNonConflictingStart(route,afterMin,shiftEndMin,existingTls,gap){
     if(!hasConflict)return tryStart;
     tryStart+=Math.max(1,maxJump);
   }
-  return null; // No valid slot
+  return null;
 }
-
-// DFS to find path from startSeg to endSeg with maximum travel time
 function findBestPathTo(startSeg,endSeg){
   if(startSeg===endSeg)return[startSeg];
   let bestPath=null,bestTime=-1;
@@ -1960,48 +1944,33 @@ function findBestPathTo(startSeg,endSeg){
   dfs(startSeg,[startSeg],new Set([startSeg]));
   return bestPath;
 }
-
-// Build the full set of trips for one instructor, respecting existing timelines
 function buildInstructorTrips(row,existingTls,gap){
   const result=[];
   let cursor=row.startMin,currentSeg=row.startSeg;
   const wantEnd=row.endSeg&&row.endSeg!=='any';
-
   while(result.length<10){
     let currentSegForRoute=currentSeg;
-
-    // D4 south departure restriction: if starting from D4 during 06:00–19:00,
-    // try D3 route instead (instructor walks to north depot), else stop.
     if(currentSegForRoute==='D4'&&isD4Restricted(cursor)){
       if(SUGGESTED_FROM['D3']){
-        currentSegForRoute='D3'; // reroute via north depot
+        currentSegForRoute='D3';
       } else {
-        break; // can't plan from south depot during restricted hours
+        break;
       }
     }
-
     const segIds=SUGGESTED_FROM[currentSegForRoute];
     if(!segIds||!segIds.length)break;
     const route=segsToRoute(segIds);
     if(!route.length)break;
-
     const dur=route.reduce((s,r)=>s+r.t,0);
     if(cursor+dur>row.endMin)break;
-
     const startMin=findNonConflictingStart(route,cursor,row.endMin,existingTls,gap);
     if(startMin===null)break;
-
     const timeline=buildTimelineFromMin(startMin,route);
     result.push({startMin,endMin:startMin+dur,tripMin:dur,route:route.slice(),timeline,endWarning:null,_conflicts:[]});
-
-    // Add this trip to existingTls so future trips of same instructor don't conflict with themselves
     existingTls.push({name:row.name,timeline});
-
     cursor=startMin+dur+row.breakMin;
     currentSeg=getLastRealSeg(route)||currentSeg;
   }
-
-  // Re-route last trip to desired end segment
   if(wantEnd&&result.length>0){
     const li=result.length-1;
     const prevSeg=li>0?getLastRealSeg(result[li-1].route):row.startSeg;
@@ -2016,7 +1985,6 @@ function buildInstructorTrips(row,existingTls,gap){
       } else result[li].endWarning=row.endSeg;
     } else if(!path||path.length<=1) result[li].endWarning=row.endSeg;
   }
-
   return result;
 }
 
@@ -2026,27 +1994,18 @@ function buildInstructorTrips(row,existingTls,gap){
 function generateAllPlanned(){
   if(plannerRows.length===0){alert('יש להוסיף לפחות מדריך אחד.');return;}
   const gap=parseInt(document.getElementById('gapV').value)||40;
-
-  // Reset status
   plannerRows.forEach(r=>{r.status='pending';r._tripCount=0;});
-
-  // Start with existing DB trips as blocked timeline
   const existingTls=trips.map(t=>({name:t.name,timeline:t.timeline}));
-
-  // Sort by shift start for priority
   const sorted=[...plannerRows].sort((a,b)=>a.startMin-b.startMin);
   plannerResults=[];
-
   sorted.forEach((row,sortIdx)=>{
     const instrTrips=buildInstructorTrips(row,[...existingTls],gap);
     row.status=instrTrips.length===0?'failed':(instrTrips.some(t=>t.endWarning)?'conflict':'done');
     row._tripCount=instrTrips.length;
     const colorIdx=plannerRows.indexOf(row);
     plannerResults.push({row,instrTrips,color:instrColor(colorIdx<0?sortIdx:colorIdx)});
-    // Add to blocked timelines for subsequent instructors
     instrTrips.forEach(t=>existingTls.push({name:row.name,timeline:t.timeline}));
   });
-
   renderPlannerTable();
   renderPlannerPreview();
 }
@@ -2057,13 +2016,10 @@ function generateAllPlanned(){
 function renderPlannerPreview(){
   const preview=document.getElementById('plannerPreview');if(!preview)return;
   if(plannerResults.length===0){preview.style.display='none';return;}
-
   const totalTrips=plannerResults.reduce((s,r)=>s+r.instrTrips.length,0);
   const totalMin=plannerResults.reduce((s,r)=>s+r.instrTrips.reduce((ss,t)=>ss+t.tripMin,0),0);
   const hasAnyFailed=plannerResults.some(r=>r.row.status==='failed');
   const hasConflict=plannerResults.some(r=>r.row.status==='conflict');
-
-  // Stats bar
   const statsHtml=`<div class="planner-stats-bar">
     <span>🚋 <b>${totalTrips}</b> נסיעות</span>
     <span>📚 <b>${(totalMin/45).toFixed(1)}</b> שיעורים</span>
@@ -2071,11 +2027,7 @@ function renderPlannerPreview(){
     ${hasAnyFailed?'<span style="color:var(--danger)">❌ מדריך אחד או יותר לא תוכנן</span>':''}
     ${hasConflict&&!hasAnyFailed?'<span style="color:var(--warning)">⚠️ חלק מהמסלולים הוגבלו</span>':''}
   </div>`;
-
-  // Combined Gantt
   const ganttHtml=buildCombinedGanttHTML();
-
-  // Per-instructor cards
   const cardsHtml=plannerResults.map(({row,instrTrips,color})=>{
     if(instrTrips.length===0){
       return`<div class="instr-result-card" style="border-color:${color};">
@@ -2091,12 +2043,10 @@ function renderPlannerPreview(){
     const shiftDur=row.endMin-row.startMin;
     const utilPct=Math.round((instrTotal/shiftDur)*100);
     const utilColor=utilPct>=55?'var(--success)':utilPct>=35?'var(--warning)':'var(--danger)';
-
     const tripCardsHtml=instrTrips.map((t,i)=>{
       const isLast=i===instrTrips.length-1;
       const lessons=(t.tripMin/45).toFixed(1);
       const segs=t.timeline.map(s=>s.id);
-      // Color-coded segment pills
       const segPills=segs.map(sid=>{
         const type=sid.replace(/\d/g,'');
         const bgMap={N:'#2980b9',L:'#27ae60',O:'#e67e22',D:'#7f8c8d'};
@@ -2118,8 +2068,6 @@ function renderPlannerPreview(){
         </div>
       </div>`;
     }).join('');
-
-    // Utilization bar
     const utilBar=`<div style="margin:0 16px 12px;background:#f0f4f8;border-radius:6px;height:8px;overflow:hidden;">
       <div style="height:100%;width:${utilPct}%;background:${utilColor};border-radius:6px;transition:width .4s;"></div>
     </div>
@@ -2127,7 +2075,6 @@ function renderPlannerPreview(){
       <span>ניצול משמרת: <b style="color:${utilColor};">${utilPct}%</b></span>
       <span>${instrTotal} דק' הדרכה מתוך ${shiftDur} דק' משמרת</span>
     </div>`;
-
     return`<div class="instr-result-card" style="border-color:${color};">
       <div class="instr-result-header" style="background:${color}18;">
         <span class="instr-dot" style="background:${color};width:13px;height:13px;border-radius:50%;flex-shrink:0;"></span>
@@ -2140,10 +2087,8 @@ function renderPlannerPreview(){
       <div class="instr-trips-list">${tripCardsHtml}</div>
     </div>`;
   }).join('');
-
   const commitStyle=hasAnyFailed?'background:var(--warning);':'';
   const commitLabel=hasAnyFailed?`⚠️ הוסף ליומן (${totalTrips} נסיעות)`:`✅ הוסף הכל ליומן (${totalTrips} נסיעות)`;
-
   preview.innerHTML=`
     ${statsHtml}
     ${ganttHtml}
@@ -2157,23 +2102,17 @@ function renderPlannerPreview(){
 
 function buildCombinedGanttHTML(){
   if(!plannerResults.length)return'';
-  // Time range
   let minM=Infinity,maxM=-Infinity;
   plannerResults.forEach(({row,instrTrips})=>{
     minM=Math.min(minM,row.startMin);maxM=Math.max(maxM,row.endMin);
   });
-  // Include existing trips in range
   trips.forEach(t=>{if(t.timeline.length){minM=Math.min(minM,t.timeline[0].startMin);maxM=Math.max(maxM,t.timeline[t.timeline.length-1].endMin);}});
   if(minM===Infinity)return'';
   minM=Math.max(0,minM-10);maxM=Math.min(24*60,maxM+10);
   const span=maxM-minM||1;
-
-  // Ticks every 30 min
   const ticks=[];for(let m=Math.ceil(minM/30)*30;m<=maxM;m+=30)ticks.push(m);
   const tickLines=ticks.map(m=>`<div style="position:absolute;top:0;bottom:0;left:${((m-minM)/span)*100}%;width:1px;background:#dde4f0;pointer-events:none;"></div>`).join('');
   const tickLabels=`<div style="position:relative;height:16px;">${ticks.map(m=>`<div style="position:absolute;left:${((m-minM)/span)*100}%;transform:translateX(-50%);font-size:9px;color:#aaa;">${toHHMM(m)}</div>`).join('')}</div>`;
-
-  // Existing trips row(s)
   let existingRows='';
   const byName={};
   trips.forEach(t=>{if(!byName[t.name])byName[t.name]=[];byName[t.name].push(t);});
@@ -2188,8 +2127,6 @@ function buildCombinedGanttHTML(){
       <div class="gantt-instr-track" style="background:#f0f2f5;">${tickLines}${blocks}</div>
     </div>`;
   });
-
-  // New planned rows
   const planRows=plannerResults.map(({row,instrTrips,color})=>{
     const shiftL=((row.startMin-minM)/span)*100;
     const shiftW=((row.endMin-row.startMin)/span)*100;
@@ -2199,7 +2136,6 @@ function buildCombinedGanttHTML(){
       const w=(t.tripMin/span)*100;
       return`<div style="position:absolute;left:${l}%;width:${Math.max(w,0.8)}%;height:100%;background:${color};border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:9px;color:white;font-weight:bold;overflow:hidden;" title="${row.name} נסיעה ${i+1}: ${toHHMM(t.startMin)}–${toHHMM(t.endMin)}">${w>7?toHHMM(t.startMin):''}</div>`;
     }).join('');
-    // Break blocks
     const breakBlocks=instrTrips.slice(0,-1).map(t=>{
       const l=((t.endMin-minM)/span)*100;
       const w=(row.breakMin/span)*100;
@@ -2210,12 +2146,9 @@ function buildCombinedGanttHTML(){
       <div class="gantt-instr-track">${tickLines}${shiftBg}${breakBlocks}${blocks}</div>
     </div>`;
   }).join('');
-
-  // Legend
   const legend=plannerResults.map(({row,color})=>
     `<span><span style="display:inline-block;width:10px;height:10px;background:${color};border-radius:2px;margin-left:4px;vertical-align:middle;"></span>${row.name}</span>`
   ).join('');
-
   return`<div class="combined-gantt-wrap">
     <div class="combined-gantt-title">📊 ציר זמן משולב — כל המדריכים</div>
     ${tickLabels}
@@ -2238,7 +2171,6 @@ function commitAllPlanned(){
     });
   });
   saveToStorage();renderLog();
-
   const preview=document.getElementById('plannerPreview');
   preview.innerHTML=`<div style="text-align:center;padding:32px 20px;background:#eafaf1;border-radius:12px;margin-top:8px;">
     <div style="font-size:44px;">✅</div>
@@ -2262,9 +2194,6 @@ function resetPlanner(){
   const p=document.getElementById('plannerPreview');if(p)p.style.display='none';
 }
 
-// ═══════════════════════════════════════════════════════════
-// INIT
-// ═══════════════════════════════════════════════════════════
 // ═══════════════════════════════════════════════════════════
 // SETTINGS
 // ═══════════════════════════════════════════════════════════
@@ -2291,18 +2220,14 @@ async function loadSettings(){
 }
 
 function applySettings(){
-  // Apply to RULES object (used everywhere)
   RULES.N1=_settings.N1;RULES.N2=_settings.N2;
   RULES.L1=_settings.L1;RULES.L2=_settings.L2;
   RULES.O1=_settings.O1;RULES.O2=_settings.O2;
   RULES.D3=_settings.D3;RULES.D4=_settings.D4;
   RULES.TURN=_settings.TURN;
   RULES.TURN_ORA=_settings.TURN_ORA;
-  // TURN_HADAS uses TURN slot (O2→O1 turn)
-  // Apply D4 restriction
   window._d4Start=timeToMin(_settings.d4Start||'06:00');
   window._d4End=timeToMin(_settings.d4End||'19:00');
-  // Apply defaults to UI inputs if they exist
   const gv=document.getElementById('gapV');
   if(gv&&gv.value==='40')gv.value=_settings.defaultGap;
 }
@@ -2327,7 +2252,6 @@ function openSettings(){
   f('s_maxPerSeg',_settings.maxPerSeg??0);
   f('s_d4Start',_settings.d4Start||'06:00');
   f('s_d4End',_settings.d4End||'19:00');
-  // Shift hours
   f('sh_morning_s',SHIFT_HOURS.morning.s);f('sh_morning_e',SHIFT_HOURS.morning.e);
   f('sh_afternoon_s',SHIFT_HOURS.afternoon.s);f('sh_afternoon_e',SHIFT_HOURS.afternoon.e);
   f('sh_evening_s',SHIFT_HOURS.evening.s);f('sh_evening_e',SHIFT_HOURS.evening.e);
@@ -2335,8 +2259,8 @@ function openSettings(){
   document.getElementById('s_pass2').value='';
   document.getElementById('passErr').textContent='';
   document.getElementById('settingsSaved').classList.remove('show');
-  // Render task defs
   renderTaskDefsList();
+  renderInstructorsMgmt(); // SINGLE AREA FOR INSTRUCTORS
   switchSettingsTab('segs',document.querySelector('.stab'));
   document.getElementById('settingsModal').classList.add('open');
 }
@@ -2356,17 +2280,14 @@ function getInt(id,def){return parseInt(document.getElementById(id)?.value)||def
 function getStr(id,def){return document.getElementById(id)?.value||def;}
 
 async function saveSettings(){
-  // Validate password change
   const p1=document.getElementById('s_pass1').value;
   const p2=document.getElementById('s_pass2').value;
   if(p1||p2){
     if(p1!==p2){document.getElementById('passErr').textContent='הסיסמאות אינן תואמות';return;}
     if(p1.length<4){document.getElementById('passErr').textContent='סיסמה קצרה מדי (מינימום 4 תווים)';return;}
-    // update in-memory password — note: for real security use Firebase Auth
     window._adminPassword=p1;
     document.getElementById('passErr').textContent='';
   }
-
   const newSettings={
     N1:getInt('s_N1',DEFAULTS.N1),N2:getInt('s_N2',DEFAULTS.N2),
     L1:getInt('s_L1',DEFAULTS.L1),L2:getInt('s_L2',DEFAULTS.L2),
@@ -2384,8 +2305,6 @@ async function saveSettings(){
   };
   _settings=newSettings;
   applySettings();
-
-  // Save shift hours
   const newShiftHours={
     morning:{s:getStr('sh_morning_s','06:00'),e:getStr('sh_morning_e','14:00')},
     afternoon:{s:getStr('sh_afternoon_s','14:00'),e:getStr('sh_afternoon_e','22:00')},
@@ -2393,10 +2312,7 @@ async function saveSettings(){
     custom:{s:'07:00',e:'15:30'},
   };
   SHIFT_HOURS=newShiftHours;
-
-  // Collect taskDefs from DOM
   collectTaskDefsFromDOM();
-
   if(window._fbDb){
     try{
       await _fbSet(_fbRef(_db,settingsPath()),newSettings);
@@ -2415,7 +2331,7 @@ function resetSettingsToDefault(){
   if(window._fbDb){
     try{_fbSet(_fbRef(_db,settingsPath()),DEFAULTS);}catch(e){}
   }
-  openSettings(); // re-open with default values
+  openSettings();
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -2488,7 +2404,6 @@ function updateTaskDefField(i,field,val){
 function addTaskDef(){
   taskDefs.push({id:'task_'+Date.now(),icon:'📋',label:'משימה חדשה',color:'#e67e22',isTrip:false,trainees:'',message:''});
   renderTaskDefsList();
-  // Scroll to new task
   const list=document.getElementById('taskDefsList');
   if(list)list.scrollTop=list.scrollHeight;
 }
@@ -2501,11 +2416,9 @@ function removeTaskDef(i){
 }
 
 function collectTaskDefsFromDOM(){
-  // taskDefs are updated in real-time by updateTaskDefField — just sync labels
   syncTaskLabels();
 }
 
-// Update loadSettings to also load taskDefs
 const _origLoadSettings=loadSettings;
 async function loadSettings(){
   await _origLoadSettings();
@@ -2546,14 +2459,12 @@ function renderDashboard(){
     return;
   }
 
-  // Compute KPIs
   const totalTrips=trips.length;
   const totalMin=trips.reduce((s,t)=>s+t.route.reduce((ss,r)=>ss+r.t,0),0);
   const totalLessons=totalMin/45;
   const names=[...new Set(trips.map(t=>t.name))];
   const gap=parseInt(document.getElementById('gapV').value)||40;
 
-  // Conflict count
   let conflicts=0;
   const segMap={};
   trips.forEach(t=>t.timeline.forEach(seg=>{
@@ -2565,7 +2476,6 @@ function renderDashboard(){
       if(Math.abs(arr[i].startMin-arr[j].startMin)<gap)conflicts++;
   });
 
-  // Per-instructor stats
   const byName={};
   trips.forEach(t=>{
     if(!byName[t.name])byName[t.name]={trips:0,min:0};
@@ -2631,7 +2541,6 @@ function exportCSV(){
 function openCopyDayModal(){
   if(!trips.length){alert('אין נסיעות ביום זה להעתקה');return;}
   document.getElementById('copyFromLabel').textContent=currentDate;
-  // Default target: tomorrow
   const d=new Date(currentDate+'T12:00:00');d.setDate(d.getDate()+1);
   document.getElementById('copyToDate').value=d.toISOString().slice(0,10);
   document.getElementById('copyDayModal').classList.add('open');
@@ -2643,10 +2552,8 @@ async function executeCopyDay(){
   if(!targetDate||targetDate===currentDate){alert('יש לבחור תאריך שונה מהיום הנוכחי');return;}
   if(!window._fbDb){alert('Firebase לא זמין');return;}
   try{
-    // Load existing target trips
     const snap=await _fbGet(_fbRef(_db,'trips/'+targetDate));
     const existing=snap.exists()?snap.val():{};
-    // Copy current trips with new IDs
     const copied={...existing};
     trips.forEach(t=>{
       const newId=Date.now()+Math.floor(Math.random()*10000);
@@ -2660,30 +2567,21 @@ async function executeCopyDay(){
 }
 
 // ═══════════════════════════════════════════════════════════
-// SMART ALGORITHM — replaces buildInstructorTrips
-// Improvements:
-//  1. Score all possible routes and pick the highest-scoring one
-//  2. Max instructors per segment constraint
-//  3. Prefer longer routes (more training minutes)
-//  4. Avoid D4 departure during restricted hours (already exists, kept)
-//  5. Progressive break lengthening for long shifts
+// SMART ALGORITHM
 // ═══════════════════════════════════════════════════════════
 function scoreRoute(route, startMin, existingTls, gap, maxPerSeg){
   const tl=buildTimelineFromMin(startMin,route);
   let score=0;
   const dur=route.reduce((s,r)=>s+r.t,0);
-  // Base score: total training minutes (prefer longer)
   score+=dur*2;
-  // Penalty: proximity to other instructors in same segment
   let conflictPenalty=0;
   tl.forEach(seg=>{
     const others=(existingTls.flatMap(e=>e.timeline||[])).filter(s=>s.id===seg.id);
     others.forEach(o=>{
       const diff=Math.abs(o.startMin-seg.startMin);
       if(diff<gap) conflictPenalty+=200;
-      else if(diff<gap*1.5) score-=30; // slight penalty for being close
+      else if(diff<gap*1.5) score-=30;
     });
-    // Penalty for exceeding max instructors per segment
     if(maxPerSeg>0){
       const simultaneous=others.filter(o=>Math.abs(o.startMin-seg.startMin)<dur).length;
       if(simultaneous>=maxPerSeg) conflictPenalty+=500;
@@ -2697,40 +2595,27 @@ function buildInstructorTrips(row, existingTls, gap){
   const result=[];
   let cursor=row.startMin, currentSeg=row.startSeg;
   const wantEnd=row.endSeg&&row.endSeg!=='any';
-  const maxPerSeg=parseInt(_settings?.maxPerSeg)||0; // 0 = unlimited
-  // Progressive break: add 5 min per trip after 2nd trip
+  const maxPerSeg=parseInt(_settings?.maxPerSeg)||0;
   const baseBreak=row.breakMin||(_settings?.minBreak||75);
-
   while(result.length<10){
     let segForRoute=currentSeg;
-
-    // D4 restriction
     if(segForRoute==='D4'&&isD4Restricted(cursor)){
       if(SUGGESTED_FROM['D3']) segForRoute='D3';
       else break;
     }
-
-    // Build candidate routes from current position
-    // Primary: full route from SUGGESTED_FROM
-    // Also try partial routes (skip last segment) for better fit
     const candidateRouteIds=[
       SUGGESTED_FROM[segForRoute],
-      // shorter alternative: drop last 1-2 segments
       SUGGESTED_FROM[segForRoute]?.slice(0,-1),
     ].filter(Boolean);
-
     let bestRoute=null, bestScore=-Infinity, bestStart=null;
-
     for(const segIds of candidateRouteIds){
       if(!segIds||segIds.length<2)continue;
       const route=segsToRoute(segIds);
       if(!route.length)continue;
       const dur=route.reduce((s,r)=>s+r.t,0);
       if(cursor+dur>row.endMin)continue;
-
       const startMin=findNonConflictingStart(route,cursor,row.endMin,existingTls,gap);
       if(startMin===null)continue;
-
       const{score}=scoreRoute(route,startMin,existingTls,gap,maxPerSeg);
       if(score>bestScore){
         bestScore=score;
@@ -2738,21 +2623,15 @@ function buildInstructorTrips(row, existingTls, gap){
         bestStart=startMin;
       }
     }
-
     if(!bestRoute||bestStart===null)break;
-
     const dur=bestRoute.reduce((s,r)=>s+r.t,0);
     const timeline=buildTimelineFromMin(bestStart,bestRoute);
     result.push({startMin:bestStart,endMin:bestStart+dur,tripMin:dur,route:bestRoute.slice(),timeline,endWarning:null,_conflicts:[]});
     existingTls.push({name:row.name,timeline});
-
-    // Progressive break
     const tripBreak=baseBreak+Math.max(0,(result.length-2)*5);
     cursor=bestStart+dur+tripBreak;
     currentSeg=getLastRealSeg(bestRoute)||currentSeg;
   }
-
-  // Re-route last trip to desired end segment
   if(wantEnd&&result.length>0){
     const li=result.length-1;
     const prevSeg=li>0?getLastRealSeg(result[li-1].route):row.startSeg;
@@ -2767,7 +2646,6 @@ function buildInstructorTrips(row, existingTls, gap){
       } else result[li].endWarning=row.endSeg;
     } else if(!path||path.length<=1) result[li].endWarning=row.endSeg;
   }
-
   return result;
 }
 
@@ -2777,7 +2655,6 @@ function buildInstructorTrips(row, existingTls, gap){
 let TASK_LABELS={training:'🚇 הדרכה',maintenance:'🔧 אחזקה',drivers:'🚌 הדרכת נהגים',passengers:'👥 הדרכת נוסעים',rest:'💤 מנוחה',other:'📋 אחר'};
 const SHIFT_LABELS={morning:'🌅 בוקר',afternoon:'☀️ צהריים',evening:'🌙 ערב',custom:'⏰ מותאם'};
 let SHIFT_HOURS={morning:{s:'06:00',e:'14:00'},afternoon:{s:'14:00',e:'22:00'},evening:{s:'22:00',e:'06:00'},custom:{s:'07:00',e:'15:30'}};
-// Task definitions: full objects with icon, color, isTrip, trainees, message
 let taskDefs=[
   {id:'training',  icon:'🚇',label:'הדרכה',         color:'#2980b9',isTrip:true, trainees:'',message:''},
   {id:'maintenance',icon:'🔧',label:'אחזקה',         color:'#7f8c8d',isTrip:false,trainees:'',message:''},
@@ -2789,14 +2666,13 @@ let taskDefs=[
 const HE_DAYS=['א׳','ב׳','ג׳','ד׳','ה׳','ו׳','ש׳'];
 
 let schedYear=new Date().getFullYear();
-let schedMonth=new Date().getMonth(); // 0-based
-let schedData={}; // { 'YYYY-MM-DD': [{id,name,shift,task,startTime,endTime,note,status,submittedBy}] }
-let schedEditId=null; // entry being edited
+let schedMonth=new Date().getMonth();
+let schedData={};
+let schedEditId=null;
 let schedEditDate=null;
 
 const schedPath=()=>`schedule/${schedYear}-${String(schedMonth+1).padStart(2,'0')}`;
 
-// ── Firebase sync ──
 function startSchedSync(){
   if(!window._fbDb)return;
   _fbRef(_db,schedPath()).on('value',snap=>{
@@ -2824,7 +2700,6 @@ async function updateSchedStatus(date,id,status){
   await _fbRef(_db,schedPath()+'/'+date+'/'+id+'/status').set(status);
 }
 
-// ── Month navigation ──
 function changeSchedMonth(delta){
   schedMonth+=delta;
   if(schedMonth<0){schedMonth=11;schedYear--;}
@@ -2834,28 +2709,23 @@ function changeSchedMonth(delta){
   renderCalendar();
 }
 
-// ── Calendar render ──
 function renderCalendar(){
   const managerCal=document.getElementById('calGrid');
   const instrCal=document.getElementById('calGridInstr');
   const monthLabel=new Date(schedYear,schedMonth,1).toLocaleDateString('he-IL',{month:'long',year:'numeric'});
   ['schedMonthLabel','schedMonthLabelInstr'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=monthLabel;});
 
-  // Build header
   const headerHtml=HE_DAYS.map(d=>`<div class="cal-header">${d}</div>`).join('');
   ['calHeader','calHeaderInstr'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML=headerHtml;});
 
   const today=new Date().toISOString().slice(0,10);
   const firstDay=new Date(schedYear,schedMonth,1);
   const lastDay=new Date(schedYear,schedMonth+1,0);
-  // Adjust: Sunday=0 but we want Sunday last, Monday=first (Israeli week)
-  let startDow=firstDay.getDay(); // 0=Sun
-  // Israeli week: Mon=0..Sat=5..Sun=6
+  let startDow=firstDay.getDay();
   const isrDow=d=>((d.getDay()+6)%7);
   const startOffset=isrDow(firstDay);
 
   const cells=[];
-  // Padding cells before month start
   for(let i=0;i<startOffset;i++){
     const d=new Date(firstDay);d.setDate(d.getDate()-(startOffset-i));
     cells.push({date:d.toISOString().slice(0,10),otherMonth:true});
@@ -2864,7 +2734,6 @@ function renderCalendar(){
     const dt=new Date(schedYear,schedMonth,d);
     cells.push({date:dt.toISOString().slice(0,10),otherMonth:false});
   }
-  // Fill remaining
   while(cells.length%7!==0){
     const last=new Date(lastDay);last.setDate(last.getDate()+(cells.length-lastDay.getDate()));
     cells.push({date:last.toISOString().slice(0,10),otherMonth:true});
@@ -2872,7 +2741,6 @@ function renderCalendar(){
 
   function buildCell(cell,forInstructor){
     const entries=schedData[cell.date]||[];
-    // For instructor: only show own entries
     const filtered=forInstructor?entries.filter(e=>e.name===currentUserName):entries;
     const isPast=cell.date<today;
     const isToday=cell.date===today;
@@ -2893,7 +2761,6 @@ function renderCalendar(){
   if(instrCal)instrCal.innerHTML=instrHtml;
 }
 
-// ── Modal open/close ──
 function openSchedModal(date){
   schedEditDate=date;
   schedEditId=null;
@@ -2901,10 +2768,8 @@ function openSchedModal(date){
   document.getElementById('schedModalTitle').textContent=
     '📅 '+d.toLocaleDateString('he-IL',{weekday:'long',day:'numeric',month:'long'});
 
-  // Populate entries list
   renderSchedEntriesList(date);
 
-  // Show/hide name field based on role
   const nameWrap=document.getElementById('schedNameFieldWrap');
   if(nameWrap){
     if(currentRole==='instructor'){
@@ -2916,18 +2781,15 @@ function openSchedModal(date){
     }
   }
 
-  // Populate task select dynamically from taskDefs
   const taskSel=document.getElementById('schedTask');
   taskSel.innerHTML=taskDefs.map(t=>`<option value="${t.id}">${t.icon} ${t.label}</option>`).join('');
 
-  // Reset form
   document.getElementById('schedShift').value='morning';
   taskSel.value=taskDefs[0]?.id||'training';
   document.getElementById('schedNote').value='';
   document.getElementById('schedCustomTimes').style.display='none';
   updateTaskInfoBox();
 
-  // Footer: instructor = "שלח לאישור", manager = "שמור מאושר"
   const footer=document.getElementById('schedFooter');
   footer.innerHTML=currentRole==='admin'
     ?`<button class="btn-sched-save" style="background:var(--success);" onclick="submitSchedEntry(true)">✅ שמור ואשר</button>
@@ -2954,7 +2816,6 @@ function renderSchedEntriesList(date){
     const canApprove=currentRole==='admin'&&e.status==='pending';
     const canDelete=currentRole==='admin'||(e.name===currentUserName&&e.status==='pending');
     const canAssign=currentRole==='admin'&&e.status==='approved'&&taskDefs.find(t=>t.id===e.task)?.isTrip;
-    // Check if trips already planned for this entry
     const alreadyPlanned=checkTripsPlanned(date,e.name);
     const assignBtn=canAssign?`<button onclick="openAssignTripsModal('${date}','${e.id}')"
       style="font-size:11px;padding:4px 8px;background:${alreadyPlanned?'#eafaf1':'#eaf2fb'};
@@ -2979,12 +2840,10 @@ function renderSchedEntriesList(date){
 }
 
 function checkTripsPlanned(date,name){
-  // Check Firebase trips for that date — use cached trips if same date, else check schedData flag
   if(date===currentDate) return trips.some(t=>t.name===name);
-  return false; // for other dates we don't have trips loaded
+  return false;
 }
 
-// ── Show task info (message + trainees) when task selected ──
 function updateTaskInfoBox(){
   const taskId=document.getElementById('schedTask')?.value;
   const def=taskDefs.find(t=>t.id===taskId);
@@ -3004,7 +2863,6 @@ function updateTaskInfoBox(){
   box.style.display='block';
 }
 
-// ── Shift change handler (show/hide custom times) ──
 document.addEventListener('DOMContentLoaded',()=>{
   const shiftSel=document.getElementById('schedShift');
   if(shiftSel)shiftSel.addEventListener('change',()=>{
@@ -3014,7 +2872,6 @@ document.addEventListener('DOMContentLoaded',()=>{
   if(taskSel)taskSel.addEventListener('change',updateTaskInfoBox);
 });
 
-// ── Submit entry ──
 async function submitSchedEntry(approved=false){
   const date=schedEditDate;if(!date)return;
   const name=document.getElementById('schedName').value.trim()||currentUserName;
@@ -3038,7 +2895,6 @@ async function deleteEntry(date,id){
   renderSchedEntriesList(date);
 }
 
-// ── Export schedule CSV ──
 function exportScheduleCSV(){
   const BOM='\uFEFF';
   const headers=['תאריך','שם','משמרת','שעות','משימה','סטטוס','הערה'];
@@ -3063,8 +2919,8 @@ function exportScheduleCSV(){
 // ═══════════════════════════════════════════════════════════
 // ASSIGN TRIPS FROM SCHEDULE
 // ═══════════════════════════════════════════════════════════
-let _assignEntry=null; // {date, entry}
-let _assignPreviewTrips=[]; // computed trips ready to save
+let _assignEntry=null;
+let _assignPreviewTrips=[];
 
 function openAssignTripsModal(date, entryId){
   const entries=schedData[date]||[];
@@ -3073,22 +2929,18 @@ function openAssignTripsModal(date, entryId){
   _assignEntry={date,entry};
   _assignPreviewTrips=[];
 
-  // Set title
   const d=new Date(date+'T12:00:00');
   document.getElementById('assignModalTitle').textContent=
     `⚡ שיבוץ נסיעות — ${entry.name} | ${d.toLocaleDateString('he-IL',{weekday:'long',day:'numeric',month:'long'})}`;
 
-  // Set defaults from settings
   document.getElementById('assignGap').value=_settings?.defaultGap||40;
   document.getElementById('assignBreak').value=_settings?.minBreak||75;
   document.getElementById('assignStartSeg').value='D3';
 
-  // Clear preview
   document.getElementById('assignPreview').innerHTML=
     `<div style="color:#aaa;text-align:center;padding:20px;font-size:13px;">לחץ "חשב מסלולים" כדי לראות את ההצעה</div>`;
   document.getElementById('assignConfirmBtn').disabled=true;
 
-  // Close schedule modal and open assign modal
   closeSchedModal();
   document.getElementById('assignModal').classList.add('open');
 }
@@ -3106,15 +2958,13 @@ async function runAssignPreview(){
   const breakMin=parseInt(document.getElementById('assignBreak').value)||75;
   const startSeg=document.getElementById('assignStartSeg').value||'D3';
 
-  // Get shift time window
   const sh=SHIFT_HOURS[entry.shift]||{s:entry.startTime,e:entry.endTime};
   const startTime=entry.shift==='custom'?entry.startTime:sh.s;
   const endTime=entry.shift==='custom'?entry.endTime:sh.e;
   let startMin=timeToMin(startTime);
   let endMin=timeToMin(endTime);
-  if(endMin<=startMin)endMin+=24*60; // overnight shift
+  if(endMin<=startMin)endMin+=24*60;
 
-  // Load existing trips for this date (may differ from currentDate)
   let existingTls=[];
   if(date===currentDate){
     existingTls=trips.filter(t=>t.name!==entry.name).map(t=>({name:t.name,timeline:t.timeline}));
@@ -3128,7 +2978,6 @@ async function runAssignPreview(){
     }catch(e){}
   }
 
-  // Build row for algorithm
   const row={
     name:entry.name,
     startMin,endMin,
@@ -3149,7 +2998,6 @@ async function runAssignPreview(){
     return;
   }
 
-  // Render preview
   const totalMin=instrTrips.reduce((s,t)=>s+t.tripMin,0);
   const totalLessons=(totalMin/45).toFixed(1);
   const color=instrColor(0);
@@ -3191,7 +3039,6 @@ async function confirmAssignTrips(){
   if(!_assignEntry||!_assignPreviewTrips.length)return;
   const {date,entry}=_assignEntry;
 
-  // Load existing trips for target date
   let existingTrips=[];
   if(date===currentDate){
     existingTrips=[...trips];
@@ -3202,10 +3049,8 @@ async function confirmAssignTrips(){
     }catch(e){}
   }
 
-  // Remove old trips for this instructor on this date
   const filtered=existingTrips.filter(t=>t.name!==entry.name);
 
-  // Add new trips
   let count=0;
   const newTrips=_assignPreviewTrips.map(t=>{
     const id=Date.now()+(count++);
@@ -3213,7 +3058,6 @@ async function confirmAssignTrips(){
   });
   const allTrips=[...filtered,...newTrips];
 
-  // Save to Firebase
   if(window._fbDb){
     try{
       const obj={};
@@ -3222,13 +3066,11 @@ async function confirmAssignTrips(){
     }catch(e){alert('שגיאה בשמירה: '+e.message);return;}
   }
 
-  // If same date, update local trips state
   if(date===currentDate){
     trips=allTrips;
     renderLog();
   }
 
-  // Mark schedule entry as having trips assigned
   await updateSchedStatus(date,entry.id,'approved');
 
   closeAssignModal();
