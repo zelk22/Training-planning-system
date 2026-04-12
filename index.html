@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>מערכת תכנון הדרכה - רכבת V98</title>
+<title>מערכת תכנון הדרכה - רכבת V99</title>
 <style>
 :root {
   --primary:#1a5276; --secondary:#2980b9; --success:#27ae60;
@@ -670,7 +670,9 @@ window.dispatchEvent(new Event('firebaseReady'));
         <div style="font-size:12px;font-weight:bold;color:var(--secondary);margin:10px 0 8px;border-bottom:1px solid #eef2f8;padding-bottom:5px;" id="schedFormTitle">➕ הוסף שיבוץ</div>
         <div class="sched-field" id="schedNameFieldWrap">
           <label>שם מדריך</label>
-          <input type="text" id="schedName" list="instructorList" placeholder="שם המדריך">
+          <select id="schedName" class="login-input" style="cursor:pointer;">
+            <option value="">— בחר מדריך —</option>
+          </select>
         </div>
         <div class="sched-row">
           <div class="sched-field">
@@ -727,6 +729,7 @@ window.dispatchEvent(new Event('firebaseReady'));
       <button class="stab" onclick="switchSettingsTab('ops',this)">תפעול</button>
       <button class="stab" onclick="switchSettingsTab('restrict',this)">הגבלות</button>
       <button class="stab" onclick="switchSettingsTab('shifts',this)">משמרות ומשימות</button>
+      <button class="stab" onclick="switchSettingsTab('instrs',this)">מדריכים</button>
     </div>
     <div class="settings-body">
 
@@ -820,6 +823,17 @@ window.dispatchEvent(new Event('firebaseReady'));
 
       </div>
 
+      <!-- ── INSTRUCTORS TAB ── -->
+      <div class="settings-panel" id="stab-instrs">
+        <div class="ssection-title">רשימת מדריכים</div>
+        <div id="settingsInstrList" style="margin-bottom:12px;max-height:320px;overflow-y:auto;border:0.5px solid #ddd;border-radius:8px;"></div>
+        <div style="display:flex;gap:8px;">
+          <input type="text" id="newInstrName" placeholder="שם מדריך חדש" style="flex:1;padding:9px 12px;border:1.5px solid #ddd;border-radius:8px;font-size:14px;margin:0;direction:rtl;">
+          <button onclick="addInstructorFromSettings()" style="padding:9px 16px;background:var(--secondary);color:white;border:none;border-radius:8px;font-size:13px;font-weight:bold;cursor:pointer;margin:0;white-space:nowrap;">+ הוסף</button>
+        </div>
+        <div style="font-size:11px;color:#aaa;margin-top:8px;">המדריכים ברשימה זו יופיעו בכל שדות בחירת המדריך במערכת.</div>
+      </div>
+
     </div>
     <div class="settings-footer">
       <button class="btn-reset-settings" onclick="resetSettingsToDefault()">↺ אפס לברירת מחדל</button>
@@ -834,7 +848,7 @@ window.dispatchEvent(new Event('firebaseReady'));
 
   <!-- ── HEADER ──────────────────────────────────────── -->
   <div class="header">
-    <h2>🚇 מערכת תכנון הדרכה <span class="version-badge">V98</span></h2>
+    <h2>🚇 מערכת תכנון הדרכה <span class="version-badge">V99</span></h2>
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
       <span class="saved-indicator" id="savedIndicator">✓ נשמר</span>
       <div class="user-badge" id="userBadge" style="display:none;">
@@ -934,7 +948,6 @@ window.dispatchEvent(new Event('firebaseReady'));
 
       <button class="btn-add-row" onclick="addPlannerRow()">+ הוסף מדריך</button>
       <button class="btn-generate-all" onclick="generateAllPlanned()">⚡ תכנן אוטומטי</button>
-      <button onclick="openInstrModal()" title="ניהול מדריכים" style="padding:8px 13px;background:#f0f4f8;border:1px solid #ccc;border-radius:8px;cursor:pointer;font-size:13px;color:#555;width:auto;margin:0;white-space:nowrap;">⚙️ מדריכים</button>
       <button onclick="openSettings()" title="הגדרות" style="padding:8px 13px;background:#f0f4f8;border:1px solid #ccc;border-radius:8px;cursor:pointer;font-size:13px;color:#555;width:auto;margin:0;white-space:nowrap;">🔧 הגדרות</button>
       <button onclick="openCopyDayModal()" title="העתקת יום" style="padding:8px 13px;background:#f0f4f8;border:1px solid #ccc;border-radius:8px;cursor:pointer;font-size:13px;color:#555;width:auto;margin:0;white-space:nowrap;">📋 העתק יום</button>
       <button onclick="exportPDF()" title="יצוא PDF" style="padding:8px 13px;background:#f0f4f8;border:1px solid #ccc;border-radius:8px;cursor:pointer;font-size:13px;color:#555;width:auto;margin:0;white-space:nowrap;">🖨️ PDF</button>
@@ -1013,10 +1026,9 @@ window.dispatchEvent(new Event('firebaseReady'));
         <!-- Controls -->
         <div class="controls">
           <h3>בחירת מסלול</h3>
-          <div style="display:flex;gap:6px;align-items:center;">
-            <input type="text" id="tID" placeholder="שם המדריך" list="instructorList" autocomplete="off" style="margin:0;flex:1;">
-            <button onclick="openInstrModal()" title="ניהול מדריכים" style="width:auto;margin:0;padding:0 10px;height:38px;background:#f0f4f8;border:1px solid #ccc;border-radius:8px;cursor:pointer;font-size:14px;color:#555;white-space:nowrap;">⚙️</button>
-          </div>
+          <select id="tID" style="margin:0;width:100%;padding:10px;border:1.5px solid #ddd;border-radius:8px;font-size:14px;direction:rtl;">
+            <option value="">— בחר מדריך —</option>
+          </select>
           <datalist id="instructorList"></datalist>
           <div class="gap-row">
             <div><label>שעת יציאה:</label><input type="time" id="tS" oninput="val()"></div>
@@ -1179,20 +1191,16 @@ function doLogout(){
   if(_instrSyncOff){_instrSyncOff();_instrSyncOff=null;}
   backRoles();
 }
-async function populateInstrSelect(){
-  if(!window._fbDb)return;
-  try{
-    const snap=await _fbGet(_fbRef(_db,instrPath()));
-    const sel=document.getElementById('instrSel');
-    if(!sel)return;
-    const cur=sel.value;
-    sel.innerHTML='<option value="">— בחר את שמך —</option>';
-    if(snap.exists())Object.values(snap.val()).sort().forEach(n=>{
-      const o=document.createElement('option');o.value=n;o.textContent=n;
-      if(n===cur)o.selected=true;
-      sel.appendChild(o);
-    });
-  }catch(e){}
+function populateInstrSelect(){
+  const sel=document.getElementById('instrSel');
+  if(!sel)return;
+  const cur=sel.value;
+  sel.innerHTML='<option value="">— בחר את שמך —</option>';
+  _instrNames.forEach(n=>{
+    const o=document.createElement('option');o.value=n;o.textContent=n;
+    if(n===cur)o.selected=true;
+    sel.appendChild(o);
+  });
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1378,15 +1386,40 @@ async function saveToStorage(){
     ind.classList.add('show');setTimeout(()=>ind.classList.remove('show'),2000);
   }catch(e){}
 }
+// Central instructor list — updated whenever instructors change
+let _instrNames=[];
+
 async function loadInstructors(){
   if(!window._fbDb)return;
   try{
     const snap=await _fbGet(_fbRef(_db,instrPath()));
-    const list=document.getElementById('instructorList');
-    list.innerHTML='';
-    if(snap.exists())Object.values(snap.val()).forEach(n=>{const o=document.createElement('option');o.value=n;list.appendChild(o);});
-    populateInstrSelect();
+    _instrNames=snap.exists()?Object.values(snap.val()).sort():[]; 
+    populateAllInstrSelects();
   }catch(e){}
+}
+
+// Populate every instructor select/datalist in the page
+function populateAllInstrSelects(){
+  const names=_instrNames;
+  const optHtml='<option value="">— בחר מדריך —</option>'+names.map(n=>`<option value="${n}">${n}</option>`).join('');
+
+  // 1. Manual route select
+  const tID=document.getElementById('tID');
+  if(tID&&tID.tagName==='SELECT'){const cur=tID.value;tID.innerHTML=optHtml;tID.value=cur||'';}
+
+  // 2. Schedule modal select
+  const schedName=document.getElementById('schedName');
+  if(schedName&&schedName.tagName==='SELECT'){const cur=schedName.value;schedName.innerHTML=optHtml;schedName.value=cur||'';}
+
+  // 3. Login instructor select
+  populateInstrSelect();
+
+  // 4. Datalist (kept for compatibility)
+  const dl=document.getElementById('instructorList');
+  if(dl){dl.innerHTML=names.map(n=>`<option value="${n}">`).join('');}
+
+  // 5. Planner rows — re-render to pick up new names
+  if(_instrNames.length) renderPlannerTable();
 }
 async function saveInstructor(name){
   if(!window._fbDb||!name)return;
@@ -1571,7 +1604,14 @@ function saveTripForce(){
 function startEdit(tripId){
   const trip=trips.find(t=>t.id===tripId);if(!trip)return;
   editingTripId=tripId;curRoute=[...trip.route];
-  document.getElementById('tID').value=trip.name;
+  // Ensure the instructor option exists in select
+  const tID=document.getElementById('tID');
+  if(tID){
+    if(![...tID.options].some(o=>o.value===trip.name)){
+      const o=document.createElement('option');o.value=trip.name;o.textContent=trip.name;tID.appendChild(o);
+    }
+    tID.value=trip.name;
+  }
   document.getElementById('tS').value=trip.startStr;
   document.getElementById('saveB').style.display='none';
   document.getElementById('editSaveB').style.display='block';
@@ -1868,8 +1908,10 @@ function renderPlannerTable(){
     else if(row.status==='failed') statusHtml=`<span class="p-status" style="color:var(--danger);">❌ לא תוכנן</span>`;
     return`<tr class="planner-row" id="prow_${row.id}" style="">
       <td style="border-right:4px solid ${color};">
-        <input class="p-input" type="text" value="${row.name}" list="instructorList" placeholder="שם מדריך"
-          oninput="onPlannerName(${row.id},this.value)">
+        <select class="p-input" onchange="onPlannerName(${row.id},this.value)">
+          <option value="">— בחר מדריך —</option>
+          ${_instrNames.map(n=>`<option value="${n}" ${n===row.name?'selected':''}>${n}</option>`).join('')}
+        </select>
       </td>
       <td>
         <input class="p-input" type="time" value="${toHHMM(row.startMin)}"
@@ -2335,8 +2377,8 @@ function openSettings(){
   document.getElementById('s_pass2').value='';
   document.getElementById('passErr').textContent='';
   document.getElementById('settingsSaved').classList.remove('show');
-  // Render task defs
   renderTaskDefsList();
+  renderSettingsInstrList();
   switchSettingsTab('segs',document.querySelector('.stab'));
   document.getElementById('settingsModal').classList.add('open');
 }
@@ -3234,6 +3276,51 @@ async function confirmAssignTrips(){
   closeAssignModal();
   const d=new Date(date+'T12:00:00');
   alert(`✅ ${newTrips.length} נסיעות שובצו ל-${entry.name} ב-${d.toLocaleDateString('he-IL')}`);
+}
+
+// ═══════════════════════════════════════════════════════════
+// INSTRUCTOR MANAGEMENT (inside Settings)
+// ═══════════════════════════════════════════════════════════
+function renderSettingsInstrList(){
+  const container=document.getElementById('settingsInstrList');
+  if(!container)return;
+  if(!_instrNames.length){
+    container.innerHTML='<div style="padding:14px;color:#aaa;font-size:13px;text-align:center;">אין מדריכים. הוסף מדריך למטה.</div>';
+    return;
+  }
+  container.innerHTML=_instrNames.map(name=>`
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:0.5px solid #f0f0f0;">
+      <span style="font-size:14px;">${name}</span>
+      <button onclick="removeInstructorFromSettings('${name.replace(/'/g,"\\'")}')"
+        style="background:none;border:1px solid #ccc;border-radius:50%;width:24px;height:24px;cursor:pointer;font-size:14px;color:#888;display:flex;align-items:center;justify-content:center;padding:0;margin:0;transition:.15s;"
+        onmouseover="this.style.borderColor='var(--danger)';this.style.color='var(--danger)'"
+        onmouseout="this.style.borderColor='#ccc';this.style.color='#888'">×</button>
+    </div>`).join('');
+}
+
+async function addInstructorFromSettings(){
+  const input=document.getElementById('newInstrName');
+  const name=input?.value.trim();
+  if(!name){alert('יש להזין שם');return;}
+  if(_instrNames.includes(name)){alert('מדריך זה כבר קיים');return;}
+  await saveInstructor(name);
+  if(input)input.value='';
+  await loadInstructors();
+  renderSettingsInstrList();
+}
+
+async function removeInstructorFromSettings(name){
+  if(!confirm(`למחוק את "${name}" מרשימת המדריכים?`))return;
+  if(!window._fbDb)return;
+  try{
+    const snap=await _fbGet(_fbRef(_db,instrPath()));
+    if(!snap.exists())return;
+    const names=snap.val();
+    const key=Object.keys(names).find(k=>names[k]===name);
+    if(key) await _fbRef(_db,instrPath()+'/'+key).remove();
+    await loadInstructors();
+    renderSettingsInstrList();
+  }catch(e){}
 }
 
 async function initApp(){
