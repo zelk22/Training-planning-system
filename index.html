@@ -604,7 +604,6 @@ window.dispatchEvent(new Event('firebaseReady'));
       <button onclick="closeAssignModal()" style="background:none;border:1px solid #ddd;border-radius:50%;width:28px;height:28px;cursor:pointer;font-size:15px;color:#888;display:flex;align-items:center;justify-content:center;padding:0;margin:0;">×</button>
     </div>
     <div class="assign-body">
-      <!-- Params row: start seg, gap, break -->
       <div class="assign-params">
         <div class="assign-param">
           <label>מיקום התחלה</label>
@@ -631,7 +630,6 @@ window.dispatchEvent(new Event('firebaseReady'));
       <div style="display:flex;justify-content:flex-end;margin-bottom:10px;">
         <button class="btn-assign-replan" onclick="runAssignPreview()">🔄 חשב מסלולים</button>
       </div>
-      <!-- Preview -->
       <div class="assign-preview" id="assignPreview">
         <div style="color:#aaa;text-align:center;padding:20px;font-size:13px;">לחץ "חשב מסלולים" כדי לראות את ההצעה</div>
       </div>
@@ -651,11 +649,7 @@ window.dispatchEvent(new Event('firebaseReady'));
       <button onclick="closeSchedModal()" style="background:none;border:1px solid #ddd;border-radius:50%;width:28px;height:28px;cursor:pointer;font-size:15px;color:#888;display:flex;align-items:center;justify-content:center;padding:0;margin:0;">×</button>
     </div>
     <div class="sched-body">
-
-      <!-- Existing entries for this day -->
       <div id="schedEntriesList" class="sched-entries-list"></div>
-
-      <!-- Add new entry form (shown to instructor or manager) -->
       <div id="schedAddForm">
         <div style="font-size:12px;font-weight:bold;color:var(--secondary);margin:10px 0 8px;border-bottom:1px solid #eef2f8;padding-bottom:5px;" id="schedFormTitle">➕ הוסף שיבוץ</div>
         <div class="sched-field" id="schedNameFieldWrap">
@@ -693,7 +687,6 @@ window.dispatchEvent(new Event('firebaseReady'));
           <label>הערות (רשות)</label>
           <input type="text" id="schedNote" placeholder="הערה חופשית...">
         </div>
-        <!-- Task info box: shown when task has message/trainees -->
         <div id="taskInfoBox" style="display:none;margin-top:8px;background:#f0f7ff;border:1px solid #c0d8f0;border-radius:8px;padding:10px 12px;font-size:12px;"></div>
       </div>
     </div>
@@ -775,10 +768,8 @@ window.dispatchEvent(new Event('firebaseReady'));
         <div class="login-err" id="passErr" style="text-align:right;margin-top:4px;"></div>
       </div>
 
-      <!-- ── SHIFTS & TASKS TAB ── -->
+      <!-- SHIFTS & TASKS TAB -->
       <div class="settings-panel" id="stab-shifts">
-
-        <!-- Shift hours -->
         <div class="ssection-title">שעות משמרות</div>
         <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-bottom:18px;">
           <div style="background:#fef9e7;border-radius:10px;padding:12px 14px;border:1px solid #f0d080;">
@@ -803,18 +794,15 @@ window.dispatchEvent(new Event('firebaseReady'));
             </div>
           </div>
         </div>
-
-        <!-- Task definitions -->
         <div class="ssection-title">סוגי משימות</div>
         <div id="taskDefsList" style="margin-bottom:12px;"></div>
         <button onclick="addTaskDef()" style="width:100%;padding:9px;border:2px dashed var(--secondary);background:#eaf2fb;color:var(--secondary);border-radius:8px;cursor:pointer;font-size:13px;font-weight:bold;margin:0;">+ הוסף סוג משימה</button>
-
       </div>
 
-      <!-- TAB: INSTRUCTORS (NEW SINGLE AREA) -->
+      <!-- INSTRUCTORS TAB (האזור היחיד) -->
       <div class="settings-panel" id="stab-instructors">
         <div class="ssection-title">ניהול מדריכים</div>
-        <p style="font-size:12px;color:#555;margin-bottom:12px;">רשימת מדריכים קיימת (3 ראשוניים אקראיים). ניתן לערוך, להסיר או להוסיף מדריך חדש.</p>
+        <p style="font-size:12px;color:#555;margin-bottom:12px;">רשימת כל המדריכים במערכת. ניתן לערוך שם, להסיר או להוסיף חדש. 3 מדריכים ראשוניים נטענים אוטומטית אם הרשימה ריקה.</p>
         <div id="instructorsMgmtList" style="max-height:340px;overflow-y:auto;border:1px solid #ddd;border-radius:8px;padding:8px;margin-bottom:14px;background:#fafcff;"></div>
         
         <div style="display:flex;gap:8px;align-items:center;">
@@ -861,7 +849,6 @@ window.dispatchEvent(new Event('firebaseReady'));
       </div>
       <div style="overflow-x:auto;"><div id="ganttGridInstr"><div class="gantt-empty">אין נסיעות</div></div></div>
     </div>
-    <!-- Instructor schedule view -->
     <div class="schedule-section" id="instrScheduleSection">
       <div class="schedule-toolbar">
         <h4>🗓️ השיבוצים שלי</h4>
@@ -879,7 +866,7 @@ window.dispatchEvent(new Event('firebaseReady'));
   <!-- ══ MANAGER VIEW ═══════════════════════════════════ -->
   <div id="managerView" style="display:none;">
 
-  <!-- ── DASHBOARD ──────────────────────────────────── -->
+  <!-- DASHBOARD -->
   <div class="dashboard-section" id="dashboardSection">
     <div class="dash-title">
       <h4>📊 דשבורד יומי — <span id="dashDateLbl" style="font-weight:400;font-size:13px;color:#888;"></span></h4>
@@ -889,7 +876,7 @@ window.dispatchEvent(new Event('firebaseReady'));
     <div id="dashBarsWrap"></div>
   </div>
 
-  <!-- ── SCHEDULE ─────────────────────────────────────── -->
+  <!-- SCHEDULE -->
   <div class="schedule-section" id="scheduleSection">
     <div class="schedule-toolbar">
       <h4>🗓️ לוח שיבוצים</h4>
@@ -900,7 +887,6 @@ window.dispatchEvent(new Event('firebaseReady'));
       </div>
       <button onclick="exportScheduleCSV()" style="padding:7px 12px;background:#f0f4f8;border:1px solid #ccc;border-radius:7px;cursor:pointer;font-size:12px;color:#555;width:auto;margin:0;">📊 ייצא</button>
     </div>
-    <!-- Legend -->
     <div class="sched-legend" style="margin-bottom:10px;">
       <div class="sleg"><div class="sleg-dot" style="background:#e67e22;"></div>ממתין לאישור</div>
       <div class="sleg"><div class="sleg-dot" style="background:#27ae60;"></div>מאושר</div>
@@ -909,33 +895,24 @@ window.dispatchEvent(new Event('firebaseReady'));
       <div class="sleg"><div class="sleg-dot" style="border-right:3px solid #3498db;background:#eee;"></div>צהריים</div>
       <div class="sleg"><div class="sleg-dot" style="border-right:3px solid #9b59b6;background:#eee;"></div>ערב</div>
     </div>
-    <!-- Calendar grid -->
     <div class="cal-grid" id="calHeader"></div>
     <div class="cal-grid" id="calGrid" style="margin-top:3px;"></div>
   </div>
 
-  <!-- ── DAY PLANNER — PRIMARY
-  ══════════════════════════════════════════════════════ -->
+  <!-- DAY PLANNER -->
   <div class="day-planner-section">
-
-    <!-- Toolbar -->
     <div class="planner-toolbar">
       <h3>📅 תכנון יום הדרכה</h3>
-
-      <!-- Date nav -->
       <div class="date-nav">
         <button onclick="changeDate(-1)">&#8249;</button>
         <input type="date" id="dateSelector" onchange="onDateChange()">
         <button onclick="changeDate(1)">&#8250;</button>
       </div>
-
-      <!-- Gap -->
       <div class="gap-inline">
         <label style="margin:0;">פער בטיחות:</label>
         <input type="number" id="gapV" value="40" min="0" max="120" step="5" title="דקות פער בין מדריכים באותו מקטע">
         <span>דק'</span>
       </div>
-
       <button class="btn-add-row" onclick="addPlannerRow()">+ הוסף מדריך</button>
       <button class="btn-generate-all" onclick="generateAllPlanned()">⚡ תכנן אוטומטי</button>
       <button onclick="openSettings()" title="הגדרות" style="padding:8px 13px;background:#f0f4f8;border:1px solid #ccc;border-radius:8px;cursor:pointer;font-size:13px;color:#555;width:auto;margin:0;white-space:nowrap;">🔧 הגדרות</button>
@@ -944,7 +921,6 @@ window.dispatchEvent(new Event('firebaseReady'));
       <button onclick="exportCSV()" title="יצוא Excel" style="padding:8px 13px;background:#f0f4f8;border:1px solid #ccc;border-radius:8px;cursor:pointer;font-size:13px;color:#27ae60;width:auto;margin:0;white-space:nowrap;">📊 Excel</button>
     </div>
 
-    <!-- Instructor Table -->
     <div class="planner-table-wrap">
       <table class="planner-table">
         <thead>
@@ -967,13 +943,10 @@ window.dispatchEvent(new Event('firebaseReady'));
       </table>
     </div>
 
-    <!-- Preview (hidden until generation) -->
     <div class="planner-preview" id="plannerPreview" style="display:none;"></div>
   </div>
 
-  <!-- ══════════════════════════════════════════════════
-       MANUAL ROUTE ENTRY — SECONDARY (COLLAPSIBLE)
-  ══════════════════════════════════════════════════════ -->
+  <!-- MANUAL ROUTE ENTRY -->
   <details class="manual-section" id="manualSection">
     <summary>
       <span class="manual-summary-arrow">▶</span>
@@ -981,15 +954,12 @@ window.dispatchEvent(new Event('firebaseReady'));
       <span style="font-size:12px;font-weight:400;color:#888;margin-right:6px;">(לחץ להרחבה)</span>
     </summary>
     <div class="manual-inner">
-
-      <!-- Edit mode banner (inside manual) -->
       <div class="edit-banner" id="editBanner">
         <span>✏️ מצב עריכה: <span id="editBannerName"></span></span>
         <button onclick="cancelEdit()" style="background:rgba(255,255,255,.3);border:1px solid white;color:white;padding:5px 12px;border-radius:8px;cursor:pointer;font-size:13px;width:auto;margin:0;">ביטול</button>
       </div>
 
       <div class="main-layout">
-        <!-- Map -->
         <div class="map-frame">
           <div class="m-label pos-top">נווה יעקב (1)</div>
           <div class="m-label pos-upper">גבעת המבתר (12)</div>
@@ -1013,10 +983,10 @@ window.dispatchEvent(new Event('firebaseReady'));
           </div>
         </div>
 
-        <!-- Controls -->
         <div class="controls">
           <h3>בחירת מסלול</h3>
-          <input type="text" id="tID" placeholder="שם המדריך" list="instructorList" autocomplete="off" style="margin:0;flex:1;">
+          <!-- תיקון: שדה רגיל כמו כל השדות האחרים, עם רשימה נפתחת של מדריכים קיימים -->
+          <input type="text" id="tID" placeholder="שם המדריך" list="instructorList" autocomplete="off" style="margin:0;width:100%;">
           <datalist id="instructorList"></datalist>
           <div class="gap-row">
             <div><label>שעת יציאה:</label><input type="time" id="tS" oninput="val()"></div>
@@ -1042,7 +1012,7 @@ window.dispatchEvent(new Event('firebaseReady'));
     </div>
   </details>
 
-  <!-- ── TRIP LOG ──────────────────────────────────── -->
+  <!-- TRIP LOG -->
   <div class="mgmt-section">
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
       <h4 style="margin:0;color:var(--primary);">יומן נסיעות — <span id="logDateLabel" style="font-weight:400;font-size:13px;color:#666;"></span></h4>
@@ -1059,7 +1029,7 @@ window.dispatchEvent(new Event('firebaseReady'));
     </div>
   </div>
 
-  <!-- ── GANTT TIMELINE ────────────────────────────── -->
+  <!-- GANTT TIMELINE -->
   <div class="timeline-section">
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
       <h4 style="margin:0;color:var(--primary);">📊 ציר זמן נסיעות</h4>
@@ -1101,7 +1071,6 @@ const SUGGESTED_FROM={
 const SEG_OPTIONS=['D3','D4','N1','N2','L1','L2','O1','O2'];
 const INSTR_COLORS=['#2980b9','#27ae60','#8e44ad','#e67e22','#c0392b','#16a085','#d35400','#1abc9c','#b7950b','#2c3e50'];
 
-// D4 south departure restriction: 06:00 (360) – 19:00 (1140)
 const D4_RESTRICT_START=360, D4_RESTRICT_END=1140;
 function isD4Restricted(startMin){
   const s=window._d4Start??D4_RESTRICT_START;
@@ -1370,13 +1339,32 @@ async function saveToStorage(){
     ind.classList.add('show');setTimeout(()=>ind.classList.remove('show'),2000);
   }catch(e){}
 }
+
+// ── תיקון מרכזי: טעינת מדריכים + יצירת 3 ברירת מחדל אם הרשימה ריקה
 async function loadInstructors(){
   if(!window._fbDb)return;
   try{
-    const snap=await _fbGet(_fbRef(_db,instrPath()));
+    let snap=await _fbGet(_fbRef(_db,instrPath()));
+    let names=snap.exists()?snap.val():{};
+
+    // אם אין מדריכים בכלל – יוצרים 3 אקראיים ראשוניים
+    if(Object.keys(names).length===0){
+      const seed=["יוסי כהן","מיכל לוי","דוד אברהם"];
+      names={};
+      seed.forEach((n,i)=>{names['seed_'+i]=n;});
+      await _fbSet(_fbRef(_db,instrPath()),names);
+    }
+
+    // מילוי datalist בכל מקום במערכת
     const list=document.getElementById('instructorList');
-    list.innerHTML='';
-    if(snap.exists())Object.values(snap.val()).forEach(n=>{const o=document.createElement('option');o.value=n;list.appendChild(o);});
+    if(list){
+      list.innerHTML='';
+      Object.values(names).sort().forEach(n=>{
+        const o=document.createElement('option');
+        o.value=n;
+        list.appendChild(o);
+      });
+    }
     populateInstrSelect();
   }catch(e){}
 }
@@ -1385,7 +1373,11 @@ async function saveInstructor(name){
   try{
     const snap=await _fbGet(_fbRef(_db,instrPath()));
     let names=snap.exists()?snap.val():{};
-    if(!Object.values(names).includes(name)){names['i_'+Date.now()]=name;await _fbSet(_fbRef(_db,instrPath()),names);loadInstructors();}
+    if(!Object.values(names).includes(name)){
+      names['i_'+Date.now()]=name;
+      await _fbSet(_fbRef(_db,instrPath()),names);
+    }
+    await loadInstructors(); // רענון מיידי של כל הרשימות
   }catch(e){}
 }
 function startRealtimeSync(){
@@ -1624,7 +1616,7 @@ function closeClearModal(){document.getElementById('confirmClearModal').classLis
 function confirmClearAll(){trips=[];closeClearModal();saveToStorage();renderLog();}
 
 // ═══════════════════════════════════════════════════════════
-// INSTRUCTOR MANAGEMENT — ONLY INSIDE SETTINGS
+// INSTRUCTOR MANAGEMENT — רק בתוך ההגדרות
 // ═══════════════════════════════════════════════════════════
 async function renderInstructorsMgmt(){
   const container=document.getElementById('instructorsMgmtList');
@@ -1634,16 +1626,17 @@ async function renderInstructorsMgmt(){
     return;
   }
   try{
-    const snap=await _fbGet(_fbRef(_db,instrPath()));
+    let snap=await _fbGet(_fbRef(_db,instrPath()));
     let names=snap.exists()?snap.val():{};
-    // Seed 3 random instructors if empty (as requested)
+
+    // אם עדיין ריק – יוצרים 3 ברירת מחדל (למקרה שלא נטען ב-loadInstructors)
     if(Object.keys(names).length===0){
       const seed=["יוסי כהן","מיכל לוי","דוד אברהם"];
-      for(let i=0;i<seed.length;i++){
-        names['seed_'+i]=seed[i];
-      }
+      names={};
+      seed.forEach((n,i)=>{names['seed_'+i]=n;});
       await _fbSet(_fbRef(_db,instrPath()),names);
     }
+
     container.innerHTML=Object.entries(names).map(([key,name])=>`
       <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-bottom:1px solid #f0f0f0;background:white;border-radius:6px;margin:4px 0;">
         <input type="text" value="${name}" style="flex:1;border:1px solid #ddd;border-radius:6px;padding:6px 10px;margin:0 12px 0 0;font-size:14px;" 
@@ -1659,7 +1652,7 @@ async function updateInstructorName(key,newName){
   if(!window._fbDb||!newName)return;
   await _fbRef(_db,instrPath()+'/'+key).set(newName);
   renderInstructorsMgmt();
-  loadInstructors(); // refresh all datalists
+  loadInstructors();
 }
 async function removeInstructor(key){
   if(!window._fbDb)return;
@@ -1671,11 +1664,10 @@ async function removeInstructor(key){
 function addNewInstructorFromSettings(){
   const input=document.getElementById('newInstructorInput');
   const name=input.value.trim();
-  if(name){
-    saveInstructor(name);
-    input.value='';
-    renderInstructorsMgmt();
-  }
+  if(!name)return;
+  saveInstructor(name);   // שומר + מרענן datalist
+  input.value='';
+  renderInstructorsMgmt(); // מרענן את הטבלה בהגדרות
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1714,7 +1706,6 @@ function renderLog(){
   renderTimeline();
   renderDashboard();
 }
-// ═══════════════════════════════════════════════════════════
 let _nowTimer=null;
 function startNowLineTimer(){if(_nowTimer)clearInterval(_nowTimer);_nowTimer=setInterval(renderTimeline,30000);}
 
@@ -1798,7 +1789,7 @@ function renderTimeline(){
 }
 
 // ═══════════════════════════════════════════════════════════
-// DAY PLANNER — INSTRUCTOR ROWS
+// DAY PLANNER
 // ═══════════════════════════════════════════════════════════
 function segSelectHtml(selectedVal,includeAny=false){
   const anyOpt=includeAny?`<option value="any" ${selectedVal==='any'?'selected':''}>כל מקום</option>`:'';
@@ -1951,11 +1942,8 @@ function buildInstructorTrips(row,existingTls,gap){
   while(result.length<10){
     let currentSegForRoute=currentSeg;
     if(currentSegForRoute==='D4'&&isD4Restricted(cursor)){
-      if(SUGGESTED_FROM['D3']){
-        currentSegForRoute='D3';
-      } else {
-        break;
-      }
+      if(SUGGESTED_FROM['D3']) currentSegForRoute='D3';
+      else break;
     }
     const segIds=SUGGESTED_FROM[currentSegForRoute];
     if(!segIds||!segIds.length)break;
@@ -2158,9 +2146,6 @@ function buildCombinedGanttHTML(){
   </div>`;
 }
 
-// ═══════════════════════════════════════════════════════════
-// COMMIT ALL PLANNED
-// ═══════════════════════════════════════════════════════════
 function commitAllPlanned(){
   let count=0;
   plannerResults.forEach(({row,instrTrips})=>{
@@ -2232,12 +2217,6 @@ function applySettings(){
   if(gv&&gv.value==='40')gv.value=_settings.defaultGap;
 }
 
-function isD4RestrictedDyn(startMin){
-  const s=window._d4Start??360;
-  const e=window._d4End??1140;
-  return startMin>=s&&startMin<e;
-}
-
 function openSettings(){
   const f=(id,val)=>{const el=document.getElementById(id);if(el)el.value=val;};
   f('s_N1',_settings.N1);f('s_N2',_settings.N2);
@@ -2260,7 +2239,7 @@ function openSettings(){
   document.getElementById('passErr').textContent='';
   document.getElementById('settingsSaved').classList.remove('show');
   renderTaskDefsList();
-  renderInstructorsMgmt(); // SINGLE AREA FOR INSTRUCTORS
+  renderInstructorsMgmt(); // טעינה של רשימת המדריכים
   switchSettingsTab('segs',document.querySelector('.stab'));
   document.getElementById('settingsModal').classList.add('open');
 }
@@ -2335,7 +2314,7 @@ function resetSettingsToDefault(){
 }
 
 // ═══════════════════════════════════════════════════════════
-// TASK DEFS MODULE
+// TASK DEFS
 // ═══════════════════════════════════════════════════════════
 function syncTaskLabels(){
   TASK_LABELS={};
@@ -3085,7 +3064,7 @@ async function initApp(){
   if(window._fbDb){
     await loadSettings();
     await loadFromStorage();
-    await loadInstructors();
+    await loadInstructors();   // ← כאן נטענים 3 ברירת מחדל + datalist
     startRealtimeSync();
   }else{
     window.addEventListener('firebaseReady',async()=>{
