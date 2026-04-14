@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>מערכת תכנון הדרכה - רכבת V97</title>
+<title>מערכת תכנון הדרכה - רכבת V99</title>
 <style>
 :root {
   --primary:#1a5276; --secondary:#2980b9; --success:#27ae60;
@@ -482,6 +482,41 @@ body.dark-mode .assign-trip-card{background:#2d3348;border-color:#3a4060;}
 body.dark-mode .assign-footer{border-color:#3a4060;}
 .btn-assign-confirm{flex:1;padding:11px;background:var(--success);color:white;border:none;border-radius:9px;font-size:14px;font-weight:bold;cursor:pointer;margin:0;}
 .btn-assign-replan{padding:11px 14px;background:#eaf2fb;color:var(--secondary);border:1.5px solid var(--secondary);border-radius:9px;font-size:13px;cursor:pointer;margin:0;white-space:nowrap;}
+/* ── TASK DEF EDITOR ─────────────────────────────── */
+.task-def-card{border:1.5px solid #e0e8f5;border-radius:10px;padding:12px 14px;margin-bottom:8px;background:#f8faff;transition:.15s;}
+body.dark-mode .task-def-card{background:#2d3348;border-color:#3a4060;}
+.task-def-card.is-trip{border-color:#27ae60;background:#eafaf1;}
+body.dark-mode .task-def-card.is-trip{background:#1a3a2a;}
+.task-def-header{display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;}
+.task-def-icon-input{width:44px;padding:6px;text-align:center;font-size:18px;border:1px solid #ddd;border-radius:6px;margin:0;}
+.task-def-name-input{flex:1;padding:7px 10px;border:1.5px solid #ddd;border-radius:7px;font-size:13px;min-width:100px;margin:0;}
+.task-def-color-input{width:40px;height:34px;border:1px solid #ddd;border-radius:6px;padding:2px;cursor:pointer;margin:0;}
+.task-def-trip-toggle{display:flex;align-items:center;gap:5px;font-size:12px;color:#555;white-space:nowrap;cursor:pointer;}
+body.dark-mode .task-def-trip-toggle{color:#8ab4d8;}
+.task-def-trip-toggle input{width:auto;margin:0;cursor:pointer;}
+.task-def-del-btn{background:none;border:1px solid #ddd;border-radius:50%;width:24px;height:24px;cursor:pointer;color:#bbb;font-size:14px;display:flex;align-items:center;justify-content:center;padding:0;margin:0;flex-shrink:0;}
+.task-def-del-btn:hover{border-color:var(--danger);color:var(--danger);}
+.task-def-extra{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px;}
+.task-def-extra-full{grid-column:1/-1;}
+.task-def-extra label{font-size:11px;color:#777;display:block;margin-bottom:3px;}
+body.dark-mode .task-def-extra label{color:#8ab4d8;}
+.task-def-extra textarea,.task-def-extra input{width:100%;padding:6px 9px;border:1px solid #ddd;border-radius:7px;font-size:12px;margin:0;resize:vertical;direction:rtl;}
+body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{background:#242938;border-color:#3a4060;color:#e0e6f0;}
+.task-def-trainees{min-height:52px;}
+.trip-link-badge{font-size:10px;padding:2px 7px;border-radius:8px;background:#d5f5e3;color:#1a7a3a;border:1px solid #a9dfbf;white-space:nowrap;}
+
+/* ── TOAST NOTIFICATION ─────────────────────────── */
+#toastContainer{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:9999;display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none;}
+.toast-msg{background:#2c3e50;color:white;padding:11px 22px;border-radius:30px;font-size:14px;font-weight:bold;box-shadow:0 4px 18px rgba(0,0,0,0.22);opacity:0;transition:opacity 0.3s;pointer-events:none;white-space:nowrap;}
+.toast-msg.show{opacity:1;}
+.toast-msg.toast-success{background:var(--success);}
+.toast-msg.toast-info{background:var(--secondary);}
+.toast-msg.toast-warn{background:var(--warning);}
+
+/* ── SCHED MULTI-DELETE BAR ─────────────────────── */
+.sched-bulk-bar{display:none;align-items:center;gap:10px;padding:8px 12px;background:#fdf2f2;border:1px solid #e8b4b4;border-radius:8px;margin-bottom:8px;font-size:13px;}
+.sched-bulk-bar.show{display:flex;}
+.sched-entry-cb{width:16px;height:16px;cursor:pointer;margin:0;flex-shrink:0;}
 </style>
 
 <!-- Firebase -->
@@ -636,7 +671,10 @@ window.dispatchEvent(new Event('firebaseReady'));
   <div class="sched-box">
     <div class="sched-head">
       <h3 id="schedModalTitle">📅 שיבוץ יום</h3>
-      <button onclick="closeSchedModal()" style="background:none;border:1px solid #ddd;border-radius:50%;width:28px;height:28px;cursor:pointer;font-size:15px;color:#888;display:flex;align-items:center;justify-content:center;padding:0;margin:0;">×</button>
+      <div style="display:flex;gap:6px;align-items:center;">
+        <button id="schedResetDayBtn" onclick="resetDayShifts()" style="display:none;background:#fdf2f2;border:1px solid var(--danger);color:var(--danger);border-radius:7px;padding:4px 10px;font-size:12px;cursor:pointer;font-weight:bold;margin:0;white-space:nowrap;">🗑️ אפס יום שלם</button>
+        <button onclick="closeSchedModal()" style="background:none;border:1px solid #ddd;border-radius:50%;width:28px;height:28px;cursor:pointer;font-size:15px;color:#888;display:flex;align-items:center;justify-content:center;padding:0;margin:0;">×</button>
+      </div>
     </div>
     <div class="sched-body">
 
@@ -648,7 +686,9 @@ window.dispatchEvent(new Event('firebaseReady'));
         <div style="font-size:12px;font-weight:bold;color:var(--secondary);margin:10px 0 8px;border-bottom:1px solid #eef2f8;padding-bottom:5px;" id="schedFormTitle">➕ הוסף שיבוץ</div>
         <div class="sched-field" id="schedNameFieldWrap">
           <label>שם מדריך</label>
-          <input type="text" id="schedName" list="instructorList" placeholder="שם המדריך">
+          <select id="schedName" class="login-input" style="cursor:pointer;">
+            <option value="">— בחר מדריך —</option>
+          </select>
         </div>
         <div class="sched-row">
           <div class="sched-field">
@@ -660,15 +700,10 @@ window.dispatchEvent(new Event('firebaseReady'));
               <option value="custom">⏰ שעות מותאמות</option>
             </select>
           </div>
-          <div class="sched-field">
+          <div class="sched-field" id="schedTaskFieldWrap">
             <label>סוג משימה</label>
             <select id="schedTask">
               <option value="training">🚇 הדרכה</option>
-              <option value="maintenance">🔧 אחזקה</option>
-              <option value="drivers">🚌 הדרכת נהגים</option>
-              <option value="passengers">👥 הדרכת נוסעים</option>
-              <option value="rest">💤 מנוחה</option>
-              <option value="other">📋 אחר</option>
             </select>
           </div>
         </div>
@@ -686,6 +721,8 @@ window.dispatchEvent(new Event('firebaseReady'));
           <label>הערות (רשות)</label>
           <input type="text" id="schedNote" placeholder="הערה חופשית...">
         </div>
+        <!-- Task info box: shown when task has message/trainees -->
+        <div id="taskInfoBox" style="display:none;margin-top:8px;background:#f0f7ff;border:1px solid #c0d8f0;border-radius:8px;padding:10px 12px;font-size:12px;"></div>
       </div>
     </div>
     <div class="sched-footer" id="schedFooter">
@@ -707,6 +744,8 @@ window.dispatchEvent(new Event('firebaseReady'));
       <button class="stab" onclick="switchSettingsTab('turns',this)">סיבובים</button>
       <button class="stab" onclick="switchSettingsTab('ops',this)">תפעול</button>
       <button class="stab" onclick="switchSettingsTab('restrict',this)">הגבלות</button>
+      <button class="stab" onclick="switchSettingsTab('shifts',this)">משמרות ומשימות</button>
+      <button class="stab" onclick="switchSettingsTab('instrs',this)">מדריכים</button>
     </div>
     <div class="settings-body">
 
@@ -764,6 +803,53 @@ window.dispatchEvent(new Event('firebaseReady'));
         <div class="login-err" id="passErr" style="text-align:right;margin-top:4px;"></div>
       </div>
 
+      <!-- ── NEW: SHIFTS & TASKS TAB ── -->
+      <div class="settings-panel" id="stab-shifts">
+
+        <!-- Shift hours -->
+        <div class="ssection-title">שעות משמרות</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-bottom:18px;">
+          <div style="background:#fef9e7;border-radius:10px;padding:12px 14px;border:1px solid #f0d080;">
+            <div style="font-size:13px;font-weight:bold;margin-bottom:8px;">🌅 בוקר</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+              <div class="sfield"><label>התחלה</label><input type="time" id="sh_morning_s"></div>
+              <div class="sfield"><label>סיום</label><input type="time" id="sh_morning_e"></div>
+            </div>
+          </div>
+          <div style="background:#eaf4fd;border-radius:10px;padding:12px 14px;border:1px solid #a8d1f0;">
+            <div style="font-size:13px;font-weight:bold;margin-bottom:8px;">☀️ צהריים</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+              <div class="sfield"><label>התחלה</label><input type="time" id="sh_afternoon_s"></div>
+              <div class="sfield"><label>סיום</label><input type="time" id="sh_afternoon_e"></div>
+            </div>
+          </div>
+          <div style="background:#f3eafb;border-radius:10px;padding:12px 14px;border:1px solid #c8a8e8;">
+            <div style="font-size:13px;font-weight:bold;margin-bottom:8px;">🌙 ערב</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+              <div class="sfield"><label>התחלה</label><input type="time" id="sh_evening_s"></div>
+              <div class="sfield"><label>סיום</label><input type="time" id="sh_evening_e"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Task definitions -->
+        <div class="ssection-title">סוגי משימות</div>
+        <div id="taskDefsList" style="margin-bottom:12px;"></div>
+        <button onclick="addTaskDef()" style="width:100%;padding:9px;border:2px dashed var(--secondary);background:#eaf2fb;color:var(--secondary);border-radius:8px;cursor:pointer;font-size:13px;font-weight:bold;margin:0;">+ הוסף סוג משימה</button>
+
+      </div>
+
+      <!-- ── INSTRUCTORS TAB ── -->
+      <div class="settings-panel" id="stab-instrs">
+        <div class="ssection-title">רשימת מדריכים</div>
+        <div id="settingsInstrList" style="margin-bottom:12px;max-height:320px;overflow-y:auto;border:0.5px solid #ddd;border-radius:8px;"></div>
+        <div style="display:flex;gap:8px;align-items:stretch;">
+          <input type="text" id="newInstrName" placeholder="שם מדריך חדש" style="flex:1;min-width:0;padding:9px 12px;border:1.5px solid #ddd;border-radius:8px;font-size:14px;margin:0;direction:rtl;">
+          <button onclick="addInstructorFromSettings()" style="padding:9px 12px;background:var(--secondary);color:white;border:none;border-radius:8px;font-size:13px;font-weight:bold;cursor:pointer;margin:0;white-space:nowrap;flex-shrink:0;">+ הוסף</button>
+        </div>
+        <div style="font-size:11px;color:#aaa;margin-top:8px;">המדריכים ברשימה זו יופיעו בכל שדות בחירת המדריך במערכת.</div>
+      </div>
+
     </div>
     <div class="settings-footer">
       <button class="btn-reset-settings" onclick="resetSettingsToDefault()">↺ אפס לברירת מחדל</button>
@@ -778,7 +864,7 @@ window.dispatchEvent(new Event('firebaseReady'));
 
   <!-- ── HEADER ──────────────────────────────────────── -->
   <div class="header">
-    <h2>🚇 מערכת תכנון הדרכה <span class="version-badge">V97</span></h2>
+    <h2>🚇 מערכת תכנון הדרכה <span class="version-badge">V99</span></h2>
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
       <span class="saved-indicator" id="savedIndicator">✓ נשמר</span>
       <div class="user-badge" id="userBadge" style="display:none;">
@@ -838,6 +924,7 @@ window.dispatchEvent(new Event('firebaseReady'));
         <span id="schedMonthLabel"></span>
         <button onclick="changeSchedMonth(1)">&#8250;</button>
       </div>
+      <button onclick="autoGenerateTripsForDay()" style="padding:7px 13px;background:var(--secondary);color:white;border:none;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;width:auto;margin:0;white-space:nowrap;">🚇 צור תכנון נסיעות אוטומטי</button>
       <button onclick="exportScheduleCSV()" style="padding:7px 12px;background:#f0f4f8;border:1px solid #ccc;border-radius:7px;cursor:pointer;font-size:12px;color:#555;width:auto;margin:0;">📊 ייצא</button>
     </div>
     <!-- Legend -->
@@ -878,7 +965,6 @@ window.dispatchEvent(new Event('firebaseReady'));
 
       <button class="btn-add-row" onclick="addPlannerRow()">+ הוסף מדריך</button>
       <button class="btn-generate-all" onclick="generateAllPlanned()">⚡ תכנן אוטומטי</button>
-      <button onclick="openInstrModal()" title="ניהול מדריכים" style="padding:8px 13px;background:#f0f4f8;border:1px solid #ccc;border-radius:8px;cursor:pointer;font-size:13px;color:#555;width:auto;margin:0;white-space:nowrap;">⚙️ מדריכים</button>
       <button onclick="openSettings()" title="הגדרות" style="padding:8px 13px;background:#f0f4f8;border:1px solid #ccc;border-radius:8px;cursor:pointer;font-size:13px;color:#555;width:auto;margin:0;white-space:nowrap;">🔧 הגדרות</button>
       <button onclick="openCopyDayModal()" title="העתקת יום" style="padding:8px 13px;background:#f0f4f8;border:1px solid #ccc;border-radius:8px;cursor:pointer;font-size:13px;color:#555;width:auto;margin:0;white-space:nowrap;">📋 העתק יום</button>
       <button onclick="exportPDF()" title="יצוא PDF" style="padding:8px 13px;background:#f0f4f8;border:1px solid #ccc;border-radius:8px;cursor:pointer;font-size:13px;color:#555;width:auto;margin:0;white-space:nowrap;">🖨️ PDF</button>
@@ -957,10 +1043,9 @@ window.dispatchEvent(new Event('firebaseReady'));
         <!-- Controls -->
         <div class="controls">
           <h3>בחירת מסלול</h3>
-          <div style="display:flex;gap:6px;align-items:center;">
-            <input type="text" id="tID" placeholder="שם המדריך" list="instructorList" autocomplete="off" style="margin:0;flex:1;">
-            <button onclick="openInstrModal()" title="ניהול מדריכים" style="width:auto;margin:0;padding:0 10px;height:38px;background:#f0f4f8;border:1px solid #ccc;border-radius:8px;cursor:pointer;font-size:14px;color:#555;white-space:nowrap;">⚙️</button>
-          </div>
+          <select id="tID" style="margin:0;width:100%;padding:10px;border:1.5px solid #ddd;border-radius:8px;font-size:14px;direction:rtl;">
+            <option value="">— בחר מדריך —</option>
+          </select>
           <datalist id="instructorList"></datalist>
           <div class="gap-row">
             <div><label>שעת יציאה:</label><input type="time" id="tS" oninput="val()"></div>
@@ -1123,20 +1208,16 @@ function doLogout(){
   if(_instrSyncOff){_instrSyncOff();_instrSyncOff=null;}
   backRoles();
 }
-async function populateInstrSelect(){
-  if(!window._fbDb)return;
-  try{
-    const snap=await _fbGet(_fbRef(_db,instrPath()));
-    const sel=document.getElementById('instrSel');
-    if(!sel)return;
-    const cur=sel.value;
-    sel.innerHTML='<option value="">— בחר את שמך —</option>';
-    if(snap.exists())Object.values(snap.val()).sort().forEach(n=>{
-      const o=document.createElement('option');o.value=n;o.textContent=n;
-      if(n===cur)o.selected=true;
-      sel.appendChild(o);
-    });
-  }catch(e){}
+function populateInstrSelect(){
+  const sel=document.getElementById('instrSel');
+  if(!sel)return;
+  const cur=sel.value;
+  sel.innerHTML='<option value="">— בחר את שמך —</option>';
+  _instrNames.forEach(n=>{
+    const o=document.createElement('option');o.value=n;o.textContent=n;
+    if(n===cur)o.selected=true;
+    sel.appendChild(o);
+  });
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1322,15 +1403,40 @@ async function saveToStorage(){
     ind.classList.add('show');setTimeout(()=>ind.classList.remove('show'),2000);
   }catch(e){}
 }
+// Central instructor list — updated whenever instructors change
+let _instrNames=[];
+
 async function loadInstructors(){
   if(!window._fbDb)return;
   try{
     const snap=await _fbGet(_fbRef(_db,instrPath()));
-    const list=document.getElementById('instructorList');
-    list.innerHTML='';
-    if(snap.exists())Object.values(snap.val()).forEach(n=>{const o=document.createElement('option');o.value=n;list.appendChild(o);});
-    populateInstrSelect();
+    _instrNames=snap.exists()?Object.values(snap.val()).sort():[]; 
+    populateAllInstrSelects();
   }catch(e){}
+}
+
+// Populate every instructor select/datalist in the page
+function populateAllInstrSelects(){
+  const names=_instrNames;
+  const optHtml='<option value="">— בחר מדריך —</option>'+names.map(n=>`<option value="${n}">${n}</option>`).join('');
+
+  // 1. Manual route select
+  const tID=document.getElementById('tID');
+  if(tID&&tID.tagName==='SELECT'){const cur=tID.value;tID.innerHTML=optHtml;tID.value=cur||'';}
+
+  // 2. Schedule modal select
+  const schedName=document.getElementById('schedName');
+  if(schedName&&schedName.tagName==='SELECT'){const cur=schedName.value;schedName.innerHTML=optHtml;schedName.value=cur||'';}
+
+  // 3. Login instructor select
+  populateInstrSelect();
+
+  // 4. Datalist (kept for compatibility)
+  const dl=document.getElementById('instructorList');
+  if(dl){dl.innerHTML=names.map(n=>`<option value="${n}">`).join('');}
+
+  // 5. Planner rows — re-render to pick up new names
+  if(_instrNames.length) renderPlannerTable();
 }
 async function saveInstructor(name){
   if(!window._fbDb||!name)return;
@@ -1515,7 +1621,14 @@ function saveTripForce(){
 function startEdit(tripId){
   const trip=trips.find(t=>t.id===tripId);if(!trip)return;
   editingTripId=tripId;curRoute=[...trip.route];
-  document.getElementById('tID').value=trip.name;
+  // Ensure the instructor option exists in select
+  const tID=document.getElementById('tID');
+  if(tID){
+    if(![...tID.options].some(o=>o.value===trip.name)){
+      const o=document.createElement('option');o.value=trip.name;o.textContent=trip.name;tID.appendChild(o);
+    }
+    tID.value=trip.name;
+  }
   document.getElementById('tS').value=trip.startStr;
   document.getElementById('saveB').style.display='none';
   document.getElementById('editSaveB').style.display='block';
@@ -1812,8 +1925,10 @@ function renderPlannerTable(){
     else if(row.status==='failed') statusHtml=`<span class="p-status" style="color:var(--danger);">❌ לא תוכנן</span>`;
     return`<tr class="planner-row" id="prow_${row.id}" style="">
       <td style="border-right:4px solid ${color};">
-        <input class="p-input" type="text" value="${row.name}" list="instructorList" placeholder="שם מדריך"
-          oninput="onPlannerName(${row.id},this.value)">
+        <select class="p-input" onchange="onPlannerName(${row.id},this.value)">
+          <option value="">— בחר מדריך —</option>
+          ${_instrNames.map(n=>`<option value="${n}" ${n===row.name?'selected':''}>${n}</option>`).join('')}
+        </select>
       </td>
       <td>
         <input class="p-input" type="time" value="${toHHMM(row.startMin)}"
@@ -2258,7 +2373,6 @@ function isD4RestrictedDyn(startMin){
 }
 
 function openSettings(){
-  // populate fields
   const f=(id,val)=>{const el=document.getElementById(id);if(el)el.value=val;};
   f('s_N1',_settings.N1);f('s_N2',_settings.N2);
   f('s_L1',_settings.L1);f('s_L2',_settings.L2);
@@ -2272,10 +2386,16 @@ function openSettings(){
   f('s_maxPerSeg',_settings.maxPerSeg??0);
   f('s_d4Start',_settings.d4Start||'06:00');
   f('s_d4End',_settings.d4End||'19:00');
+  // Shift hours
+  f('sh_morning_s',SHIFT_HOURS.morning.s);f('sh_morning_e',SHIFT_HOURS.morning.e);
+  f('sh_afternoon_s',SHIFT_HOURS.afternoon.s);f('sh_afternoon_e',SHIFT_HOURS.afternoon.e);
+  f('sh_evening_s',SHIFT_HOURS.evening.s);f('sh_evening_e',SHIFT_HOURS.evening.e);
   document.getElementById('s_pass1').value='';
   document.getElementById('s_pass2').value='';
   document.getElementById('passErr').textContent='';
   document.getElementById('settingsSaved').classList.remove('show');
+  renderTaskDefsList();
+  renderSettingsInstrList();
   switchSettingsTab('segs',document.querySelector('.stab'));
   document.getElementById('settingsModal').classList.add('open');
 }
@@ -2323,8 +2443,25 @@ async function saveSettings(){
   };
   _settings=newSettings;
   applySettings();
+
+  // Save shift hours
+  const newShiftHours={
+    morning:{s:getStr('sh_morning_s','06:00'),e:getStr('sh_morning_e','14:00')},
+    afternoon:{s:getStr('sh_afternoon_s','14:00'),e:getStr('sh_afternoon_e','22:00')},
+    evening:{s:getStr('sh_evening_s','22:00'),e:getStr('sh_evening_e','06:00')},
+    custom:{s:'07:00',e:'15:30'},
+  };
+  SHIFT_HOURS=newShiftHours;
+
+  // Collect taskDefs from DOM
+  collectTaskDefsFromDOM();
+
   if(window._fbDb){
-    try{await _fbSet(_fbRef(_db,settingsPath()),newSettings);}catch(e){}
+    try{
+      await _fbSet(_fbRef(_db,settingsPath()),newSettings);
+      await _fbSet(_fbRef(_db,'taskDefs'),taskDefs);
+      await _fbSet(_fbRef(_db,'shiftHours'),newShiftHours);
+    }catch(e){}
   }
   const sv=document.getElementById('settingsSaved');
   sv.classList.add('show');setTimeout(()=>sv.classList.remove('show'),2500);
@@ -2338,6 +2475,100 @@ function resetSettingsToDefault(){
     try{_fbSet(_fbRef(_db,settingsPath()),DEFAULTS);}catch(e){}
   }
   openSettings(); // re-open with default values
+}
+
+// ═══════════════════════════════════════════════════════════
+// TASK DEFS MODULE
+// ═══════════════════════════════════════════════════════════
+function syncTaskLabels(){
+  TASK_LABELS={};
+  taskDefs.forEach(t=>{TASK_LABELS[t.id]=(t.icon?' ':'')+t.icon+' '+t.label;});
+}
+
+async function loadTaskDefs(){
+  if(!window._fbDb)return;
+  try{
+    const [tdSnap,shSnap]=await Promise.all([
+      _fbGet(_fbRef(_db,'taskDefs')),
+      _fbGet(_fbRef(_db,'shiftHours')),
+    ]);
+    if(tdSnap.exists()){
+      const raw=tdSnap.val();
+      taskDefs=Array.isArray(raw)?raw:Object.values(raw);
+      syncTaskLabels();
+    }
+    if(shSnap.exists()){
+      const sh=shSnap.val();
+      SHIFT_HOURS={...SHIFT_HOURS,...sh};
+    }
+  }catch(e){}
+}
+
+function renderTaskDefsList(){
+  const container=document.getElementById('taskDefsList');
+  if(!container)return;
+  container.innerHTML=taskDefs.map((t,i)=>{
+    const tripBadge=t.isTrip?`<span class="trip-link-badge">🚇 מקושר לנסיעות</span>`:'';
+    return`<div class="task-def-card ${t.isTrip?'is-trip':''}" id="tdef_${i}">
+      <div class="task-def-header">
+        <input class="task-def-icon-input" type="text" value="${t.icon||'📋'}" maxlength="2" title="סמל (אימוג'י)" oninput="updateTaskDefField(${i},'icon',this.value)">
+        <input class="task-def-name-input" type="text" value="${t.label}" placeholder="שם המשימה" oninput="updateTaskDefField(${i},'label',this.value)">
+        <input class="task-def-color-input" type="color" value="${t.color||'#2980b9'}" title="צבע" oninput="updateTaskDefField(${i},'color',this.value)">
+        <label class="task-def-trip-toggle" title="האם משימה זו מקושרת לתכנון נסיעות?">
+          <input type="checkbox" ${t.isTrip?'checked':''} onchange="updateTaskDefField(${i},'isTrip',this.checked)">
+          נסיעות
+        </label>
+        ${tripBadge}
+        <button class="task-def-del-btn" onclick="removeTaskDef(${i})" title="מחק משימה">×</button>
+      </div>
+      <div class="task-def-extra">
+        <div>
+          <label>רשימת חניכים (שמות מופרדים בפסיקים)</label>
+          <textarea class="task-def-trainees" rows="2" placeholder="ישראל ישראלי, יוסי כהן, ..." oninput="updateTaskDefField(${i},'trainees',this.value)">${t.trainees||''}</textarea>
+        </div>
+        <div>
+          <label>הודעה מצורפת למשימה</label>
+          <textarea rows="2" placeholder="הערה / הוראה שתוצג למדריך..." oninput="updateTaskDefField(${i},'message',this.value)">${t.message||''}</textarea>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function updateTaskDefField(i,field,val){
+  if(!taskDefs[i])return;
+  taskDefs[i][field]=val;
+  if(field==='isTrip'){
+    const card=document.getElementById('tdef_'+i);
+    if(card){card.classList.toggle('is-trip',val);}
+  }
+}
+
+function addTaskDef(){
+  taskDefs.push({id:'task_'+Date.now(),icon:'📋',label:'משימה חדשה',color:'#e67e22',isTrip:false,trainees:'',message:''});
+  renderTaskDefsList();
+  // Scroll to new task
+  const list=document.getElementById('taskDefsList');
+  if(list)list.scrollTop=list.scrollHeight;
+}
+
+function removeTaskDef(i){
+  if(taskDefs.length<=1){alert('יש להשאיר לפחות משימה אחת');return;}
+  if(!confirm(`למחוק את המשימה "${taskDefs[i].label}"?`))return;
+  taskDefs.splice(i,1);
+  renderTaskDefsList();
+}
+
+function collectTaskDefsFromDOM(){
+  // taskDefs are updated in real-time by updateTaskDefField — just sync labels
+  syncTaskLabels();
+}
+
+// Update loadSettings to also load taskDefs
+const _origLoadSettings=loadSettings;
+async function loadSettings(){
+  await _origLoadSettings();
+  await loadTaskDefs();
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -2602,9 +2833,18 @@ function buildInstructorTrips(row, existingTls, gap){
 // ═══════════════════════════════════════════════════════════
 // SCHEDULE MODULE
 // ═══════════════════════════════════════════════════════════
-const TASK_LABELS={training:'🚇 הדרכה',maintenance:'🔧 אחזקה',drivers:'🚌 הדרכת נהגים',passengers:'👥 הדרכת נוסעים',rest:'💤 מנוחה',other:'📋 אחר'};
+let TASK_LABELS={training:'🚇 הדרכה',maintenance:'🔧 אחזקה',drivers:'🚌 הדרכת נהגים',passengers:'👥 הדרכת נוסעים',rest:'💤 מנוחה',other:'📋 אחר'};
 const SHIFT_LABELS={morning:'🌅 בוקר',afternoon:'☀️ צהריים',evening:'🌙 ערב',custom:'⏰ מותאם'};
-const SHIFT_HOURS={morning:{s:'06:00',e:'14:00'},afternoon:{s:'14:00',e:'22:00'},evening:{s:'22:00',e:'06:00'},custom:{s:'07:00',e:'15:30'}};
+let SHIFT_HOURS={morning:{s:'06:00',e:'14:00'},afternoon:{s:'14:00',e:'22:00'},evening:{s:'22:00',e:'06:00'},custom:{s:'07:00',e:'15:30'}};
+// Task definitions: full objects with icon, color, isTrip, trainees, message
+let taskDefs=[
+  {id:'training',  icon:'🚇',label:'הדרכה',         color:'#2980b9',isTrip:true, trainees:'',message:''},
+  {id:'maintenance',icon:'🔧',label:'אחזקה',         color:'#7f8c8d',isTrip:false,trainees:'',message:''},
+  {id:'drivers',  icon:'🚌',label:'הדרכת נהגים',    color:'#27ae60',isTrip:false,trainees:'',message:''},
+  {id:'passengers',icon:'👥',label:'הדרכת נוסעים',  color:'#8e44ad',isTrip:false,trainees:'',message:''},
+  {id:'rest',     icon:'💤',label:'מנוחה',           color:'#95a5a6',isTrip:false,trainees:'',message:''},
+  {id:'other',    icon:'📋',label:'אחר',             color:'#e67e22',isTrip:false,trainees:'',message:''},
+];
 const HE_DAYS=['א׳','ב׳','ג׳','ד׳','ה׳','ו׳','ש׳'];
 
 let schedYear=new Date().getFullYear();
@@ -2619,10 +2859,24 @@ const schedPath=()=>`schedule/${schedYear}-${String(schedMonth+1).padStart(2,'0'
 function startSchedSync(){
   if(!window._fbDb)return;
   _fbRef(_db,schedPath()).on('value',snap=>{
+    const prevData=JSON.parse(JSON.stringify(schedData)); // shallow copy for comparison
     schedData={};
     if(snap.exists()){
       Object.entries(snap.val()).forEach(([date,entries])=>{
         schedData[date]=Object.values(entries);
+      });
+    }
+    // סעיף 4: הודעה למדריך כאשר שיבוץ שלו אושר
+    if(currentRole==='instructor'&&currentUserName){
+      Object.entries(schedData).forEach(([date,entries])=>{
+        entries.forEach(e=>{
+          if(e.name===currentUserName&&e.status==='approved'){
+            const prev=(prevData[date]||[]).find(p=>p.id===e.id);
+            if(prev&&prev.status!=='approved'){
+              showToast('✅ השיבוץ שלך אושר!','success',4000);
+            }
+          }
+        });
       });
     }
     renderCalendar();
@@ -2735,11 +2989,24 @@ function openSchedModal(date){
     }
   }
 
+  // סעיף 6: הסתר שדה "סוג משימה" עבור מדריך — המנהל יקבע בעת האישור
+  const taskWrap=document.getElementById('schedTaskFieldWrap');
+  if(taskWrap) taskWrap.style.display=currentRole==='instructor'?'none':'block';
+
+  // סעיף 7: כפתור "אפס יום שלם" רק למנהל
+  const resetBtn=document.getElementById('schedResetDayBtn');
+  if(resetBtn) resetBtn.style.display=currentRole==='admin'?'inline-flex':'none';
+
+  // Populate task select dynamically from taskDefs
+  const taskSel=document.getElementById('schedTask');
+  taskSel.innerHTML=taskDefs.map(t=>`<option value="${t.id}">${t.icon} ${t.label}</option>`).join('');
+
   // Reset form
   document.getElementById('schedShift').value='morning';
-  document.getElementById('schedTask').value='training';
+  taskSel.value=taskDefs[0]?.id||'training';
   document.getElementById('schedNote').value='';
   document.getElementById('schedCustomTimes').style.display='none';
+  updateTaskInfoBox();
 
   // Footer: instructor = "שלח לאישור", manager = "שמור מאושר"
   const footer=document.getElementById('schedFooter');
@@ -2762,13 +3029,21 @@ function renderSchedEntriesList(date){
   const list=document.getElementById('schedEntriesList');
   const entries=schedData[date]||[];
   if(!entries.length){list.innerHTML='<div style="color:#aaa;font-size:13px;padding:6px 0;margin-bottom:8px;">אין שיבוצים ביום זה</div>';return;}
-  list.innerHTML=entries.map(e=>{
+
+  const isAdmin=currentRole==='admin';
+  const bulkBar=isAdmin
+    ?`<div class="sched-bulk-bar" id="schedBulkBar">
+        <span id="schedBulkCount" style="flex:1;color:var(--danger);font-weight:bold;"></span>
+        <button onclick="deleteSelectedEntries('${date}')" style="padding:5px 12px;background:var(--danger);color:white;border:none;border-radius:7px;font-size:12px;cursor:pointer;font-weight:bold;margin:0;">🗑️ מחק נבחרים</button>
+      </div>`
+    :'';
+
+  const rows=entries.map(e=>{
     const statusLabel={pending:'ממתין',approved:'מאושר',rejected:'נדחה'}[e.status]||'ממתין';
     const times=e.shift==='custom'?`${e.startTime}–${e.endTime}`:(SHIFT_HOURS[e.shift]?`${SHIFT_HOURS[e.shift].s}–${SHIFT_HOURS[e.shift].e}`:'');
-    const canApprove=currentRole==='admin'&&e.status==='pending';
-    const canDelete=currentRole==='admin'||(e.name===currentUserName&&e.status==='pending');
-    const canAssign=currentRole==='admin'&&e.status==='approved'&&e.task==='training';
-    // Check if trips already planned for this entry
+    const canApprove=isAdmin&&e.status==='pending';
+    const canDelete=isAdmin||(e.name===currentUserName&&e.status==='pending');
+    const canAssign=isAdmin&&e.status==='approved'&&taskDefs.find(t=>t.id===e.task)?.isTrip;
     const alreadyPlanned=checkTripsPlanned(date,e.name);
     const assignBtn=canAssign?`<button onclick="openAssignTripsModal('${date}','${e.id}')"
       style="font-size:11px;padding:4px 8px;background:${alreadyPlanned?'#eafaf1':'#eaf2fb'};
@@ -2776,7 +3051,17 @@ function renderSchedEntriesList(date){
       color:${alreadyPlanned?'var(--success)':'var(--secondary)'};
       border-radius:6px;cursor:pointer;margin:0;white-space:nowrap;">
       ${alreadyPlanned?'✅ נסיעות שובצו':'⚡ שבץ נסיעות'}</button>`:'';
-    return`<div class="sched-entry-row">
+    const cbHtml=isAdmin?`<input type="checkbox" class="sched-entry-cb" data-id="${e.id}" onchange="updateBulkBar()" style="width:16px;height:16px;cursor:pointer;margin:0;flex-shrink:0;">`:'' ;
+
+    // סעיף 5: כפתור אישור מציג הודעה
+    const approveActions=canApprove
+      ?`<button class="btn-sched-approve" style="font-size:11px;padding:4px 8px;" onclick="approveEntry('${date}','${e.id}')">✅</button>
+         <button class="btn-sched-reject" style="font-size:11px;padding:4px 8px;" onclick="rejectEntry('${date}','${e.id}')">❌</button>`
+      :'';
+    const deleteBtn=canDelete?`<button class="btn-sched-del" style="font-size:11px;padding:4px 8px;" onclick="deleteEntry('${date}','${e.id}')">×</button>`:'';
+
+    return`<div class="sched-entry-row" style="align-items:center;">
+      ${cbHtml}
       <div style="flex:1;">
         <b style="font-size:13px;">${e.name}</b>
         <span class="task-badge" style="margin-right:6px;">${TASK_LABELS[e.task]||e.task}</span>
@@ -2785,11 +3070,26 @@ function renderSchedEntriesList(date){
       </div>
       <div style="display:flex;gap:5px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end;">
         ${assignBtn}
-        ${canApprove?`<button class="btn-sched-approve" style="font-size:11px;padding:4px 8px;" onclick="approveEntry('${date}','${e.id}')">✅</button><button class="btn-sched-reject" style="font-size:11px;padding:4px 8px;" onclick="rejectEntry('${date}','${e.id}')">❌</button>`:''}
-        ${canDelete?`<button class="btn-sched-del" style="font-size:11px;padding:4px 8px;" onclick="deleteEntry('${date}','${e.id}')">×</button>`:''}
+        ${approveActions}
+        ${deleteBtn}
       </div>
     </div>`;
   }).join('');
+
+  list.innerHTML=bulkBar+rows;
+}
+
+function updateBulkBar(){
+  const bar=document.getElementById('schedBulkBar');
+  if(!bar)return;
+  const checked=document.querySelectorAll('.sched-entry-cb:checked').length;
+  if(checked>0){
+    bar.classList.add('show');
+    const cnt=document.getElementById('schedBulkCount');
+    if(cnt)cnt.textContent=`${checked} שיבוצים נבחרו`;
+  } else {
+    bar.classList.remove('show');
+  }
 }
 
 function checkTripsPlanned(date,name){
@@ -2798,12 +3098,34 @@ function checkTripsPlanned(date,name){
   return false; // for other dates we don't have trips loaded
 }
 
+// ── Show task info (message + trainees) when task selected ──
+function updateTaskInfoBox(){
+  const taskId=document.getElementById('schedTask')?.value;
+  const def=taskDefs.find(t=>t.id===taskId);
+  const box=document.getElementById('taskInfoBox');
+  if(!box)return;
+  if(!def||((!def.message||!def.message.trim())&&(!def.trainees||!def.trainees.trim()))){
+    box.style.display='none';return;
+  }
+  let html='';
+  if(def.isTrip) html+=`<div style="margin-bottom:5px;"><span class="trip-link-badge">🚇 מקושר לתכנון נסיעות</span></div>`;
+  if(def.message&&def.message.trim()) html+=`<div style="margin-bottom:4px;"><b>📋 הוראה:</b> ${def.message}</div>`;
+  if(def.trainees&&def.trainees.trim()){
+    const list=def.trainees.split(',').map(s=>s.trim()).filter(Boolean);
+    html+=`<div><b>👤 חניכים (${list.length}):</b> ${list.join(' · ')}</div>`;
+  }
+  box.innerHTML=html;
+  box.style.display='block';
+}
+
 // ── Shift change handler (show/hide custom times) ──
 document.addEventListener('DOMContentLoaded',()=>{
   const shiftSel=document.getElementById('schedShift');
   if(shiftSel)shiftSel.addEventListener('change',()=>{
     document.getElementById('schedCustomTimes').style.display=shiftSel.value==='custom'?'grid':'none';
   });
+  const taskSel=document.getElementById('schedTask');
+  if(taskSel)taskSel.addEventListener('change',updateTaskInfoBox);
 });
 
 // ── Submit entry ──
@@ -2812,7 +3134,10 @@ async function submitSchedEntry(approved=false){
   const name=document.getElementById('schedName').value.trim()||currentUserName;
   if(!name){alert('יש להזין שם מדריך');return;}
   const shift=document.getElementById('schedShift').value;
-  const task=document.getElementById('schedTask').value;
+  // Task: if instructor, use first available task (set by manager at approval); if admin, take selected
+  const taskWrap=document.getElementById('schedTaskFieldWrap');
+  const taskVisible=taskWrap&&taskWrap.style.display!=='none';
+  const task=taskVisible?(document.getElementById('schedTask').value||taskDefs[0]?.id||'training'):(taskDefs[0]?.id||'training');
   const note=document.getElementById('schedNote').value.trim();
   const sh=SHIFT_HOURS[shift];
   const startTime=shift==='custom'?document.getElementById('schedStart').value:sh.s;
@@ -2820,10 +3145,38 @@ async function submitSchedEntry(approved=false){
   const id='e_'+Date.now();
   const entry={id,name,shift,task,startTime,endTime,note,status:approved?'approved':'pending',submittedBy:currentUserName,createdAt:Date.now()};
   await saveSchedEntry(date,entry);
-  closeSchedModal();
+
+  // Reset form (stay in modal so additional entries can be added)
+  document.getElementById('schedShift').value='morning';
+  document.getElementById('schedNote').value='';
+  document.getElementById('schedCustomTimes').style.display='none';
+  if(taskVisible){
+    const taskSel=document.getElementById('schedTask');
+    taskSel.value=taskDefs[0]?.id||'training';
+  }
+  if(document.getElementById('schedName'))document.getElementById('schedName').value='';
+  updateTaskInfoBox();
+
+  // Refresh entries list
+  renderSchedEntriesList(date);
+
+  // Toast notification
+  if(approved){
+    showToast('✅ שיבוץ נשמר ואושר','success');
+  } else {
+    if(currentRole==='instructor'){
+      showToast('📨 בקשת השיבוץ שלך נשלחה למנהל','info');
+    } else {
+      showToast('📨 שיבוץ נשמר — ממתין לאישור','info');
+    }
+  }
 }
-async function approveEntry(date,id){await updateSchedStatus(date,id,'approved');}
-async function rejectEntry(date,id){await updateSchedStatus(date,id,'rejected');}
+async function approveEntry(date,id){
+  await updateSchedStatus(date,id,'approved');
+  showToast('✅ שיבוץ אושר','success');
+  renderSchedEntriesList(date);
+}
+async function rejectEntry(date,id){await updateSchedStatus(date,id,'rejected');renderSchedEntriesList(date);}
 async function deleteEntry(date,id){
   if(!confirm('למחוק שיבוץ זה?'))return;
   await deleteSchedEntry(date,id);
@@ -3025,7 +3378,52 @@ async function confirmAssignTrips(){
 
   closeAssignModal();
   const d=new Date(date+'T12:00:00');
-  alert(`✅ ${newTrips.length} נסיעות שובצו ל-${entry.name} ב-${d.toLocaleDateString('he-IL')}`);
+  showToast(`✅ ${newTrips.length} נסיעות שובצו ל-${entry.name} ב-${d.toLocaleDateString('he-IL')}`,'success',4000);
+}
+
+// ═══════════════════════════════════════════════════════════
+// INSTRUCTOR MANAGEMENT (inside Settings)
+// ═══════════════════════════════════════════════════════════
+function renderSettingsInstrList(){
+  const container=document.getElementById('settingsInstrList');
+  if(!container)return;
+  if(!_instrNames.length){
+    container.innerHTML='<div style="padding:14px;color:#aaa;font-size:13px;text-align:center;">אין מדריכים. הוסף מדריך למטה.</div>';
+    return;
+  }
+  container.innerHTML=_instrNames.map(name=>`
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:0.5px solid #f0f0f0;">
+      <span style="font-size:14px;">${name}</span>
+      <button onclick="removeInstructorFromSettings('${name.replace(/'/g,"\\'")}')"
+        style="background:none;border:1px solid #ccc;border-radius:50%;width:24px;height:24px;cursor:pointer;font-size:14px;color:#888;display:flex;align-items:center;justify-content:center;padding:0;margin:0;transition:.15s;"
+        onmouseover="this.style.borderColor='var(--danger)';this.style.color='var(--danger)'"
+        onmouseout="this.style.borderColor='#ccc';this.style.color='#888'">×</button>
+    </div>`).join('');
+}
+
+async function addInstructorFromSettings(){
+  const input=document.getElementById('newInstrName');
+  const name=input?.value.trim();
+  if(!name){alert('יש להזין שם');return;}
+  if(_instrNames.includes(name)){alert('מדריך זה כבר קיים');return;}
+  await saveInstructor(name);
+  if(input)input.value='';
+  await loadInstructors();
+  renderSettingsInstrList();
+}
+
+async function removeInstructorFromSettings(name){
+  if(!confirm(`למחוק את "${name}" מרשימת המדריכים?`))return;
+  if(!window._fbDb)return;
+  try{
+    const snap=await _fbGet(_fbRef(_db,instrPath()));
+    if(!snap.exists())return;
+    const names=snap.val();
+    const key=Object.keys(names).find(k=>names[k]===name);
+    if(key) await _fbRef(_db,instrPath()+'/'+key).remove();
+    await loadInstructors();
+    renderSettingsInstrList();
+  }catch(e){}
 }
 
 async function initApp(){
@@ -3049,6 +3447,140 @@ async function initApp(){
   renderPlannerTable();
   document.getElementById('loginOverlay').classList.remove('hidden');
 }
+
+// ═══════════════════════════════════════════════════════════
+// TOAST NOTIFICATIONS (סעיפים 4, 5)
+// ═══════════════════════════════════════════════════════════
+function showToast(msg, type='success', duration=3000){
+  const container=document.getElementById('toastContainer');
+  if(!container)return;
+  const el=document.createElement('div');
+  el.className=`toast-msg toast-${type}`;
+  el.textContent=msg;
+  container.appendChild(el);
+  requestAnimationFrame(()=>requestAnimationFrame(()=>el.classList.add('show')));
+  setTimeout(()=>{
+    el.classList.remove('show');
+    setTimeout(()=>el.remove(),350);
+  },duration);
+}
+
+// ═══════════════════════════════════════════════════════════
+// RESET DAY SHIFTS (סעיף 7)
+// ═══════════════════════════════════════════════════════════
+async function resetDayShifts(){
+  const date=schedEditDate;
+  if(!date)return;
+  const d=new Date(date+'T12:00:00').toLocaleDateString('he-IL',{weekday:'long',day:'numeric',month:'long'});
+  const entries=schedData[date]||[];
+  if(!entries.length){showToast('אין שיבוצים ביום זה','info');return;}
+  if(!confirm(`⚠️ אזהרה!\nפעולה זו תמחק את כל ${entries.length} השיבוצים ביום ${d}.\nלא ניתן לשחזר.\n\nלהמשיך?`))return;
+  if(!window._fbDb)return;
+  try{
+    await _fbRef(_db,schedPath()+'/'+date).remove();
+    showToast(`🗑️ כל השיבוצים ל-${d} נמחקו`,'warn');
+    renderSchedEntriesList(date);
+  }catch(e){alert('שגיאה במחיקה: '+e.message);}
+}
+
+async function deleteSelectedEntries(date){
+  const checkboxes=document.querySelectorAll('.sched-entry-cb:checked');
+  if(!checkboxes.length)return;
+  const ids=[...checkboxes].map(cb=>cb.dataset.id);
+  if(!confirm(`למחוק ${ids.length} שיבוצים נבחרים?`))return;
+  for(const id of ids){
+    await deleteSchedEntry(date,id);
+  }
+  showToast(`🗑️ ${ids.length} שיבוצים נמחקו`,'warn');
+  renderSchedEntriesList(date);
+}
+
+// ═══════════════════════════════════════════════════════════
+// AUTO-GENERATE TRIPS FOR ALL SCHEDULED INSTRUCTORS (סעיף 2)
+// ═══════════════════════════════════════════════════════════
+async function autoGenerateTripsForDay(){
+  // Pick the selected date from the day planner date selector
+  const targetDate=document.getElementById('dateSelector')?.value||currentDate;
+  const d=new Date(targetDate+'T12:00:00').toLocaleDateString('he-IL',{weekday:'long',day:'numeric',month:'long'});
+  const entries=schedData[targetDate]||[];
+  const tripEntries=entries.filter(e=>e.status==='approved' && taskDefs.find(t=>t.id===e.task&&t.isTrip));
+  if(!tripEntries.length){
+    showToast('אין מדריכים מאושרים עם משימת נסיעות ליום זה','warn',4000);
+    return;
+  }
+  if(!confirm(`יצירת תכנון נסיעות אוטומטי עבור ${tripEntries.length} מדריכים ל-${d}.\n\nהנסיעות יחכו לאישור המנהל.\nלהמשיך?`))return;
+
+  // Load existing trips for that date
+  let existingTrips=[];
+  if(targetDate===currentDate){
+    existingTrips=[...trips];
+  } else if(window._fbDb){
+    try{
+      const snap=await _fbGet(_fbRef(_db,'trips/'+targetDate));
+      if(snap.exists()) existingTrips=Object.values(snap.val()).map(parseTrip);
+    }catch(e){}
+  }
+
+  const gap=parseInt(document.getElementById('gapV')?.value)||(_settings?.defaultGap||40);
+  let addedCount=0;
+  const allNewTrips=[...existingTrips];
+
+  for(const entry of tripEntries){
+    const sh=SHIFT_HOURS[entry.shift]||{s:entry.startTime,e:entry.endTime};
+    const startTime=entry.shift==='custom'?entry.startTime:sh.s;
+    const endTime=entry.shift==='custom'?entry.endTime:sh.e;
+    const startMin=timeToMin(startTime);
+    let endMin=timeToMin(endTime);
+    if(endMin<=startMin)endMin+=24*60;
+
+    // Remove existing trips for this instructor and use the rest as context
+    const otherTls=allNewTrips.filter(t=>t.name!==entry.name).map(t=>({name:t.name,timeline:t.timeline}));
+
+    const row={
+      name:entry.name,
+      startMin,endMin,
+      startSeg:'D3',endSeg:'any',
+      breakMin:_settings?.minBreak||75
+    };
+    const instrTrips=buildInstructorTrips(row,otherTls,gap);
+    if(!instrTrips.length)continue;
+
+    // Remove old trips for this instructor on this date
+    const filtered=allNewTrips.filter(t=>t.name!==entry.name);
+
+    let count=0;
+    const newTrips=instrTrips.map(t=>{
+      const id='auto_'+Date.now()+(count++);
+      return{id,name:entry.name,route:t.route.slice(),timeline:t.timeline.slice(),startStr:toHHMM(t.startMin),delayMin:0,pendingApproval:true};
+    });
+    filtered.push(...newTrips);
+    allNewTrips.length=0;
+    allNewTrips.push(...filtered);
+    addedCount+=newTrips.length;
+  }
+
+  if(!addedCount){
+    showToast('לא ניתן לתכנן נסיעות עבור אף מדריך. בדוק שעות משמרת והגדרות.','warn',5000);
+    return;
+  }
+
+  // Save to Firebase
+  if(window._fbDb){
+    try{
+      const obj={};
+      allNewTrips.forEach(t=>{obj[t.id]=t;});
+      await _fbSet(_fbRef(_db,'trips/'+targetDate),obj);
+    }catch(e){alert('שגיאה בשמירה: '+e.message);return;}
+  }
+  if(targetDate===currentDate){
+    trips=allNewTrips;
+    renderLog();renderTimeline();
+  }
+  showToast(`✅ ${addedCount} נסיעות נוצרו ל-${tripEntries.length} מדריכים — ממתינות לאישורך`,'success',5000);
+}
+
 </script>
+<!-- Toast container -->
+<div id="toastContainer"></div>
 </body>
 </html>
