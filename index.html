@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>מערכת תכנון הדרכה - רכבת V99</title>
+<title>מערכת תכנון הדרכה - רכבת V102</title>
 <style>
 :root {
   --primary:#1a5276; --secondary:#2980b9; --success:#27ae60;
@@ -687,6 +687,10 @@ window.dispatchEvent(new Event('firebaseReady'));
       <label style="font-size:12px;font-weight:bold;display:block;margin-bottom:4px;">שעת יציאה</label>
       <input type="time" id="instrEditStart" style="width:100%;padding:9px;border:1.5px solid #ddd;border-radius:8px;font-size:14px;margin:0;">
     </div>
+    <div style="margin-bottom:10px;">
+      <label style="font-size:12px;font-weight:bold;display:block;margin-bottom:4px;">עיכוב (דקות)</label>
+      <input type="number" id="instrEditDelay" value="0" min="0" max="240" step="5" style="width:100%;padding:9px;border:1.5px solid #ddd;border-radius:8px;font-size:14px;margin:0;text-align:center;">
+    </div>
     <div style="margin-bottom:14px;">
       <label style="font-size:12px;font-weight:bold;display:block;margin-bottom:4px;">הערה (רשות)</label>
       <input type="text" id="instrEditNote" placeholder="הערה..." style="width:100%;padding:9px;border:1.5px solid #ddd;border-radius:8px;font-size:14px;margin:0;">
@@ -694,6 +698,45 @@ window.dispatchEvent(new Event('firebaseReady'));
     <div style="display:flex;gap:10px;">
       <button onclick="saveInstrTripEdit()" style="flex:1;padding:11px;background:var(--success);color:white;border:none;border-radius:9px;font-size:14px;font-weight:bold;cursor:pointer;margin:0;">&#10003; שמור שינויים</button>
       <button onclick="closeInstrEditModal()" style="padding:11px 16px;background:#f0f0f0;color:#444;border:none;border-radius:9px;font-size:14px;cursor:pointer;margin:0;">ביטול</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── ADMIN TRIP EDIT MODAL (ממשק מנהל - עריכה ישירה) ─── -->
+<div class="confirm-overlay" id="adminTripEditModal" style="z-index:500;">
+  <div class="confirm-box" style="max-width:400px;width:95%;">
+    <h3 style="color:var(--edit-color);">&#9999; עריכת נסיעה — מנהל</h3>
+    <div style="background:#f5eef8;border-radius:8px;padding:8px 12px;margin-bottom:12px;font-size:13px;color:#6c3483;">
+      <span id="adminEditTripInfo"></span>
+    </div>
+    <div style="margin-bottom:10px;">
+      <label style="font-size:12px;font-weight:bold;display:block;margin-bottom:4px;">שם מדריך</label>
+      <select id="adminEditTripName" style="width:100%;padding:9px;border:1.5px solid #ddd;border-radius:8px;font-size:14px;margin:0;direction:rtl;"></select>
+    </div>
+    <div style="margin-bottom:10px;">
+      <label style="font-size:12px;font-weight:bold;display:block;margin-bottom:4px;">שעת יציאה</label>
+      <input type="time" id="adminEditTripStart" style="width:100%;padding:9px;border:1.5px solid #ddd;border-radius:8px;font-size:14px;margin:0;">
+    </div>
+    <div style="margin-bottom:14px;">
+      <label style="font-size:12px;font-weight:bold;display:block;margin-bottom:4px;">עיכוב (דקות)</label>
+      <input type="number" id="adminEditTripDelay" value="0" min="0" max="240" step="5" style="width:100%;padding:9px;border:1.5px solid #ddd;border-radius:8px;font-size:14px;margin:0;text-align:center;">
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <button onclick="saveAdminTripEdit()" style="flex:1;padding:11px;background:var(--edit-color);color:white;border:none;border-radius:9px;font-size:14px;font-weight:bold;cursor:pointer;margin:0;">&#10003; שמור שינויים</button>
+      <button onclick="openAdminTripEditFull()" style="padding:11px 14px;background:#eaf2fb;color:var(--secondary);border:1px solid var(--secondary);border-radius:9px;font-size:13px;cursor:pointer;margin:0;white-space:nowrap;">✏️ עריכת מסלול</button>
+      <button onclick="closeAdminTripEditModal()" style="padding:11px 14px;background:#f0f0f0;color:#444;border:none;border-radius:9px;font-size:14px;cursor:pointer;margin:0;">ביטול</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── RESET ALL SHIFTS CONFIRM MODAL ──────────────── -->
+<div class="confirm-overlay" id="confirmResetAllShiftsModal">
+  <div class="confirm-box">
+    <h3 style="color:var(--danger);">&#128465; איפוס כל הסיעות המשובצות</h3>
+    <p>פעולה זו תמחק את <b>כל</b> הסיעות המשובצות בכל הימים והמדריכים.<br>לא ניתן לשחזר אחרי המחיקה.</p>
+    <div class="confirm-btns">
+      <button onclick="confirmResetAllShifts()" style="background:var(--danger);color:white;">&#10003; כן, אפס הכל</button>
+      <button onclick="closeResetAllShiftsModal()" style="background:#f0f0f0;color:#444;">ביטול</button>
     </div>
   </div>
 </div>
@@ -883,7 +926,7 @@ window.dispatchEvent(new Event('firebaseReady'));
         <div class="ssection-title">רשימת מדריכים</div>
         <div id="settingsInstrList" style="margin-bottom:12px;max-height:320px;overflow-y:auto;border:0.5px solid #ddd;border-radius:8px;"></div>
         <div style="display:flex;gap:8px;align-items:stretch;width:100%;box-sizing:border-box;">
-          <input type="text" id="newInstrName" placeholder="שם מדריך חדש" style="flex:1;min-width:0;width:0;padding:10px 12px;border:1.5px solid #ddd;border-radius:8px;font-size:14px;margin:0;direction:rtl;box-sizing:border-box;">
+          <input type="text" id="newInstrName" placeholder="שם מדריך חדש" onkeydown="if(event.key==='Enter'){event.preventDefault();addInstructorFromSettings();}" style="flex:1;min-width:0;width:0;padding:10px 12px;border:1.5px solid #ddd;border-radius:8px;font-size:14px;margin:0;direction:rtl;box-sizing:border-box;">
           <button onclick="addInstructorFromSettings()" style="padding:10px 12px;background:var(--secondary);color:white;border:none;border-radius:8px;font-size:13px;font-weight:bold;cursor:pointer;margin:0;white-space:nowrap;flex-shrink:0;">+ הוסף</button>
         </div>
         <div style="font-size:11px;color:#aaa;margin-top:8px;">המדריכים ברשימה זו יופיעו בכל שדות בחירת המדריך במערכת.</div>
@@ -903,7 +946,7 @@ window.dispatchEvent(new Event('firebaseReady'));
 
   <!-- ── HEADER ──────────────────────────────────────── -->
   <div class="header">
-    <h2>🚇 מערכת תכנון הדרכה <span class="version-badge">V99</span></h2>
+    <h2>🚇 מערכת תכנון הדרכה <span class="version-badge">V102</span></h2>
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
       <span class="saved-indicator" id="savedIndicator">✓ נשמר</span>
       <div class="user-badge" id="userBadge" style="display:none;">
@@ -1128,7 +1171,10 @@ window.dispatchEvent(new Event('firebaseReady'));
   <div class="mgmt-section">
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
       <h4 style="margin:0;color:var(--primary);">יומן נסיעות — <span id="logDateLabel" style="font-weight:400;font-size:13px;color:#666;"></span></h4>
-      <button onclick="openClearModal()" style="background:none;border:1px solid var(--danger);color:var(--danger);cursor:pointer;padding:5px 12px;border-radius:6px;font-size:12px;width:auto;">🗑️ נקה הכל</button>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button onclick="openResetAllShiftsModal()" style="background:none;border:1px solid var(--warning);color:var(--warning);cursor:pointer;padding:5px 12px;border-radius:6px;font-size:12px;width:auto;white-space:nowrap;">🔄 אפס כל שיבוצים</button>
+        <button onclick="openClearModal()" style="background:none;border:1px solid var(--danger);color:var(--danger);cursor:pointer;padding:5px 12px;border-radius:6px;font-size:12px;width:auto;">🗑️ נקה הכל</button>
+      </div>
     </div>
     <div style="overflow-x:auto;">
       <table class="mgmt-table">
@@ -1676,8 +1722,55 @@ function saveTripForce(){
 }
 function startEdit(tripId){
   const trip=trips.find(t=>t.id===tripId);if(!trip)return;
+  // Open the admin edit modal instead of scrolling to manualSection
+  const modal=document.getElementById('adminTripEditModal');
+  if(!modal)return;
+  // Populate name dropdown
+  const sel=document.getElementById('adminEditTripName');
+  sel.innerHTML='';
+  const names=_instrNames.length?_instrNames:[trip.name];
+  names.forEach(n=>{
+    const o=document.createElement('option');o.value=n;o.textContent=n;sel.appendChild(o);
+  });
+  if(![...sel.options].some(o=>o.value===trip.name)){
+    const o=document.createElement('option');o.value=trip.name;o.textContent=trip.name;sel.appendChild(o);
+  }
+  sel.value=trip.name;
+  document.getElementById('adminEditTripStart').value=trip.startStr||'07:00';
+  document.getElementById('adminEditTripDelay').value=trip.delayMin||0;
+  document.getElementById('adminEditTripInfo').textContent=`מדריך: ${trip.name} | יציאה: ${trip.startStr} | מסלול: ${(trip.timeline||[]).map(x=>x.id).join('➔')}`;
+  modal._tripId=tripId;
+  modal.classList.add('open');
+}
+function closeAdminTripEditModal(){
+  const modal=document.getElementById('adminTripEditModal');
+  if(modal){modal.classList.remove('open');modal._tripId=null;}
+}
+function saveAdminTripEdit(){
+  const modal=document.getElementById('adminTripEditModal');
+  if(!modal||!modal._tripId)return;
+  const tripId=modal._tripId;
+  const name=document.getElementById('adminEditTripName').value.trim()||'מדריך';
+  const startStr=document.getElementById('adminEditTripStart').value;
+  const delayMin=parseInt(document.getElementById('adminEditTripDelay').value)||0;
+  if(!startStr){showToast('יש להזין שעת יציאה','warn');return;}
+  trips=trips.map(t=>{
+    if(t.id!==tripId)return t;
+    const newTl=buildTimeline(startStr,t.route);
+    const tl=delayMin>0?newTl.map(s=>({...s,startMin:(s.startMin||0)+delayMin,endMin:(s.endMin||0)+delayMin})):newTl;
+    return{...t,name,startStr,timeline:tl,delayMin};
+  });
+  saveToStorage();renderLog();closeAdminTripEditModal();
+  showToast('✅ נסיעה עודכנה בהצלחה','success');
+}
+function openAdminTripEditFull(){
+  // Fallback: open the manual section for full route editing
+  const modal=document.getElementById('adminTripEditModal');
+  const tripId=modal?modal._tripId:null;
+  closeAdminTripEditModal();
+  if(!tripId)return;
+  const trip=trips.find(t=>t.id===tripId);if(!trip)return;
   editingTripId=tripId;curRoute=[...trip.route];
-  // Ensure the instructor option exists in select
   const tID=document.getElementById('tID');
   if(tID){
     if(![...tID.options].some(o=>o.value===trip.name)){
@@ -1750,6 +1843,33 @@ function closeClearModal(){document.getElementById('confirmClearModal').classLis
 function confirmClearAll(){trips=[];closeClearModal();saveToStorage();renderLog();showToast('🗑️ כל הנסיעות נמחקו','warn');}
 // legacy alias kept for safety
 function clearAllTrips(){openClearModal();}
+
+// ═══════════════════════════════════════════════════════════
+// RESET ALL SHIFTS (כפתור איפוס כללי לסיעות משובצות)
+// ═══════════════════════════════════════════════════════════
+function openResetAllShiftsModal(){document.getElementById('confirmResetAllShiftsModal').classList.add('open');}
+function closeResetAllShiftsModal(){document.getElementById('confirmResetAllShiftsModal').classList.remove('open');}
+async function confirmResetAllShifts(){
+  closeResetAllShiftsModal();
+  if(window._fbDb){
+    try{
+      // Delete all schedule data for current month
+      await _fbRef(_db,schedPath()).remove();
+      schedData={};
+      showToast('🔄 כל הסיעות המשובצות אופסו','warn',4000);
+    }catch(e){
+      alert('שגיאה באיפוס השיבוצים: '+e.message);
+      return;
+    }
+  }else{
+    schedData={};
+    showToast('🔄 כל הסיעות המשובצות אופסו (מקומי)','warn',4000);
+  }
+  // Also clear the trips journal for today
+  trips=[];
+  saveToStorage();
+  renderLog();
+}
 
 // ═══════════════════════════════════════════════════════════
 // INSTRUCTOR MANAGEMENT MODAL
@@ -3656,6 +3776,7 @@ function openInstrEditModal(tripId){
   if(!trip)return;
   _instrEditTripId=tripId;
   document.getElementById('instrEditStart').value=trip.startStr||'07:00';
+  document.getElementById('instrEditDelay').value=trip.delayMin||0;
   document.getElementById('instrEditNote').value=trip.note||'';
   document.getElementById('instrEditModal').classList.add('open');
 }
@@ -3666,12 +3787,14 @@ function closeInstrEditModal(){
 function saveInstrTripEdit(){
   if(!_instrEditTripId)return;
   const newStart=document.getElementById('instrEditStart').value;
+  const delayMin=parseInt(document.getElementById('instrEditDelay').value)||0;
   const note=document.getElementById('instrEditNote').value.trim();
   if(!newStart){showToast('יש להזין שעת יציאה','warn');return;}
   trips=trips.map(t=>{
     if(t.id!==_instrEditTripId)return t;
     const newTl=buildTimeline(newStart,t.route);
-    return{...t,startStr:newStart,timeline:newTl,note};
+    const tl=delayMin>0?newTl.map(s=>({...s,startMin:(s.startMin||0)+delayMin,endMin:(s.endMin||0)+delayMin})):newTl;
+    return{...t,startStr:newStart,timeline:tl,note,delayMin};
   });
   saveToStorage();
   renderInstrView();
