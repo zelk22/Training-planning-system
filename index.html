@@ -583,11 +583,24 @@ window.dispatchEvent(new Event('firebaseReady'));
 <!-- ── CONFIRM CLEAR MODAL ──────────────────────────── -->
 <div class="confirm-overlay" id="confirmClearModal">
   <div class="confirm-box">
-    <h3>🗑️ מחיקת כל הנסיעות</h3>
+    <h3>&#128465; מחיקת כל הנסיעות</h3>
     <p>פעולה זו תמחק את כל הנסיעות ביום זה <b>לצמיתות</b>.<br>לא ניתן לשחזר אחרי המחיקה.</p>
     <div class="confirm-btns">
-      <button onclick="confirmClearAll()" style="background:var(--danger);color:white;">✅ כן, מחק הכל</button>
+      <button onclick="confirmClearAll()" style="background:var(--danger);color:white;">&#10003; כן, מחק הכל</button>
       <button onclick="closeClearModal()" style="background:#f0f0f0;color:#444;">ביטול</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── MULTI-DAY AUTO PLAN MODAL (סעיף 2) ──────────── -->
+<div class="confirm-overlay" id="multiDayModal" style="z-index:500;">
+  <div class="confirm-box" style="max-width:480px;width:95%;">
+    <h3 style="color:var(--primary);">&#128662; תכנון נסיעות אוטומטי — בחר ימים</h3>
+    <p style="font-size:13px;color:#666;margin:0 0 10px;">סמן את הימים שבהם יש שיבוצים מאושרים עם משימת נסיעות:</p>
+    <div id="multiDayList" style="max-height:320px;overflow-y:auto;border:1px solid #eee;border-radius:8px;margin-bottom:14px;"></div>
+    <div style="display:flex;gap:10px;">
+      <button onclick="runMultiDayAutoGen()" style="flex:1;padding:11px;background:var(--secondary);color:white;border:none;border-radius:9px;font-size:14px;font-weight:bold;cursor:pointer;margin:0;">&#9889; בצע תכנון לימים הנבחרים</button>
+      <button onclick="closeMultiDayModal()" style="padding:11px 16px;background:#f0f0f0;color:#444;border:none;border-radius:9px;font-size:14px;cursor:pointer;margin:0;">ביטול</button>
     </div>
   </div>
 </div>
@@ -666,14 +679,40 @@ window.dispatchEvent(new Event('firebaseReady'));
   </div>
 </div>
 
+<!-- ── INSTRUCTOR TRIP EDIT MODAL (סעיף 3) ─────────── -->
+<div class="confirm-overlay" id="instrEditModal" style="z-index:500;">
+  <div class="confirm-box" style="max-width:380px;width:95%;">
+    <h3 style="color:var(--primary);">&#9999; עריכת נסיעה</h3>
+    <div style="margin-bottom:10px;">
+      <label style="font-size:12px;font-weight:bold;display:block;margin-bottom:4px;">שעת יציאה</label>
+      <input type="time" id="instrEditStart" style="width:100%;padding:9px;border:1.5px solid #ddd;border-radius:8px;font-size:14px;margin:0;">
+    </div>
+    <div style="margin-bottom:14px;">
+      <label style="font-size:12px;font-weight:bold;display:block;margin-bottom:4px;">הערה (רשות)</label>
+      <input type="text" id="instrEditNote" placeholder="הערה..." style="width:100%;padding:9px;border:1.5px solid #ddd;border-radius:8px;font-size:14px;margin:0;">
+    </div>
+    <div style="display:flex;gap:10px;">
+      <button onclick="saveInstrTripEdit()" style="flex:1;padding:11px;background:var(--success);color:white;border:none;border-radius:9px;font-size:14px;font-weight:bold;cursor:pointer;margin:0;">&#10003; שמור שינויים</button>
+      <button onclick="closeInstrEditModal()" style="padding:11px 16px;background:#f0f0f0;color:#444;border:none;border-radius:9px;font-size:14px;cursor:pointer;margin:0;">ביטול</button>
+    </div>
+  </div>
+</div>
+
 <!-- ── SCHEDULE MODAL ──────────────────────────────── -->
 <div class="sched-overlay" id="schedModal">
   <div class="sched-box">
-    <div class="sched-head">
-      <h3 id="schedModalTitle">📅 שיבוץ יום</h3>
-      <div style="display:flex;gap:6px;align-items:center;">
-        <button id="schedResetDayBtn" onclick="resetDayShifts()" style="display:none;background:#fdf2f2;border:1px solid var(--danger);color:var(--danger);border-radius:7px;padding:4px 10px;font-size:12px;cursor:pointer;font-weight:bold;margin:0;white-space:nowrap;">🗑️ אפס יום שלם</button>
-        <button onclick="closeSchedModal()" style="background:none;border:1px solid #ddd;border-radius:50%;width:28px;height:28px;cursor:pointer;font-size:15px;color:#888;display:flex;align-items:center;justify-content:center;padding:0;margin:0;">×</button>
+    <div class="sched-head" style="flex-direction:column;gap:8px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;width:100%;">
+        <h3 id="schedModalTitle" style="margin:0;color:var(--primary);font-size:16px;">&#128197; שיבוץ יום</h3>
+        <div style="display:flex;gap:6px;align-items:center;">
+          <button id="schedResetDayBtn" onclick="resetDayShifts()" style="display:none;background:#fdf2f2;border:1px solid var(--danger);color:var(--danger);border-radius:7px;padding:4px 10px;font-size:12px;cursor:pointer;font-weight:bold;margin:0;white-space:nowrap;">&#128465; אפס יום שלם</button>
+          <button onclick="closeSchedModal()" style="background:none;border:1px solid #ddd;border-radius:50%;width:28px;height:28px;cursor:pointer;font-size:15px;color:#888;display:flex;align-items:center;justify-content:center;padding:0;margin:0;">&#215;</button>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:center;gap:8px;">
+        <button onclick="changeSchedModalDate(-1)" style="background:none;border:1px solid #ccc;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:16px;width:auto;margin:0;color:#555;">&#8250;</button>
+        <input type="date" id="schedModalDateInput" onchange="onSchedModalDateInput(this.value)" style="padding:5px 10px;border:1px solid #ddd;border-radius:7px;font-size:13px;margin:0;cursor:pointer;">
+        <button onclick="changeSchedModalDate(1)" style="background:none;border:1px solid #ccc;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:16px;width:auto;margin:0;color:#555;">&#8249;</button>
       </div>
     </div>
     <div class="sched-body">
@@ -843,9 +882,9 @@ window.dispatchEvent(new Event('firebaseReady'));
       <div class="settings-panel" id="stab-instrs">
         <div class="ssection-title">רשימת מדריכים</div>
         <div id="settingsInstrList" style="margin-bottom:12px;max-height:320px;overflow-y:auto;border:0.5px solid #ddd;border-radius:8px;"></div>
-        <div style="display:flex;gap:8px;align-items:stretch;">
-          <input type="text" id="newInstrName" placeholder="שם מדריך חדש" style="flex:1;min-width:0;padding:9px 12px;border:1.5px solid #ddd;border-radius:8px;font-size:14px;margin:0;direction:rtl;">
-          <button onclick="addInstructorFromSettings()" style="padding:9px 12px;background:var(--secondary);color:white;border:none;border-radius:8px;font-size:13px;font-weight:bold;cursor:pointer;margin:0;white-space:nowrap;flex-shrink:0;">+ הוסף</button>
+        <div style="display:flex;gap:8px;align-items:stretch;width:100%;box-sizing:border-box;">
+          <input type="text" id="newInstrName" placeholder="שם מדריך חדש" style="flex:1;min-width:0;width:0;padding:10px 12px;border:1.5px solid #ddd;border-radius:8px;font-size:14px;margin:0;direction:rtl;box-sizing:border-box;">
+          <button onclick="addInstructorFromSettings()" style="padding:10px 12px;background:var(--secondary);color:white;border:none;border-radius:8px;font-size:13px;font-weight:bold;cursor:pointer;margin:0;white-space:nowrap;flex-shrink:0;">+ הוסף</button>
         </div>
         <div style="font-size:11px;color:#aaa;margin-top:8px;">המדריכים ברשימה זו יופיעו בכל שדות בחירת המדריך במערכת.</div>
       </div>
@@ -879,18 +918,32 @@ window.dispatchEvent(new Event('firebaseReady'));
   <!-- ══ INSTRUCTOR VIEW ════════════════════════════════ -->
   <div class="instr-view" id="instrView">
     <div id="nextTripCard"></div>
-    <div class="my-trips-sec"><h4>📋 הנסיעות שלי היום</h4><div id="myTripsList"></div></div>
-    <div class="team-sec"><h4>👥 סטטוס הצוות</h4><div class="tgrid" id="teamGrid"></div></div>
+    <div class="my-trips-sec"><h4>&#128203; הנסיעות שלי היום</h4><div id="myTripsList"></div></div>
+    <!-- יומן נסיעות בממשק מדריך (סעיף 3) -->
+    <div class="mgmt-section" id="instrTripLogSection" style="margin-bottom:14px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
+        <h4 style="margin:0;color:var(--primary);">&#128196; יומן הנסיעות שלי</h4>
+      </div>
+      <div style="overflow-x:auto;">
+        <table class="mgmt-table" id="instrLogTable">
+          <thead><tr>
+            <th>מסלול</th><th>יציאה</th><th>סיום</th><th>שיעורים</th><th>פעולות</th>
+          </tr></thead>
+          <tbody id="instrLogBody"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="team-sec"><h4>&#128101; סטטוס הצוות</h4><div class="tgrid" id="teamGrid"></div></div>
     <div class="timeline-section">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-        <h4 style="margin:0;color:var(--primary);">📊 ציר זמן — כל הצוות</h4>
+        <h4 style="margin:0;color:var(--primary);">&#128202; ציר זמן &#8212; כל הצוות</h4>
       </div>
       <div style="overflow-x:auto;"><div id="ganttGridInstr"><div class="gantt-empty">אין נסיעות</div></div></div>
     </div>
     <!-- Instructor schedule view -->
     <div class="schedule-section" id="instrScheduleSection">
       <div class="schedule-toolbar">
-        <h4>🗓️ השיבוצים שלי</h4>
+        <h4>&#128197; השיבוצים שלי</h4>
         <div class="month-nav">
           <button onclick="changeSchedMonth(-1)">&#8249;</button>
           <span id="schedMonthLabelInstr"></span>
@@ -924,7 +977,7 @@ window.dispatchEvent(new Event('firebaseReady'));
         <span id="schedMonthLabel"></span>
         <button onclick="changeSchedMonth(1)">&#8250;</button>
       </div>
-      <button onclick="autoGenerateTripsForDay()" style="padding:7px 13px;background:var(--secondary);color:white;border:none;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;width:auto;margin:0;white-space:nowrap;">🚇 צור תכנון נסיעות אוטומטי</button>
+      <button onclick="openMultiDayModal()" style="padding:7px 13px;background:var(--secondary);color:white;border:none;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;width:auto;margin:0;white-space:nowrap;">&#128662; צור תכנון נסיעות אוטומטי</button>
       <button onclick="exportScheduleCSV()" style="padding:7px 12px;background:#f0f4f8;border:1px solid #ccc;border-radius:7px;cursor:pointer;font-size:12px;color:#555;width:auto;margin:0;">📊 ייצא</button>
     </div>
     <!-- Legend -->
@@ -1328,6 +1381,8 @@ function renderInstrView(){
 
   // ── Read-only gantt ──
   renderGanttInto('ganttGridInstr');
+  // סעיף 3: יומן נסיעות בממשק מדריך
+  renderInstrTripLog();
 }
 
 function renderGanttInto(targetId){
@@ -1609,6 +1664,7 @@ function _doSaveTrip(){
   const route=[...curRoute];
   trips.push({id:Date.now(),name,route,timeline:buildTimeline(startStr,route),startStr,delayMin:0});
   saveToStorage();renderLog();resetS();
+  showToast('✅ נסיעה נשמרה בהצלחה','success');
 }
 function saveTrip(){
   if(_hasConflict)return; // blocked — use override button
@@ -1652,6 +1708,7 @@ function _doSaveEditedTrip(){
   const route=[...curRoute];
   trips=trips.map(t=>t.id===editingTripId?{...t,name,route,timeline:buildTimeline(startStr,route),startStr,delayMin:0}:t);
   saveToStorage();renderLog();cancelEdit();
+  showToast('✅ נסיעה עודכנה בהצלחה','success');
 }
 function cancelEdit(){
   editingTripId=null;
@@ -1684,12 +1741,13 @@ function applyDelay(){
     return{...t,timeline:tl,startStr:toHHMM((t.timeline[0].startMin||0)+mins),delayMin:(t.delayMin||0)+mins};
   });
   saveToStorage();renderLog();closeModal();
+  showToast(`⏱️ עיכוב של ${mins} דק' הוחל`,'info');
 }
 function closeModal(){document.getElementById('delayModal').classList.remove('open');delayTripId=null;}
-function delTrip(id){trips=trips.filter(t=>t.id!==id);saveToStorage();renderLog();val();}
+function delTrip(id){trips=trips.filter(t=>t.id!==id);saveToStorage();renderLog();val();showToast('🗑️ נסיעה נמחקה','warn');}
 function openClearModal(){document.getElementById('confirmClearModal').classList.add('open');}
 function closeClearModal(){document.getElementById('confirmClearModal').classList.remove('open');}
-function confirmClearAll(){trips=[];closeClearModal();saveToStorage();renderLog();}
+function confirmClearAll(){trips=[];closeClearModal();saveToStorage();renderLog();showToast('🗑️ כל הנסיעות נמחקו','warn');}
 // legacy alias kept for safety
 function clearAllTrips(){openClearModal();}
 
@@ -2465,6 +2523,7 @@ async function saveSettings(){
   }
   const sv=document.getElementById('settingsSaved');
   sv.classList.add('show');setTimeout(()=>sv.classList.remove('show'),2500);
+  showToast('✅ הגדרות נשמרו בהצלחה','success');
 }
 
 function resetSettingsToDefault(){
@@ -2972,7 +3031,10 @@ function openSchedModal(date){
   schedEditId=null;
   const d=new Date(date+'T12:00:00');
   document.getElementById('schedModalTitle').textContent=
-    '📅 '+d.toLocaleDateString('he-IL',{weekday:'long',day:'numeric',month:'long'});
+    d.toLocaleDateString('he-IL',{weekday:'long',day:'numeric',month:'long'});
+  // סעיף 1: set date navigation input
+  const dateInp=document.getElementById('schedModalDateInput');
+  if(dateInp)dateInp.value=date;
 
   // Populate entries list
   renderSchedEntriesList(date);
@@ -3404,12 +3466,13 @@ function renderSettingsInstrList(){
 async function addInstructorFromSettings(){
   const input=document.getElementById('newInstrName');
   const name=input?.value.trim();
-  if(!name){alert('יש להזין שם');return;}
-  if(_instrNames.includes(name)){alert('מדריך זה כבר קיים');return;}
+  if(!name){showToast('יש להזין שם מדריך','warn');return;}
+  if(_instrNames.includes(name)){showToast('מדריך זה כבר קיים','warn');return;}
   await saveInstructor(name);
   if(input)input.value='';
   await loadInstructors();
   renderSettingsInstrList();
+  showToast(`✅ המדריך "${name}" נוסף`,'success');
 }
 
 async function removeInstructorFromSettings(name){
@@ -3423,7 +3486,204 @@ async function removeInstructorFromSettings(name){
     if(key) await _fbRef(_db,instrPath()+'/'+key).remove();
     await loadInstructors();
     renderSettingsInstrList();
+    showToast(`🗑️ המדריך "${name}" הוסר`,'warn');
   }catch(e){}
+}
+
+// ═══════════════════════════════════════════════════════════
+// סעיף 1 – DATE NAVIGATION IN SCHEDULE MODAL
+// ═══════════════════════════════════════════════════════════
+function changeSchedModalDate(delta){
+  if(!schedEditDate)return;
+  const d=new Date(schedEditDate+'T12:00:00');
+  d.setDate(d.getDate()+delta);
+  const newDate=d.toISOString().slice(0,10);
+  _refreshSchedModalForDate(newDate);
+}
+function onSchedModalDateInput(val){
+  if(!val)return;
+  _refreshSchedModalForDate(val);
+}
+function _refreshSchedModalForDate(date){
+  schedEditDate=date;
+  const d=new Date(date+'T12:00:00');
+  document.getElementById('schedModalTitle').textContent=
+    d.toLocaleDateString('he-IL',{weekday:'long',day:'numeric',month:'long'});
+  const inp=document.getElementById('schedModalDateInput');
+  if(inp)inp.value=date;
+  // Reset bulk bar selection
+  const bar=document.getElementById('schedBulkBar');
+  if(bar)bar.classList.remove('show');
+  renderSchedEntriesList(date);
+}
+
+// ═══════════════════════════════════════════════════════════
+// סעיף 2 – MULTI-DAY AUTO TRIP PLANNING MODAL
+// ═══════════════════════════════════════════════════════════
+function openMultiDayModal(){
+  // Build list of all days in current month that have approved trip-linked entries
+  const list=document.getElementById('multiDayList');
+  if(!list)return;
+  const today=new Date().toISOString().slice(0,10);
+  const year=schedYear, month=schedMonth;
+  const daysInMonth=new Date(year,month+1,0).getDate();
+  let html='';
+  let anyDay=false;
+  for(let day=1;day<=daysInMonth;day++){
+    const dateStr=`${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+    const entries=schedData[dateStr]||[];
+    const tripEntries=entries.filter(e=>e.status==='approved'&&taskDefs.find(t=>t.id===e.task&&t.isTrip));
+    if(!tripEntries.length)continue;
+    anyDay=true;
+    const d=new Date(dateStr+'T12:00:00');
+    const label=d.toLocaleDateString('he-IL',{weekday:'long',day:'numeric',month:'long'});
+    const isToday=dateStr===today;
+    html+=`<label style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:0.5px solid #f0f0f0;cursor:pointer;${isToday?'background:#f0f7ff;':''}">
+      <input type="checkbox" class="multi-day-cb" data-date="${dateStr}" style="width:16px;height:16px;cursor:pointer;flex-shrink:0;">
+      <span style="flex:1;font-size:13px;">${label}</span>
+      <span style="font-size:11px;color:#888;">${tripEntries.length} מדריכים</span>
+    </label>`;
+  }
+  if(!anyDay){
+    html='<div style="padding:18px;text-align:center;color:#aaa;font-size:13px;">אין שיבוצים מאושרים עם משימת נסיעות בחודש זה</div>';
+  }
+  list.innerHTML=html;
+  document.getElementById('multiDayModal').classList.add('open');
+}
+function closeMultiDayModal(){
+  document.getElementById('multiDayModal').classList.remove('open');
+}
+async function runMultiDayAutoGen(){
+  const cbs=[...document.querySelectorAll('.multi-day-cb:checked')];
+  if(!cbs.length){showToast('יש לסמן לפחות יום אחד','warn');return;}
+  closeMultiDayModal();
+  let totalAdded=0, totalDays=0;
+  const gap=parseInt(document.getElementById('gapV')?.value)||(_settings?.defaultGap||40);
+  for(const cb of cbs){
+    const targetDate=cb.dataset.date;
+    const entries=schedData[targetDate]||[];
+    const tripEntries=entries.filter(e=>e.status==='approved'&&taskDefs.find(t=>t.id===e.task&&t.isTrip));
+    if(!tripEntries.length)continue;
+    // Load existing trips for that date
+    let existingTrips=[];
+    if(targetDate===currentDate){
+      existingTrips=[...trips];
+    } else if(window._fbDb){
+      try{
+        const snap=await _fbGet(_fbRef(_db,'trips/'+targetDate));
+        if(snap.exists()) existingTrips=Object.values(snap.val()).map(parseTrip);
+      }catch(e){}
+    }
+    const allNewTrips=[...existingTrips];
+    let addedCount=0;
+    for(const entry of tripEntries){
+      const sh=SHIFT_HOURS[entry.shift]||{s:entry.startTime,e:entry.endTime};
+      const startTime=entry.shift==='custom'?entry.startTime:sh.s;
+      const endTime=entry.shift==='custom'?entry.endTime:sh.e;
+      const startMin=timeToMin(startTime);
+      let endMin=timeToMin(endTime);
+      if(endMin<=startMin)endMin+=24*60;
+      const otherTls=allNewTrips.filter(t=>t.name!==entry.name).map(t=>({name:t.name,timeline:t.timeline}));
+      const row={name:entry.name,startMin,endMin,startSeg:'D3',endSeg:'any',breakMin:_settings?.minBreak||75};
+      const instrTrips=buildInstructorTrips(row,otherTls,gap);
+      if(!instrTrips.length)continue;
+      const filtered=allNewTrips.filter(t=>t.name!==entry.name);
+      let count=0;
+      const newTrips=instrTrips.map(t=>{
+        const id='auto_'+Date.now()+(count++);
+        return{id,name:entry.name,route:t.route.slice(),timeline:t.timeline.slice(),startStr:toHHMM(t.startMin),delayMin:0,pendingApproval:true};
+      });
+      filtered.push(...newTrips);
+      allNewTrips.length=0;allNewTrips.push(...filtered);
+      addedCount+=newTrips.length;
+    }
+    if(addedCount>0){
+      if(window._fbDb){
+        try{
+          const obj={};allNewTrips.forEach(t=>{obj[t.id]=t;});
+          await _fbSet(_fbRef(_db,'trips/'+targetDate),obj);
+        }catch(e){showToast('שגיאה בשמירה ל-'+targetDate,'warn');continue;}
+      }
+      if(targetDate===currentDate){trips=allNewTrips;renderLog();renderTimeline();}
+      totalAdded+=addedCount;totalDays++;
+    }
+  }
+  if(totalAdded>0){
+    showToast(`✅ ${totalAdded} נסיעות נוצרו ב-${totalDays} ימים — ממתינות לאישורך`,'success',5000);
+  } else {
+    showToast('לא ניתן לתכנן נסיעות לאף יום שנבחר','warn',4000);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// סעיף 3 – INSTRUCTOR TRIP LOG & EDIT MODAL
+// ═══════════════════════════════════════════════════════════
+let _instrEditTripId=null;
+
+function renderInstrTripLog(){
+  const tbody=document.getElementById('instrLogBody');
+  if(!tbody)return;
+  const myTrips=trips.filter(t=>t.name===currentUserName)
+    .sort((a,b)=>(a.timeline[0]?.startMin||0)-(b.timeline[0]?.startMin||0));
+  if(!myTrips.length){
+    tbody.innerHTML='<tr><td colspan="5" style="color:#aaa;padding:14px;text-align:center;">אין נסיעות רשומות עבורך היום</td></tr>';
+    return;
+  }
+  tbody.innerHTML=myTrips.map(t=>{
+    if(!t.timeline||!t.timeline.length){
+      return`<tr><td colspan="4" style="color:#aaa;font-size:12px;">נסיעה ללא נתוני מסלול</td>
+        <td><button class="btn-sm del" onclick="instrDelTrip(${t.id})">🗑️</button></td></tr>`;
+    }
+    const s0=t.timeline[0].startMin;
+    const se=t.timeline[t.timeline.length-1].endMin;
+    const dur=t.route.reduce((a,r)=>a+r.t,0);
+    const routeStr=t.timeline.map(x=>x.id).join('➔');
+    return`<tr>
+      <td data-label="מסלול"><small>${routeStr.length>20?routeStr.slice(0,20)+'…':routeStr}</small></td>
+      <td data-label="יציאה">${toHHMM(s0)}</td>
+      <td data-label="סיום">${toHHMM(se)}</td>
+      <td data-label="שיעורים" style="font-weight:bold;color:var(--primary);">${(dur/45).toFixed(1)}</td>
+      <td>
+        <button class="btn-sm edit" onclick="openInstrEditModal(${t.id})">✏️</button>
+        <button class="btn-sm del" onclick="instrDelTrip(${t.id})">🗑️</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function openInstrEditModal(tripId){
+  const trip=trips.find(t=>t.id===tripId);
+  if(!trip)return;
+  _instrEditTripId=tripId;
+  document.getElementById('instrEditStart').value=trip.startStr||'07:00';
+  document.getElementById('instrEditNote').value=trip.note||'';
+  document.getElementById('instrEditModal').classList.add('open');
+}
+function closeInstrEditModal(){
+  document.getElementById('instrEditModal').classList.remove('open');
+  _instrEditTripId=null;
+}
+function saveInstrTripEdit(){
+  if(!_instrEditTripId)return;
+  const newStart=document.getElementById('instrEditStart').value;
+  const note=document.getElementById('instrEditNote').value.trim();
+  if(!newStart){showToast('יש להזין שעת יציאה','warn');return;}
+  trips=trips.map(t=>{
+    if(t.id!==_instrEditTripId)return t;
+    const newTl=buildTimeline(newStart,t.route);
+    return{...t,startStr:newStart,timeline:newTl,note};
+  });
+  saveToStorage();
+  renderInstrView();
+  closeInstrEditModal();
+  showToast('✅ נסיעה עודכנה בהצלחה','success');
+}
+function instrDelTrip(id){
+  if(!confirm('למחוק נסיעה זו?'))return;
+  trips=trips.filter(t=>t.id!==id);
+  saveToStorage();
+  renderInstrView();
+  showToast('🗑️ נסיעה נמחקה','warn');
 }
 
 async function initApp(){
@@ -3499,84 +3759,8 @@ async function deleteSelectedEntries(date){
 // AUTO-GENERATE TRIPS FOR ALL SCHEDULED INSTRUCTORS (סעיף 2)
 // ═══════════════════════════════════════════════════════════
 async function autoGenerateTripsForDay(){
-  // Pick the selected date from the day planner date selector
-  const targetDate=document.getElementById('dateSelector')?.value||currentDate;
-  const d=new Date(targetDate+'T12:00:00').toLocaleDateString('he-IL',{weekday:'long',day:'numeric',month:'long'});
-  const entries=schedData[targetDate]||[];
-  const tripEntries=entries.filter(e=>e.status==='approved' && taskDefs.find(t=>t.id===e.task&&t.isTrip));
-  if(!tripEntries.length){
-    showToast('אין מדריכים מאושרים עם משימת נסיעות ליום זה','warn',4000);
-    return;
-  }
-  if(!confirm(`יצירת תכנון נסיעות אוטומטי עבור ${tripEntries.length} מדריכים ל-${d}.\n\nהנסיעות יחכו לאישור המנהל.\nלהמשיך?`))return;
-
-  // Load existing trips for that date
-  let existingTrips=[];
-  if(targetDate===currentDate){
-    existingTrips=[...trips];
-  } else if(window._fbDb){
-    try{
-      const snap=await _fbGet(_fbRef(_db,'trips/'+targetDate));
-      if(snap.exists()) existingTrips=Object.values(snap.val()).map(parseTrip);
-    }catch(e){}
-  }
-
-  const gap=parseInt(document.getElementById('gapV')?.value)||(_settings?.defaultGap||40);
-  let addedCount=0;
-  const allNewTrips=[...existingTrips];
-
-  for(const entry of tripEntries){
-    const sh=SHIFT_HOURS[entry.shift]||{s:entry.startTime,e:entry.endTime};
-    const startTime=entry.shift==='custom'?entry.startTime:sh.s;
-    const endTime=entry.shift==='custom'?entry.endTime:sh.e;
-    const startMin=timeToMin(startTime);
-    let endMin=timeToMin(endTime);
-    if(endMin<=startMin)endMin+=24*60;
-
-    // Remove existing trips for this instructor and use the rest as context
-    const otherTls=allNewTrips.filter(t=>t.name!==entry.name).map(t=>({name:t.name,timeline:t.timeline}));
-
-    const row={
-      name:entry.name,
-      startMin,endMin,
-      startSeg:'D3',endSeg:'any',
-      breakMin:_settings?.minBreak||75
-    };
-    const instrTrips=buildInstructorTrips(row,otherTls,gap);
-    if(!instrTrips.length)continue;
-
-    // Remove old trips for this instructor on this date
-    const filtered=allNewTrips.filter(t=>t.name!==entry.name);
-
-    let count=0;
-    const newTrips=instrTrips.map(t=>{
-      const id='auto_'+Date.now()+(count++);
-      return{id,name:entry.name,route:t.route.slice(),timeline:t.timeline.slice(),startStr:toHHMM(t.startMin),delayMin:0,pendingApproval:true};
-    });
-    filtered.push(...newTrips);
-    allNewTrips.length=0;
-    allNewTrips.push(...filtered);
-    addedCount+=newTrips.length;
-  }
-
-  if(!addedCount){
-    showToast('לא ניתן לתכנן נסיעות עבור אף מדריך. בדוק שעות משמרת והגדרות.','warn',5000);
-    return;
-  }
-
-  // Save to Firebase
-  if(window._fbDb){
-    try{
-      const obj={};
-      allNewTrips.forEach(t=>{obj[t.id]=t;});
-      await _fbSet(_fbRef(_db,'trips/'+targetDate),obj);
-    }catch(e){alert('שגיאה בשמירה: '+e.message);return;}
-  }
-  if(targetDate===currentDate){
-    trips=allNewTrips;
-    renderLog();renderTimeline();
-  }
-  showToast(`✅ ${addedCount} נסיעות נוצרו ל-${tripEntries.length} מדריכים — ממתינות לאישורך`,'success',5000);
+  // kept for backward compatibility — opens multi-day modal
+  openMultiDayModal();
 }
 
 </script>
