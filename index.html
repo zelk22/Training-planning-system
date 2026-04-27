@@ -5188,39 +5188,28 @@ const settingsPath=()=>'settings';
 let _settings={...DEFAULTS};
 
 async function loadSettings(){
-
   if(!window._fbDb){
-
-    _settings={...DEFAULTS};
-
+    _settings = {...DEFAULTS};
     if (typeof applySettings === 'function') applySettings();
-
     await loadTaskDefs();
-
     return;
-
   }
 
   try{
-
-    const snap=await _fbGet(_fbRef(_db,settingsPath()));
-
+    const snap = await _fbGet(_fbRef(window._fbDb, settingsPath()));
     if(snap.exists()){
-
-      _settings={...DEFAULTS,...snap.val()};
-
+      _settings = {...DEFAULTS, ...snap.val()};
+      console.log('✅ הגדרות נטענו מ-Firebase');
     } else {
-
-      _settings={...DEFAULTS};
-
+      _settings = {...DEFAULTS};
     }
+  }catch(e){
+    console.warn('שגיאה בטעינת הגדרות מ-Firebase', e);
+    _settings = {...DEFAULTS};
+  }
 
-  }catch(e){_settings={...DEFAULTS};}
-
-  applySettings();
-
+  if (typeof applySettings === 'function') applySettings();
   await loadTaskDefs();
-
 }
 
 function openSettings(){
