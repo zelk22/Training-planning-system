@@ -1120,9 +1120,8 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
         firebase.initializeApp(firebaseConfig);
         const _db = firebase.database();
         
-        // חשיפה של כל המשתנים שהקוד הישן מחפש
         window._fbDb = _db;
-        window._db = _db;                    // ← זה התיקון החשוב
+        window._db = _db;                    // חשוב ל-compatibility
         window._fbRef = (db, p) => db.ref(p);
         window._fbSet = (ref, v) => ref.set(v);
         window._fbGet = ref => ref.once('value').then(s => ({exists: () => s.exists(), val: () => s.val()}));
@@ -5805,7 +5804,7 @@ async function saveSettings(){
   };
 
   _settings = newSettings;
-  applySettings();
+  if (typeof applySettings === 'function') applySettings();
 
   const newShiftHours = {
     morning: {s:getStr('sh_morning_s','06:00'), e:getStr('sh_morning_e','14:00')},
@@ -5816,7 +5815,6 @@ async function saveSettings(){
   SHIFT_HOURS = newShiftHours;
   collectTaskDefsFromDOM();
 
-  // === תיקון כאן ===
   if(window._fbDb){
     try{
       await _fbSet(_fbRef(window._fbDb, settingsPath()), newSettings);
