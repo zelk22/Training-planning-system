@@ -5736,108 +5736,59 @@ function getStr(id,def){return document.getElementById(id)?.value||def;}
 async function saveSettings(){
   showToast('🔄 שומר הגדרות...','info');
 
-  const p1=document.getElementById('s_pass1').value;
+  const p1 = document.getElementById('s_pass1').value;
+  const p2 = document.getElementById('s_pass2').value;
 
-  const p2=document.getElementById('s_pass2').value;
-
-  if(p1||p2){
-
-    if(p1!==p2){document.getElementById('passErr').textContent='הסיסמאות אינן תואמות';return;}
-
-    if(p1.length<4){document.getElementById('passErr').textContent='סיסמה קצרה מדי (מינימום 4 תווים)';return;}
-
-    window._adminPassword=p1;
-
-    document.getElementById('passErr').textContent='';
-
+  if(p1 || p2){
+    if(p1 !== p2){document.getElementById('passErr').textContent='הסיסמאות אינן תואמות';return;}
+    if(p1.length < 4){document.getElementById('passErr').textContent='סיסמה קצרה מדי (מינימום 4 תווים)';return;}
+    window._adminPassword = p1;
+    document.getElementById('passErr').textContent = '';
   }
 
-  const newSettings={
-
-    N1:getInt('s_N1',DEFAULTS.N1),N2:getInt('s_N2',DEFAULTS.N2),
-
-    L1:getInt('s_L1',DEFAULTS.L1),L2:getInt('s_L2',DEFAULTS.L2),
-
-    O1:getInt('s_O1',DEFAULTS.O1),O2:getInt('s_O2',DEFAULTS.O2),
-
-    D3:getInt('s_D3',DEFAULTS.D3),D4:getInt('s_D4',DEFAULTS.D4),
-
+  const newSettings = {
+    N1:getInt('s_N1',DEFAULTS.N1), N2:getInt('s_N2',DEFAULTS.N2),
+    L1:getInt('s_L1',DEFAULTS.L1), L2:getInt('s_L2',DEFAULTS.L2),
+    O1:getInt('s_O1',DEFAULTS.O1), O2:getInt('s_O2',DEFAULTS.O2),
+    D3:getInt('s_D3',DEFAULTS.D3), D4:getInt('s_D4',DEFAULTS.D4),
     TURN:getInt('s_TURN',DEFAULTS.TURN),
-
     TURN_ORA:getInt('s_TURN_ORA',DEFAULTS.TURN_ORA),
-
     TURN_HADAS:getInt('s_TURN_HADAS',DEFAULTS.TURN_HADAS),
-
     defaultGap:getInt('s_defaultGap',DEFAULTS.defaultGap),
-
     shiftLen:getInt('s_shiftLen',DEFAULTS.shiftLen),
-
     minBreak:getInt('s_minBreak',DEFAULTS.minBreak),
-
     maxPerSeg:getInt('s_maxPerSeg',DEFAULTS.maxPerSeg),
-
     d4Start:getStr('s_d4Start',DEFAULTS.d4Start),
-
     d4End:getStr('s_d4End',DEFAULTS.d4End),
-
   };
 
-  _settings=newSettings;
-
+  _settings = newSettings;
   applySettings();
 
-  const newShiftHours={
-
-    morning:{s:getStr('sh_morning_s','06:00'),e:getStr('sh_morning_e','14:00')},
-
-    afternoon:{s:getStr('sh_afternoon_s','14:00'),e:getStr('sh_afternoon_e','22:00')},
-
-    evening:{s:getStr('sh_evening_s','22:00'),e:getStr('sh_evening_e','06:00')},
-
-    custom:{s:'07:00',e:'15:30'},
-
+  const newShiftHours = {
+    morning: {s:getStr('sh_morning_s','06:00'), e:getStr('sh_morning_e','14:00')},
+    afternoon: {s:getStr('sh_afternoon_s','14:00'), e:getStr('sh_afternoon_e','22:00')},
+    evening: {s:getStr('sh_evening_s','22:00'), e:getStr('sh_evening_e','06:00')},
+    custom: {s:'07:00', e:'15:30'},
   };
-
-  SHIFT_HOURS=newShiftHours;
-
+  SHIFT_HOURS = newShiftHours;
   collectTaskDefsFromDOM();
 
+  // === תיקון כאן ===
   if(window._fbDb){
-
     try{
-
-      await _fbSet(_fbRef(_db,settingsPath()),newSettings);
-
-      await _fbSet(_fbRef(_db,'taskDefs'),taskDefs);
-
-      await _fbSet(_fbRef(_db,'shiftHours'),newShiftHours);
-
-    }catch(e){}
-
+      await _fbSet(_fbRef(window._fbDb, settingsPath()), newSettings);
+      await _fbSet(_fbRef(window._fbDb, 'taskDefs'), taskDefs);
+      await _fbSet(_fbRef(window._fbDb, 'shiftHours'), newShiftHours);
+      console.log('✅ הגדרות נשמרו ב-Firebase');
+    } catch(e){
+      console.error('שגיאת שמירה ל-Firebase:', e);
+    }
   }
 
-  const sv=document.getElementById('settingsSaved');
-
-  sv.classList.add('show');setTimeout(()=>sv.classList.remove('show'),2500);
-
-}
-
-function resetSettingsToDefault(){
-
-  if(!safeConfirm('לאפס את כל ההגדרות לברירת מחדל?'))return;
-
-  _settings={...DEFAULTS};
-
-  applySettings();
-
-  if(window._fbDb){
-
-    try{_fbSet(_fbRef(_db,settingsPath()),DEFAULTS);}catch(e){}
-
-  }
-
-  openSettings();
-
+  const sv = document.getElementById('settingsSaved');
+  sv.classList.add('show');
+  setTimeout(()=>sv.classList.remove('show'), 2500);
 }
 
 // ═══════════════════════════════════════════════════════════
