@@ -1119,15 +1119,16 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
       if (typeof firebase !== 'undefined') {
         firebase.initializeApp(firebaseConfig);
         const _db = firebase.database();
-        
+
+        // חשיפה של כל המשתנים שהקוד של האתר משתמש בהם
         window._fbDb = _db;
-        window._db = _db;                    // חשוב ל-compatibility
+        window._db = _db;
         window._fbRef = (db, p) => db.ref(p);
         window._fbSet = (ref, v) => ref.set(v);
         window._fbGet = ref => ref.once('value').then(s => ({exists: () => s.exists(), val: () => s.val()}));
         window._fbOnValue = (ref, cb) => ref.on('value', s => cb({exists: () => s.exists(), val: () => s.val()}));
         window._firebaseOK = true;
-        
+
         console.log('✅ Firebase initialized successfully');
       }
     } catch(e) {
