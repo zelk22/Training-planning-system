@@ -5228,7 +5228,6 @@ function openSettings(){
   if(!modal){ console.error('settingsModal element not found'); return; }
 
   async function loadAndPopulate() {
-    // טעינה מ-Firebase
     if(window._fbDb){
       try{
         const snap = await _fbGet(_fbRef(window._fbDb, settingsPath()));
@@ -5241,10 +5240,8 @@ function openSettings(){
       }
     }
 
-    // עדכון הגדרות גלובליות
-    applySettings();
+    if (typeof applySettings === 'function') applySettings();
 
-    // Step 2: Show first tab
     try{
       document.querySelectorAll('.settings-panel').forEach(p=>p.classList.remove('show'));
       document.querySelectorAll('.stab').forEach(b=>b.classList.remove('active'));
@@ -5254,7 +5251,6 @@ function openSettings(){
       if(firstBtn) firstBtn.classList.add('active');
     }catch(e){}
 
-    // Step 3: Populate all form fields
     try{
       const f = (id,val)=>{ const el=document.getElementById(id); if(el&&val!==undefined) el.value=val; };
       const S = _settings || {};
@@ -5287,17 +5283,16 @@ function openSettings(){
       const sv=document.getElementById('settingsSaved'); if(sv) sv.classList.remove('show');
     }catch(e){console.warn('openSettings populate error:',e);}
 
-    // Render sub-lists
     try{if(typeof renderTaskDefsList==='function') renderTaskDefsList();}catch(e){}
     try{renderSettingsInstrList();}catch(e){}
     try{renderSavedRoutesList();}catch(e){}
 
-    // Open modal
     modal.classList.add('open');
   }
 
   loadAndPopulate();
 }
+
 
 // Renders the instructor list inside Settings modal (uses _instrNames local array)
 // ═══════════════════════════════════════════════════════════
