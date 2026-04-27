@@ -8,7 +8,7 @@
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>מערכת תכנון הדרכה - רכבת V100</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 3</title>
 
 <style>
 
@@ -1101,61 +1101,45 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 </style>
 
 <!-- Firebase -->
-
-<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-
-<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
-
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js" defer></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js" defer></script>
 <script>
+  function initFirebase() {
+    try {
+      const firebaseConfig = {
+        apiKey: "AIzaSyC7oMxJlYkLaCTt3rymorGb9TElDv4Q58s",
+        authDomain: "training-planning-system.firebaseapp.com",
+        databaseURL: "https://training-planning-system-default-rtdb.europe-west1.firebasedatabase.app",
+        projectId: "training-planning-system",
+        storageBucket: "training-planning-system.firebasestorage.app",
+        messagingSenderId: "700538094136",
+        appId: "1:700538094136:web:ced2caa5e22bb59af71ccd"
+      };
 
-(function(){
-
-  try{
-
-    const firebaseConfig={apiKey:"AIzaSyC7oMxJlYkLaCTt3rymorGb9TElDv4Q58s",authDomain:"training-planning-system.firebaseapp.com",databaseURL:"https://training-planning-system-default-rtdb.europe-west1.firebasedatabase.app",projectId:"training-planning-system",storageBucket:"training-planning-system.firebasestorage.app",messagingSenderId:"700538094136",appId:"1:700538094136:web:ced2caa5e22bb59af71ccd"};
-
-    if(typeof firebase!=='undefined'){
-
-      firebase.initializeApp(firebaseConfig);
-
-      const _db=firebase.database();
-
-      window._fbDb=_db;
-
-      window._fbRef=(db,p)=>db.ref(p);
-
-      window._fbSet=(ref,v)=>ref.set(v);
-
-      window._fbGet=ref=>ref.once('value').then(s=>({exists:()=>s.exists(),val:()=>s.val()}));
-
-      window._fbOnValue=(ref,cb)=>ref.on('value',s=>cb({exists:()=>s.exists(),val:()=>s.val()}));
-
-      window._firebaseOK=true;
-
-    } else {
-
-      console.warn('Firebase SDK לא נטען — המערכת תרוץ במצב לוקלי (ללא שמירה בענן).');
-
-      window._firebaseOK=false;
-
+      if (typeof firebase !== 'undefined') {
+        firebase.initializeApp(firebaseConfig);
+        const _db = firebase.database();
+        
+        // חשיפה של כל המשתנים שהקוד הישן מחפש
+        window._fbDb = _db;
+        window._db = _db;                    // ← זה התיקון החשוב
+        window._fbRef = (db, p) => db.ref(p);
+        window._fbSet = (ref, v) => ref.set(v);
+        window._fbGet = ref => ref.once('value').then(s => ({exists: () => s.exists(), val: () => s.val()}));
+        window._fbOnValue = (ref, cb) => ref.on('value', s => cb({exists: () => s.exists(), val: () => s.val()}));
+        window._firebaseOK = true;
+        
+        console.log('✅ Firebase initialized successfully');
+      }
+    } catch(e) {
+      console.error('Firebase init error:', e);
     }
-
-  }catch(e){
-
-    console.warn('שגיאת אתחול Firebase:', e.message, '— המערכת תרוץ במצב לוקלי.');
-
-    window._firebaseOK=false;
-
+    window.dispatchEvent(new Event('firebaseReady'));
   }
 
-  // Always dispatch firebaseReady so initApp never hangs waiting for it
-
-  window.dispatchEvent(new Event('firebaseReady'));
-
-})();
-
+  window.addEventListener('load', initFirebase);
 </script>
-
+  
 </head>
 
 <body>
