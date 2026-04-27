@@ -8564,90 +8564,77 @@ async function saveTripsForDate(date,tripsArr){
 // ═══════════════════════════════════════════════════════════
 
 function openSettings(){
+  const modal = document.getElementById('settingsModal');
+  if(!modal){ console.error('settingsModal element not found'); return; }
 
-  // Step 1: Open modal immediately — nothing can block this
-  const modal=document.getElementById('settingsModal');
+  // טעינה מ-Firebase לפני פתיחת החלון
+  async function loadAndPopulate() {
+    if(window._fbDb){
+      try{
+        const snap = await _fbGet(_fbRef(window._fbDb, settingsPath()));
+        if(snap.exists()){
+          _settings = snap.val();
+          console.log('✅ הגדרות נטענו מ-Firebase');
+        }
+      }catch(e){
+        console.warn('לא הצלחנו לטעון הגדרות מ-Firebase', e);
+      }
+    }
 
-  if(!modal){console.error('settingsModal element not found');return;}
+    // Step 2: Show first tab
+    try{
+      document.querySelectorAll('.settings-panel').forEach(p=>p.classList.remove('show'));
+      document.querySelectorAll('.stab').forEach(b=>b.classList.remove('active'));
+      const firstPanel = document.getElementById('stab-segs');
+      if(firstPanel) firstPanel.classList.add('show');
+      const firstBtn = document.querySelector('.stab');
+      if(firstBtn) firstBtn.classList.add('active');
+    }catch(e){}
 
-  // Step 2: Show first tab
-  try{
+    // Step 3: Populate fields
+    try{
+      const f = (id,val)=>{ const el=document.getElementById(id); if(el&&val!==undefined) el.value=val; };
+      const S = _settings || {};
+      const D = DEFAULTS || {};
 
-    document.querySelectorAll('.settings-panel').forEach(p=>p.classList.remove('show'));
+      f('s_N1',S.N1??D.N1); f('s_N2',S.N2??D.N2);
+      f('s_L1',S.L1??D.L1); f('s_L2',S.L2??D.L2);
+      f('s_O1',S.O1??D.O1); f('s_O2',S.O2??D.O2);
+      f('s_D3',S.D3??D.D3); f('s_D4',S.D4??D.D4);
+      f('s_TURN',S.TURN??D.TURN);
+      f('s_TURN_ORA',S.TURN_ORA??D.TURN_ORA);
+      f('s_TURN_HADAS',S.TURN_HADAS??D.TURN_HADAS);
+      f('s_defaultGap',S.defaultGap??D.defaultGap);
+      f('s_shiftLen',S.shiftLen??D.shiftLen);
+      f('s_minBreak',S.minBreak??D.minBreak);
+      f('s_maxPerSeg',S.maxPerSeg??0);
+      f('s_d4Start',S.d4Start||'06:00'); 
+      f('s_d4End',S.d4End||'19:00');
 
-    document.querySelectorAll('.stab').forEach(b=>b.classList.remove('active'));
+      f('sh_morning_s',SHIFT_HOURS?.morning?.s);
+      f('sh_morning_e',SHIFT_HOURS?.morning?.e);
+      f('sh_afternoon_s',SHIFT_HOURS?.afternoon?.s);
+      f('sh_afternoon_e',SHIFT_HOURS?.afternoon?.e);
+      f('sh_evening_s',SHIFT_HOURS?.evening?.s);
+      f('sh_evening_e',SHIFT_HOURS?.evening?.e);
 
-    const firstPanel=document.getElementById('stab-segs');
+      const p1=document.getElementById('s_pass1'); if(p1) p1.value='';
+      const p2=document.getElementById('s_pass2'); if(p2) p2.value='';
+      const pe=document.getElementById('passErr'); if(pe) pe.textContent='';
+      const sv=document.getElementById('settingsSaved'); if(sv) sv.classList.remove('show');
+    }catch(e){console.warn('openSettings populate error:',e);}
 
-    if(firstPanel)firstPanel.classList.add('show');
+    // Step 4: Render sub-lists
+    try{if(typeof renderTaskDefsList==='function') renderTaskDefsList();}catch(e){}
+    try{renderSettingsInstrList();}catch(e){}
+    try{renderSavedRoutesList();}catch(e){}
 
-    const firstBtn=document.querySelector('.stab');
+    // Step 5: Open modal
+    modal.classList.add('open');
+  }
 
-    if(firstBtn)firstBtn.classList.add('active');
-
-  }catch(e){}
-
-  // Step 3: Populate fields
-  try{
-
-    const f=(id,val)=>{const el=document.getElementById(id);if(el&&val!==undefined)el.value=val;};
-
-    const S=_settings||{};
-
-    const D=DEFAULTS||{};
-
-    f('s_N1',S.N1??D.N1);f('s_N2',S.N2??D.N2);
-
-    f('s_L1',S.L1??D.L1);f('s_L2',S.L2??D.L2);
-
-    f('s_O1',S.O1??D.O1);f('s_O2',S.O2??D.O2);
-
-    f('s_D3',S.D3??D.D3);f('s_D4',S.D4??D.D4);
-
-    f('s_TURN',S.TURN??D.TURN);f('s_TURN_ORA',S.TURN_ORA??D.TURN_ORA);
-
-    f('s_TURN_HADAS',S.TURN_HADAS??D.TURN_HADAS);
-
-    f('s_defaultGap',S.defaultGap??D.defaultGap);
-
-    f('s_shiftLen',S.shiftLen??D.shiftLen);
-
-    f('s_minBreak',S.minBreak??D.minBreak);
-
-    f('s_maxPerSeg',S.maxPerSeg??0);
-
-    f('s_d4Start',S.d4Start||'06:00');f('s_d4End',S.d4End||'19:00');
-
-    f('sh_morning_s',SHIFT_HOURS?.morning?.s);f('sh_morning_e',SHIFT_HOURS?.morning?.e);
-
-    f('sh_afternoon_s',SHIFT_HOURS?.afternoon?.s);f('sh_afternoon_e',SHIFT_HOURS?.afternoon?.e);
-
-    f('sh_evening_s',SHIFT_HOURS?.evening?.s);f('sh_evening_e',SHIFT_HOURS?.evening?.e);
-
-    const p1=document.getElementById('s_pass1');if(p1)p1.value='';
-
-    const p2=document.getElementById('s_pass2');if(p2)p2.value='';
-
-    const pe=document.getElementById('passErr');if(pe)pe.textContent='';
-
-    const sv=document.getElementById('settingsSaved');if(sv)sv.classList.remove('show');
-
-  }catch(e){console.warn('openSettings populate error:',e);}
-
-  // Step 4: Render sub-lists
-  try{if(typeof renderTaskDefsList==='function')renderTaskDefsList();}catch(e){}
-
-  try{renderSettingsInstrList();}catch(e){}
-
-  try{renderSavedRoutesList();}catch(e){}
-
-  // Step 5: Open it!
-  modal.classList.add('open');
-
+  loadAndPopulate();
 }
-
-
-
 
 </script>
 
