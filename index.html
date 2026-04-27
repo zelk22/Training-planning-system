@@ -5194,7 +5194,7 @@ async function loadSettings(){
 
     _settings={...DEFAULTS};
 
-    applySettings();
+    if (typeof applySettings === 'function') applySettings();
 
     await loadTaskDefs();
 
