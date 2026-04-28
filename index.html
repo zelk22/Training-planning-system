@@ -1252,21 +1252,18 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 
     </div>
 
-    <div style="margin-bottom:12px;">
+    <!-- Route editor: two columns — current route | available segs -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
 
-      <label style="font-size:12px;font-weight:bold;color:#444;display:block;margin-bottom:6px;">🗺️ מקטעי המסלול:</label>
+      <div>
+        <label style="font-size:12px;font-weight:bold;color:#444;display:block;margin-bottom:6px;">🗺️ מסלול נוכחי</label>
+        <div id="tripEditSegments" style="background:#f8faff;border:1px solid #dde6f0;border-radius:8px;padding:8px;min-height:60px;display:flex;flex-direction:column;gap:4px;"></div>
+      </div>
 
-      <div id="tripEditSegments" style="background:#f8faff;border:1px solid #dde6f0;border-radius:8px;padding:10px;min-height:48px;display:flex;flex-wrap:wrap;gap:6px;"></div>
-
-      <div style="font-size:11px;color:#888;margin-top:5px;">לחץ × על מקטע למחיקה, או על כפתורי המקטעים למטה להוספה</div>
-
-    </div>
-
-    <div style="margin-bottom:12px;">
-
-      <label style="font-size:12px;font-weight:bold;color:#444;display:block;margin-bottom:6px;">➕ הוסף מקטע:</label>
-
-      <div id="tripEditAvailableSegs" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
+      <div>
+        <label style="font-size:12px;font-weight:bold;color:#444;display:block;margin-bottom:6px;">➕ הוסף מקטע</label>
+        <div id="tripEditAvailableSegs" style="display:flex;flex-direction:column;gap:4px;"></div>
+      </div>
 
     </div>
 
@@ -1280,19 +1277,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 
     </div>
 
-    <div id="tripEditDelaySection" style="margin-top:12px;padding-top:12px;border-top:1px solid #eef2f8;display:none;">
 
-      <label style="font-size:12px;font-weight:bold;color:#444;display:block;margin-bottom:4px;">⏱️ הוסף עיכוב (דקות):</label>
-
-      <div style="display:flex;gap:6px;">
-
-        <input type="number" id="tripEditDelayInput" min="0" max="120" step="5" value="0" style="flex:1;padding:10px;border:1.5px solid #ddd;border-radius:8px;font-size:14px;box-sizing:border-box;">
-
-        <button onclick="applyTripEditDelay()" style="padding:10px 14px;background:#fff3cd;border:1.5px solid #f0ad4e;color:#856404;border-radius:8px;font-size:13px;font-weight:bold;cursor:pointer;margin:0;white-space:nowrap;">החל עיכוב</button>
-
-      </div>
-
-    </div>
 
   </div>
 
@@ -1946,6 +1931,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
           <span id="instrDateLabel" style="font-size:13px;font-weight:bold;color:var(--primary);white-space:nowrap;"></span>
           <button onclick="changeDate(1)" style="background:#f0f4f8;border:1px solid #dde;border-radius:6px;padding:5px 10px;cursor:pointer;font-size:16px;touch-action:manipulation;">›</button>
         </div>
+      <button onclick="reloadApp()" title="רענן נתונים" style="padding:6px 11px;background:#f0f4f8;border:1px solid #ccc;color:#555;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;margin:0;white-space:nowrap;">🔄 רענן</button>
       </div>
       <div style="overflow-x:auto;">
         <table class="mgmt-table" style="width:100%;min-width:600px;">
@@ -2050,6 +2036,8 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
       <button onclick="if(currentRole!=='admin'){showToast('⛔ פעולה זו מוגבלת למנהל בלבד','warning');return;}openRangeResetModal('trips')" style="padding:7px 12px;background:#fff3cd;border:1px solid #f0ad4e;color:#856404;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;margin:0;">🗑️ אפס נסיעות</button>
 
       <button onclick="if(currentRole!=='admin'){showToast('⛔ פעולה זו מוגבלת למנהל בלבד','warning');return;}openRangeResetModal('all')" style="padding:7px 12px;background:#fdf2f2;border:1px solid var(--danger);color:var(--danger);border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;margin:0;">⚠️ איפוס כללי</button>
+
+      <button onclick="reloadApp()" title="רענן נתונים" style="padding:7px 12px;background:#f0f4f8;border:1px solid #ccc;color:#555;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;margin:0;display:flex;align-items:center;gap:4px;">🔄 רענן</button>
 
     </div>
 
@@ -2951,43 +2939,8 @@ function renderInstrView(){
 
   }
 
-  // ── My trips list ──
-
-  const ml=document.getElementById('myTripsList');
-
-  if(!myTrips.length){
-
-    ml.innerHTML='<div style="color:#aaa;font-size:13px;padding:6px;">לא תוכננו נסיעות להיום</div>';
-
-  } else {
-
-    ml.innerHTML=myTrips.map((t,i)=>{
-
-      const s0=t.timeline[0]?.startMin||0;
-
-      const se=t.timeline[t.timeline.length-1]?.endMin||0;
-
-      const isOn=mySt.status==='on-trip'&&mySt.tripIdx===i;
-
-      const isDone=se<nowM||(mySt.status==='returned'&&mySt.tripIdx===i);
-
-      const dur=t.route.reduce((a,r)=>a+r.t,0);
-
-      return`<div class="mtr ${isOn?'cur':isDone?'done':''}">
-
-        <div class="sdot ${isOn?'on':isDone?'dn':''}"></div>
-
-        <b style="color:var(--primary);font-size:14px;">${toHHMM(s0)} – ${toHHMM(se)}</b>
-
-        <span style="font-size:12px;color:#888;">${dur} דק' | ${(dur/45).toFixed(1)} שיעורים</span>
-
-        <span style="font-size:11px;color:#bbb;width:100%;">${t.timeline.map(s=>s.id).join(' ➔ ')}</span>
-
-      </div>`;
-
-    }).join('');
-
-  }
+  // ── My trips list — rendered by renderInstrTripJournal() ──
+  try{renderInstrTripJournal();}catch(e){}
 
   // ── Team grid ──
 
@@ -3925,7 +3878,7 @@ function applyDelay(){
 
 function closeModal(){document.getElementById('delayModal').classList.remove('open');delayTripId=null;}
 
-function delTrip(id){
+async function delTrip(id){
 
   const trip=trips.find(t=>String(t.id)===String(id));
 
@@ -3948,7 +3901,10 @@ function delTrip(id){
 
   trips=trips.filter(t=>String(t.id)!==String(id));
 
-  saveToStorage();renderLog();
+  // Save to Firebase synchronously so instructor sync listener gets deletion immediately
+  try{await saveToStorage();}catch(e){}
+
+  renderLog();
 
   if(typeof val==='function')val();
 
@@ -8906,7 +8862,7 @@ function renderInstrTripJournal(){
       <td data-label="שיעורים" style="font-weight:bold;color:var(--primary);">${lessons}</td>
       <td data-label="מיקום">${loc}</td>
       <td data-label="פעולות">
-        ${!isEnded?`<button class="btn-sm edit" onclick="openTripEditModal('${t.id}')" title="ערוך מסלול">✏️</button>`:''}
+        <button class="btn-sm edit" onclick="openTripEditModal('${t.id}')" title="ערוך מסלול">✏️</button>
         ${isStarted?`<button class="btn-sm delay" onclick="openDelayModal('${t.id}')" title="הוסף עיכוב" style="background:#fff3cd;border:1px solid #f0ad4e;color:#856404;">⏱️</button>`:''}
         <button class="btn-sm del" onclick="delTrip('${t.id}')" title="מחק נסיעה">🗑️</button>
       </td>
@@ -8980,7 +8936,6 @@ function openTripEditModal(tripId){
   const today=new Date().toISOString().slice(0,10);
   const tripStartM=timeToMin(trip.startStr||'00:00');
   const isStarted=currentDate===today&&tripStartM<=now;
-  document.getElementById('tripEditDelaySection').style.display=isStarted?'block':'none';
   document.getElementById('tripEditDelayInput').value=trip.delayMin||0;
 
   renderTripEditSegments();
@@ -8999,16 +8954,26 @@ function closeTripEditModal(){
 function renderTripEditSegments(){
   const container=document.getElementById('tripEditSegments');
   if(!_modalEditRoute.length){
-    container.innerHTML='<div style="color:#aaa;font-size:12px;padding:6px;">אין מקטעים — הוסף מקטעים מהאפשרויות למטה</div>';
+    container.innerHTML='<div style="color:#aaa;font-size:12px;padding:10px;">אין מקטעים — הוסף מקטעים מהאפשרויות למטה</div>';
     return;
   }
+  // Vertical layout: each segment as a row with arrow connector
   container.innerHTML=_modalEditRoute.map((s,i)=>{
     const isTurn=s.id==='TURN'||s.id==='TURN_ORA';
     const bg=isTurn?'#fef9e7':'#eaf4fd';
-    const border=isTurn?'#f0d080':'#a8d1f0';
-    return`<div style="background:${bg};border:1.5px solid ${border};border-radius:7px;padding:6px 10px;display:flex;align-items:center;gap:6px;font-size:13px;">
-      <span><b>${s.id}</b> ${s.label?`<small style="color:#888;">(${s.label})</small>`:''} <small style="color:#999;">${s.t}'</small></span>
-      <button onclick="removeTripEditSeg(${i})" title="הסר" style="background:none;border:none;color:#e74c3c;cursor:pointer;font-size:16px;padding:0 2px;line-height:1;">×</button>
+    const border=isTurn?'#f0c050':'#4a90d9';
+    const textColor=isTurn?'#856404':'#1a5276';
+    const arrow=i<_modalEditRoute.length-1?`<div style="text-align:center;color:#bbb;font-size:18px;line-height:1;">↓</div>`:'';
+    return`<div>
+      <div style="background:${bg};border:2px solid ${border};border-radius:8px;padding:8px 12px;display:flex;align-items:center;justify-content:space-between;gap:8px;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="font-weight:bold;font-size:15px;color:${textColor};min-width:40px;">${s.id}</span>
+          ${s.label&&s.label!==s.id?`<small style="color:#888;">${s.label}</small>`:''}
+          <small style="color:#aaa;font-size:11px;">${s.t} דק'</small>
+        </div>
+        <button onclick="removeTripEditSeg(${i})" title="הסר מקטע" style="background:#fdf2f2;border:1.5px solid #e74c3c;border-radius:5px;color:#e74c3c;cursor:pointer;font-size:14px;font-weight:bold;padding:2px 8px;line-height:1.4;flex-shrink:0;">× הסר</button>
+      </div>
+      ${arrow}
     </div>`;
   }).join('');
 }
@@ -9017,12 +8982,17 @@ function renderTripEditAvailableSegs(){
   const container=document.getElementById('tripEditAvailableSegs');
   const lastSeg=_modalEditRoute.length?_modalEditRoute.filter(s=>s.id!=='TURN'&&s.id!=='TURN_ORA').slice(-1)[0]:null;
   const lastId=lastSeg?lastSeg.id:null;
-  // Show all segments — highlight valid next ones
+  // Vertical layout matching the route display
   container.innerHTML=SEG_OPTIONS.map(id=>{
     const validNext=!lastId||(SUGGESTED_FROM[lastId]||[]).includes(id);
-    const bg=validNext?'#eaf4fd':'#f5f5f5';
-    const color=validNext?'var(--secondary)':'#aaa';
-    return`<button onclick="addTripEditSeg('${id}')" style="background:${bg};border:1.5px solid ${color};color:${color};border-radius:7px;padding:6px 12px;font-size:13px;font-weight:bold;cursor:pointer;margin:0;">${id}</button>`;
+    const bg=validNext?'#eaf4fd':'#f8f8f8';
+    const border=validNext?'#4a90d9':'#ddd';
+    const color=validNext?'#1a5276':'#bbb';
+    const cursor=validNext?'pointer':'default';
+    return`<div style="background:${bg};border:2px solid ${border};border-radius:8px;padding:8px 14px;display:flex;align-items:center;justify-content:space-between;gap:8px;cursor:${cursor};" ${validNext?`onclick="addTripEditSeg('${id}')"`:'title="לא זמין בשלב זה"'}>
+      <span style="font-weight:bold;font-size:15px;color:${color};">${id}</span>
+      ${validNext?`<button onclick="addTripEditSeg('${id}')" style="background:#1a5276;border:none;border-radius:5px;color:white;cursor:pointer;font-size:12px;font-weight:bold;padding:3px 10px;">+ הוסף</button>`:'<span style="font-size:11px;color:#ccc;">לא זמין</span>'}
+    </div>`;
   }).join('');
 }
 
@@ -9127,6 +9097,26 @@ document.addEventListener('click',function(e){
     return false;
   }
 });
+
+
+
+// ── reloadApp: refresh data without logout ───────────────
+async function reloadApp(){
+  showToast('🔄 מרענן נתונים...','info');
+  try{
+    trips=[];
+    renderLog();
+    if(typeof loadSettings==='function') await loadSettings();
+    if(typeof loadInstructors==='function') await loadInstructors();
+    if(typeof loadFromStorage==='function') await loadFromStorage();
+    if(typeof startSchedSync==='function') startSchedSync();
+    if(currentRole==='instructor'&&typeof startInstrSync==='function') startInstrSync();
+    renderCalendar();
+    showToast('✅ הנתונים עודכנו','success');
+  }catch(e){
+    showToast('⚠️ שגיאה בריענון: '+e.message,'warning');
+  }
+}
 
 
 
