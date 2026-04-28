@@ -1432,8 +1432,6 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 
       <button class="btn-assign-confirm" id="assignConfirmBtn" onclick="confirmAssignTrips()" style="display:none;">✅ אשר ושמור נסיעות</button>
 
-      <button onclick="closeAssignModal()" style="padding:11px 14px;background:#f5f5f5;color:#666;border:none;border-radius:9px;font-size:13px;cursor:pointer;margin:0;">סגור</button>
-
     </div>
 
   </div>
@@ -1870,9 +1868,9 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 
     <div id="nextTripCard"></div>
 
-    <div class="my-trips-sec">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-        <h4 style="margin:0;">📋 יומן נסיעות — הנסיעות שלי</h4>
+    <div class="mgmt-section">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:10px;">
+        <h4 style="margin:0;color:var(--primary);">📋 יומן הנסיעות שלי</h4>
         <div style="display:flex;align-items:center;gap:6px;">
           <button onclick="changeDate(-1)" style="background:#f0f4f8;border:1px solid #dde;border-radius:6px;padding:5px 10px;cursor:pointer;font-size:16px;touch-action:manipulation;">‹</button>
           <span id="instrDateLabel" style="font-size:13px;font-weight:bold;color:var(--primary);white-space:nowrap;"></span>
@@ -1880,9 +1878,9 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
         </div>
       </div>
       <div style="overflow-x:auto;">
-        <table class="mgmt-table" style="min-width:500px;">
+        <table class="mgmt-table" style="width:100%;min-width:600px;">
           <thead><tr>
-            <th>מסלול</th><th>יציאה</th><th>סיום</th><th>מיקום</th><th>פעולות</th>
+            <th>מסלול</th><th>יציאה</th><th>סיום</th><th>נסיעה הבאה</th><th>שיעורים</th><th>מיקום</th><th>פעולות</th>
           </tr></thead>
           <tbody id="myTripsList"></tbody>
         </table>
@@ -2722,7 +2720,7 @@ function openAssignTripsModal(date,entryId){
 
         <div style="font-size:13px;color:#555;"><b>${entry.name}</b> · ${SHIFT_LABELS[entry.shift]||entry.shift} · ${sh.s}–${sh.e}</div>
 
-        <div style="margin-top:14px;"><button onclick="closeAssignModal()" style="width:100%;padding:12px;background:#1a5276;color:white;border:none;border-radius:9px;font-size:14px;font-weight:bold;cursor:pointer;">✔ סגור</button></div>
+        
 
       </div>`;
 
@@ -3709,9 +3707,39 @@ function startEdit(tripId){
 
   document.getElementById('editBanner').classList.add('visible');
 
-  document.getElementById('manualSection').open=true;
+  // For instructor: temporarily show the manual section even though managerView is hidden
+  if(currentRole==='instructor'){
 
-  updateUI();val();window.scrollTo({top:0,behavior:'smooth'});
+    const ms=document.getElementById('manualSection');
+
+    if(ms){
+
+      ms.open=true;
+
+      // Force the manual section's parent chain visible
+      let parent=ms;
+
+      while(parent&&parent!==document.body){
+
+        if(parent.style.display==='none')parent.style.display='block';
+
+        parent=parent.parentElement;
+
+      }
+
+      ms.scrollIntoView({behavior:'smooth',block:'start'});
+
+    }
+
+  }else{
+
+    document.getElementById('manualSection').open=true;
+
+    window.scrollTo({top:0,behavior:'smooth'});
+
+  }
+
+  updateUI();val();
 
 }
 
@@ -6959,13 +6987,7 @@ function addCustomSchedRow(){
 
   if(!tbody)return;
 
-  const shiftOpts=`<option value="morning">🌅 בוקר</option>
-
-    <option value="afternoon">☀️ צהריים</option>
-
-    <option value="evening">🌙 ערב</option>
-
-    <option value="custom">⏰ מותאם</option>`;
+  const shiftOpts=`${Object.keys(SHIFT_HOURS).filter(k=>k!=='custom').map(k=>`<option value="${k}">${(typeof SHIFT_LABELS!=='undefined'&&SHIFT_LABELS[k])||('⏰ '+k)}</option>`).join('')}<option value="custom">⏰ הגדר שעות</option><option value="custom">⏰ מותאם</option>`;
 
   const taskOpts=taskDefs.length
 
@@ -7635,13 +7657,7 @@ function renderWeeklySchedTable(){
 
     last.toLocaleDateString('he-IL',{day:'numeric',month:'long',year:'numeric'});
 
-  const shiftOpts=`<option value="none">—</option>
-
-    <option value="morning">🌅 בוקר</option>
-
-    <option value="afternoon">☀️ צהריים</option>
-
-    <option value="evening">🌙 ערב</option>`;
+  const shiftOpts=`<option value="none">—</option>${Object.keys(SHIFT_HOURS).filter(k=>k!=='custom').map(k=>`<option value="${k}">${(typeof SHIFT_LABELS!=='undefined'&&SHIFT_LABELS[k])||('⏰ '+k)}</option>`).join('')}<option value="custom">⏰ הגדר שעות</option>`;
 
   const taskOpts=taskDefs.length
 
@@ -7781,10 +7797,7 @@ function addWeeklyCustomRow(){
 
   const days=getWeekDays(_weeklySchedStartDate);
 
-  const shiftOpts=`<option value="none">—</option>
-    <option value="morning">🌅 בוקר</option>
-    <option value="afternoon">☀️ צהריים</option>
-    <option value="evening">🌙 ערב</option>`;
+  const shiftOpts=`<option value="none">—</option>${Object.keys(SHIFT_HOURS).filter(k=>k!=='custom').map(k=>`<option value="${k}">${(typeof SHIFT_LABELS!=='undefined'&&SHIFT_LABELS[k])||('⏰ '+k)}</option>`).join('')}<option value="custom">⏰ הגדר שעות</option>`;
 
   const taskOpts=taskDefs.length
     ?taskDefs.map(t=>`<option value="${t.id}">${t.icon||""} ${t.label}</option>`).join("")
@@ -8548,16 +8561,12 @@ async function runAutoGenSelected(){
   if(confirmBtn)confirmBtn.style.display='none';
   // Add prominent close button to success screen
   if(previewEl){
-    previewEl.innerHTML+=`<div style="margin-top:14px;">
-      <button onclick="closeAssignModal()" style="width:100%;padding:13px;background:var(--primary);color:white;border:none;border-radius:10px;font-size:15px;font-weight:bold;cursor:pointer;">✔ סגור</button>
-    </div>`;
+    /* close button removed */
   }
   const assignModal=document.getElementById('assignModal');
   // Add close button to success screen
   if(previewEl){
-    previewEl.innerHTML+=`<div style="margin-top:14px;">
-      <button onclick="closeAssignModal()" style="width:100%;padding:14px;background:#1a5276;color:white;border:none;border-radius:10px;font-size:15px;font-weight:bold;cursor:pointer;margin:0;">✔ סגור חלונית</button>
-    </div>`;
+    /* close button removed */
   }
   if(confirmBtn)confirmBtn.style.display='none';
   if(assignModal)assignModal.classList.add('open');
@@ -8690,12 +8699,11 @@ function renderShiftsDefList(){
   const shiftKeys=Object.keys(SHIFT_HOURS).filter(k=>k!=='custom');
   container.innerHTML=shiftKeys.map(key=>{
     const sh=SHIFT_HOURS[key];
-    const isBuiltIn=['morning','afternoon','evening'].includes(key);
     const label=SHIFT_LABELS[key]||('⏰ '+key);
     const bg=SHIFT_COLORS[key]||'#f0f0f0';
     const border=SHIFT_BORDERS[key]||'#ccc';
     return`<div style="background:${bg};border-radius:10px;padding:12px 14px;border:1px solid ${border};position:relative;">
-      ${!isBuiltIn?`<button onclick="deleteShiftDef('${key}')" title="מחק משמרת" style="position:absolute;top:6px;left:6px;background:none;border:none;cursor:pointer;font-size:16px;color:#e74c3c;padding:0;line-height:1;">×</button>`:''}
+      <button onclick="deleteShiftDef('${key}')" title="מחק משמרת" style="position:absolute;top:6px;left:6px;background:#fdf2f2;border:1.5px solid #e74c3c;border-radius:50%;width:26px;height:26px;cursor:pointer;font-size:14px;color:#e74c3c;padding:0;line-height:1;display:flex;align-items:center;justify-content:center;font-weight:bold;">×</button>
       <div style="font-size:13px;font-weight:bold;margin-bottom:8px;">${label}</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
         <div class="sfield"><label>התחלה</label><input type="time" id="sh_${key}_s" value="${sh.s}" onchange="updateShiftTime('${key}','s',this.value)"></div>
@@ -8749,14 +8757,14 @@ function renderInstrTripJournal(){
   const lblEl=document.getElementById('instrDateLabel');
   if(lblEl){
     const d=new Date(currentDate+'T12:00:00');
-    lblEl.textContent=d.toLocaleDateString('he-IL',{weekday:'short',day:'numeric',month:'long'});
+    lblEl.textContent=d.toLocaleDateString('he-IL',{weekday:'short',day:'numeric',month:'long',year:'numeric'});
   }
 
   // Filter trips for this instructor
   const myTrips=trips.filter(t=>t.name===currentUserName);
 
   if(!myTrips.length){
-    tbody.innerHTML=`<tr><td colspan="5" style="text-align:center;color:#aaa;padding:16px;">אין נסיעות ביום זה</td></tr>`;
+    tbody.innerHTML=`<tr><td colspan="7" style="text-align:center;color:#aaa;padding:18px;">אין נסיעות ביום זה</td></tr>`;
     return;
   }
 
@@ -8764,23 +8772,31 @@ function renderInstrTripJournal(){
   const today=new Date().toISOString().slice(0,10);
 
   tbody.innerHTML=myTrips.map(t=>{
-    const routeStr=(t.timeline||[]).map(x=>x.id).join('➔');
-    const endMin=t.timeline?.length?t.timeline[t.timeline.length-1].endMin:0;
-    const delayTag=t.delayMin>0?` <span style="color:var(--warning);font-size:11px;">(+${t.delayMin}′)</span>`:'';
-    const loc=routeStr.includes('N')?'נווה יעקב':routeStr.includes('O')?'הדסה':'דיפו';
+    if(!t.timeline||!t.timeline.length){
+      return`<tr><td colspan="6" style="color:#aaa;font-size:12px;">נסיעה ללא נתוני מסלול</td>
+        <td><button class="btn-sm del" onclick="delTrip(${t.id})">🗑️</button></td></tr>`;
+    }
+    const last=t.timeline[t.timeline.length-1];
+    const endMin=last.endMin||0;
+    const loc=last.id.includes('N')?'נווה יעקב':last.id.includes('O')?'הדסה':'דיפו';
+    const routeStr=t.timeline.map(x=>x.id).join('➔');
+    const lessons=(t.route.reduce((s,r)=>s+r.t,0)/45).toFixed(1);
+    const delayTag=t.delayMin>0?`<span style="color:var(--warning);font-size:11px;"> (+${t.delayMin} דק')</span>`:'';
     const tripStartMin=timeToMin(t.startStr||'00:00');
     const isStarted=currentDate===today&&tripStartMin<=nowM;
     const isEnded=currentDate===today&&endMin<=nowM;
 
-    return`<tr>
-      <td data-label="מסלול"><small title="${routeStr}">${routeStr.length>20?routeStr.slice(0,20)+'…':routeStr}</small></td>
-      <td data-label="יציאה"><b>${t.startStr||'—'}</b>${delayTag}</td>
+    return`<tr id="instr-row-${t.id}">
+      <td data-label="מסלול"><small title="${routeStr}">${routeStr.length>22?routeStr.slice(0,22)+'…':routeStr}</small></td>
+      <td data-label="יציאה">${t.startStr}${delayTag}</td>
       <td data-label="סיום">${toHHMM(endMin)}</td>
+      <td data-label="נסיעה הבאה" style="color:var(--danger);font-weight:bold;">${toHHMM(endMin+75)}</td>
+      <td data-label="שיעורים" style="font-weight:bold;color:var(--primary);">${lessons}</td>
       <td data-label="מיקום">${loc}</td>
-      <td data-label="פעולות" style="display:flex;gap:5px;flex-wrap:wrap;">
+      <td data-label="פעולות">
         ${!isEnded?`<button class="btn-sm edit" onclick="startEdit(${t.id})" title="ערוך מסלול">✏️</button>`:''}
-        ${isStarted&&!isEnded?`<button class="btn-sm delay" onclick="openDelayModal(${t.id})" title="הוסף עיכוב" style="background:#fff3cd;border-color:#f0ad4e;">⏱️</button>`:''}
-        ${!isStarted?`<button class="btn-sm del" onclick="delTrip(${t.id})" title="מחק נסיעה">🗑️</button>`:''}
+        ${isStarted?`<button class="btn-sm delay" onclick="openDelayModal(${t.id})" title="הוסף עיכוב" style="background:#fff3cd;border:1px solid #f0ad4e;color:#856404;">⏱️</button>`:''}
+        <button class="btn-sm del" onclick="delTrip(${t.id})" title="מחק נסיעה">🗑️</button>
       </td>
     </tr>`;
   }).join('');
