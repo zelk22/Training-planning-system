@@ -1228,6 +1228,76 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 
 </div>
 
+<!-- ── TRIP EDIT MODAL — works for both manager AND instructor ─────── -->
+
+<div class="modal-overlay" id="tripEditModal" style="z-index:550;">
+
+  <div class="modal-box" style="width:min(560px,96vw);max-height:92vh;overflow-y:auto;">
+
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+
+      <h3 style="margin:0;color:var(--primary);">✏️ עריכת נסיעה</h3>
+
+      <button onclick="closeTripEditModal()" title="סגור" style="background:none;border:2px solid #ccc;border-radius:50%;width:36px;height:36px;cursor:pointer;font-size:20px;color:#666;display:flex;align-items:center;justify-content:center;padding:0;flex-shrink:0;line-height:1;">×</button>
+
+    </div>
+
+    <div id="tripEditInfo" style="font-size:13px;color:#555;margin-bottom:10px;background:#f8faff;padding:10px 12px;border-radius:8px;border:1px solid #dde6f0;"></div>
+
+    <div style="margin-bottom:12px;">
+
+      <label style="font-size:12px;font-weight:bold;color:#444;display:block;margin-bottom:4px;">⏰ שעת יציאה:</label>
+
+      <input type="time" id="tripEditStartTime" style="width:100%;padding:10px 12px;border:1.5px solid #ddd;border-radius:8px;font-size:14px;direction:ltr;box-sizing:border-box;">
+
+    </div>
+
+    <div style="margin-bottom:12px;">
+
+      <label style="font-size:12px;font-weight:bold;color:#444;display:block;margin-bottom:6px;">🗺️ מקטעי המסלול:</label>
+
+      <div id="tripEditSegments" style="background:#f8faff;border:1px solid #dde6f0;border-radius:8px;padding:10px;min-height:48px;display:flex;flex-wrap:wrap;gap:6px;"></div>
+
+      <div style="font-size:11px;color:#888;margin-top:5px;">לחץ × על מקטע למחיקה, או על כפתורי המקטעים למטה להוספה</div>
+
+    </div>
+
+    <div style="margin-bottom:12px;">
+
+      <label style="font-size:12px;font-weight:bold;color:#444;display:block;margin-bottom:6px;">➕ הוסף מקטע:</label>
+
+      <div id="tripEditAvailableSegs" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
+
+    </div>
+
+    <div id="tripEditPreview" style="font-size:12px;color:#666;margin-bottom:14px;background:#fef9e7;padding:8px 11px;border-radius:7px;border:1px solid #f0d080;"></div>
+
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+
+      <button onclick="saveTripEdit()" style="flex:1;min-width:120px;padding:11px;background:var(--success);color:white;border:none;border-radius:9px;font-size:14px;font-weight:bold;cursor:pointer;margin:0;">✅ שמור שינויים</button>
+
+      <button onclick="deleteTripFromEdit()" style="padding:11px 14px;background:#fdf2f2;color:var(--danger);border:1.5px solid var(--danger);border-radius:9px;font-size:13px;font-weight:bold;cursor:pointer;margin:0;">🗑️ מחק</button>
+
+    </div>
+
+    <div id="tripEditDelaySection" style="margin-top:12px;padding-top:12px;border-top:1px solid #eef2f8;display:none;">
+
+      <label style="font-size:12px;font-weight:bold;color:#444;display:block;margin-bottom:4px;">⏱️ הוסף עיכוב (דקות):</label>
+
+      <div style="display:flex;gap:6px;">
+
+        <input type="number" id="tripEditDelayInput" min="0" max="120" step="5" value="0" style="flex:1;padding:10px;border:1.5px solid #ddd;border-radius:8px;font-size:14px;box-sizing:border-box;">
+
+        <button onclick="applyTripEditDelay()" style="padding:10px 14px;background:#fff3cd;border:1.5px solid #f0ad4e;color:#856404;border-radius:8px;font-size:13px;font-weight:bold;cursor:pointer;margin:0;white-space:nowrap;">החל עיכוב</button>
+
+      </div>
+
+    </div>
+
+  </div>
+
+</div>
+
 <!-- ── CONFIRM CLEAR MODAL ──────────────────────────── -->
 
 <div class="confirm-overlay" id="confirmClearModal">
@@ -8675,6 +8745,8 @@ function openSettings(){
 
   try{renderSavedRoutesList();}catch(e){}
 
+  try{renderShiftsDefList();}catch(e){}
+
   // Step 5: Open it!
   modal.classList.add('open');
 
@@ -8828,6 +8900,191 @@ renderLog=window.renderLog;
 document.addEventListener('click',e=>{
   if(e.target.closest&&e.target.closest('[onclick*="openSettings"]')){
     setTimeout(()=>renderShiftsDefList(),80);
+  }
+});
+
+
+
+// ═══════════════════════════════════════════════════════════
+// TRIP EDIT MODAL — replaces inline manualSection editing
+// Works for BOTH manager and instructor views
+// ═══════════════════════════════════════════════════════════
+
+let _editingTripInModal=null;
+let _modalEditRoute=[];
+
+function openTripEditModal(tripId){
+  const trip=trips.find(t=>t.id===tripId);
+  if(!trip){showToast('נסיעה לא נמצאה','warning');return;}
+
+  // Permission check
+  if(currentRole==='instructor'){
+    if(trip.name!==currentUserName){showToast('⛔ אינך רשאי לערוך נסיעה של מדריך אחר','warning');return;}
+    const now=new Date().getHours()*60+new Date().getMinutes();
+    const tripEnd=timeToMin(trip.startStr||'00:00')+(trip.route||[]).reduce((a,r)=>a+(r.t||0),0);
+    if(tripEnd<now&&currentDate===new Date().toISOString().slice(0,10)){
+      showToast('⛔ לא ניתן לערוך נסיעה שהסתיימה','warning');return;
+    }
+  }
+
+  _editingTripInModal=tripId;
+  _modalEditRoute=JSON.parse(JSON.stringify(trip.route||[]));
+
+  // Populate info
+  document.getElementById('tripEditInfo').innerHTML=
+    `<b>מדריך:</b> ${trip.name} &nbsp;·&nbsp; <b>שעת יציאה נוכחית:</b> ${trip.startStr||'—'}`;
+  document.getElementById('tripEditStartTime').value=trip.startStr||'07:00';
+
+  // Show delay section if trip has started today
+  const now=new Date().getHours()*60+new Date().getMinutes();
+  const today=new Date().toISOString().slice(0,10);
+  const tripStartM=timeToMin(trip.startStr||'00:00');
+  const isStarted=currentDate===today&&tripStartM<=now;
+  document.getElementById('tripEditDelaySection').style.display=isStarted?'block':'none';
+  document.getElementById('tripEditDelayInput').value=trip.delayMin||0;
+
+  renderTripEditSegments();
+  renderTripEditAvailableSegs();
+  updateTripEditPreview();
+
+  document.getElementById('tripEditModal').classList.add('open');
+}
+
+function closeTripEditModal(){
+  document.getElementById('tripEditModal').classList.remove('open');
+  _editingTripInModal=null;
+  _modalEditRoute=[];
+}
+
+function renderTripEditSegments(){
+  const container=document.getElementById('tripEditSegments');
+  if(!_modalEditRoute.length){
+    container.innerHTML='<div style="color:#aaa;font-size:12px;padding:6px;">אין מקטעים — הוסף מקטעים מהאפשרויות למטה</div>';
+    return;
+  }
+  container.innerHTML=_modalEditRoute.map((s,i)=>{
+    const isTurn=s.id==='TURN'||s.id==='TURN_ORA';
+    const bg=isTurn?'#fef9e7':'#eaf4fd';
+    const border=isTurn?'#f0d080':'#a8d1f0';
+    return`<div style="background:${bg};border:1.5px solid ${border};border-radius:7px;padding:6px 10px;display:flex;align-items:center;gap:6px;font-size:13px;">
+      <span><b>${s.id}</b> ${s.label?`<small style="color:#888;">(${s.label})</small>`:''} <small style="color:#999;">${s.t}'</small></span>
+      <button onclick="removeTripEditSeg(${i})" title="הסר" style="background:none;border:none;color:#e74c3c;cursor:pointer;font-size:16px;padding:0 2px;line-height:1;">×</button>
+    </div>`;
+  }).join('');
+}
+
+function renderTripEditAvailableSegs(){
+  const container=document.getElementById('tripEditAvailableSegs');
+  const lastSeg=_modalEditRoute.length?_modalEditRoute.filter(s=>s.id!=='TURN'&&s.id!=='TURN_ORA').slice(-1)[0]:null;
+  const lastId=lastSeg?lastSeg.id:null;
+  // Show all segments — highlight valid next ones
+  container.innerHTML=SEG_OPTIONS.map(id=>{
+    const validNext=!lastId||(SUGGESTED_FROM[lastId]||[]).includes(id);
+    const bg=validNext?'#eaf4fd':'#f5f5f5';
+    const color=validNext?'var(--secondary)':'#aaa';
+    return`<button onclick="addTripEditSeg('${id}')" style="background:${bg};border:1.5px solid ${color};color:${color};border-radius:7px;padding:6px 12px;font-size:13px;font-weight:bold;cursor:pointer;margin:0;">${id}</button>`;
+  }).join('');
+}
+
+function addTripEditSeg(id){
+  // Auto-insert TURN/TURN_ORA where required (mirror segsToRoute logic)
+  const lastReal=_modalEditRoute.filter(s=>s.id!=='TURN'&&s.id!=='TURN_ORA').slice(-1)[0];
+  if(lastReal){
+    if(lastReal.id==='N1'&&id==='N2') _modalEditRoute.push({id:'TURN',t:RULES.TURN,label:'סיבוב נווה יעקב'});
+    if(lastReal.id==='O2'&&id==='O1') _modalEditRoute.push({id:'TURN',t:RULES.TURN,label:'סיבוב הדסה'});
+    if(lastReal.id==='L2'&&id==='L1') _modalEditRoute.push({id:'TURN_ORA',t:RULES.TURN_ORA,label:'סיבוב אורה'});
+  }
+  _modalEditRoute.push({id,t:RULES[id],label:id});
+  renderTripEditSegments();
+  renderTripEditAvailableSegs();
+  updateTripEditPreview();
+}
+
+function removeTripEditSeg(i){
+  _modalEditRoute.splice(i,1);
+  renderTripEditSegments();
+  renderTripEditAvailableSegs();
+  updateTripEditPreview();
+}
+
+function updateTripEditPreview(){
+  const el=document.getElementById('tripEditPreview');
+  if(!_modalEditRoute.length){el.innerHTML='<i>בחר מקטעים כדי לראות תצוגה מקדימה</i>';return;}
+  const total=_modalEditRoute.reduce((a,s)=>a+(s.t||0),0);
+  const startStr=document.getElementById('tripEditStartTime').value||'00:00';
+  const startM=timeToMin(startStr);
+  const endM=startM+total;
+  el.innerHTML=`<b>סך הכל:</b> ${total} דקות &nbsp;·&nbsp; <b>סיום:</b> ${toHHMM(endM)} &nbsp;·&nbsp; <b>שיעורים:</b> ${(total/45).toFixed(1)}`;
+}
+
+// Re-render preview when start time changes
+document.addEventListener('input',e=>{
+  if(e.target&&e.target.id==='tripEditStartTime')updateTripEditPreview();
+});
+
+function saveTripEdit(){
+  if(!_editingTripInModal)return;
+  const trip=trips.find(t=>t.id===_editingTripInModal);
+  if(!trip)return;
+  const newStart=document.getElementById('tripEditStartTime').value;
+  if(!newStart){showToast('יש להזין שעת יציאה','warning');return;}
+  if(!_modalEditRoute.length){showToast('המסלול ריק — הוסף לפחות מקטע אחד','warning');return;}
+
+  trip.route=JSON.parse(JSON.stringify(_modalEditRoute));
+  trip.startStr=newStart;
+  // Rebuild timeline
+  trip.timeline=buildTimeline(newStart,trip.route);
+
+  saveToStorage();
+  renderLog();
+  closeTripEditModal();
+  showToast('✅ הנסיעה עודכנה בהצלחה','success');
+}
+
+function deleteTripFromEdit(){
+  if(!_editingTripInModal)return;
+  const trip=trips.find(t=>t.id===_editingTripInModal);
+  if(!trip)return;
+  if(!confirm(`למחוק את הנסיעה של ${trip.name}?`))return;
+  trips=trips.filter(t=>t.id!==_editingTripInModal);
+  saveToStorage();
+  renderLog();
+  closeTripEditModal();
+  showToast('🗑️ הנסיעה נמחקה','success');
+}
+
+function applyTripEditDelay(){
+  if(!_editingTripInModal)return;
+  const trip=trips.find(t=>t.id===_editingTripInModal);
+  if(!trip)return;
+  const minutes=parseInt(document.getElementById('tripEditDelayInput').value)||0;
+  if(minutes<=0){showToast('הזן מספר דקות חיובי','warning');return;}
+  trip.delayMin=(trip.delayMin||0)+minutes;
+  // Shift the start time forward
+  const newStartM=timeToMin(trip.startStr)+minutes;
+  trip.startStr=toHHMM(newStartM);
+  trip.timeline=buildTimeline(trip.startStr,trip.route);
+  saveToStorage();
+  renderLog();
+  closeTripEditModal();
+  showToast(`⏱️ עיכוב של ${minutes} דקות נוסף בהצלחה`,'success');
+}
+
+// ─── REWIRE renderLog action buttons to use new modal ───
+// Wait for DOM load and patch the existing renderLog output
+
+document.addEventListener('click',function(e){
+  const target=e.target;
+  if(!target||target.tagName!=='BUTTON')return;
+  const onclick=target.getAttribute('onclick')||'';
+
+  // Intercept startEdit calls and route to new modal
+  const editMatch=onclick.match(/^startEdit\((\d+)\)/);
+  if(editMatch&&target.closest('.mgmt-table')){
+    e.preventDefault();
+    e.stopPropagation();
+    openTripEditModal(parseInt(editMatch[1]));
+    return false;
   }
 });
 
