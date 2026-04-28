@@ -2641,6 +2641,15 @@ function enterApp(role,name){
 
     startInstrSync();
 
+    // Ensure trip journal is rendered for instructor on initial load
+    setTimeout(()=>{
+
+      try{renderLog();}catch(e){}
+
+      try{if(typeof renderInstrTripJournal==='function')renderInstrTripJournal();}catch(e){}
+
+    },300);
+
   }
 
   // Render calendar immediately with whatever data we have
@@ -3732,7 +3741,7 @@ function saveTripForce(){
 
 function startEdit(tripId){
 
-  const trip=trips.find(t=>t.id===tripId);if(!trip)return;
+  const trip=trips.find(t=>String(t.id)===String(tripId));if(!trip)return;
 
   // Instructors can only edit their own trips, not completed ones
   if(currentRole==='instructor'){
@@ -3866,7 +3875,7 @@ function cancelEdit(){
 
 function openDelayModal(tripId){
 
-  const trip=trips.find(t=>t.id===tripId);if(!trip)return;
+  const trip=trips.find(t=>String(t.id)===String(tripId));if(!trip)return;
 
   delayTripId=tripId;
 
@@ -3882,7 +3891,7 @@ function previewDelay(){
 
   const mins=parseInt(document.getElementById('delayMinutes').value)||0;
 
-  const trip=trips.find(t=>t.id===delayTripId);
+  const trip=trips.find(t=>String(t.id)===String(delayTripId));
 
   if(!trip||!trip.timeline.length)return;
 
@@ -3918,7 +3927,7 @@ function closeModal(){document.getElementById('delayModal').classList.remove('op
 
 function delTrip(id){
 
-  const trip=trips.find(t=>t.id===id);
+  const trip=trips.find(t=>String(t.id)===String(id));
 
   if(!trip){showToast('נסיעה לא נמצאה','warning');return;}
 
@@ -3937,7 +3946,7 @@ function delTrip(id){
 
   if(!confirm('למחוק נסיעה זו?'))return;
 
-  trips=trips.filter(t=>t.id!==id);
+  trips=trips.filter(t=>String(t.id)!==String(id));
 
   saveToStorage();renderLog();
 
@@ -4120,7 +4129,7 @@ function renderLog(){
 
         <td colspan="6" style="color:#aaa;font-size:12px;">נסיעה ללא נתוני מסלול</td>
 
-        <td><button class="btn-sm del" onclick="delTrip(${t.id})">🗑️</button></td>
+        <td><button class="btn-sm del" onclick="delTrip('${t.id}')" title="מחק נסיעה">🗑️</button></td>
 
       </tr>`;
 
@@ -4154,11 +4163,11 @@ function renderLog(){
 
       <td data-label="מיקום">${loc}</td>
 
-      <td><button class="btn-sm edit" onclick="startEdit(${t.id})">✏️</button>
+      <td><button class="btn-sm edit" onclick="openTripEditModal('${t.id}')" title="ערוך נסיעה">✏️</button>
 
-          <button class="btn-sm delay" onclick="openDelayModal(${t.id})">⏱️</button>
+          <button class="btn-sm delay" onclick="openDelayModal('${t.id}')" title="הוסף עיכוב">⏱️</button>
 
-          <button class="btn-sm del" onclick="delTrip(${t.id})">🗑️</button></td>
+          <button class="btn-sm del" onclick="delTrip('${t.id}')" title="מחק נסיעה">🗑️</button></td>
 
     </tr>`;
 
@@ -8097,6 +8106,29 @@ async function autoGenerateTripsForWeek(){
 
       if(endMin<=startMin)endMin+=24*60;
 
+      // ── DUPLICATE CHECK: skip if instructor already has trips in this shift window ──
+      const alreadyHasTrips=dateTrips.some(t=>{
+
+        if(t.name!==entry.name||!t.timeline||!t.timeline.length)return false;
+
+        const tStart=t.timeline[0].startMin;
+
+        const tEnd=t.timeline[t.timeline.length-1].endMin;
+
+        // Check overlap with shift window
+
+        return tStart<endMin&&tEnd>startMin;
+
+      });
+
+      if(alreadyHasTrips){
+
+        console.log(`Skipping ${entry.name} on ${dateISO||date} — trips already exist in shift`);
+
+        continue;
+
+      }
+
       const existingTls=dateTrips.filter(t=>t.name!==entry.name).map(t=>({name:t.name,timeline:t.timeline}));
 
       const row={name:entry.name,startMin,endMin,startSeg:'D3',endSeg:'any',breakMin:breakMin_};
@@ -8599,6 +8631,14 @@ async function runAutoGenSelected(){
       let startMin=timeToMin(entry.shift==='custom'?entry.startTime:sh.s);
       let endMin=timeToMin(entry.shift==='custom'?entry.endTime:sh.e);
       if(endMin<=startMin)endMin+=24*60;
+      // Skip if instructor already has trips in this shift window
+      const alreadyHasTrips=dateTrips.some(t=>{
+        if(t.name!==entry.name||!t.timeline||!t.timeline.length)return false;
+        const tStart=t.timeline[0].startMin;
+        const tEnd=t.timeline[t.timeline.length-1].endMin;
+        return tStart<endMin&&tEnd>startMin;
+      });
+      if(alreadyHasTrips)continue;
       const existingTls=dateTrips.filter(t=>t.name!==entry.name).map(t=>({name:t.name,timeline:t.timeline}));
       const row={name:entry.name,startMin,endMin,startSeg:'D3',endSeg:'any',breakMin:breakMin_};
       let instrTrips=[];
@@ -8846,7 +8886,7 @@ function renderInstrTripJournal(){
   tbody.innerHTML=myTrips.map(t=>{
     if(!t.timeline||!t.timeline.length){
       return`<tr><td colspan="6" style="color:#aaa;font-size:12px;">נסיעה ללא נתוני מסלול</td>
-        <td><button class="btn-sm del" onclick="delTrip(${t.id})">🗑️</button></td></tr>`;
+        <td><button class="btn-sm del" onclick="openTripEditModal(${t.id})">🗑️</button></td></tr>`;
     }
     const last=t.timeline[t.timeline.length-1];
     const endMin=last.endMin||0;
@@ -8866,9 +8906,9 @@ function renderInstrTripJournal(){
       <td data-label="שיעורים" style="font-weight:bold;color:var(--primary);">${lessons}</td>
       <td data-label="מיקום">${loc}</td>
       <td data-label="פעולות">
-        ${!isEnded?`<button class="btn-sm edit" onclick="startEdit(${t.id})" title="ערוך מסלול">✏️</button>`:''}
-        ${isStarted?`<button class="btn-sm delay" onclick="openDelayModal(${t.id})" title="הוסף עיכוב" style="background:#fff3cd;border:1px solid #f0ad4e;color:#856404;">⏱️</button>`:''}
-        <button class="btn-sm del" onclick="delTrip(${t.id})" title="מחק נסיעה">🗑️</button>
+        ${!isEnded?`<button class="btn-sm edit" onclick="openTripEditModal('${t.id}')" title="ערוך מסלול">✏️</button>`:''}
+        ${isStarted?`<button class="btn-sm delay" onclick="openDelayModal('${t.id}')" title="הוסף עיכוב" style="background:#fff3cd;border:1px solid #f0ad4e;color:#856404;">⏱️</button>`:''}
+        <button class="btn-sm del" onclick="delTrip('${t.id}')" title="מחק נסיעה">🗑️</button>
       </td>
     </tr>`;
   }).join('');
@@ -8914,7 +8954,7 @@ let _editingTripInModal=null;
 let _modalEditRoute=[];
 
 function openTripEditModal(tripId){
-  const trip=trips.find(t=>t.id===tripId);
+  const trip=trips.find(t=>String(t.id)===String(tripId));
   if(!trip){showToast('נסיעה לא נמצאה','warning');return;}
 
   // Permission check
@@ -9024,7 +9064,7 @@ document.addEventListener('input',e=>{
 
 function saveTripEdit(){
   if(!_editingTripInModal)return;
-  const trip=trips.find(t=>t.id===_editingTripInModal);
+  const trip=trips.find(t=>String(t.id)===String(_editingTripInModal));
   if(!trip)return;
   const newStart=document.getElementById('tripEditStartTime').value;
   if(!newStart){showToast('יש להזין שעת יציאה','warning');return;}
@@ -9043,10 +9083,10 @@ function saveTripEdit(){
 
 function deleteTripFromEdit(){
   if(!_editingTripInModal)return;
-  const trip=trips.find(t=>t.id===_editingTripInModal);
+  const trip=trips.find(t=>String(t.id)===String(_editingTripInModal));
   if(!trip)return;
   if(!confirm(`למחוק את הנסיעה של ${trip.name}?`))return;
-  trips=trips.filter(t=>t.id!==_editingTripInModal);
+  trips=trips.filter(t=>String(t.id)!==String(_editingTripInModal));
   saveToStorage();
   renderLog();
   closeTripEditModal();
@@ -9055,7 +9095,7 @@ function deleteTripFromEdit(){
 
 function applyTripEditDelay(){
   if(!_editingTripInModal)return;
-  const trip=trips.find(t=>t.id===_editingTripInModal);
+  const trip=trips.find(t=>String(t.id)===String(_editingTripInModal));
   if(!trip)return;
   const minutes=parseInt(document.getElementById('tripEditDelayInput').value)||0;
   if(minutes<=0){showToast('הזן מספר דקות חיובי','warning');return;}
