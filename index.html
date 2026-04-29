@@ -1501,7 +1501,23 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 
     <div class="sched-head">
 
-      <h3 id="schedModalTitle">📅 שיבוץ יום</h3>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex:1;">
+
+        <h3 style="margin:0;font-size:15px;" id="schedModalTitle">📅 שיבוץ יום</h3>
+
+        <!-- Date navigation inside modal -->
+
+        <div style="display:flex;align-items:center;gap:4px;" id="schedModalDateNav">
+
+          <button onclick="schedModalChangeDate(-1)" style="background:#f0f4f8;border:1px solid #ccc;border-radius:6px;width:28px;height:28px;cursor:pointer;font-size:14px;touch-action:manipulation;padding:0;">‹</button>
+
+          <span id="schedModalDateLabel" style="font-size:12px;font-weight:bold;color:var(--primary);white-space:nowrap;"></span>
+
+          <button onclick="schedModalChangeDate(1)" style="background:#f0f4f8;border:1px solid #ccc;border-radius:6px;width:28px;height:28px;cursor:pointer;font-size:14px;touch-action:manipulation;padding:0;">›</button>
+
+        </div>
+
+      </div>
 
       <button onclick="closeSchedModal()" style="background:#f5f5f5;border:2px solid #999;border-radius:50%;min-width:40px;min-height:40px;width:40px;height:40px;cursor:pointer;font-size:22px;color:#333;display:flex;align-items:center;justify-content:center;padding:0;margin:0;flex-shrink:0;line-height:1;touch-action:manipulation;">×</button>
 
@@ -1583,6 +1599,16 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
     <div class="sched-footer" id="schedFooter">
 
       <button class="btn-sched-save" onclick="submitSchedEntry(false)">📨 שלח לאישור</button>
+
+      <!-- Weekly schedule buttons for instructor -->
+
+      <div id="instrWeeklyBtns" style="display:none;width:100%;margin-top:8px;display:flex;gap:8px;flex-direction:column;">
+
+        <button onclick="submitWeeklySchedRequest()" style="width:100%;padding:11px;background:#27ae60;color:white;border:none;border-radius:9px;font-size:14px;font-weight:bold;cursor:pointer;margin:0;">📅 שלח בקשה לשבוע שלם</button>
+
+        <button onclick="copySchedToNextWeek()" style="width:100%;padding:10px;background:#eaf4fd;color:var(--secondary);border:1.5px solid var(--secondary);border-radius:9px;font-size:13px;font-weight:bold;cursor:pointer;margin:0;">📋 העתק לשבוע הבא</button>
+
+      </div>
 
       <button onclick="closeSchedModal()" style="padding:10px 14px;background:#f5f5f5;color:#666;border:none;border-radius:8px;font-size:13px;cursor:pointer;margin:0;">ביטול</button>
 
@@ -1906,6 +1932,10 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
         <span class="user-role-tag" id="userRoleTag"></span>
 
         <span class="user-name-lbl" id="userNameLbl"></span>
+
+        <button id="switchViewBtn" onclick="switchToInstructorView()" title="צפה כמדריך" style="display:none;padding:5px 10px;background:#eaf4fd;border:1.5px solid var(--secondary);color:var(--secondary);border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;white-space:nowrap;">👤 תצוגת מדריך</button>
+
+        <button id="switchBackBtn" onclick="switchBackToAdmin()" title="חזור לממשק מנהל" style="display:none;padding:5px 10px;background:#fdf2f2;border:1.5px solid var(--danger);color:var(--danger);border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;white-space:nowrap;">🔙 חזור למנהל</button>
 
         <button class="btn-logout" onclick="doLogout()">התנתק</button>
 
@@ -2614,6 +2644,10 @@ function enterApp(role,name){
     const ss=document.getElementById('scheduleSection');
 
     if(ss){ss.style.display='block';ss.style.visibility='visible';}
+
+    // Show switch-to-instructor button for admin
+    const swBtn=document.getElementById('switchViewBtn');
+    if(swBtn)swBtn.style.display='inline-block';
 
   } else {
 
@@ -3905,6 +3939,10 @@ async function delTrip(id){
   try{await saveToStorage();}catch(e){}
 
   renderLog();
+
+  // Also update instructor timeline immediately
+  try{if(currentRole==='instructor'&&typeof renderInstrView==='function')renderInstrView();}catch(e){}
+  try{if(typeof renderGanttInto==='function'){renderGanttInto('ganttGrid');renderGanttInto('ganttGridInstr');}}catch(e){}
 
   if(typeof val==='function')val();
 
@@ -6681,8 +6719,23 @@ function openSchedModal(date){
 
       <button class="btn-sched-save" onclick="submitSchedEntry(false)">📨 שלח לאישור</button>
 
+      <div style="width:100%;margin-top:8px;display:flex;gap:8px;flex-direction:column;">
+
+        <button onclick="submitWeeklySchedRequest()" style="width:100%;padding:11px;background:#27ae60;color:white;border:none;border-radius:9px;font-size:14px;font-weight:bold;cursor:pointer;margin:0;">📅 שלח בקשה לשבוע שלם</button>
+
+        <button onclick="copySchedToNextWeek()" style="width:100%;padding:10px;background:#eaf4fd;color:var(--secondary);border:1.5px solid var(--secondary);border-radius:9px;font-size:13px;font-weight:bold;cursor:pointer;margin:0;">📋 העתק לשבוע הבא</button>
+
+      </div>
+
       <button onclick="closeSchedModal()" style="padding:10px 14px;background:#f5f5f5;color:#666;border:none;border-radius:8px;font-size:13px;cursor:pointer;margin:0;">ביטול</button>`;
 
+  }
+
+  // Update date label in modal header
+  const dlbl=document.getElementById('schedModalDateLabel');
+  if(dlbl){
+    const dd=new Date(date+'T12:00:00');
+    dlbl.textContent=dd.toLocaleDateString('he-IL',{weekday:'short',day:'numeric',month:'short'});
   }
 
   document.getElementById('schedModal').classList.add('open');
@@ -8931,12 +8984,7 @@ function openTripEditModal(tripId){
     `<b>מדריך:</b> ${trip.name} &nbsp;·&nbsp; <b>שעת יציאה נוכחית:</b> ${trip.startStr||'—'}`;
   document.getElementById('tripEditStartTime').value=trip.startStr||'07:00';
 
-  // Show delay section if trip has started today
-  const now=new Date().getHours()*60+new Date().getMinutes();
-  const today=new Date().toISOString().slice(0,10);
-  const tripStartM=timeToMin(trip.startStr||'00:00');
-  const isStarted=currentDate===today&&tripStartM<=now;
-  document.getElementById('tripEditDelayInput').value=trip.delayMin||0;
+
 
   renderTripEditSegments();
   renderTripEditAvailableSegs();
@@ -9063,22 +9111,7 @@ function deleteTripFromEdit(){
   showToast('🗑️ הנסיעה נמחקה','success');
 }
 
-function applyTripEditDelay(){
-  if(!_editingTripInModal)return;
-  const trip=trips.find(t=>String(t.id)===String(_editingTripInModal));
-  if(!trip)return;
-  const minutes=parseInt(document.getElementById('tripEditDelayInput').value)||0;
-  if(minutes<=0){showToast('הזן מספר דקות חיובי','warning');return;}
-  trip.delayMin=(trip.delayMin||0)+minutes;
-  // Shift the start time forward
-  const newStartM=timeToMin(trip.startStr)+minutes;
-  trip.startStr=toHHMM(newStartM);
-  trip.timeline=buildTimeline(trip.startStr,trip.route);
-  saveToStorage();
-  renderLog();
-  closeTripEditModal();
-  showToast(`⏱️ עיכוב של ${minutes} דקות נוסף בהצלחה`,'success');
-}
+// applyTripEditDelay removed — use dedicated delay button ⏱️
 
 // ─── REWIRE renderLog action buttons to use new modal ───
 // Wait for DOM load and patch the existing renderLog output
@@ -9116,6 +9149,148 @@ async function reloadApp(){
   }catch(e){
     showToast('⚠️ שגיאה בריענון: '+e.message,'warning');
   }
+}
+
+
+// ═══════════════════════════════════════════════════════════
+// FIX 2: Admin can preview instructor view
+// ═══════════════════════════════════════════════════════════
+
+let _adminPreviewMode=false;
+
+function switchToInstructorView(){
+  if(currentRole!=='admin')return;
+  _adminPreviewMode=true;
+  document.getElementById('managerView').style.display='none';
+  document.getElementById('instrView').classList.add('show');
+  document.getElementById('switchViewBtn').style.display='none';
+  document.getElementById('switchBackBtn').style.display='inline-block';
+  document.getElementById('userRoleTag').textContent='מדריך (תצוגה)';
+  // Pick first instructor name for preview, or use admin's own name
+  const previewName=_instrNames[0]||currentUserName;
+  document.getElementById('userNameLbl').textContent=previewName+' (תצוגה)';
+  // Temporarily act as instructor for rendering
+  const savedRole=currentRole;
+  const savedName=currentUserName;
+  currentRole='instructor';
+  currentUserName=previewName;
+  try{if(typeof startInstrSync==='function')startInstrSync();}catch(e){}
+  setTimeout(()=>{
+    try{renderLog();}catch(e){}
+    try{if(typeof renderInstrView==='function')renderInstrView();}catch(e){}
+    try{renderCalendar();}catch(e){}
+  },200);
+  // Store originals so we can restore
+  window._savedRole=savedRole;
+  window._savedName=savedName;
+}
+
+function switchBackToAdmin(){
+  if(!_adminPreviewMode)return;
+  _adminPreviewMode=false;
+  // Restore role
+  currentRole=window._savedRole||'admin';
+  currentUserName=window._savedName||currentUserName;
+  document.getElementById('instrView').classList.remove('show');
+  document.getElementById('managerView').style.display='block';
+  document.getElementById('switchViewBtn').style.display='inline-block';
+  document.getElementById('switchBackBtn').style.display='none';
+  document.getElementById('userRoleTag').textContent='מנהל';
+  document.getElementById('userNameLbl').textContent=currentUserName;
+  try{renderLog();}catch(e){}
+  try{renderCalendar();}catch(e){}
+  showToast('🔙 חזרת לממשק המנהל','info');
+}
+
+
+// ═══════════════════════════════════════════════════════════
+// FIX 3: Sched modal date navigation + weekly request
+// ═══════════════════════════════════════════════════════════
+
+function schedModalChangeDate(delta){
+  if(!schedEditDate)return;
+  const d=new Date(schedEditDate+'T12:00:00');
+  d.setDate(d.getDate()+delta);
+  const newDate=d.toISOString().slice(0,10);
+  openSchedModal(newDate);
+}
+
+async function submitWeeklySchedRequest(){
+  // Submit the current shift for all 7 days starting from schedEditDate
+  const shiftEl=document.getElementById('schedShiftInstr');
+  const noteEl=document.getElementById('schedNoteInstr');
+  const startEl=document.getElementById('schedStartInstr');
+  const endEl=document.getElementById('schedEndInstr');
+
+  if(!shiftEl||!shiftEl.value||shiftEl.value==='none'){
+    showToast('יש לבחור משמרת תחילה','warning');return;
+  }
+
+  const shift=shiftEl.value;
+  const note=noteEl?noteEl.value:'';
+  const startTime=startEl?startEl.value:'';
+  const endTime=endEl?endEl.value:'';
+
+  const baseDate=new Date(schedEditDate+'T12:00:00');
+  // Find Monday of the current week
+  const day=baseDate.getDay(); // 0=Sun, 1=Mon
+  const monday=new Date(baseDate);
+  monday.setDate(baseDate.getDate()-((day+6)%7));
+
+  let savedCount=0;
+  for(let i=0;i<7;i++){
+    const d=new Date(monday);
+    d.setDate(monday.getDate()+i);
+    const dateStr=d.toISOString().slice(0,10);
+    const entry={
+      id:'e_'+Date.now()+'_w'+i,
+      name:currentUserName,
+      shift,
+      note,
+      task:'training',
+      status:'pending',
+      createdAt:Date.now()
+    };
+    if(shift==='custom'){ entry.startTime=startTime; entry.endTime=endTime; }
+    try{await saveSchedEntry(dateStr,entry); savedCount++;}catch(e){}
+    await new Promise(r=>setTimeout(r,50));
+  }
+  showToast(`✅ נשלחה בקשה לשבוע שלם — ${savedCount} ימים`,'success');
+  closeSchedModal();
+  renderCalendar();
+}
+
+async function copySchedToNextWeek(){
+  // Copy current week entries to next week
+  const baseDate=new Date(schedEditDate+'T12:00:00');
+  const day=baseDate.getDay();
+  const monday=new Date(baseDate);
+  monday.setDate(baseDate.getDate()-((day+6)%7));
+
+  let copiedCount=0;
+  for(let i=0;i<7;i++){
+    const srcDate=new Date(monday);
+    srcDate.setDate(monday.getDate()+i);
+    const srcStr=srcDate.toISOString().slice(0,10);
+
+    const dstDate=new Date(srcDate);
+    dstDate.setDate(srcDate.getDate()+7);
+    const dstStr=dstDate.toISOString().slice(0,10);
+
+    const srcEntries=(schedData[srcStr]||[]).filter(e=>e.name===currentUserName);
+    for(const e of srcEntries){
+      const newEntry={...e, id:'e_'+Date.now()+'_cp'+i, status:'pending', createdAt:Date.now()};
+      try{await saveSchedEntry(dstStr,newEntry); copiedCount++;}catch(e2){}
+      await new Promise(r=>setTimeout(r,50));
+    }
+  }
+
+  if(copiedCount===0){
+    showToast('לא נמצאו שיבוצים לשבוע הנוכחי להעתקה','warning');return;
+  }
+  showToast(`✅ הועתקו ${copiedCount} שיבוצים לשבוע הבא`,'success');
+  closeSchedModal();
+  renderCalendar();
 }
 
 
