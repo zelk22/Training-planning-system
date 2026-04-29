@@ -1936,6 +1936,9 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 
     <div id="nextTripCard"></div>
 
+    <!-- Placeholder for manualSection — moved here dynamically for instructor -->
+    <div id="manualSectionPlaceholder"></div>
+
     <div class="mgmt-section">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:10px;">
         <h4 style="margin:0;color:var(--primary);">📋 יומן הנסיעות שלי</h4>
@@ -2001,7 +2004,8 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 
   </div>
 
-  <!-- ══ MANAGER VIEWEW ═══════════════════════════════════ -->
+
+<!-- ══ MANAGER VIEWEW ═══════════════════════════════════ -->
 
   <div id="managerView" style="display:none;">
 
@@ -2027,32 +2031,29 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 
   <div class="schedule-section" id="scheduleSection">
 
-    <!-- Manager schedule toolbar: two rows — nav row + action buttons row -->
-    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px;">
-
-      <!-- Row 1: title + month nav + export -->
-      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
-        <h4 style="margin:0;">🗓️ לוח שיבוצים</h4>
-        <div style="display:flex;align-items:center;gap:8px;">
-          <div class="month-nav">
-            <button onclick="changeSchedMonth(-1)">&#8249;</button>
-            <span id="schedMonthLabel"></span>
-            <button onclick="changeSchedMonth(1)">&#8250;</button>
-          </div>
-          <button onclick="copyPrevMonthSched()" style="padding:6px 10px;background:#8e44ad;color:white;border:none;border-radius:7px;cursor:pointer;font-size:11px;font-weight:bold;white-space:nowrap;">📋 העתק חודש קודם</button>
-          <button onclick="exportScheduleCSV()" style="padding:6px 10px;background:#f0f4f8;border:1px solid #ccc;border-radius:7px;cursor:pointer;font-size:11px;color:#555;white-space:nowrap;">📊 ייצא</button>
+    <!-- ── ROW 1: title + month nav ──────────────────────── -->
+    <table style="width:100%;margin-bottom:8px;"><tr>
+      <td><h4 style="margin:0;color:var(--primary);">🗓️ לוח שיבוצים</h4></td>
+      <td style="text-align:center;">
+        <div class="month-nav" style="display:inline-flex;">
+          <button onclick="changeSchedMonth(-1)">&#8249;</button>
+          <span id="schedMonthLabel"></span>
+          <button onclick="changeSchedMonth(1)">&#8250;</button>
         </div>
-      </div>
+      </td>
+      <td style="text-align:left;white-space:nowrap;">
+        <button onclick="copyPrevMonthSched()" style="width:auto !important;padding:5px 9px;background:#8e44ad;color:white;border:none;border-radius:7px;cursor:pointer;font-size:11px;font-weight:bold;display:inline-block;">📋 העתק חודש קודם</button>
+        <button onclick="exportScheduleCSV()" style="width:auto !important;padding:5px 9px;background:#f0f4f8;border:1px solid #ccc;border-radius:7px;cursor:pointer;font-size:11px;color:#555;margin-right:4px;display:inline-block;">📊 ייצא</button>
+      </td>
+    </tr></table>
 
-      <!-- Row 2: action buttons centered -->
-      <div style="display:flex;align-items:center;justify-content:center;gap:6px;flex-wrap:wrap;">
-        <button onclick="openWeeklySchedModal()" style="padding:7px 14px;background:#2980b9;color:white;border:none;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;white-space:nowrap;">📅 שיבוץ שבועי</button>
-        <button onclick="autoGenerateTripsFromSchedule()" style="padding:7px 14px;background:#27ae60;color:white;border:none;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;white-space:nowrap;">⚡ תכנן נסיעות</button>
-        <button onclick="if(currentRole!=='admin'){showToast('⛔ פעולה זו מוגבלת למנהל בלבד','warning');return;}openRangeResetModal('trips')" style="padding:7px 12px;background:#fff3cd;border:1px solid #f0ad4e;color:#856404;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;white-space:nowrap;">🗑️ אפס נסיעות</button>
-        <button onclick="if(currentRole!=='admin'){showToast('⛔ פעולה זו מוגבלת למנהל בלבד','warning');return;}openRangeResetModal('all')" style="padding:7px 12px;background:#fdf2f2;border:1px solid var(--danger);color:var(--danger);border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;white-space:nowrap;">⚠️ איפוס כללי</button>
-        <button onclick="reloadApp()" style="padding:7px 12px;background:#f0f4f8;border:1px solid #ccc;color:#555;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;white-space:nowrap;">🔄 רענן</button>
-      </div>
-
+    <!-- ── ROW 2: action buttons — centered in one line ──── -->
+    <div class="sched-action-row" style="text-align:center;margin-bottom:10px;">
+      <button onclick="openWeeklySchedModal()" style="width:auto !important;display:inline-block;margin:2px;padding:8px 14px;background:#2980b9;color:white;border:none;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;">📅 שיבוץ שבועי</button>
+      <button onclick="autoGenerateTripsFromSchedule()" style="width:auto !important;display:inline-block;margin:2px;padding:8px 14px;background:#27ae60;color:white;border:none;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;">⚡ תכנן נסיעות</button>
+      <button onclick="if(currentRole!=='admin'){showToast('⛔ פעולה זו מוגבלת למנהל בלבד','warning');return;}openRangeResetModal('trips')" style="width:auto !important;display:inline-block;margin:2px;padding:8px 12px;background:#fff3cd;border:1px solid #f0ad4e;color:#856404;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;">🗑️ אפס נסיעות</button>
+      <button onclick="if(currentRole!=='admin'){showToast('⛔ פעולה זו מוגבלת למנהל בלבד','warning');return;}openRangeResetModal('all')" style="width:auto !important;display:inline-block;margin:2px;padding:8px 12px;background:#fdf2f2;border:1px solid #e74c3c;color:#e74c3c;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;">⚠️ איפוס כללי</button>
+      <button onclick="reloadApp()" style="width:auto !important;display:inline-block;margin:2px;padding:8px 12px;background:#f0f4f8;border:1px solid #ccc;color:#555;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;">🔄 רענן</button>
     </div>
 
     <!-- Legend -->
@@ -2129,113 +2130,9 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 
 </div>
 
-  <!-- ── DAY PLANNER — PRIMARY
 
-  ══════════════════════════════════════════════════════ -->
 
-  <div class="day-planner-section">
-
-    <!-- Toolbar -->
-
-    <div class="planner-toolbar">
-
-      <h3>📅 תכנון יום הדרכה</h3>
-
-      <!-- Date nav -->
-
-      <div class="date-nav">
-
-        <button onclick="changeDate(-1)" style="touch-action:manipulation;">&#8249;</button>
-
-        <input type="date" id="dateSelector" onchange="onDateChange()">
-
-        <button onclick="changeDate(1)">&#8250;</button>
-
-      </div>
-
-      <!-- Gap -->
-
-      <div class="gap-inline">
-
-        <label style="margin:0;">פער בטיחות:</label>
-
-        <input type="number" id="gapV" value="40" min="0" max="120" step="5" title="דקות פער בין מדריכים באותו מקטע">
-
-        <span>דק'</span>
-
-      </div>
-
-      <button class="btn-add-row" onclick="addPlannerRow()">+ הוסף מדריך</button>
-
-      <button class="btn-generate-all" onclick="generateAllPlanned()">⚡ תכנן אוטומטי</button>
-
-      <button onclick="openSettings()" title="הגדרות" style="padding:8px 13px;background:#f0f4f8;border:1px solid #ccc;border-radius:8px;cursor:pointer;font-size:13px;color:#555;width:auto;margin:0;white-space:nowrap;">🔧 הגדרות</button>
-
-      <button onclick="openCopyDayModal()" title="העתקת יום" style="padding:8px 13px;background:#f0f4f8;border:1px solid #ccc;border-radius:8px;cursor:pointer;font-size:13px;color:#555;width:auto;margin:0;white-space:nowrap;">📋 העתק יום</button>
-
-      <button onclick="exportPDF()" title="יצוא PDF" style="padding:8px 13px;background:#f0f4f8;border:1px solid #ccc;border-radius:8px;cursor:pointer;font-size:13px;color:#555;width:auto;margin:0;white-space:nowrap;">🖨️ PDF</button>
-
-      <button onclick="exportCSV()" title="יצוא Excel" style="padding:8px 13px;background:#f0f4f8;border:1px solid #ccc;border-radius:8px;cursor:pointer;font-size:13px;color:#27ae60;width:auto;margin:0;white-space:nowrap;">📊 Excel</button>
-
-    </div>
-
-    <!-- Instructor Table -->
-
-    <div class="planner-table-wrap">
-
-      <table class="planner-table">
-
-        <thead>
-
-          <tr>
-
-            <th style="width:160px;">שם מדריך</th>
-
-            <th style="width:105px;">תחילת משמרת</th>
-
-            <th style="width:105px;">סיום משמרת<br><span style="font-weight:400;font-size:10px;opacity:.7;">אוטומטי +8.5 ש'</span></th>
-
-            <th style="width:105px;">מיקום התחלה</th>
-
-            <th style="width:105px;">מיקום סיום</th>
-
-            <th style="width:80px;">הפסקה<br><span style="font-weight:400;font-size:10px;opacity:.7;">(דק')</span></th>
-
-            <th style="width:90px;">סטטוס</th>
-
-            <th style="width:90px;">מסלול</th>
-
-            <th style="width:36px;"></th>
-
-          </tr>
-
-        </thead>
-
-        <tbody id="plannerBody">
-
-          <tr><td colspan="8" style="text-align:center;padding:24px;color:#aaa;font-size:13px;">
-
-            לחץ <b>"+ הוסף מדריך"</b> כדי להתחיל בתכנון היום
-
-          </td></tr>
-
-        </tbody>
-
-      </table>
-
-    </div>
-
-    <!-- Preview (hidden until generation) -->
-
-    <div class="planner-preview" id="plannerPreview" style="display:none;"></div>
-
-  </div>
-
-  <!-- ══════════════════════════════════════════════════
-
-       MANUAL ROUTE ENTRY — SECONDARY (COLLAPSIBLE)
-
-  ══════════════════════════════════════════════════════ -->
+  <!-- ══ MANUAL ROUTE ENTRY ══════════════════════════════ -->
 
   <details class="manual-section" id="manualSection">
 
@@ -2371,6 +2268,107 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 
   </details>
 
+  <!-- ── DAY PLANNER — PRIMARY
+
+  ══════════════════════════════════════════════════════ -->
+
+  <div class="day-planner-section">
+
+    <!-- Toolbar -->
+
+    <div class="planner-toolbar">
+
+      <h3>📅 תכנון יום הדרכה</h3>
+
+      <!-- Date nav -->
+
+      <div class="date-nav">
+
+        <button onclick="changeDate(-1)" style="touch-action:manipulation;">&#8249;</button>
+
+        <input type="date" id="dateSelector" onchange="onDateChange()">
+
+        <button onclick="changeDate(1)">&#8250;</button>
+
+      </div>
+
+      <!-- Gap -->
+
+      <div class="gap-inline">
+
+        <label style="margin:0;">פער בטיחות:</label>
+
+        <input type="number" id="gapV" value="40" min="0" max="120" step="5" title="דקות פער בין מדריכים באותו מקטע">
+
+        <span>דק'</span>
+
+      </div>
+
+      <button class="btn-add-row" onclick="addPlannerRow()">+ הוסף מדריך</button>
+
+      <button class="btn-generate-all" onclick="generateAllPlanned()">⚡ תכנן אוטומטי</button>
+
+      <button onclick="openSettings()" title="הגדרות" style="padding:8px 13px;background:#f0f4f8;border:1px solid #ccc;border-radius:8px;cursor:pointer;font-size:13px;color:#555;width:auto;margin:0;white-space:nowrap;">🔧 הגדרות</button>
+
+      <button onclick="openCopyDayModal()" title="העתקת יום" style="padding:8px 13px;background:#f0f4f8;border:1px solid #ccc;border-radius:8px;cursor:pointer;font-size:13px;color:#555;width:auto;margin:0;white-space:nowrap;">📋 העתק יום</button>
+
+      <button onclick="exportPDF()" title="יצוא PDF" style="padding:8px 13px;background:#f0f4f8;border:1px solid #ccc;border-radius:8px;cursor:pointer;font-size:13px;color:#555;width:auto;margin:0;white-space:nowrap;">🖨️ PDF</button>
+
+      <button onclick="exportCSV()" title="יצוא Excel" style="padding:8px 13px;background:#f0f4f8;border:1px solid #ccc;border-radius:8px;cursor:pointer;font-size:13px;color:#27ae60;width:auto;margin:0;white-space:nowrap;">📊 Excel</button>
+
+    </div>
+
+    <!-- Instructor Table -->
+
+    <div class="planner-table-wrap">
+
+      <table class="planner-table">
+
+        <thead>
+
+          <tr>
+
+            <th style="width:160px;">שם מדריך</th>
+
+            <th style="width:105px;">תחילת משמרת</th>
+
+            <th style="width:105px;">סיום משמרת<br><span style="font-weight:400;font-size:10px;opacity:.7;">אוטומטי +8.5 ש'</span></th>
+
+            <th style="width:105px;">מיקום התחלה</th>
+
+            <th style="width:105px;">מיקום סיום</th>
+
+            <th style="width:80px;">הפסקה<br><span style="font-weight:400;font-size:10px;opacity:.7;">(דק')</span></th>
+
+            <th style="width:90px;">סטטוס</th>
+
+            <th style="width:90px;">מסלול</th>
+
+            <th style="width:36px;"></th>
+
+          </tr>
+
+        </thead>
+
+        <tbody id="plannerBody">
+
+          <tr><td colspan="8" style="text-align:center;padding:24px;color:#aaa;font-size:13px;">
+
+            לחץ <b>"+ הוסף מדריך"</b> כדי להתחיל בתכנון היום
+
+          </td></tr>
+
+        </tbody>
+
+      </table>
+
+    </div>
+
+    <!-- Preview (hidden until generation) -->
+
+    <div class="planner-preview" id="plannerPreview" style="display:none;"></div>
+
+  </div>
   
 
   <!-- ── TRIP LOG ──────────────────────────────────── -->
@@ -2618,9 +2616,12 @@ function enterApp(role,name){
 
   document.getElementById('userNameLbl').textContent=name;
 
-  // Handle manualSectionWrapper visibility
-  const _msWrapper=document.getElementById('manualSectionWrapper');
-  if(_msWrapper)_msWrapper.style.display=role==='instructor'?'none':'block';
+  // Move manualSection to the appropriate view
+  if(role==='instructor'){
+    setTimeout(()=>moveManualSectionToInstr(),50);
+  } else {
+    setTimeout(()=>moveManualSectionToManager(),50);
+  }
 
   if(role==='admin'){
 
@@ -8962,12 +8963,10 @@ function openTripEditModal(tripId){
 
   // Show the manual section
   const ms=document.getElementById('manualSection');
-  const wrapper=document.getElementById('manualSectionWrapper');
-  if(wrapper){wrapper.style.display='block';}
-  if(ms){ms.open=true;}
+  if(ms)ms.open=true;
 
   // Scroll to manual section
-  const scrollTarget=wrapper||ms;
+  const scrollTarget=ms;
   if(scrollTarget)setTimeout(()=>scrollTarget.scrollIntoView({behavior:'smooth',block:'start'}),100);
 
   // Override save button to UPDATE instead of CREATE
@@ -9203,6 +9202,7 @@ function switchToInstructorView(previewName){
   currentRole='instructor';
   currentUserName=previewName;
 
+  setTimeout(()=>moveManualSectionToInstr(),50);
   try{if(typeof startInstrSync==='function')startInstrSync();}catch(e){}
   setTimeout(()=>{
     try{renderLog();}catch(e){}
@@ -9254,6 +9254,7 @@ function switchBackToAdmin(){
   document.getElementById('switchBackBtn').style.display='none';
   document.getElementById('userRoleTag').textContent='מנהל';
   document.getElementById('userNameLbl').textContent=currentUserName;
+  setTimeout(()=>moveManualSectionToManager(),50);
   try{renderLog();}catch(e){}
   try{renderCalendar();}catch(e){}
   showToast('🔙 חזרת לממשק המנהל','info');
@@ -9515,41 +9516,40 @@ async function _submitInstrWeeklyAndCopyNext(){
 
 
 
+// Manual section helpers removed — manualSection is now at top level between views
+
+
+
 // ═══════════════════════════════════════════════════════════
-// MANUAL SECTION — accessible to instructor
+// MOVE manualSection between manager and instructor views
 // ═══════════════════════════════════════════════════════════
 
-function toggleManualForInstr(){
-  const wrapper=document.getElementById('manualSectionWrapper');
-  const icon=document.getElementById('manualToggleIcon');
+let _manualSectionOriginalParent=null;
+let _manualSectionOriginalNext=null;
+
+function moveManualSectionToInstr(){
   const ms=document.getElementById('manualSection');
-  if(!wrapper)return;
-  const isOpen=wrapper.style.display!=='none'&&wrapper.style.display!=='';
-  wrapper.style.display=isOpen?'none':'block';
-  if(icon)icon.textContent=isOpen?'▶':'▼';
-  if(!isOpen&&ms){
-    ms.open=true;
-    setTimeout(()=>wrapper.scrollIntoView({behavior:'smooth',block:'start'}),100);
+  const placeholder=document.getElementById('manualSectionPlaceholder');
+  if(!ms||!placeholder)return;
+  // Save original location once
+  if(!_manualSectionOriginalParent){
+    _manualSectionOriginalParent=ms.parentElement;
+    _manualSectionOriginalNext=ms.nextSibling;
+  }
+  // Move the actual element to the placeholder
+  placeholder.appendChild(ms);
+}
+
+function moveManualSectionToManager(){
+  const ms=document.getElementById('manualSection');
+  if(!ms||!_manualSectionOriginalParent)return;
+  // Restore to original location
+  if(_manualSectionOriginalNext&&_manualSectionOriginalNext.parentElement===_manualSectionOriginalParent){
+    _manualSectionOriginalParent.insertBefore(ms,_manualSectionOriginalNext);
+  } else {
+    _manualSectionOriginalParent.appendChild(ms);
   }
 }
-
-function showManualForInstr(){
-  const wrapper=document.getElementById('manualSectionWrapper');
-  const icon=document.getElementById('manualToggleIcon');
-  const ms=document.getElementById('manualSection');
-  if(wrapper){wrapper.style.display='block';}
-  if(icon)icon.textContent='▼';
-  if(ms){ms.open=true;}
-}
-
-function hideManualForInstr(){
-  const wrapper=document.getElementById('manualSectionWrapper');
-  const icon=document.getElementById('manualToggleIcon');
-  if(wrapper&&currentRole==='instructor')wrapper.style.display='none';
-  if(icon)icon.textContent='▶';
-}
-
-// manualSectionWrapper visibility handled in original enterApp below
 
 
 
