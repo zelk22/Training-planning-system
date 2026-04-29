@@ -1496,21 +1496,14 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 
     <div class="sched-head">
 
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex:1;">
+      <!-- Single date display with navigation — no duplicate -->
+      <div style="display:flex;align-items:center;gap:6px;flex:1;">
 
-        <h3 style="margin:0;font-size:15px;" id="schedModalTitle">📅 שיבוץ יום</h3>
+        <button onclick="schedModalChangeDate(-1)" style="background:#f0f4f8;border:1px solid #ccc;border-radius:6px;width:30px;height:30px;cursor:pointer;font-size:16px;touch-action:manipulation;padding:0;flex-shrink:0;">‹</button>
 
-        <!-- Date navigation inside modal -->
+        <h3 id="schedModalTitle" style="margin:0;font-size:15px;font-weight:bold;color:var(--primary);flex:1;text-align:center;"></h3>
 
-        <div style="display:flex;align-items:center;gap:4px;" id="schedModalDateNav">
-
-          <button onclick="schedModalChangeDate(-1)" style="background:#f0f4f8;border:1px solid #ccc;border-radius:6px;width:28px;height:28px;cursor:pointer;font-size:14px;touch-action:manipulation;padding:0;">‹</button>
-
-          <span id="schedModalDateLabel" style="font-size:12px;font-weight:bold;color:var(--primary);white-space:nowrap;"></span>
-
-          <button onclick="schedModalChangeDate(1)" style="background:#f0f4f8;border:1px solid #ccc;border-radius:6px;width:28px;height:28px;cursor:pointer;font-size:14px;touch-action:manipulation;padding:0;">›</button>
-
-        </div>
+        <button onclick="schedModalChangeDate(1)" style="background:#f0f4f8;border:1px solid #ccc;border-radius:6px;width:30px;height:30px;cursor:pointer;font-size:16px;touch-action:manipulation;padding:0;flex-shrink:0;">›</button>
 
       </div>
 
@@ -1981,24 +1974,21 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 
     <div class="schedule-section" id="instrScheduleSection">
 
-      <div class="schedule-toolbar">
+      <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px;">
 
-        <h4>🗓️ השיבוצים שלי</h4>
-
-        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-
+        <!-- Title + month nav -->
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+          <h4 style="margin:0;">🗓️ השיבוצים שלי</h4>
           <div class="month-nav">
-
             <button onclick="changeSchedMonth(-1)">&#8249;</button>
-
             <span id="schedMonthLabelInstr"></span>
-
             <button onclick="changeSchedMonth(1)">&#8250;</button>
-
           </div>
+        </div>
 
-          <button onclick="openInstrWeeklyModal()" style="padding:6px 12px;background:#27ae60;color:white;border:none;border-radius:8px;cursor:pointer;font-size:12px;font-weight:bold;white-space:nowrap;">📅 שיבוץ שבועי</button>
-
+        <!-- Weekly button centered -->
+        <div style="display:flex;justify-content:center;">
+          <button onclick="openInstrWeeklyModal()" style="padding:9px 28px;background:#27ae60;color:white;border:none;border-radius:9px;cursor:pointer;font-size:13px;font-weight:bold;white-space:nowrap;">📅 שיבוץ שבועי</button>
         </div>
 
       </div>
@@ -2037,33 +2027,31 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 
   <div class="schedule-section" id="scheduleSection">
 
-    <div class="schedule-toolbar">
+    <!-- Manager schedule toolbar: two rows — nav row + action buttons row -->
+    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px;">
 
-      <h4>🗓️ לוח שיבוצים</h4>
-
-      <div class="month-nav">
-
-        <button onclick="changeSchedMonth(-1)">&#8249;</button>
-
-        <span id="schedMonthLabel"></span>
-
-        <button onclick="changeSchedMonth(1)">&#8250;</button>
-
+      <!-- Row 1: title + month nav + export -->
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+        <h4 style="margin:0;">🗓️ לוח שיבוצים</h4>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div class="month-nav">
+            <button onclick="changeSchedMonth(-1)">&#8249;</button>
+            <span id="schedMonthLabel"></span>
+            <button onclick="changeSchedMonth(1)">&#8250;</button>
+          </div>
+          <button onclick="copyPrevMonthSched()" style="padding:6px 10px;background:#8e44ad;color:white;border:none;border-radius:7px;cursor:pointer;font-size:11px;font-weight:bold;white-space:nowrap;">📋 העתק חודש קודם</button>
+          <button onclick="exportScheduleCSV()" style="padding:6px 10px;background:#f0f4f8;border:1px solid #ccc;border-radius:7px;cursor:pointer;font-size:11px;color:#555;white-space:nowrap;">📊 ייצא</button>
+        </div>
       </div>
 
-      <button onclick="copyPrevMonthSched()" style="padding:7px 12px;background:#8e44ad;color:white;border:none;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;width:auto;margin:0;">📋 העתק חודש קודם</button>
-
-      <button onclick="exportScheduleCSV()" style="padding:7px 12px;background:#f0f4f8;border:1px solid #ccc;border-radius:7px;cursor:pointer;font-size:12px;color:#555;width:auto;margin:0;">📊 ייצא</button>
-
-      <button onclick="openWeeklySchedModal()" style="padding:7px 14px;background:#2980b9;color:white;border:none;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;margin:0;">📅 שיבוץ שבועי</button>
-
-      <button onclick="autoGenerateTripsFromSchedule()" style="padding:7px 14px;background:#27ae60;color:white;border:none;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;margin:0;">⚡ תכנן נסיעות אוטומטי</button>
-
-      <button onclick="if(currentRole!=='admin'){showToast('⛔ פעולה זו מוגבלת למנהל בלבד','warning');return;}openRangeResetModal('trips')" style="padding:7px 12px;background:#fff3cd;border:1px solid #f0ad4e;color:#856404;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;margin:0;">🗑️ אפס נסיעות</button>
-
-      <button onclick="if(currentRole!=='admin'){showToast('⛔ פעולה זו מוגבלת למנהל בלבד','warning');return;}openRangeResetModal('all')" style="padding:7px 12px;background:#fdf2f2;border:1px solid var(--danger);color:var(--danger);border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;margin:0;">⚠️ איפוס כללי</button>
-
-      <button onclick="reloadApp()" title="רענן נתונים" style="padding:7px 12px;background:#f0f4f8;border:1px solid #ccc;color:#555;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;margin:0;display:flex;align-items:center;gap:4px;">🔄 רענן</button>
+      <!-- Row 2: action buttons centered -->
+      <div style="display:flex;align-items:center;justify-content:center;gap:6px;flex-wrap:wrap;">
+        <button onclick="openWeeklySchedModal()" style="padding:7px 14px;background:#2980b9;color:white;border:none;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;white-space:nowrap;">📅 שיבוץ שבועי</button>
+        <button onclick="autoGenerateTripsFromSchedule()" style="padding:7px 14px;background:#27ae60;color:white;border:none;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;white-space:nowrap;">⚡ תכנן נסיעות</button>
+        <button onclick="if(currentRole!=='admin'){showToast('⛔ פעולה זו מוגבלת למנהל בלבד','warning');return;}openRangeResetModal('trips')" style="padding:7px 12px;background:#fff3cd;border:1px solid #f0ad4e;color:#856404;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;white-space:nowrap;">🗑️ אפס נסיעות</button>
+        <button onclick="if(currentRole!=='admin'){showToast('⛔ פעולה זו מוגבלת למנהל בלבד','warning');return;}openRangeResetModal('all')" style="padding:7px 12px;background:#fdf2f2;border:1px solid var(--danger);color:var(--danger);border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;white-space:nowrap;">⚠️ איפוס כללי</button>
+        <button onclick="reloadApp()" style="padding:7px 12px;background:#f0f4f8;border:1px solid #ccc;color:#555;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;white-space:nowrap;">🔄 רענן</button>
+      </div>
 
     </div>
 
@@ -6666,8 +6654,7 @@ function openSchedModal(date){
   const d=new Date(date+'T12:00:00');
 
   document.getElementById('schedModalTitle').textContent=
-
-    '📅 '+d.toLocaleDateString('he-IL',{weekday:'long',day:'numeric',month:'long'});
+    d.toLocaleDateString('he-IL',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
 
   renderSchedEntriesList(date);
 
@@ -6719,12 +6706,7 @@ function openSchedModal(date){
 
   }
 
-  // Update date label in modal header
-  const dlbl=document.getElementById('schedModalDateLabel');
-  if(dlbl){
-    const dd=new Date(date+'T12:00:00');
-    dlbl.textContent=dd.toLocaleDateString('he-IL',{weekday:'short',day:'numeric',month:'short'});
-  }
+  // Date shown in schedModalTitle (set above)
 
   document.getElementById('schedModal').classList.add('open');
 
@@ -8954,32 +8936,96 @@ function openTripEditModal(tripId){
   const trip=trips.find(t=>String(t.id)===String(tripId));
   if(!trip){showToast('נסיעה לא נמצאה','warning');return;}
 
-  // Permission check
+  // Permission check for instructor
   if(currentRole==='instructor'){
     if(trip.name!==currentUserName){showToast('⛔ אינך רשאי לערוך נסיעה של מדריך אחר','warning');return;}
-    const now=new Date().getHours()*60+new Date().getMinutes();
-    const tripEnd=timeToMin(trip.startStr||'00:00')+(trip.route||[]).reduce((a,r)=>a+(r.t||0),0);
-    if(tripEnd<now&&currentDate===new Date().toISOString().slice(0,10)){
-      showToast('⛔ לא ניתן לערוך נסיעה שהסתיימה','warning');return;
+  }
+
+  // Store which trip we're editing
+  _editingTripInModal=tripId;
+
+  // Load trip's route into curRoute
+  curRoute=JSON.parse(JSON.stringify(trip.route||[]));
+
+  // Set start time
+  const tS=document.getElementById('tS');
+  if(tS)tS.value=trip.startStr||'07:00';
+
+  // Set instructor name
+  const tID=document.getElementById('tID');
+  if(tID)tID.value=trip.name||'';
+
+  // Reset segment button UI
+  document.querySelectorAll('.seg-btn').forEach(btn=>{
+    btn.classList.remove('selected');
+  });
+
+  // Highlight currently selected segments
+  curRoute.filter(r=>r.id!=='TURN'&&r.id!=='TURN_ORA').forEach(r=>{
+    const btn=document.getElementById(r.id);
+    if(btn)btn.classList.add('selected');
+  });
+
+  // Make manualSection visible (even if inside hidden managerView)
+  const ms=document.getElementById('manualSection');
+  if(ms){
+    ms.open=true;
+    let parent=ms.parentElement;
+    while(parent&&parent!==document.body){
+      if(getComputedStyle(parent).display==='none'){
+        parent.style.setProperty('display','block','important');
+      }
+      parent=parent.parentElement;
     }
   }
 
-  _editingTripInModal=tripId;
-  _modalEditRoute=JSON.parse(JSON.stringify(trip.route||[]));
+  // Recalculate forecast
+  val();
 
-  // Populate info
-  document.getElementById('tripEditInfo').innerHTML=
-    `<b>מדריך:</b> ${trip.name} &nbsp;·&nbsp; <b>שעת יציאה נוכחית:</b> ${trip.startStr||'—'}`;
-  document.getElementById('tripEditStartTime').value=trip.startStr||'07:00';
+  // Override the save button to UPDATE this trip instead of creating new
+  const saveB=document.getElementById('saveB');
+  if(saveB){
+    saveB.textContent='✅ עדכן נסיעה';
+    saveB.style.background='var(--secondary)';
+    saveB.onclick=()=>applyTripEditFromManual();
+  }
 
+  // Scroll to manual section
+  ms?.scrollIntoView({behavior:'smooth',block:'start'});
 
-
-  renderTripEditSegments();
-  renderTripEditAvailableSegs();
-  updateTripEditPreview();
-
-  document.getElementById('tripEditModal').classList.add('open');
+  showToast('✏️ ערוך את המסלול ולחץ "עדכן נסיעה" לשמירה','info');
 }
+
+function applyTripEditFromManual(){
+  if(!_editingTripInModal)return;
+  const trip=trips.find(t=>String(t.id)===String(_editingTripInModal));
+  if(!trip){showToast('נסיעה לא נמצאה','warning');return;}
+
+  if(!curRoute.length){showToast('המסלול ריק — הוסף לפחות מקטע אחד','warning');return;}
+
+  const startStr=document.getElementById('tS')?.value;
+  if(!startStr){showToast('יש להזין שעת יציאה','warning');return;}
+
+  trip.route=JSON.parse(JSON.stringify(curRoute));
+  trip.startStr=startStr;
+  trip.timeline=buildTimeline(startStr,curRoute);
+
+  _editingTripInModal=null;
+
+  // Restore save button
+  const saveB=document.getElementById('saveB');
+  if(saveB){
+    saveB.textContent='✅ אשר ושמור נסיעה';
+    saveB.style.background='';
+    saveB.onclick=()=>saveTrip();
+  }
+
+  saveToStorage();
+  renderLog();
+  resetS();
+  showToast('✅ הנסיעה עודכנה בהצלחה','success');
+}
+
 
 function closeTripEditModal(){
   document.getElementById('tripEditModal').classList.remove('open');
@@ -9318,16 +9364,22 @@ async function copySchedToNextWeek(){
 // FIX 3: Instructor weekly schedule modal
 // ═══════════════════════════════════════════════════════════
 
-function openInstrWeeklyModal(){
-  // Build a 7-day week view modal for instructor
+function openInstrWeeklyModal(baseDateStr){
+  openInstrWeeklyModalFromDate(baseDateStr||new Date().toISOString().slice(0,10),0);
+}
+
+function openInstrWeeklyModalFromDate(baseDateStr,deltaDays){
   const existing=document.getElementById('_instrWeekModal');
   if(existing)existing.remove();
 
-  // Get current week's Monday
-  const today=new Date();
-  const dayOfWeek=today.getDay(); // 0=Sun
-  const monday=new Date(today);
-  monday.setDate(today.getDate()-((dayOfWeek+6)%7));
+  // Calculate monday of week from baseDateStr + deltaDays
+  const base=new Date((baseDateStr||new Date().toISOString().slice(0,10))+'T12:00:00');
+  base.setDate(base.getDate()+(deltaDays||0));
+  window._instrWeekBase=base.toISOString().slice(0,10);
+
+  const dayOfWeek=base.getDay();
+  const monday=new Date(base);
+  monday.setDate(base.getDate()-((dayOfWeek+6)%7));
 
   const days=[];
   for(let i=0;i<7;i++){
@@ -9336,16 +9388,18 @@ function openInstrWeeklyModal(){
     days.push(d);
   }
 
+  const weekLabel=monday.toLocaleDateString('he-IL',{day:'numeric',month:'long'})+
+    ' – '+days[6].toLocaleDateString('he-IL',{day:'numeric',month:'long'});
+
   const shiftOpts=Object.keys(SHIFT_HOURS)
     .filter(k=>k!=='custom')
-    .map(k=>`<option value="${k}">${(SHIFT_LABELS&&SHIFT_LABELS[k])||k}</option>`)
+    .map(k=>`<option value="${k}">${(typeof SHIFT_LABELS!=='undefined'&&SHIFT_LABELS[k])||k}</option>`)
     .join('')+'<option value="custom">⏰ הגדר שעות</option>';
 
   const dayRows=days.map((d,i)=>{
     const dateStr=d.toISOString().slice(0,10);
     const dayLabel=d.toLocaleDateString('he-IL',{weekday:'short',day:'numeric',month:'short'});
     const existing=(schedData[dateStr]||[]).find(e=>e.name===currentUserName);
-    const existingShift=existing?existing.shift:'none';
     return`<tr>
       <td style="font-size:13px;font-weight:bold;white-space:nowrap;padding:8px 6px;">${dayLabel}</td>
       <td style="padding:6px;">
@@ -9355,9 +9409,9 @@ function openInstrWeeklyModal(){
         </select>
       </td>
       <td id="_iwm_custom_${i}" style="padding:6px;display:none;">
-        <input type="time" id="_iwm_start_${i}" value="07:00" style="width:80px;padding:6px;border:1.5px solid #ddd;border-radius:6px;font-size:12px;">
-        <span style="color:#888;font-size:11px;margin:0 4px;">עד</span>
-        <input type="time" id="_iwm_end_${i}" value="15:30" style="width:80px;padding:6px;border:1.5px solid #ddd;border-radius:6px;font-size:12px;">
+        <input type="time" id="_iwm_start_${i}" value="07:00" style="width:74px;padding:5px;border:1.5px solid #ddd;border-radius:6px;font-size:12px;">
+        <span style="color:#888;font-size:11px;margin:0 2px;">–</span>
+        <input type="time" id="_iwm_end_${i}" value="15:30" style="width:74px;padding:5px;border:1.5px solid #ddd;border-radius:6px;font-size:12px;">
       </td>
       ${existing?`<td style="font-size:11px;color:var(--success);padding:6px;white-space:nowrap;">✓ קיים</td>`:'<td></td>'}
     </tr>`;
@@ -9367,12 +9421,18 @@ function openInstrWeeklyModal(){
   modal.id='_instrWeekModal';
   modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9000;display:flex;align-items:center;justify-content:center;';
   modal.innerHTML=`
-    <div style="background:white;border-radius:16px;padding:20px;width:min(560px,95vw);max-height:90vh;overflow-y:auto;direction:rtl;box-shadow:0 8px 40px rgba(0,0,0,.25);">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-        <h3 style="margin:0;font-size:16px;color:var(--primary);">📅 שיבוץ שבועי — ${monday.toLocaleDateString('he-IL',{day:'numeric',month:'long'})}</h3>
+    <div style="background:white;border-radius:16px;padding:20px;width:min(580px,95vw);max-height:90vh;overflow-y:auto;direction:rtl;box-shadow:0 8px 40px rgba(0,0,0,.25);">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+        <h3 style="margin:0;font-size:16px;color:var(--primary);">📅 שיבוץ שבועי</h3>
         <button onclick="document.getElementById('_instrWeekModal').remove()" style="background:none;border:2px solid #ccc;border-radius:50%;width:34px;height:34px;cursor:pointer;font-size:18px;color:#666;padding:0;">×</button>
       </div>
-      <div style="font-size:12px;color:#888;margin-bottom:12px;">בחר משמרת לכל יום ושלח בקשה לאישור המנהל. לא צריך לציין סוג משימה.</div>
+      <!-- Week navigation -->
+      <div style="display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:12px;background:#f0f8ff;border-radius:9px;padding:10px;">
+        <button onclick="openInstrWeeklyModalFromDate(window._instrWeekBase,-7)" style="background:#fff;border:1.5px solid #ccc;border-radius:6px;width:32px;height:32px;cursor:pointer;font-size:18px;padding:0;font-weight:bold;">‹</button>
+        <span style="font-size:13px;font-weight:bold;color:var(--primary);white-space:nowrap;">${weekLabel}</span>
+        <button onclick="openInstrWeeklyModalFromDate(window._instrWeekBase,7)" style="background:#fff;border:1.5px solid #ccc;border-radius:6px;width:32px;height:32px;cursor:pointer;font-size:18px;padding:0;font-weight:bold;">›</button>
+      </div>
+      <div style="font-size:12px;color:#888;margin-bottom:10px;">בחר משמרת לכל יום ושלח בקשה לאישור המנהל. אין צורך לציין סוג משימה.</div>
       <table style="width:100%;border-collapse:collapse;">
         <thead><tr style="background:#f0f4f8;">
           <th style="padding:8px;font-size:12px;text-align:right;">יום</th>
@@ -9407,6 +9467,7 @@ function openInstrWeeklyModal(){
     }
   });
 }
+
 
 function _iwmToggleCustom(i){
   const sel=document.getElementById(`_iwm_shift_${i}`);
