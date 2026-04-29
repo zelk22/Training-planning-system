@@ -1936,7 +1936,17 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 
     <div id="nextTripCard"></div>
 
-    <div class="mgmt-section">
+    <div style="margin-bottom:14px;">
+
+        <button onclick="toggleManualForInstr()" style="width:100%;padding:11px;background:#eaf4fd;border:1.5px solid var(--secondary);color:var(--secondary);border-radius:9px;font-size:13px;font-weight:bold;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;">
+
+          <span id="manualToggleIcon">▶</span> ✏️ הוספת / עריכת נסיעה ידנית
+
+        </button>
+
+      </div>
+
+      <div class="mgmt-section">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:10px;">
         <h4 style="margin:0;color:var(--primary);">📋 יומן הנסיעות שלי</h4>
         <div style="display:flex;align-items:center;gap:6px;">
@@ -2001,7 +2011,147 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 
   </div>
 
-  <!-- ══ MANAGER VIEW ═══════════════════════════════════ -->
+  <!-- ══ MANUAL ROUTE SECTION — visible to both roles ══ -->
+
+  <div id="manualSectionWrapper" style="display:none;">
+
+<details class="manual-section" id="manualSection">
+
+    <summary>
+
+      <span class="manual-summary-arrow">▶</span>
+
+      ✏️ הוספת נסיעה בודדת ידנית
+
+      <span style="font-size:12px;font-weight:400;color:#888;margin-right:6px;">(לחץ להרחבה)</span>
+
+    </summary>
+
+    <div class="manual-inner">
+
+      <!-- Edit mode banner (inside manual) -->
+
+      <div class="edit-banner" id="editBanner">
+
+        <span>✏️ מצב עריכה: <span id="editBannerName"></span></span>
+
+        <button onclick="cancelEdit()" style="background:rgba(255,255,255,.3);border:1px solid white;color:white;padding:5px 12px;border-radius:8px;cursor:pointer;font-size:13px;width:auto;margin:0;">ביטול</button>
+
+      </div>
+
+      <div class="main-layout">
+
+        <!-- Map -->
+
+        <div class="map-frame">
+
+          <div class="m-label pos-top">נווה יעקב (1)</div>
+
+          <div class="m-label pos-upper">גבעת המבתר (12)</div>
+
+          <div class="m-label pos-lower">צומת אורה (33)</div>
+
+          <div class="m-label pos-bottom">הדסה (35)</div>
+
+          <div class="tracks-flex">
+
+            <div class="track-column">
+
+              <div class="segment" id="N1" style="height:25%" onclick="sel('N1')">N1<div class="click-counter"></div></div>
+
+              <div class="segment" id="L1" style="height:45%" onclick="sel('L1')">L1<div class="click-counter"></div></div>
+
+              <div class="segment" id="O1" style="height:15%" onclick="sel('O1')">O1<div class="click-counter"></div></div>
+
+            </div>
+
+            <div class="track-column">
+
+              <div class="segment" id="N2" style="height:25%" onclick="sel('N2')">N2<div class="click-counter"></div></div>
+
+              <div class="segment" id="L2" style="height:45%" onclick="sel('L2')">L2<div class="click-counter"></div></div>
+
+              <div class="segment" id="O2" style="height:15%" onclick="sel('O2')">O2<div class="click-counter"></div></div>
+
+            </div>
+
+          </div>
+
+          <div class="depot-area">
+
+            <div class="seg-h" id="D3" onclick="sel('D3')">D3<br>(צפון)<div class="click-counter"></div></div>
+
+            <div class="seg-h" id="D4" onclick="sel('D4')">D4<br>(דרום)<div class="click-counter"></div></div>
+
+          </div>
+
+        </div>
+
+        <!-- Controls -->
+
+        <div class="controls">
+
+          <h3>בחירת מסלול</h3>
+
+          <select id="tID" style="margin:0;width:100%;padding:10px;border:1.5px solid #ddd;border-radius:8px;font-size:14px;direction:rtl;">
+
+            <option value="">— בחר מדריך —</option>
+
+          </select>
+
+          <datalist id="instructorList"></datalist>
+
+          <div class="gap-row">
+
+            <div><label>שעת יציאה:</label><input type="time" id="tS" oninput="val()"></div>
+
+            <div><label>פרק בטיחות (דק'):</label><input type="number" id="manualGapV" value="40" min="0" max="120" step="5" oninput="val()" style="margin:0;text-align:center;"></div>
+
+          </div>
+
+          <div class="training-counter">
+
+            <span>סה"כ זמן: <b id="totalMin">0</b> דק'</span>
+
+            <span>ניצול הכשרה:</span>
+
+            <b id="lessonCount">0.0 שיעורים</b>
+
+          </div>
+
+          <div class="route-pre" id="routePre">מסלול: -</div>
+
+          <div id="occWarn" class="occ-warn">⚠️ <b>שים לב:</b> יציאה לדרום בשעות 06:00–19:00 — יש לאשר מול OCC לפני יציאה.</div>
+
+          <div id="statusMsg" class="status-msg"></div>
+
+          <div id="conflictWarn" class="conflict-warn"></div>
+
+          <div class="forecast-box" id="forecast"><i>בחר מסלול...</i></div>
+
+          <button id="saveB" class="btn-save" onclick="saveTrip()" style="margin-top:8px;">✅ אשר ושמור נסיעה</button>
+
+          <button onclick="saveRouteAsFavorite()" title="שמור מסלול זה ברשימת המועדפים" style="margin-top:6px;width:100%;padding:10px;background:#f0e6ff;color:#7d3c98;border:2px solid #c39bd3;border-radius:9px;font-size:13px;font-weight:bold;cursor:pointer;">⭐ שמור מסלול</button>
+
+          <button id="saveOverrideB" class="btn-save-override" onclick="saveTripForce()" style="margin-top:4px;background:var(--warning);">⚠️ שמור בכל זאת (יש התנגשות)</button>
+
+          <button id="editSaveB" class="btn-edit-save" onclick="saveEditedTrip()" style="display:none;margin-top:8px;">✏️ שמור שינויים</button>
+
+          <button id="editSaveOverrideB" class="btn-save-override" onclick="saveEditedTripForce()" style="display:none;margin-top:4px;background:var(--warning);">⚠️ שמור עריכה בכל זאת</button>
+
+          <button onclick="resetS()" class="btn-cancel-sm">נקה בחירה</button>
+
+        </div>
+
+      </div>
+
+    </div>
+
+  </details>
+
+  </div>
+
+  <!-- ══ MANAGER VIEWEW ═══════════════════════════════════ -->
 
   <div id="managerView" style="display:none;">
 
@@ -2237,139 +2387,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 
   ══════════════════════════════════════════════════════ -->
 
-  <details class="manual-section" id="manualSection">
-
-    <summary>
-
-      <span class="manual-summary-arrow">▶</span>
-
-      ✏️ הוספת נסיעה בודדת ידנית
-
-      <span style="font-size:12px;font-weight:400;color:#888;margin-right:6px;">(לחץ להרחבה)</span>
-
-    </summary>
-
-    <div class="manual-inner">
-
-      <!-- Edit mode banner (inside manual) -->
-
-      <div class="edit-banner" id="editBanner">
-
-        <span>✏️ מצב עריכה: <span id="editBannerName"></span></span>
-
-        <button onclick="cancelEdit()" style="background:rgba(255,255,255,.3);border:1px solid white;color:white;padding:5px 12px;border-radius:8px;cursor:pointer;font-size:13px;width:auto;margin:0;">ביטול</button>
-
-      </div>
-
-      <div class="main-layout">
-
-        <!-- Map -->
-
-        <div class="map-frame">
-
-          <div class="m-label pos-top">נווה יעקב (1)</div>
-
-          <div class="m-label pos-upper">גבעת המבתר (12)</div>
-
-          <div class="m-label pos-lower">צומת אורה (33)</div>
-
-          <div class="m-label pos-bottom">הדסה (35)</div>
-
-          <div class="tracks-flex">
-
-            <div class="track-column">
-
-              <div class="segment" id="N1" style="height:25%" onclick="sel('N1')">N1<div class="click-counter"></div></div>
-
-              <div class="segment" id="L1" style="height:45%" onclick="sel('L1')">L1<div class="click-counter"></div></div>
-
-              <div class="segment" id="O1" style="height:15%" onclick="sel('O1')">O1<div class="click-counter"></div></div>
-
-            </div>
-
-            <div class="track-column">
-
-              <div class="segment" id="N2" style="height:25%" onclick="sel('N2')">N2<div class="click-counter"></div></div>
-
-              <div class="segment" id="L2" style="height:45%" onclick="sel('L2')">L2<div class="click-counter"></div></div>
-
-              <div class="segment" id="O2" style="height:15%" onclick="sel('O2')">O2<div class="click-counter"></div></div>
-
-            </div>
-
-          </div>
-
-          <div class="depot-area">
-
-            <div class="seg-h" id="D3" onclick="sel('D3')">D3<br>(צפון)<div class="click-counter"></div></div>
-
-            <div class="seg-h" id="D4" onclick="sel('D4')">D4<br>(דרום)<div class="click-counter"></div></div>
-
-          </div>
-
-        </div>
-
-        <!-- Controls -->
-
-        <div class="controls">
-
-          <h3>בחירת מסלול</h3>
-
-          <select id="tID" style="margin:0;width:100%;padding:10px;border:1.5px solid #ddd;border-radius:8px;font-size:14px;direction:rtl;">
-
-            <option value="">— בחר מדריך —</option>
-
-          </select>
-
-          <datalist id="instructorList"></datalist>
-
-          <div class="gap-row">
-
-            <div><label>שעת יציאה:</label><input type="time" id="tS" oninput="val()"></div>
-
-            <div><label>פרק בטיחות (דק'):</label><input type="number" id="manualGapV" value="40" min="0" max="120" step="5" oninput="val()" style="margin:0;text-align:center;"></div>
-
-          </div>
-
-          <div class="training-counter">
-
-            <span>סה"כ זמן: <b id="totalMin">0</b> דק'</span>
-
-            <span>ניצול הכשרה:</span>
-
-            <b id="lessonCount">0.0 שיעורים</b>
-
-          </div>
-
-          <div class="route-pre" id="routePre">מסלול: -</div>
-
-          <div id="occWarn" class="occ-warn">⚠️ <b>שים לב:</b> יציאה לדרום בשעות 06:00–19:00 — יש לאשר מול OCC לפני יציאה.</div>
-
-          <div id="statusMsg" class="status-msg"></div>
-
-          <div id="conflictWarn" class="conflict-warn"></div>
-
-          <div class="forecast-box" id="forecast"><i>בחר מסלול...</i></div>
-
-          <button id="saveB" class="btn-save" onclick="saveTrip()" style="margin-top:8px;">✅ אשר ושמור נסיעה</button>
-
-          <button onclick="saveRouteAsFavorite()" title="שמור מסלול זה ברשימת המועדפים" style="margin-top:6px;width:100%;padding:10px;background:#f0e6ff;color:#7d3c98;border:2px solid #c39bd3;border-radius:9px;font-size:13px;font-weight:bold;cursor:pointer;">⭐ שמור מסלול</button>
-
-          <button id="saveOverrideB" class="btn-save-override" onclick="saveTripForce()" style="margin-top:4px;background:var(--warning);">⚠️ שמור בכל זאת (יש התנגשות)</button>
-
-          <button id="editSaveB" class="btn-edit-save" onclick="saveEditedTrip()" style="display:none;margin-top:8px;">✏️ שמור שינויים</button>
-
-          <button id="editSaveOverrideB" class="btn-save-override" onclick="saveEditedTripForce()" style="display:none;margin-top:4px;background:var(--warning);">⚠️ שמור עריכה בכל זאת</button>
-
-          <button onclick="resetS()" class="btn-cancel-sm">נקה בחירה</button>
-
-        </div>
-
-      </div>
-
-    </div>
-
-  </details>
+  
 
   <!-- ── TRIP LOG ──────────────────────────────────── -->
 
@@ -2615,6 +2633,10 @@ function enterApp(role,name){
   document.getElementById('userRoleTag').textContent=role==='admin'?'מנהל':'מדריך';
 
   document.getElementById('userNameLbl').textContent=name;
+
+  // Handle manualSectionWrapper visibility
+  const _msWrapper=document.getElementById('manualSectionWrapper');
+  if(_msWrapper)_msWrapper.style.display=role==='instructor'?'none':'block';
 
   if(role==='admin'){
 
@@ -8936,64 +8958,48 @@ function openTripEditModal(tripId){
   const trip=trips.find(t=>String(t.id)===String(tripId));
   if(!trip){showToast('נסיעה לא נמצאה','warning');return;}
 
-  // Permission check for instructor
-  if(currentRole==='instructor'){
-    if(trip.name!==currentUserName){showToast('⛔ אינך רשאי לערוך נסיעה של מדריך אחר','warning');return;}
+  if(currentRole==='instructor'&&trip.name!==currentUserName){
+    showToast('⛔ אינך רשאי לערוך נסיעה של מדריך אחר','warning');return;
   }
 
-  // Store which trip we're editing
   _editingTripInModal=tripId;
 
-  // Load trip's route into curRoute
+  // Load trip route into curRoute
   curRoute=JSON.parse(JSON.stringify(trip.route||[]));
 
-  // Set start time
-  const tS=document.getElementById('tS');
-  if(tS)tS.value=trip.startStr||'07:00';
+  // Set form fields
+  const tS=document.getElementById('tS');if(tS)tS.value=trip.startStr||'07:00';
+  const tID=document.getElementById('tID');if(tID)tID.value=trip.name||'';
 
-  // Set instructor name
-  const tID=document.getElementById('tID');
-  if(tID)tID.value=trip.name||'';
-
-  // Reset segment button UI
-  document.querySelectorAll('.seg-btn').forEach(btn=>{
-    btn.classList.remove('selected');
-  });
-
-  // Highlight currently selected segments
-  curRoute.filter(r=>r.id!=='TURN'&&r.id!=='TURN_ORA').forEach(r=>{
-    const btn=document.getElementById(r.id);
-    if(btn)btn.classList.add('selected');
-  });
-
-  // Make manualSection visible (even if inside hidden managerView)
-  const ms=document.getElementById('manualSection');
-  if(ms){
-    ms.open=true;
-    let parent=ms.parentElement;
-    while(parent&&parent!==document.body){
-      if(getComputedStyle(parent).display==='none'){
-        parent.style.setProperty('display','block','important');
-      }
-      parent=parent.parentElement;
-    }
-  }
-
-  // Recalculate forecast
+  // updateUI() sets 'active' class on all current route segments (visual highlight)
+  // and val() recalculates forecast. These are the standard routines.
+  updateUI();
   val();
 
-  // Override the save button to UPDATE this trip instead of creating new
+  // Show the manual section
+  const ms=document.getElementById('manualSection');
+  const wrapper=document.getElementById('manualSectionWrapper');
+  if(wrapper){wrapper.style.display='block';}
+  if(ms){ms.open=true;}
+
+  // Scroll to manual section
+  const scrollTarget=wrapper||ms;
+  if(scrollTarget)setTimeout(()=>scrollTarget.scrollIntoView({behavior:'smooth',block:'start'}),100);
+
+  // Override save button to UPDATE instead of CREATE
   const saveB=document.getElementById('saveB');
   if(saveB){
     saveB.textContent='✅ עדכן נסיעה';
-    saveB.style.background='var(--secondary)';
+    saveB.style.background='#2980b9';
     saveB.onclick=()=>applyTripEditFromManual();
   }
 
-  // Scroll to manual section
-  ms?.scrollIntoView({behavior:'smooth',block:'start'});
+  if(currentRole==='instructor'){
+    const icon=document.getElementById('manualToggleIcon');
+    if(icon)icon.textContent='▼';
+  }
 
-  showToast('✏️ ערוך את המסלול ולחץ "עדכן נסיעה" לשמירה','info');
+  showToast('✏️ ערוך את המסלול ולחץ "עדכן נסיעה"','info');
 }
 
 function applyTripEditFromManual(){
@@ -9017,12 +9023,13 @@ function applyTripEditFromManual(){
   if(saveB){
     saveB.textContent='✅ אשר ושמור נסיעה';
     saveB.style.background='';
-    saveB.onclick=()=>saveTrip();
+    saveB.onclick=null;
   }
 
   saveToStorage();
   renderLog();
   resetS();
+  hideManualForInstr();
   showToast('✅ הנסיעה עודכנה בהצלחה','success');
 }
 
@@ -9521,6 +9528,44 @@ async function _submitInstrWeekly(copyNext=false){
 async function _submitInstrWeeklyAndCopyNext(){
   await _submitInstrWeekly(true);
 }
+
+
+
+// ═══════════════════════════════════════════════════════════
+// MANUAL SECTION — accessible to instructor
+// ═══════════════════════════════════════════════════════════
+
+function toggleManualForInstr(){
+  const wrapper=document.getElementById('manualSectionWrapper');
+  const icon=document.getElementById('manualToggleIcon');
+  const ms=document.getElementById('manualSection');
+  if(!wrapper)return;
+  const isOpen=wrapper.style.display!=='none'&&wrapper.style.display!=='';
+  wrapper.style.display=isOpen?'none':'block';
+  if(icon)icon.textContent=isOpen?'▶':'▼';
+  if(!isOpen&&ms){
+    ms.open=true;
+    setTimeout(()=>wrapper.scrollIntoView({behavior:'smooth',block:'start'}),100);
+  }
+}
+
+function showManualForInstr(){
+  const wrapper=document.getElementById('manualSectionWrapper');
+  const icon=document.getElementById('manualToggleIcon');
+  const ms=document.getElementById('manualSection');
+  if(wrapper){wrapper.style.display='block';}
+  if(icon)icon.textContent='▼';
+  if(ms){ms.open=true;}
+}
+
+function hideManualForInstr(){
+  const wrapper=document.getElementById('manualSectionWrapper');
+  const icon=document.getElementById('manualToggleIcon');
+  if(wrapper&&currentRole==='instructor')wrapper.style.display='none';
+  if(icon)icon.textContent='▶';
+}
+
+// manualSectionWrapper visibility handled in original enterApp below
 
 
 
