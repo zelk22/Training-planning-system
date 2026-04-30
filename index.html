@@ -1216,6 +1216,8 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 
     <div class="delay-preview" id="delayPreview"></div>
 
+    <div style="margin:8px 0;"><label style="font-size:12px;font-weight:bold;display:block;margin-bottom:4px;">📝 סיבת העיכוב (אופציונלי):</label><textarea id="delayNote" rows="2" placeholder="לדוגמה: תקלה בתחנה, עומס תנועה..." style="width:100%;padding:8px;border:1.5px solid #ddd;border-radius:8px;font-size:13px;resize:vertical;font-family:inherit;box-sizing:border-box;"></textarea></div>
+
     <div class="modal-row">
 
       <button onclick="applyDelay()" class="btn-sm delay" style="width:auto;padding:10px;">✅ אשר עיכוב</button>
@@ -1952,7 +1954,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
       <div style="overflow-x:auto;">
         <table class="mgmt-table" style="width:100%;min-width:600px;">
           <thead><tr>
-            <th>מסלול</th><th>יציאה</th><th>סיום</th><th>נסיעה הבאה</th><th>שיעורים</th><th>מיקום</th><th>פעולות</th>
+            <th>מסלול מתוכנן</th><th>שעת יציאה</th><th>שעת סיום</th><th>שעת נסיעה הבאה</th><th>שיעורים</th><th>מיקום התחלת נסיעה הבאה</th><th>פעולות עריכת נסיעה</th>
           </tr></thead>
           <tbody id="myTripsList"></tbody>
         </table>
@@ -2385,13 +2387,28 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 
     <div style="overflow-x:auto;">
 
+      <div style="display:flex;align-items:center;justify-content:flex-end;margin-bottom:6px;gap:8px;"><label style="font-size:12px;color:#666;font-weight:bold;">🔃 מיין לפי:</label><select id="logSortBy" onchange="renderLog()" style="width:auto !important;padding:5px 10px;border:1.5px solid #ddd;border-radius:7px;font-size:12px;background:white;"><option value="default">ברירת מחדל</option><option value="name">שם מדריך</option><option value="start">שעת יציאה</option><option value="end">שעת סיום</option><option value="next">שעת נסיעה הבאה</option></select></div>
       <table class="mgmt-table">
 
         <thead><tr>
 
-          <th>מדריך</th><th>מסלול</th><th>יציאה</th><th>סיום</th>
-
-          <th>נסיעה הבאה</th><th>שיעורים</th><th>מיקום</th><th>פעולות</th>
+          <th>מדריך</th>
+          <th>מסלול מתוכנן</th>
+          <th>שעת יציאה</th>
+          <th>שעת סיום</th>
+          <th>שעת נסיעה הבאה</th>
+          <th>שיעורים</th>
+          <th>מיקום התחלת נסיעה הבאה</th>
+          <th style="white-space:nowrap;">
+            <span>פעולות עריכת נסיעה</span>
+            <select id="logSortBy" onchange="renderLog()" style="width:auto;padding:3px 6px;font-size:11px;border-radius:5px;border:1px solid #ddd;margin-right:6px;cursor:pointer;" title="מיין לפי">
+              <option value="default">ברירת מחדל</option>
+              <option value="name">שם מדריך</option>
+              <option value="start">שעת יציאה</option>
+              <option value="end">שעת סיום</option>
+              <option value="next">נסיעה הבאה</option>
+            </select>
+          </th>
 
         </tr></thead>
 
@@ -3859,6 +3876,10 @@ function openDelayModal(tripId){
 
   document.getElementById('delayTripInfo').innerText=`מדריך: ${trip.name} | יציאה: ${trip.startStr}`;
 
+  const _dnEl=document.getElementById('delayNote');
+  if(_dnEl)_dnEl.value=trip.delayNote||'';
+  const noteEl=document.getElementById('delayNote');
+  if(noteEl)noteEl.value=trip.delayNote||'';
   previewDelay();document.getElementById('delayModal').classList.add('open');
 
 }
@@ -3882,21 +3903,15 @@ function previewDelay(){
 }
 
 function applyDelay(){
-
   const mins=parseInt(document.getElementById('delayMinutes').value)||0;
-
+  const note=(document.getElementById('delayNote')?.value||'').trim();
   trips=trips.map(t=>{
-
     if(t.id!==delayTripId)return t;
-
     const tl=t.timeline.map(s=>({...s,startMin:(s.startMin||0)+mins,endMin:(s.endMin||0)+mins}));
-
-    return{...t,timeline:tl,startStr:toHHMM((t.timeline[0].startMin||0)+mins),delayMin:(t.delayMin||0)+mins};
-
+    const delayNote=note||(t.delayNote||'');
+    return{...t,timeline:tl,startStr:toHHMM((t.timeline[0].startMin||0)+mins),delayMin:(t.delayMin||0)+mins,delayNote};
   });
-
   saveToStorage();renderLog();closeModal();
-
 }
 
 function closeModal(){document.getElementById('delayModal').classList.remove('open');delayTripId=null;}
@@ -4102,7 +4117,19 @@ function renderLog(){
 
   if(trips.length===0){b.innerHTML='<tr><td colspan="8" style="color:#aaa;padding:18px;text-align:center;">אין נסיעות רשומות</td></tr>';renderTimeline();return;}
 
-  b.innerHTML=trips.map(t=>{
+  // Sort (manager only)
+  let _renderTrips=[...trips];
+  if(currentRole==='admin'){
+    const _sortBy=(document.getElementById('logSortBy')?.value)||'default';
+    const _toM=str=>{const[h,m]=(str||'00:00').split(':');return+h*60+ +m;};
+    const _endM=t=>t.timeline?.length?t.timeline[t.timeline.length-1].endMin:9999;
+    if(_sortBy==='name') _renderTrips.sort((a,b)=>(a.name||'').localeCompare(b.name||'','he'));
+    else if(_sortBy==='start') _renderTrips.sort((a,b)=>_toM(a.startStr)-_toM(b.startStr));
+    else if(_sortBy==='end') _renderTrips.sort((a,b)=>_endM(a)-_endM(b));
+    else if(_sortBy==='next') _renderTrips.sort((a,b)=>(_endM(a)+75)-(_endM(b)+75));
+  }
+
+  b.innerHTML=_renderTrips.map(t=>{
 
     if(!t.timeline||!t.timeline.length){
 
@@ -7294,9 +7321,9 @@ function restoreTabState(date){
 
       addCustomSchedRow();
 
-      const tbody=document.getElementById('schedAssignBody');
+      const tbodyEl=document.getElementById('schedAssignBody');
 
-      const lastRow=tbody?.querySelector('.sched-custom-row:last-child');
+      const lastRow=tbodyEl?.querySelector('.sched-custom-row:last-child');
 
       if(lastRow){
 
@@ -7730,11 +7757,10 @@ function renderWeeklySchedTable(){
 
   const shiftOpts=`<option value="none">—</option>${Object.keys(SHIFT_HOURS).filter(k=>k!=='custom').map(k=>`<option value="${k}">${(typeof SHIFT_LABELS!=='undefined'&&SHIFT_LABELS[k])||('⏰ '+k)}</option>`).join('')}<option value="custom">⏰ הגדר שעות</option>`;
 
-  const taskOpts=taskDefs.length
-
+  const taskOpts=(taskDefs.length
     ?taskDefs.map(t=>`<option value="${t.id}">${t.icon||''} ${t.label}</option>`).join('')
-
-    :'<option value="training">🚇 הדרכה</option>';
+    :'<option value="training">🚇 הדרכה</option>')
+    +'<option value="_custom_task_">✏️ הגדר משימה</option>';
 
   // Build header
 
@@ -7768,11 +7794,11 @@ function renderWeeklySchedTable(){
 
   const instrs=_instrNames.length?_instrNames:[];
 
-  let tbody='';
+  let tbodyHtml='';
 
   instrs.forEach(name=>{
 
-    tbody+=`<tr class="wsched-instr-row" data-name="${name.replace(/"/g,'&quot;')}">
+    tbodyHtml+=`<tr class="wsched-instr-row" data-name="${name.replace(/"/g,'&quot;')}">
 
       <td class="wsched-instr-name">${name}</td>`;
 
@@ -7786,7 +7812,7 @@ function renderWeeklySchedTable(){
 
       const hasEntry=shiftVal!=='none';
 
-      tbody+=`<td class="${hasEntry?'wsched-cell-has-entry':''}" data-date="${dateISO}">
+      tbodyHtml+=`<td class="${hasEntry?'wsched-cell-has-entry':''}" data-date="${dateISO}">
 
         <select class="wsched-shift-sel" onchange="onWeeklyCellChange(this)"
 
@@ -7800,7 +7826,7 @@ function renderWeeklySchedTable(){
 
       <td data-date="${dateISO}">
 
-        <select class="wsched-task-sel" style="width:100%;padding:4px 5px;border:1.5px solid #ddd;border-radius:6px;font-size:11px;direction:rtl;min-width:70px;">
+        <select class="wsched-task-sel" onchange="onWeeklyTaskChange(this)" style="width:100%;padding:4px 5px;border:1.5px solid #ddd;border-radius:6px;font-size:11px;direction:rtl;min-width:70px;">
 
           ${taskOpts.replace(`value="${taskVal}"`,`value="${taskVal}" selected`)}
 
@@ -7810,7 +7836,7 @@ function renderWeeklySchedTable(){
 
     });
 
-    tbody+=`</tr>`;
+    tbodyHtml+=`</tr>`;
 
   });
 
@@ -7818,13 +7844,13 @@ function renderWeeklySchedTable(){
   // Actually simplify: use a single shift per cell, task separate row below
 
   // Build custom extra rows
-  tbody+=`<tr class="wsched-custom-row" id="weeklyCustomRows" style="display:none;"><td colspan="${days.length+1}"></td></tr>`;
+  tbodyHtml+=`<tr class="wsched-custom-row" id="weeklyCustomRows" style="display:none;"><td colspan="${days.length+1}"></td></tr>`;
 
   const html=`<table class="wsched-table">
 
     <thead>${thead}</thead>
 
-    <tbody>${tbody}</tbody>
+    <tbody>${tbodyHtml}</tbody>
 
   </table>`;
 
@@ -7845,24 +7871,22 @@ function renderWeeklySchedTable(){
 }
 
 function onWeeklyCellChange(sel){
-
   const td=sel.closest('td');
-
   if(td){
-
     if(sel.value&&sel.value!=='none'){
-
       td.classList.add('wsched-cell-has-entry');
-
     } else {
-
       td.classList.remove('wsched-cell-has-entry');
-
     }
-
   }
-
+  // Custom hours popup
+  if(sel.value==='custom'){
+    const existing=sel.dataset.customStart||'07:00';
+    const existingEnd=sel.dataset.customEnd||'15:30';
+    _openCustomHoursPopup(sel,existing,existingEnd);
+  }
 }
+
 
 function addWeeklyCustomRow(){
 
@@ -7870,10 +7894,7 @@ function addWeeklyCustomRow(){
 
   const shiftOpts=`<option value="none">—</option>${Object.keys(SHIFT_HOURS).filter(k=>k!=='custom').map(k=>`<option value="${k}">${(typeof SHIFT_LABELS!=='undefined'&&SHIFT_LABELS[k])||('⏰ '+k)}</option>`).join('')}<option value="custom">⏰ הגדר שעות</option>`;
 
-  const taskOpts=taskDefs.length
-    ?taskDefs.map(t=>`<option value="${t.id}">${t.icon||""} ${t.label}</option>`).join("")
-    :"<option value=\"training\">🚇 הדרכה</option>";
-
+  
   const tbody=document.querySelector("#weeklySchedTable table tbody");
   if(!tbody)return;
 
@@ -7956,11 +7977,10 @@ async function saveWeeklySchedEntries(approved=false){
 
       }
 
+      const shiftSel=td.querySelector('.wsched-shift-sel');
       const sh=SHIFT_HOURS[shift];
-
-      const startTime=sh?sh.s:'07:00';
-
-      const endTime=sh?sh.e:'15:30';
+      const startTime=shift==='custom'?(shiftSel?.dataset.customStart||'07:00'):(sh?sh.s:'07:00');
+      const endTime=shift==='custom'?(shiftSel?.dataset.customEnd||'15:30'):(sh?sh.e:'15:30');
 
       const ex=(schedData[dateISO]||[]).find(e=>e.name===instrName);
 
@@ -9647,6 +9667,131 @@ window.addEventListener('firebaseReady',async ()=>{
     showToast('⚠️ אזהרה: Firebase לא מאפשר כתיבה — הנתונים נשמרים מקומית בלבד. בדוק את כללי הגישה ב-Firebase Console.','warning');
   }
 });
+
+
+async function _iwmCheckCustomTask(i){
+  const sel=document.getElementById(`_iwm_task_${i}`);
+  if(!sel||sel.value!=='_custom_')return;
+  const name=prompt('הכנס שם משימה:','');
+  if(!name||!name.trim()){sel.value='training';return;}
+  const trimmed=name.trim();
+  if(confirm(`לשמור "${trimmed}" בהגדרות לשימוש עתידי?`)){
+    if(typeof taskDefs!=='undefined'){
+      const id='task_'+trimmed.replace(/\s+/g,'_');
+      if(!taskDefs.find(t=>t.id===id)){
+        taskDefs.push({id,name:trimmed});
+        if(typeof saveTaskDefs==='function')await saveTaskDefs();
+      }
+    }
+  }
+  const opt=document.createElement('option');
+  opt.value='_cust_'+trimmed;opt.textContent=trimmed;
+  sel.insertBefore(opt,sel.querySelector('[value="_custom_"]'));
+  sel.value=opt.value;
+}
+
+async 
+
+
+// ═══════════════════════════════════════════════════════════
+// Feature 1a: Custom shift hours popup in weekly modal
+// ═══════════════════════════════════════════════════════════
+
+function _openCustomHoursPopup(sel, defaultStart, defaultEnd){
+  // Remove any existing popup
+  document.getElementById('_customHoursPopup')?.remove();
+
+  const rect=sel.getBoundingClientRect();
+  const popup=document.createElement('div');
+  popup.id='_customHoursPopup';
+  popup.style.cssText=`position:fixed;top:${rect.bottom+4}px;right:${window.innerWidth-rect.right}px;
+    background:white;border:2px solid var(--secondary);border-radius:12px;padding:14px 16px;
+    z-index:9999;box-shadow:0 4px 24px rgba(0,0,0,.18);direction:rtl;min-width:220px;`;
+  popup.innerHTML=`
+    <div style="font-size:13px;font-weight:bold;color:var(--primary);margin-bottom:10px;">⏰ הגדרת שעות משמרת</div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+      <label style="font-size:12px;color:#555;white-space:nowrap;">שעת התחלה:</label>
+      <input type="time" id="_chs_start" value="${defaultStart||'07:00'}" style="padding:5px;border:1.5px solid #ddd;border-radius:7px;font-size:13px;width:auto;">
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+      <label style="font-size:12px;color:#555;white-space:nowrap;">שעת סיום:</label>
+      <input type="time" id="_chs_end" value="${defaultEnd||'15:30'}" style="padding:5px;border:1.5px solid #ddd;border-radius:7px;font-size:13px;width:auto;">
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button onclick="_applyCustomHours()" style="width:auto;flex:1;padding:8px;background:var(--secondary);color:white;border:none;border-radius:8px;font-size:13px;font-weight:bold;cursor:pointer;">✅ אשר</button>
+      <button onclick="document.getElementById('_customHoursPopup')?.remove();
+        document.getElementById('_chsSel')&&(document.getElementById('_chsSel').value='none')" 
+        style="width:auto;padding:8px 12px;background:#f5f5f5;border:none;border-radius:8px;font-size:13px;cursor:pointer;">ביטול</button>
+    </div>`;
+  document.body.appendChild(popup);
+  // Store reference to the select element
+  window._chsSel=sel;
+  // Close on outside click
+  setTimeout(()=>document.addEventListener('click',_closeCustomHoursOnOutside,{once:false}),50);
+}
+
+function _closeCustomHoursOnOutside(e){
+  const popup=document.getElementById('_customHoursPopup');
+  if(popup&&!popup.contains(e.target)&&e.target!==window._chsSel){
+    popup.remove();
+    document.removeEventListener('click',_closeCustomHoursOnOutside);
+  }
+}
+
+function _applyCustomHours(){
+  const start=document.getElementById('_chs_start')?.value;
+  const end=document.getElementById('_chs_end')?.value;
+  if(!start||!end){return;}
+  const sel=window._chsSel;
+  if(sel){
+    sel.dataset.customStart=start;
+    sel.dataset.customEnd=end;
+    // Update the option label to show the chosen hours
+    const opt=sel.querySelector('option[value="custom"]');
+    if(opt)opt.textContent=`⏰ ${start}–${end}`;
+    sel.closest('td')?.classList.add('wsched-cell-has-entry');
+  }
+  document.getElementById('_customHoursPopup')?.remove();
+  document.removeEventListener('click',_closeCustomHoursOnOutside);
+}
+
+// ═══════════════════════════════════════════════════════════
+// Feature 1b: Custom task in weekly modal
+// ═══════════════════════════════════════════════════════════
+
+function onWeeklyTaskChange(sel){
+  if(sel.value!=='_custom_task_')return;
+  const taskName=prompt('שם המשימה החדשה:');
+  if(!taskName||!taskName.trim()){sel.value=taskDefs[0]?.id||'training';return;}
+  const name=taskName.trim();
+  // Add as a temp option in this select
+  const opt=document.createElement('option');
+  opt.value='_ct_'+name;
+  opt.textContent='✏️ '+name;
+  opt.dataset.customName=name;
+  sel.add(opt,sel.options.length-1);
+  sel.value='_ct_'+name;
+  // Ask to save to taskDefs
+  if(confirm(`האם לשמור את המשימה "${name}" בהגדרות לשימוש עתידי?`)){
+    _saveCustomTaskToDefs(name);
+  }
+}
+
+async function _saveCustomTaskToDefs(name){
+  if(!name)return;
+  const id='task_'+name.replace(/\s+/g,'_').replace(/[^a-zA-Z0-9_\u05D0-\u05EA]/g,'');
+  if(taskDefs.find(t=>t.id===id))return;
+  const newTask={id,label:name,icon:'📌'};
+  taskDefs.push(newTask);
+  // Save to Firebase + localStorage
+  try{
+    if(window._fbDb)await _fbSet(_fbRef(_db,'taskDefs'),taskDefs);
+    localStorage.setItem('v100_taskDefs',JSON.stringify(taskDefs));
+    showToast(`✅ המשימה "${name}" נשמרה בהגדרות`,'success');
+  }catch(e){
+    console.warn('taskDef save failed:',e);
+  }
+}
 
 
 
