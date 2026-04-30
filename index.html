@@ -3292,25 +3292,23 @@ async function saveInstructor(name){
   populateAllInstrSelects();
 
   // Also save to Firebase if available
-  if(!window._fbDb)return;
+  if(!window._fbDb){
+    console.log('ℹ️ Firebase not available — instructor saved to localStorage only');
+    return;
+  }
 
   try{
-
     const snap=await _fbGet(_fbRef(_db,instrPath()));
-
     const names=snap.exists()?snap.val():{};
-
-    // Avoid duplicate
     if(!Object.values(names).includes(name)){
-
       names['i_'+Date.now()]=name;
-
       await _fbSet(_fbRef(_db,instrPath()),names);
-
+      console.log(`✅ Instructor "${name}" saved to Firebase`);
     }
-
-  }catch(e){}
-
+  }catch(e){
+    console.error('❌ Instructor Firebase save FAILED:',e);
+    showToast('⚠️ שמירת מדריך לענן נכשלה — נשמר מקומית','warning');
+  }
 }
 
 function populateAllInstrSelects(){
@@ -5258,37 +5256,32 @@ let _settings={...DEFAULTS};
 
 async function loadSettings(){
 
-  if(!window._fbDb){
-
-    _settings={...DEFAULTS};
-
-    applySettings();
-
-    await loadTaskDefs();
-
-    return;
-
+  // Try Firebase first
+  let loaded=false;
+  if(window._fbDb){
+    try{
+      const snap=await _fbGet(_fbRef(_db,settingsPath()));
+      if(snap.exists()){
+        _settings={...DEFAULTS,...snap.val()};
+        loaded=true;
+      }
+    }catch(e){}
   }
 
-  try{
+  // Fallback to localStorage
+  if(!loaded){
+    try{
+      const raw=localStorage.getItem('v100_settings');
+      if(raw){_settings={...DEFAULTS,...JSON.parse(raw)};loaded=true;}
+    }catch(e){}
+  }
 
-    const snap=await _fbGet(_fbRef(_db,settingsPath()));
-
-    if(snap.exists()){
-
-      _settings={...DEFAULTS,...snap.val()};
-
-    } else {
-
-      _settings={...DEFAULTS};
-
-    }
-
-  }catch(e){_settings={...DEFAULTS};}
+  if(!loaded)_settings={...DEFAULTS};
 
   applySettings();
-
   await loadTaskDefs();
+  // Load custom shift definitions too
+  try{await _loadShiftsFromStorage();}catch(e){console.warn('shift load failed:',e);}
 
 }
 
@@ -5854,34 +5847,25 @@ async function saveSettings(){
 
   applySettings();
 
-  const newShiftHours={
-
-    morning:{s:getStr('sh_morning_s','06:00'),e:getStr('sh_morning_e','14:00')},
-
-    afternoon:{s:getStr('sh_afternoon_s','14:00'),e:getStr('sh_afternoon_e','22:00')},
-
-    evening:{s:getStr('sh_evening_s','22:00'),e:getStr('sh_evening_e','06:00')},
-
-    custom:{s:'07:00',e:'15:30'},
-
-  };
-
-  SHIFT_HOURS=newShiftHours;
+  // Use the current SHIFT_HOURS (already updated by updateShiftTime/deleteShiftDef/addCustomShiftDef)
+  // Don't reset to hardcoded values
+  _saveShiftsToStorage();
+  const newShiftHours=SHIFT_HOURS;
 
   collectTaskDefsFromDOM();
 
+  // Save to localStorage as fallback
+  try{
+    localStorage.setItem('v100_settings',JSON.stringify(newSettings));
+    localStorage.setItem('v100_taskDefs',JSON.stringify(taskDefs));
+  }catch(e){}
+
+  // Save to Firebase if available
   if(window._fbDb){
-
     try{
-
       await _fbSet(_fbRef(_db,settingsPath()),newSettings);
-
       await _fbSet(_fbRef(_db,'taskDefs'),taskDefs);
-
-      await _fbSet(_fbRef(_db,'shiftHours'),newShiftHours);
-
-    }catch(e){}
-
+    }catch(e){console.warn('saveSettings Firebase:',e);}
   }
 
   const sv=document.getElementById('settingsSaved');
@@ -6900,6 +6884,28 @@ document.addEventListener('DOMContentLoaded',()=>{
     if(ct)ct.style.display=shiftInstr.value==='custom'?'grid':'none';
 
   });
+
+  // Auto-load all data on app start (after Firebase ready or 500ms timeout)
+  let _dataLoaded=false;
+  const _doInitialLoad=async()=>{
+    if(_dataLoaded)return;
+    _dataLoaded=true;
+    console.log('🔄 Initial data load starting...');
+    try{await loadSettings();}catch(e){console.warn('loadSettings:',e);}
+    try{await loadInstructors();}catch(e){console.warn('loadInstructors:',e);}
+    try{await _loadShiftsFromStorage();}catch(e){console.warn('loadShifts:',e);}
+    try{await loadFromStorage();}catch(e){console.warn('loadFromStorage:',e);}
+    console.log('✅ Initial data load complete');
+    // Re-render any open settings UI
+    try{if(typeof renderSettingsInstrList==='function')renderSettingsInstrList();}catch(e){}
+    try{if(typeof renderShiftsDefList==='function')renderShiftsDefList();}catch(e){}
+    try{populateAllInstrSelects();}catch(e){}
+  };
+
+  // Try to load when Firebase is ready
+  window.addEventListener('firebaseReady',_doInitialLoad);
+  // Also force load after 1.5s in case Firebase isn't ready
+  setTimeout(_doInitialLoad,1500);
 
 });
 
@@ -8811,26 +8817,92 @@ function renderShiftsDefList(){
   }).join('');
 }
 
-function updateShiftTime(key,field,val){
-  if(SHIFT_HOURS[key])SHIFT_HOURS[key][field]=val;
+// ── Shift definition persistence ──────────────────────
+async function _saveShiftsToStorage(){
+  const data={
+    hours:SHIFT_HOURS,
+    labels:SHIFT_LABELS,
+    colors:SHIFT_COLORS,
+    borders:SHIFT_BORDERS
+  };
+  // Save to localStorage immediately
+  try{
+    localStorage.setItem('v100_shifts_def',JSON.stringify(data));
+  }catch(e){console.warn('shifts localStorage save failed:',e);}
+  // Save to Firebase with proper error handling
+  if(window._fbDb){
+    try{
+      await _fbSet(_fbRef(_db,'shifts_def'),data);
+      console.log('✅ Shifts saved to Firebase');
+    }catch(e){
+      console.error('❌ Shifts Firebase save FAILED:',e);
+      showToast('⚠️ שמירה לענן נכשלה — נשמר מקומית בלבד','warning');
+    }
+  } else {
+    console.log('ℹ️ Firebase not available — saved to localStorage only');
+  }
 }
 
-function deleteShiftDef(key){
+async function _loadShiftsFromStorage(){
+  // Try Firebase first
+  if(window._fbDb){
+    try{
+      const snap=await _fbGet(_fbRef(_db,'shifts_def'));
+      if(snap.exists()){
+        const d=snap.val();
+        if(d.hours)Object.assign(SHIFT_HOURS,d.hours);
+        if(d.labels)Object.assign(SHIFT_LABELS,d.labels);
+        if(d.colors)Object.assign(SHIFT_COLORS,d.colors);
+        if(d.borders)Object.assign(SHIFT_BORDERS,d.borders);
+        // Mirror to localStorage
+        try{localStorage.setItem('v100_shifts_def',JSON.stringify(d));}catch(e){}
+        console.log('✅ Shifts loaded from Firebase');
+        return;
+      }
+    }catch(e){console.warn('Firebase shifts load failed:',e);}
+  }
+  // Fallback to localStorage
+  try{
+    const raw=localStorage.getItem('v100_shifts_def');
+    if(raw){
+      const d=JSON.parse(raw);
+      if(d.hours)Object.assign(SHIFT_HOURS,d.hours);
+      if(d.labels)Object.assign(SHIFT_LABELS,d.labels);
+      if(d.colors)Object.assign(SHIFT_COLORS,d.colors);
+      if(d.borders)Object.assign(SHIFT_BORDERS,d.borders);
+      console.log('✅ Shifts loaded from localStorage');
+    }
+  }catch(e){console.warn('localStorage shifts load failed:',e);}
+}
+
+async function updateShiftTime(key,field,val){
+  if(SHIFT_HOURS[key]){
+    SHIFT_HOURS[key][field]=val;
+    try{await _saveShiftsToStorage();}catch(e){}
+  }
+}
+
+async function deleteShiftDef(key){
   if(!confirm(`למחוק את המשמרת "${SHIFT_LABELS[key]||key}"?`))return;
   delete SHIFT_HOURS[key];
+  delete SHIFT_LABELS[key];
+  delete SHIFT_COLORS[key];
+  delete SHIFT_BORDERS[key];
+  try{await _saveShiftsToStorage();}catch(e){}
   renderShiftsDefList();
   showToast(`🗑️ המשמרת נמחקה`,'success');
 }
 
-function addCustomShiftDef(){
+async function addCustomShiftDef(){
   const name=prompt('שם המשמרת החדשה (לדוגמה: "לילה"):');
   if(!name||!name.trim())return;
   const key='shift_'+name.trim().replace(/\s+/g,'_').replace(/[^a-zA-Z0-9_֐-׿]/g,'');
   if(SHIFT_HOURS[key]){showToast('משמרת בשם זה כבר קיימת','warning');return;}
-  SHIFT_HOURS[key]=({s:'06:00',e:'14:00'});
+  SHIFT_HOURS[key]={s:'06:00',e:'14:00'};
   SHIFT_LABELS[key]='⏰ '+name.trim();
   SHIFT_COLORS[key]='#f0fff4';
   SHIFT_BORDERS[key]='#a0d8b3';
+  try{await _saveShiftsToStorage();}catch(e){}
   renderShiftsDefList();
   showToast(`✅ המשמרת "${name}" נוספה`,'success');
 }
@@ -9550,6 +9622,31 @@ function moveManualSectionToManager(){
     _manualSectionOriginalParent.appendChild(ms);
   }
 }
+
+
+
+// ═══════════════════════════════════════════════════════════
+// FIREBASE WRITE DIAGNOSTIC — runs on Firebase ready
+// Verifies that writes actually persist (catches rules issues)
+// ═══════════════════════════════════════════════════════════
+
+window.addEventListener('firebaseReady',async ()=>{
+  if(!window._fbDb)return;
+  // Wait a moment for Firebase to fully initialize
+  await new Promise(r=>setTimeout(r,500));
+
+  console.log('🔬 Testing Firebase write permission...');
+  try{
+    const testRef=_fbRef(_db,'_writeTest');
+    await _fbSet(testRef,{ts:Date.now(),test:'ok'});
+    console.log('✅ Firebase WRITE permission: OK');
+    // Clean up test entry
+    setTimeout(()=>{try{testRef.remove();}catch(e){}},2000);
+  }catch(e){
+    console.error('❌ Firebase WRITE permission FAILED:',e);
+    showToast('⚠️ אזהרה: Firebase לא מאפשר כתיבה — הנתונים נשמרים מקומית בלבד. בדוק את כללי הגישה ב-Firebase Console.','warning');
+  }
+});
 
 
 
