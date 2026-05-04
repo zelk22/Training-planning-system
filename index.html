@@ -1936,6 +1936,19 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 
   <div class="instr-view" id="instrView">
 
+    <!-- Admin preview navigator (visible only in preview mode) -->
+    <div id="instrNavBar" style="display:none;background:#eaf4fd;border-radius:10px;padding:8px 14px;margin-bottom:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <button onclick="switchPreviewInstructor(-1)" style="width:auto;background:#fff;border:1.5px solid var(--secondary);color:var(--secondary);border-radius:50%;width:30px;height:30px;cursor:pointer;font-size:16px;padding:0;font-weight:bold;">‹</button>
+        <span id="instrNavName" style="font-size:14px;font-weight:bold;color:var(--primary);min-width:80px;text-align:center;"></span>
+        <button onclick="switchPreviewInstructor(1)" style="width:auto;background:#fff;border:1.5px solid var(--secondary);color:var(--secondary);border-radius:50%;width:30px;height:30px;cursor:pointer;font-size:16px;padding:0;font-weight:bold;">›</button>
+      </div>
+      <div style="display:flex;gap:6px;">
+        <button onclick="_showInstrPicker()" style="width:auto;padding:5px 10px;background:#fff;border:1.5px solid var(--secondary);color:var(--secondary);border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;">👤 החלף מדריך</button>
+        <button onclick="switchBackToAdmin()" style="width:auto;padding:5px 10px;background:#fdf2f2;border:1.5px solid var(--danger);color:var(--danger);border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;">🔙 חזור למנהל</button>
+      </div>
+    </div>
+
     <div id="nextTripCard"></div>
 
     <!-- Placeholder for manualSection — moved here dynamically for instructor -->
@@ -3077,19 +3090,12 @@ function startInstrSync(){
 }
 
 async function setMyStatus(status,tripIdx){
-
   if(!window._fbDb||!currentUserName)return;
-
   const nowM=new Date().getHours()*60+new Date().getMinutes();
-
   const key=currentUserName.replace(/[.#$[\]/]/g,'_');
-
-  await _fbRef(_db,statusPath()+'/'+key).set(
-
-    {name:currentUserName,status,time:toHHMM(nowM),tripIdx:tripIdx??-1}
-
-  );
-
+  try{await _fbSet(_fbRef(_db,statusPath()+'/'+key),
+    {name:currentUserName,status,time:toHHMM(nowM),tripIdx:tripIdx??-1});}
+  catch(e){console.warn('setMyStatus:',e);}
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -3146,7 +3152,7 @@ function renderInstrView(){
 
       <div class="status-btns">
 
-        ${!isOn?`<button class="sbtn" onclick="setMyStatus('on-trip',${idx})">✅ יצאתי לנסיעה</button>`:''}
+        ${!isOn?`<button class="sbtn" onclick="_trySetOnTrip(${idx})">✅ יצאתי לנסיעה</button>`:''}
 
         ${isOn?`<button class="sbtn active-s" onclick="setMyStatus('returned',${idx})">🏁 חזרתי</button>`:''}
 
@@ -7811,12 +7817,9 @@ function getWeekDays(weekStartISO){
 
     d.setDate(d.getDate()+i);
 
-    days.push(d.toISOString().slice(0,10));
-
+    days.push(_localDateStr(d));
   }
-
   return days;
-
 }
 
 function openWeeklySchedModal(dateStr){
@@ -9383,39 +9386,7 @@ async function reloadApp(){
 
 let _adminPreviewMode=false;
 
-function switchToInstructorView(previewName){
-  if(currentRole!=='admin')return;
 
-  // If no name given, show picker
-  if(!previewName){
-    if(!_instrNames.length){showToast('אין מדריכים מוגדרים במערכת','warning');return;}
-    _showInstrPicker();
-    return;
-  }
-
-  _adminPreviewMode=true;
-  window._savedRole=currentRole;
-  window._savedName=currentUserName;
-  window._adminPreviewIndex=_instrNames.indexOf(previewName);
-
-  document.getElementById('managerView').style.display='none';
-  document.getElementById('instrView').classList.add('show');
-  document.getElementById('switchViewBtn').style.display='none';
-  document.getElementById('switchBackBtn').style.display='inline-block';
-  document.getElementById('userRoleTag').textContent='👤 מדריך (תצוגה)';
-  document.getElementById('userNameLbl').textContent=previewName;
-
-  currentRole='instructor';
-  currentUserName=previewName;
-
-  setTimeout(()=>moveManualSectionToInstr(),50);
-  try{if(typeof startInstrSync==='function')startInstrSync();}catch(e){}
-  setTimeout(()=>{
-    try{renderLog();}catch(e){}
-    try{if(typeof renderInstrView==='function')renderInstrView();}catch(e){}
-    try{renderCalendar();}catch(e){}
-  },200);
-}
 
 function _showInstrPicker(){
   // Build a simple inline picker modal
@@ -9950,14 +9921,11 @@ let _monthlyDashDate=new Date();
 
 function toggleApprovalPanel(){
   _approvalPanelOpen=!_approvalPanelOpen;
+  _monthlyDashOpen=false;
+  ['monthlyDashPanel','auditLogPanel'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});
   const panel=document.getElementById('approvalPanel');
   if(panel)panel.style.display=_approvalPanelOpen?'block':'none';
-  if(_approvalPanelOpen){
-    _monthlyDashOpen=false;
-    const md=document.getElementById('monthlyDashPanel');
-    if(md)md.style.display='none';
-    loadApprovalPanel();
-  }
+  if(_approvalPanelOpen)loadApprovalPanel();
 }
 
 function toggleMonthlyDash(){
@@ -11000,6 +10968,38 @@ document.addEventListener('DOMContentLoaded',()=>{
 });
 
 // Auto-check alerts when schedData loads
+
+
+// ══ FIX: Instructor preview nav bar ══
+function _updateInstrNavBar(name){
+  const bar=document.getElementById('instrNavBar');
+  const lbl=document.getElementById('instrNavName');
+  if(bar)bar.style.display=_adminPreviewMode?'flex':'none';
+  if(lbl&&name)lbl.textContent=name;
+}
+
+// ══ FIX: Block יצאתי for future/early trips ══
+function _trySetOnTrip(tripIdx){
+  const myTrips=trips.filter(t=>t.name===currentUserName);
+  const trip=myTrips[tripIdx];
+  if(!trip){showToast('נסיעה לא נמצאה','warning');return;}
+  const today=_localDateStr(new Date());
+  if(currentDate>today){showToast('⛔ לא ניתן לסמן יציאה לנסיעה עתידית','warning');return;}
+  const nowM=new Date().getHours()*60+new Date().getMinutes();
+  const tripStartMin=timeToMin(trip.startStr||'00:00');
+  if(currentDate===today&&tripStartMin>nowM+15){
+    showToast(`⛔ הנסיעה מתחילה ב-${trip.startStr} — לא ניתן לסמן כעת`,'warning');return;
+  }
+  setMyStatus('on-trip',tripIdx);
+}
+
+// ══ FIX: Update nav bar when switching instructor ══
+const _origSwitchToInstrView=switchToInstructorView;
+function switchToInstructorView(previewName){
+  _origSwitchToInstrView(previewName);
+  if(previewName)setTimeout(()=>_updateInstrNavBar(previewName),150);
+}
+
 </script>
 
 </body>
