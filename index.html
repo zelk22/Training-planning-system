@@ -2056,9 +2056,9 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
       <button onclick="if(currentRole!=='admin'){showToast('⛔ פעולה זו מוגבלת למנהל בלבד','warning');return;}openRangeResetModal('trips')" style="width:auto !important;display:inline-block;margin:2px;padding:8px 12px;background:#fff3cd;border:1px solid #f0ad4e;color:#856404;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;">🗑️ אפס נסיעות</button>
       <button onclick="if(currentRole!=='admin'){showToast('⛔ פעולה זו מוגבלת למנהל בלבד','warning');return;}openRangeResetModal('all')" style="width:auto !important;display:inline-block;margin:2px;padding:8px 12px;background:#fdf2f2;border:1px solid #e74c3c;color:#e74c3c;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;">⚠️ איפוס כללי</button>
       <button onclick="reloadApp()" style="width:auto !important;display:inline-block;margin:2px;padding:8px 12px;background:#f0f4f8;border:1px solid #ccc;color:#555;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;">🔄 רענן</button>
-      <button onclick="toggleAuditLog()" id="auditLogBtn" style="display:inline-block;margin:2px;padding:8px 14px;background:#f8f0ff;border:1px solid #9b59b6;color:#9b59b6;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;">🔍 לוג פעולות</button>
-      <button onclick="toggleMonthlyDash()" id="monthlyDashBtn" style="display:inline-block;margin:2px;padding:8px 14px;background:#eaf4fd;border:1px solid var(--secondary);color:var(--secondary);border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;">📊 דשבורד חודשי</button>
-      <button onclick="toggleApprovalPanel()" id="approvalToggleBtn" style="display:inline-block;margin:2px;padding:8px 14px;background:#fef9e7;border:1px solid #f0c050;color:#856404;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;position:relative;">📋 אישור שיבוצים <span id="approvalBadge" style="display:none;background:#e74c3c;color:white;border-radius:10px;padding:1px 5px;font-size:10px;font-weight:bold;margin-right:3px;"></span></button>
+      <button onclick="toggleAuditLog()" id="auditLogBtn" style="width:auto !important;display:inline-block;margin:2px;padding:8px 14px;background:#f8f0ff;border:1px solid #9b59b6;color:#9b59b6;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;">🔍 לוג פעולות</button>
+      <button onclick="toggleMonthlyDash()" id="monthlyDashBtn" style="width:auto !important;display:inline-block;margin:2px;padding:8px 14px;background:#eaf4fd;border:1px solid var(--secondary);color:var(--secondary);border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;">📊 דשבורד חודשי</button>
+      <button onclick="toggleApprovalPanel()" id="approvalToggleBtn" style="width:auto !important;display:inline-block;margin:2px;padding:8px 14px;background:#fef9e7;border:1px solid #f0c050;color:#856404;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;position:relative;">📋 אישור שיבוצים <span id="approvalBadge" style="display:none;background:#e74c3c;color:white;border-radius:10px;padding:1px 5px;font-size:10px;font-weight:bold;margin-right:3px;"></span></button>
     </div>
 
     <!-- Legend -->
@@ -2081,9 +2081,9 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 
     <!-- Calendar grid -->
 
-    <div class="cal-grid" id="calHeader"></div>
+    <div class="cal-grid" id="calHeader" style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-bottom:2px;"></div>
 
-    <div class="cal-grid" id="calGrid" style="margin-top:3px;"></div>
+    <div class="cal-grid" id="calGrid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-top:3px;min-height:200px;"></div>
 
   </div>
 
@@ -2628,6 +2628,8 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 </div><!-- /container -->
 
 <script>
+function _localDateStr(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+
 
 
 
@@ -3229,7 +3231,7 @@ function renderGanttInto(targetId){
 
 let trips=[], curRoute=[], editingTripId=null, delayTripId=null;
 
-let currentDate=new Date().toISOString().slice(0,10);
+let currentDate=_localDateStr(new Date());
 
 let plannerRows=[], plannerRowId=0, plannerResults=[];
 
@@ -3547,7 +3549,7 @@ function changeDate(delta){
 
   const d=new Date(currentDate+'T12:00:00');d.setDate(d.getDate()+delta);
 
-  currentDate=d.toISOString().slice(0,10);
+  currentDate=_localDateStr(d);
 
   updateDateLabel();
 
@@ -6692,7 +6694,7 @@ function renderCalendar(){
 
   ['calHeader','calHeaderInstr'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML=headerHtml;});
 
-  const today=new Date().toISOString().slice(0,10);
+  const today=_localDateStr(new Date());
 
   const firstDay=new Date(schedYear,schedMonth,1);
 
@@ -6708,7 +6710,7 @@ function renderCalendar(){
 
     const d=new Date(firstDay);d.setDate(d.getDate()-(startOffset-i));
 
-    cells.push({date:d.toISOString().slice(0,10),otherMonth:true});
+    cells.push({date:_localDateStr(d),otherMonth:true});
 
   }
 
@@ -6716,7 +6718,7 @@ function renderCalendar(){
 
     const dt=new Date(schedYear,schedMonth,d);
 
-    cells.push({date:dt.toISOString().slice(0,10),otherMonth:false});
+    cells.push({date:_localDateStr(dt),otherMonth:false});
 
   }
 
@@ -6726,24 +6728,35 @@ function renderCalendar(){
 
     last.setDate(last.getDate()+1);
 
-    cells.push({date:last.toISOString().slice(0,10),otherMonth:true});
+    cells.push({date:_localDateStr(last),otherMonth:true});
 
   }
 
   function buildCell(cell,forInstructor){
-
     const entries=schedData[cell.date]||[];
-
     const filtered=forInstructor?entries.filter(e=>e.name===currentUserName):entries;
 
+    // Compute all needed vars from cell.date
+    const cellD=new Date(cell.date+'T12:00:00');
+    const _isToday=cell.date===today;
+    const _isPast=cell.date<today;
+    const _dayNum=cellD.getDate();
+
+    // Build entry pills
+    const _entryHtml=filtered.slice(0,3).map(e=>{
+      const shiftKey=e.shift||'morning';
+      const col=SHIFT_COLORS[shiftKey]||'#eee';
+      const bdr=SHIFT_BORDERS[shiftKey]||'#ccc';
+      const lbl=e.name||'';
+      const statusIcon={approved:'✅',pending:'⏳',rejected:'❌'}[e.status||'pending']||'❓';
+      return`<div class="cal-entry status-${e.status||'pending'}" style="background:${col};border-right:3px solid ${bdr};font-size:10px;padding:1px 4px;border-radius:3px;margin:1px 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${statusIcon} ${lbl}</div>`;
+    }).join('');
+
     const moreHtml=filtered.length>3?`<div class="cal-more">+${filtered.length-3} עוד</div>`:'';
-
-    const cellClass=['cal-cell',cell.otherMonth?'other-month':'',isPast&&!isToday?'past':'',isToday?'today':''].filter(Boolean).join(' ');
-
+    const cellClass=['cal-cell',cell.otherMonth?'other-month':'',_isPast&&!_isToday?'past':'',_isToday?'today':''].filter(Boolean).join(' ');
     const canClick=!cell.otherMonth;
 
-    return`<div class="${cellClass}" ${canClick?`onclick="openSchedModal('${cell.date}')"`:''}><div class="cal-day-num">${cell.otherMonth?'':dayNum}</div>${entryHtml}${moreHtml}</div>`;
-
+    return`<div class="${cellClass}" ${canClick?`onclick="openSchedModal('${cell.date}')"`:''}><div class="cal-day-num">${cell.otherMonth?'':_dayNum}</div>${_entryHtml}${moreHtml}</div>`;
   }
 
   const managerHtml=cells.map(c=>buildCell(c,false)).join('');
@@ -7736,7 +7749,7 @@ async function copyPrevMonthSched(){
 
     if(currDayStart.getMonth()!==schedMonth)continue;
 
-    const currDateISO=currDayStart.toISOString().slice(0,10);
+    const currDateISO=_localDateStr(currDayStart);
 
     // Copy entries
 
@@ -7784,7 +7797,7 @@ function getWeekStart(dateStr){
 
   d.setDate(d.getDate()-dow);
 
-  return d.toISOString().slice(0,10);
+  return _localDateStr(d);
 
 }
 
