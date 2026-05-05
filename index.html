@@ -2072,9 +2072,6 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
       <button onclick="toggleAuditLog()" id="auditLogBtn" style="width:auto !important;display:inline-block;margin:2px;padding:8px 14px;background:#f8f0ff;border:1px solid #9b59b6;color:#9b59b6;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;">🔍 לוג פעולות</button>
       <button onclick="toggleMonthlyDash()" id="monthlyDashBtn" style="width:auto !important;display:inline-block;margin:2px;padding:8px 14px;background:#eaf4fd;border:1px solid var(--secondary);color:var(--secondary);border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;">📊 דשבורד חודשי</button>
       <button onclick="toggleApprovalPanel()" id="approvalToggleBtn" style="width:auto !important;display:inline-block;margin:2px;padding:8px 14px;background:#fef9e7;border:1px solid #f0c050;color:#856404;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;position:relative;">📋 אישור שיבוצים <span id="approvalBadge" style="display:none;background:#e74c3c;color:white;border-radius:10px;padding:1px 5px;font-size:10px;font-weight:bold;margin-right:3px;"></span></button>
-      <button onclick="toggleSimMode()" id="simModeBtn" style="width:auto !important;display:inline-block;margin:2px;padding:8px 14px;background:#eafaf1;border:1px solid #27ae60;color:#1e8449;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;">🧪 מצב סימולציה: כבוי</button>
-      <button onclick="generateSimData(12)" id="simGenBtn" style="width:auto !important;display:inline-block;margin:2px;padding:8px 12px;background:#f5f5ff;border:1px solid #5b6dff;color:#3b49d6;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;">🧪 צור סימולציה (12ח)</button>
-      <button onclick="resetSimData()" id="simResetBtn" style="width:auto !important;display:inline-block;margin:2px;padding:8px 12px;background:#fdf2f2;border:1px solid #e74c3c;color:#e74c3c;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;">🧹 אפס סימולציה</button>
     </div>
 
     <!-- Legend -->
@@ -2875,9 +2872,6 @@ function enterApp(role,name){
 
   }
 
-  // Update SIM UI for admin (safe no-op for others)
-  try{updateSimUI();}catch(e){}
-
   // Render calendar immediately with whatever data we have
   renderCalendar();
 
@@ -3059,7 +3053,7 @@ function closeAssignModal(){
 
 // ═══════════════════════════════════════════════════════════
 
-const statusPath=()=>`${statusRoot()}/${currentDate}`;
+const statusPath=()=>'instrStatus/'+currentDate;
 
 let instrStatuses={};
 
@@ -3285,218 +3279,15 @@ function getLastRealSeg(route){
 
 function instrColor(idx){return INSTR_COLORS[idx%INSTR_COLORS.length];}
 
-// Init persisted SIM mode early (before any Firebase listeners attach)
-try{_loadDataMode();}catch(e){}
-
 // ═══════════════════════════════════════════════════════════
 
 // FIREBASE
 
 // ═══════════════════════════════════════════════════════════
 
-let dataMode='prod'; // 'prod' | 'sim'
+const dbPath=()=>'trips/'+currentDate;
 
-function _loadDataMode(){
-  try{
-    const raw=localStorage.getItem('v100_dataMode');
-    if(raw==='sim'||raw==='prod')dataMode=raw;
-  }catch(e){}
-}
-function _saveDataMode(){
-  try{localStorage.setItem('v100_dataMode',dataMode);}catch(e){}
-}
-
-function dbRoot(){return dataMode==='sim'?'sim':'';}
-function withRoot(path){
-  const r=dbRoot();
-  return r?`${r}/${path}`:path;
-}
-
-const tripsRoot=()=>withRoot('trips');
-const historyRoot=()=>withRoot('history');
-const schedRoot=()=>withRoot('schedule');
-const instrRoot=()=>withRoot('instructors');
-const statusRoot=()=>withRoot('instrStatus');
-
-const dbPath=()=>`${tripsRoot()}/${currentDate}`;
-
-const instrPath=()=>instrRoot();
-
-function updateSimUI(){
-  const btn=document.getElementById('simModeBtn');
-  const gen=document.getElementById('simGenBtn');
-  const rst=document.getElementById('simResetBtn');
-
-  if(currentRole!=='admin'){
-    if(btn)btn.style.display='none';
-    if(gen)gen.style.display='none';
-    if(rst)rst.style.display='none';
-    return;
-  }
-
-  const on=(dataMode==='sim');
-  if(btn){
-    btn.style.display='inline-block';
-    btn.textContent=on?'🧪 מצב סימולציה: פעיל':'🧪 מצב סימולציה: כבוי';
-    btn.style.opacity=1;
-  }
-  // Generator/reset require Firebase
-  const fbOk=!!window._fbDb;
-  if(gen){
-    gen.style.display='inline-block';
-    gen.disabled=!fbOk;
-    gen.style.opacity=fbOk?1:0.5;
-    gen.title=fbOk?'':'Firebase לא זמין';
-  }
-  if(rst){
-    rst.style.display='inline-block';
-    rst.disabled=!fbOk;
-    rst.style.opacity=fbOk?1:0.5;
-    rst.title=fbOk?'':'Firebase לא זמין';
-  }
-}
-
-function toggleSimMode(){
-  if(currentRole!=='admin'){showToast('⛔ פעולה זו מוגבלת למנהל בלבד','warning');return;}
-  dataMode=(dataMode==='sim')?'prod':'sim';
-  _saveDataMode();
-  updateSimUI();
-  showToast(dataMode==='sim'?'🧪 מצב סימולציה הופעל':'✅ חזרת לנתוני אמת','info');
-  try{reloadApp();}catch(e){}
-}
-
-function _mulberry32(seed){
-  let t=seed>>>0;
-  return function(){
-    t+=0x6D2B79F5;
-    let x=t;
-    x=Math.imul(x^(x>>>15),x|1);
-    x^=x+Math.imul(x^(x>>>7),x|61);
-    return ((x^(x>>>14))>>>0)/4294967296;
-  };
-}
-
-function _pick(rng,arr){return arr[Math.floor(rng()*arr.length)];}
-
-async function resetSimData(){
-  if(currentRole!=='admin'){showToast('⛔ פעולה זו מוגבלת למנהל בלבד','warning');return;}
-  if(!window._fbDb){showToast('Firebase לא זמין','warning');return;}
-  if(!confirm('לאפס את כל נתוני הסימולציה (sim/*) ב-Firebase?'))return;
-  showToast('🧹 מאפס סימולציה...','info');
-  try{
-    await _fbRef(_db,'sim').remove();
-    showToast('✅ סימולציה אופסה','success');
-    if(dataMode==='sim'){
-      try{reloadApp();}catch(e){}
-    }
-  }catch(e){
-    console.warn('resetSimData:',e);
-    showToast('⚠️ שגיאה באיפוס סימולציה','warning');
-  }
-}
-
-async function generateSimData(monthsBack=12){
-  if(currentRole!=='admin'){showToast('⛔ פעולה זו מוגבלת למנהל בלבד','warning');return;}
-  if(!window._fbDb){showToast('Firebase לא זמין','warning');return;}
-  if(!confirm(`ליצור נתוני סימולציה מלאים ל-${monthsBack} חודשים אחורה?\nהנתונים יישמרו תחת sim/* ולא ישפיעו על נתוני אמת.`))return;
-
-  // Switch to sim mode first
-  dataMode='sim';
-  _saveDataMode();
-  updateSimUI();
-
-  const seed=20260504; // deterministic default seed
-  const rng=_mulberry32(seed);
-
-  // Instructors
-  const fallbackNames=['אורי','דנה','יוסי','נועה','אמיר','שירה','טל','מיכל','רועי','איילת'];
-  const names=(_instrNames&&_instrNames.length?_instrNames.slice():fallbackNames).slice(0,10);
-
-  // Persist instructors under sim/
-  try{await _fbSet(_fbRef(_db,instrRoot()),names);}catch(e){console.warn('sim instructors set:',e);}
-
-  const today=new Date();
-  const start=new Date(today.getFullYear(),today.getMonth()-monthsBack,today.getDate());
-  const days=Math.max(1,Math.ceil((today-start)/(24*60*60*1000)));
-
-  const shifts=['morning','afternoon','evening'];
-  let written=0;
-  showToast(`🧪 יוצר סימולציה... (0/${days} ימים)`,'info');
-
-  for(let i=0;i<=days;i++){
-    const d=new Date(start); d.setDate(start.getDate()+i);
-    const dateISO=_localDateStr(d);
-    const ym=dateISO.slice(0,7);
-
-    // Select instructors for this day
-    const weekday=d.getDay(); // 0=Sun ... 6=Sat
-    const targetCount=(weekday===5||weekday===6)?Math.max(2,Math.floor(names.length*0.35)):Math.max(3,Math.floor(names.length*0.6));
-    const shuffled=[...names].sort(()=>rng()-0.5).slice(0,targetCount);
-
-    // Build schedule entries
-    const schedObj={};
-    shuffled.forEach((name,idx)=>{
-      const sh=_pick(rng,shifts);
-      const statusRoll=rng();
-      const status=statusRoll<0.78?'approved':statusRoll<0.9?'pending':'rejected';
-      const id=`sim_${dateISO.replace(/-/g,'')}_${idx}_${name.replace(/\s+/g,'_')}`;
-      const entry={
-        id,
-        name,
-        shift:sh,
-        task:'training',
-        startTime:SHIFT_HOURS[sh]?.s||'07:00',
-        endTime:SHIFT_HOURS[sh]?.e||'15:30',
-        note:status==='pending'?'בקשה לדמו':status==='rejected'?'נדחה (דמו)':'',
-        status,
-        submittedBy:'sim',
-        createdAt:Date.now()-Math.floor((days-i)*86400000)
-      };
-      schedObj[id]=entry;
-    });
-
-    // Build trips for approved entries (some days partially missing to simulate cancellations)
-    const tripsObj={};
-    let tripUid=0;
-    Object.values(schedObj).forEach((e)=>{
-      if(e.status!=='approved')return;
-      if(rng()<0.07)return; // simulate no-shows/cancellations
-      const startStr=e.startTime||SHIFT_HOURS[e.shift]?.s||'07:00';
-
-      const routeIds=rng()<0.5?['D3','N1','N2','D3']:['D4','L1','L2','D4'];
-      const route=segsToRoute(routeIds);
-      const timeline=buildTimeline(startStr,route);
-      const id=`${Date.now()-((days-i)*86400000)}_${String(++tripUid).padStart(5,'0')}`;
-      const delayMin=rng()<0.18?Math.floor(rng()*18)+3:0;
-      tripsObj[id]={id,name:e.name,route,timeline,startStr,delayMin};
-    });
-
-    // Write schedule under sim/schedule/<YYYY-MM>/<dateISO>/<entryId>
-    try{
-      await _fbSet(_fbRef(_db,`${schedRoot()}/${ym}/${dateISO}`),schedObj);
-    }catch(e){console.warn('sim schedule set:',dateISO,e);}
-
-    // Write trips under sim/trips/<dateISO>/<tripId>
-    try{
-      await _fbSet(_fbRef(_db,`${tripsRoot()}/${dateISO}`),tripsObj);
-    }catch(e){console.warn('sim trips set:',dateISO,e);}
-
-    // Write history snapshot (used by monthly dashboard)
-    try{
-      const histSnap={date:dateISO,trips:tripsObj,savedAt:Date.now(),savedBy:'sim'};
-      await _fbSet(_fbRef(_db,`${historyRoot()}/${dateISO}`),histSnap);
-    }catch(e){console.warn('sim history set:',dateISO,e);}
-
-    written++;
-    if(written%20===0){
-      showToast(`🧪 יוצר סימולציה... (${written}/${days} ימים)`,'info');
-      await new Promise(r=>setTimeout(r,0));
-    }
-  }
-
-  showToast(`✅ סימולציה נוצרה (${written} ימים)`,'success');
-  try{reloadApp();}catch(e){}
-}
+const instrPath=()=>'instructors';
 
 function toMinOfDay(v){
 
@@ -3630,7 +3421,7 @@ async function saveToStorage(){
     if(trips.length>0){
       try{
         const histSnap={date:currentDate,trips:obj,savedAt:Date.now(),savedBy:currentUserName||'system'};
-        await _fbSet(_fbRef(_db,historyRoot()+'/'+currentDate),histSnap);
+        await _fbSet(_fbRef(_db,'history/'+currentDate),histSnap);
       }catch(he){console.warn('History archive:',he);}
     }
 
@@ -4058,6 +3849,8 @@ function _doSaveTrip(){
 
   if(nameVal)saveInstructor(nameVal);
 
+  try{logAudit('שמירת נסיעה',`מדריך: ${nameVal||'?'} | ${currentDate}`);}catch(e){}
+
   const name=nameVal||'מדריך';
 
   const startStr=document.getElementById('tS').value;
@@ -4343,7 +4136,7 @@ async function autoCreateScheduleEntryFromTrip(trip){
 
   const yearMonth = date.substring(0,7);
 
-  const path = `${schedRoot()}/${yearMonth}/${date}`;
+  const path = `schedule/${yearMonth}/${date}`;
 
   try{
 
@@ -6668,7 +6461,7 @@ async function executeCopyDay(){
 
   try{
 
-    const snap=await _fbGet(_fbRef(_db,tripsRoot()+'/'+targetDate));
+    const snap=await _fbGet(_fbRef(_db,'trips/'+targetDate));
 
     const existing=snap.exists()?snap.val():{};
 
@@ -6682,7 +6475,7 @@ async function executeCopyDay(){
 
     });
 
-    await _fbSet(_fbRef(_db,tripsRoot()+'/'+targetDate),copied);
+    await _fbSet(_fbRef(_db,'trips/'+targetDate),copied);
 
     closeCopyDayModal();
 
@@ -6739,12 +6532,12 @@ function schedPathForDate(dateISO){
 
   const ym=dateISO?dateISO.slice(0,7):`${schedYear}-${String(schedMonth+1).padStart(2,'0')}`;
 
-  return `${schedRoot()}/${ym}`;
+  return `schedule/${ym}`;
 
 }
 
 // Schedule stored per-date, not per-month — so data never disappears when navigating months
-const schedPath=()=>`${schedRoot()}`; // flat path; individual dates are sub-keys
+const schedPath=()=>`schedule`; // flat path; individual dates are sub-keys
 
 // ── localStorage helpers for schedule data ──────────────
 
@@ -6781,7 +6574,7 @@ function startSchedSync(){
 
   if(!window._fbDb){lsLoadSched();return;}
 
-  _fbRef(_db,schedRoot()).on('value',snap=>{
+  _fbRef(_db,'schedule').on('value',snap=>{
 
     schedData={};
 
@@ -6828,31 +6621,30 @@ function startSchedSync(){
 
 }
 
-/* saveSchedEntry merge resolved */
 
 async function saveSchedEntry(date,entry){
-  if(!date||!entry||!entry.id)return;
-
-  // Update in-memory first (so UI responds immediately)
+  // 1. Update in-memory
   if(!schedData[date])schedData[date]=[];
-  const idx=schedData[date].findIndex(e=>e&&e.id===entry.id);
+  const idx=schedData[date].findIndex(e=>e.id===entry.id);
   if(idx>=0)schedData[date][idx]=entry;
   else schedData[date].push(entry);
 
-  // Persist to localStorage (works even when Firebase is unavailable)
-  try{lsSaveSched();}catch(e){}
+  // 2. Persist to localStorage
+  lsSaveSched();
 
+  // 3. Save to Firebase if available
   if(!window._fbDb){renderCalendar();return;}
 
   try{
-    await _fbSet(_fbRef(_db,schedPathForDate(date)+'/'+date+'/'+entry.id),entry);
+    const path=schedPathForDate(date)+'/'+date+'/'+entry.id;
+    await _fbSet(_fbRef(_db,path),entry);
+    renderCalendar();
   }catch(e){
-    console.warn('saveSchedEntry:',e);
-    showToast('⚠️ שגיאה בשמירת שיבוץ (Firebase)','warning');
+    console.warn('saveSchedEntry Firebase:',e);
+    renderCalendar();
   }
-
-  renderCalendar();
 }
+
 
 async function deleteSchedEntry(date,id){
 
@@ -6865,7 +6657,7 @@ async function deleteSchedEntry(date,id){
   if(!window._fbDb){renderCalendar();return;}
 
   // 3. Pause Firebase listener so deleted entry doesn't come back instantly
-  try{_fbRef(_db,schedRoot()).off('value');}catch(e){}
+  try{_fbRef(_db,'schedule').off('value');}catch(e){}
 
   // 4. Delete from Firebase
   try{
@@ -6884,12 +6676,7 @@ async function updateSchedStatus(date,id,status){
 
   if(!window._fbDb){lsSaveSched();renderCalendar();return;}
 
-  try{
-    await _fbSet(_fbRef(_db,schedPathForDate(date)+'/'+date+'/'+id+'/status'),status);
-  }catch(e){
-    console.warn('updateSchedStatus:',e);
-    showToast('⚠️ שגיאה בעדכון סטטוס בקשה','warning');
-  }
+  try{await _fbSet(_fbRef(_db,schedPathForDate(date)+'/'+date+'/'+id+'/status'),status);}catch(e){}
 
 }
 
@@ -7503,7 +7290,7 @@ async function resetDaySchedule(){
 
   try{
 
-    await _fbSet(_fbRef(_db,`${schedRoot()}/${yearMonth}/${date}`),null);
+    await _fbSet(_fbRef(_db,`schedule/${yearMonth}/${date}`),null);
 
     showToast('✅ כל השיבוצים ליום אופסו', 'success');
 
@@ -7921,7 +7708,7 @@ async function copyPrevMonthSched(){
 
     try{
 
-      const snap=await _fbGet(_fbRef(_db,`${schedRoot()}/${prevMonthKey}`));
+      const snap=await _fbGet(_fbRef(_db,`schedule/${prevMonthKey}`));
 
       if(snap.exists()){
 
@@ -8671,6 +8458,8 @@ function onResetScopeChange(){
 }
 
 async function confirmRangeReset(){
+  try{logAudit('איפוס',`סוג: ${_rangeResetMode||'all'}`);}catch(e){}
+
 
   if(currentRole!=='admin'){showToast('⛔ פעולה זו מוגבלת למנהל בלבד','warning');closeRangeResetModal();return;}
 
@@ -8711,7 +8500,7 @@ async function confirmRangeReset(){
   // Detach Firebase listeners
   if(window._fbDb){
 
-    try{_fbRef(_db,schedRoot()).off('value');}catch(e){}
+    try{_fbRef(_db,'schedule').off('value');}catch(e){}
 
     try{_fbRef(_db,dbPath()).off('value');}catch(e){}
 
@@ -8815,13 +8604,13 @@ async function confirmRangeReset(){
 
         if(scope==='all'||scope==='month'){
 
-          try{await _fbRef(_db,`${schedRoot()}/${ym}`).remove();}catch(e){}
+          try{await _fbRef(_db,'schedule/'+ym).remove();}catch(e){}
 
         }else{
 
           for(const d of datesToDelete.filter(dd=>dd.startsWith(ym))){
 
-            try{await _fbRef(_db,`${schedRoot()}/${ym}/${d}`).remove();}catch(e){}
+            try{await _fbRef(_db,'schedule/'+ym+'/'+d).remove();}catch(e){}
 
           }
 
@@ -8847,7 +8636,7 @@ async function confirmRangeReset(){
 
     if(window._fbDb){
 
-      try{await _fbRef(_db,tripsRoot()).remove();}catch(e){}
+      try{await _fbRef(_db,'trips').remove();}catch(e){}
 
     }
 
@@ -8875,7 +8664,7 @@ async function confirmRangeReset(){
 
         if(!datesInMonth){
 
-          try{await _fbRef(_db,`${tripsRoot()}/${ym}`).remove();}catch(e){}
+          try{await _fbRef(_db,'trips/'+ym).remove();}catch(e){}
 
           // Also try flat path
 
@@ -8883,7 +8672,7 @@ async function confirmRangeReset(){
 
             const d=`${ym}-${String(day).padStart(2,'0')}`;
 
-            try{await _fbRef(_db,`${tripsRoot()}/${d}`).remove();}catch(e){}
+            try{await _fbRef(_db,'trips/'+d).remove();}catch(e){}
 
           }
 
@@ -8891,7 +8680,7 @@ async function confirmRangeReset(){
 
           for(const d of datesInMonth){
 
-            try{await _fbRef(_db,`${tripsRoot()}/${d}`).remove();}catch(e){}
+            try{await _fbRef(_db,'trips/'+d).remove();}catch(e){}
 
           }
 
@@ -9057,7 +8846,7 @@ async function autoGenerateTripsFromSchedule(){
 async function loadTripsForDate(date){
   if(date===currentDate)return [...trips];
   if(window._fbDb){
-    try{const snap=await _fbGet(_fbRef(_db,tripsRoot()+'/'+date));return snap.exists()?Object.values(snap.val()).map(parseTrip):[];}catch(e){return [];}
+    try{const snap=await _fbGet(_fbRef(_db,'trips/'+date));return snap.exists()?Object.values(snap.val()).map(parseTrip):[];}catch(e){return [];}
   }else{
     try{const raw=localStorage.getItem('trips_'+date);return raw?JSON.parse(raw).map(parseTrip):[];}catch(e){return [];}
   }
@@ -9066,7 +8855,7 @@ async function loadTripsForDate(date){
 async function saveTripsForDate(date,tripsArr){
   if(date===currentDate){trips=tripsArr;await saveToStorage();return;}
   if(window._fbDb){
-    try{const obj={};tripsArr.forEach(t=>{obj[t.id]=t;});await _fbSet(_fbRef(_db,tripsRoot()+'/'+date),obj);}catch(e){console.warn('saveTripsForDate Firebase error:',e);}
+    try{const obj={};tripsArr.forEach(t=>{obj[t.id]=t;});await _fbSet(_fbRef(_db,'trips/'+date),obj);}catch(e){console.warn('saveTripsForDate Firebase error:',e);}
   }else{
     try{localStorage.setItem('trips_'+date,JSON.stringify(tripsArr));}catch(e){}
   }
@@ -9624,37 +9413,6 @@ async function reloadApp(){
 
 let _adminPreviewMode=false;
 
-function switchToInstructorView(previewName){
-  // Real instructor should not trigger admin preview switching
-  if(!_adminPreviewMode&&currentRole!=='admin')return;
-
-  // Enter admin preview mode
-  if(currentRole==='admin'&&!_adminPreviewMode){
-    _adminPreviewMode=true;
-    window._savedRole=currentRole;
-    window._savedName=currentUserName;
-  }
-
-  if(!_instrNames.length){
-    showToast('לא נמצאו מדריכים להצגה. הוסף מדריכים בהגדרות.','warning');
-    return;
-  }
-
-  const trimmedName=(previewName&&String(previewName).trim())?String(previewName).trim():'';
-  const targetName=(trimmedName&&_instrNames.includes(trimmedName))?trimmedName:_instrNames[0];
-  const idx=_instrNames.indexOf(targetName);
-  window._adminPreviewIndex=idx>=0?idx:0;
-
-  const swBtn=document.getElementById('switchViewBtn');
-  if(swBtn)swBtn.style.display='none';
-  const backSpan=document.getElementById('switchBackBtn');
-  if(backSpan)backSpan.style.display='inline-flex';
-
-  const finalName=_instrNames[window._adminPreviewIndex]||targetName;
-  enterApp('instructor',finalName);
-  setTimeout(()=>_updateInstrNavBar(finalName),150);
-}
-
 
 
 function _showInstrPicker(){
@@ -10044,6 +9802,9 @@ async function _iwmCheckCustomTask(i){
   sel.value=opt.value;
 }
 
+async 
+
+
 // ═══════════════════════════════════════════════════════════
 // Feature 1a: Custom shift hours popup in weekly modal
 // ═══════════════════════════════════════════════════════════
@@ -10155,7 +9916,7 @@ async function loadTripHistory(dateISO){
     return raw?Object.values(JSON.parse(raw)):[];
   }
   try{
-    const snap=await _fbGet(_fbRef(_db,historyRoot()+'/'+dateISO));
+    const snap=await _fbGet(_fbRef(_db,'history/'+dateISO));
     if(!snap.exists())return[];
     const h=snap.val();
     return h.trips?Object.values(h.trips):[];
@@ -10196,40 +9957,20 @@ function toggleApprovalPanel(){
 
 function toggleMonthlyDash(){
   _monthlyDashOpen=!_monthlyDashOpen;
+  // Close other panels
+  _approvalPanelOpen=false;
+  ['approvalPanel','auditLogPanel'].forEach(id=>{
+    const el=document.getElementById(id);if(el)el.style.display='none';
+  });
   const panel=document.getElementById('monthlyDashPanel');
   if(panel)panel.style.display=_monthlyDashOpen?'block':'none';
-  if(_monthlyDashOpen){
-    _approvalPanelOpen=false;
-    const ap=document.getElementById('approvalPanel');
-    if(ap)ap.style.display='none';
-    loadMonthlyDash();
-  }
+  if(_monthlyDashOpen)loadMonthlyDash();
 }
 
 async function loadApprovalPanel(){
   const body=document.getElementById('approvalPanelBody');
   if(!body)return;
   body.innerHTML='<div style="color:#aaa;font-size:13px;padding:16px;text-align:center;">⏳ טוען בקשות שיבוץ...</div>';
-
-  // Bind once: handle approve/reject clicks safely (no inline onclick escaping issues)
-  if(!window._approvalClickBound){
-    window._approvalClickBound=true;
-    document.addEventListener('click',async (ev)=>{
-      const btn=ev.target&&ev.target.closest?ev.target.closest('button[data-approve-action]'):null;
-      if(!btn)return;
-      const action=btn.dataset.approveAction;
-      const date=btn.dataset.date;
-      const id=btn.dataset.id;
-      if(!date||!id)return;
-      try{
-        if(action==='approve') await quickApprove(date,id);
-        else if(action==='reject') await quickReject(date,id);
-      }catch(e){
-        console.warn('approvalClick:',e);
-        showToast('⚠️ שגיאה בטיפול בבקשה','warning');
-      }
-    });
-  }
 
   // Collect ALL pending entries across ALL months (up to 3 months back)
   const allPending=[];
@@ -10277,8 +10018,8 @@ async function loadApprovalPanel(){
         <td style="font-size:13px;">${shiftLabel}</td>
         <td style="font-size:12px;color:#888;">${e.note||'—'}</td>
         <td style="white-space:nowrap;">
-          <button data-approve-action="approve" data-date="${e.date}" data-id="${e.id}" style="width:auto;padding:4px 10px;background:#27ae60;color:white;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:bold;margin:0 2px;">✓ אשר</button>
-          <button data-approve-action="reject" data-date="${e.date}" data-id="${e.id}" style="width:auto;padding:4px 10px;background:#fdf2f2;color:#e74c3c;border:1px solid #e74c3c;border-radius:6px;cursor:pointer;font-size:12px;font-weight:bold;margin:0 2px;">✕ דחה</button>
+          <button onclick="quickApprove('${e.date}','${e.id}')" style="width:auto;padding:4px 10px;background:#27ae60;color:white;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:bold;margin:0 2px;">✓ אשר</button>
+          <button onclick="quickReject('${e.date}','${e.id}')" style="width:auto;padding:4px 10px;background:#fdf2f2;color:#e74c3c;border:1px solid #e74c3c;border-radius:6px;cursor:pointer;font-size:12px;font-weight:bold;margin:0 2px;">✕ דחה</button>
         </td>
       </tr>`;
     }).join('');
@@ -10299,8 +10040,8 @@ async function loadApprovalPanel(){
 
 async function quickApprove(date,id){
   await updateSchedStatus(date,id,'approved');
-  // Update local schedData
   if(schedData[date]){const e=schedData[date].find(x=>x.id===id);if(e)e.status='approved';}
+  try{const e=(schedData[date]||[]).find(x=>x.id===id);logAudit('אישור שיבוץ',`${e?.name||'?'} | ${date} | ${(typeof SHIFT_LABELS!=='undefined'&&SHIFT_LABELS[e?.shift])||e?.shift||'?'}`);}catch(er){}
   showToast('✅ בקשת השיבוץ אושרה','success');
   await loadApprovalPanel();
   renderCalendar();
@@ -10310,6 +10051,7 @@ async function quickReject(date,id){
   if(!confirm('לדחות בקשת שיבוץ זו?'))return;
   await updateSchedStatus(date,id,'rejected');
   if(schedData[date]){const e=schedData[date].find(x=>x.id===id);if(e)e.status='rejected';}
+  try{const e=(schedData[date]||[]).find(x=>x.id===id);logAudit('דחיית שיבוץ',`${e?.name||'?'} | ${date}`);}catch(er){}
   showToast('❌ בקשת השיבוץ נדחתה','info');
   await loadApprovalPanel();
   renderCalendar();
@@ -11278,7 +11020,100 @@ function _trySetOnTrip(tripIdx){
   }
   setMyStatus('on-trip',tripIdx);
 }
+
+// ══ FIX: Update nav bar when switching instructor ══
+function switchToInstructorView(previewName){
+  if(currentRole!=='admin')return;
+
+  // If no name, show picker
+  if(!previewName){
+    if(!_instrNames.length){showToast('אין מדריכים מוגדרים','warning');return;}
+    _showInstrPicker();
+    return;
+  }
+
+  _adminPreviewMode=true;
+  window._savedRole=currentRole;
+  window._savedName=currentUserName;
+  window._adminPreviewIndex=_instrNames.indexOf(previewName);
+
+  // Switch views
+  const mv=document.getElementById('managerView');
+  const iv=document.getElementById('instrView');
+  if(mv)mv.style.display='none';
+  if(iv)iv.classList.add('show');
+
+  // Update header buttons
+  const swBtn=document.getElementById('switchViewBtn');
+  const sbBtn=document.getElementById('switchBackBtn');
+  if(swBtn)swBtn.style.display='none';
+  if(sbBtn)sbBtn.style.display='flex';
+
+  // Set role + name
+  currentRole='instructor';
+  currentUserName=previewName;
+  document.getElementById('userRoleTag').textContent='👤 מדריך (תצוגה)';
+  document.getElementById('userNameLbl').textContent=previewName;
+
+  // Show nav bar inside instrView
+  _updateInstrNavBar(previewName);
+
+  // Move manualSection to instructor view
+  try{moveManualSectionToInstr();}catch(e){}
+
+  // Sync and render
+  try{if(typeof startInstrSync==='function')startInstrSync();}catch(e){}
+  setTimeout(()=>{
+    try{renderLog();}catch(e){}
+    try{if(typeof renderInstrView==='function')renderInstrView();}catch(e){}
+    try{renderCalendar();}catch(e){}
+  },200);
+}
+
+
+
+// ══════════════════════════════════════════════════════════════════════
+// DASHBOARD TAB SWITCHER (restored)
+// ══════════════════════════════════════════════════════════════════════
+function switchDashTab(tab){
+  const tabs={
+    segments:'dashTabSegments', timesheet:'dashTabTimesheet',
+    compare:'dashTabCompare', coverage:'dashTabCoverage', efficiency:'dashTabEfficiency'
+  };
+  const btns={
+    segments:'tabSegs', timesheet:'tabTime', compare:'tabComp',
+    coverage:'tabCov', efficiency:'tabEff'
+  };
+  Object.entries(tabs).forEach(([k,id])=>{
+    const el=document.getElementById(id);
+    const btn=document.getElementById(btns[k]);
+    const active=(k===tab);
+    if(el)el.style.display=active?'block':'none';
+    if(btn){
+      btn.style.background=active?'#2980b9':'#f0f4f8';
+      btn.style.color=active?'white':'#555';
+      btn.style.border=active?'none':'1px solid #dde';
+    }
+  });
+  // Auto-render when switching
+  if(tab==='timesheet')renderTimesheet();
+  if(tab==='segments'&&Object.keys(_monthHistoryCache||{}).length)renderSegmentAnalysis();
+  if(tab==='compare')initCompareSelects();
+  if(tab==='coverage'){initCoverageWeekSelect();renderCoverageTab();}
+  if(tab==='efficiency')renderEfficiencyTab();
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// AUDIT LOG — wire to key actions
+// ══════════════════════════════════════════════════════════════════════
+
+/* audit hooks integrated inline */
+
+// Log trip deletes — already wired via delTrip logAudit call in delTrip fn
+/* audit hooks integrated inline */
+
 </script>
 
 </body>
+
 </html>
