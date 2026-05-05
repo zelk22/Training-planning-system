@@ -9951,20 +9951,27 @@ function toggleApprovalPanel(){
   _monthlyDashOpen=false;
   ['monthlyDashPanel','auditLogPanel'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});
   const panel=document.getElementById('approvalPanel');
-  if(panel)panel.style.display=_approvalPanelOpen?'block':'none';
-  if(_approvalPanelOpen)loadApprovalPanel();
+  if(!panel){showToast('⚠️ approvalPanel לא נמצא בDOM','warning');return;}
+  panel.style.display=_approvalPanelOpen?'block':'none';
+  if(_approvalPanelOpen){
+    panel.scrollIntoView({behavior:'smooth',block:'start'});
+    loadApprovalPanel();
+  }
 }
 
 function toggleMonthlyDash(){
   _monthlyDashOpen=!_monthlyDashOpen;
-  // Close other panels
   _approvalPanelOpen=false;
   ['approvalPanel','auditLogPanel'].forEach(id=>{
     const el=document.getElementById(id);if(el)el.style.display='none';
   });
   const panel=document.getElementById('monthlyDashPanel');
-  if(panel)panel.style.display=_monthlyDashOpen?'block':'none';
-  if(_monthlyDashOpen)loadMonthlyDash();
+  if(!panel){showToast('⚠️ monthlyDashPanel לא נמצא בDOM','warning');return;}
+  panel.style.display=_monthlyDashOpen?'block':'none';
+  if(_monthlyDashOpen){
+    panel.scrollIntoView({behavior:'smooth',block:'start'});
+    loadMonthlyDash();
+  }
 }
 
 async function loadApprovalPanel(){
@@ -10859,16 +10866,17 @@ function renderAuditLog(){
 
 function toggleAuditLog(){
   const panel=document.getElementById('auditLogPanel');
-  if(!panel)return;
-  const open=panel.style.display!=='none';
-  // Close other panels
+  if(!panel){showToast('⚠️ auditLogPanel לא נמצא בDOM','warning');return;}
+  const open=panel.style.display==='block';
   ['approvalPanel','monthlyDashPanel'].forEach(id=>{
-    const el=document.getElementById(id);
-    if(el)el.style.display='none';
+    const el=document.getElementById(id);if(el)el.style.display='none';
   });
   _approvalPanelOpen=false;_monthlyDashOpen=false;
   panel.style.display=open?'none':'block';
-  if(!open)renderAuditLog();
+  if(!open){
+    panel.scrollIntoView({behavior:'smooth',block:'start'});
+    renderAuditLog();
+  }
 }
 
 function clearAuditLog(){
