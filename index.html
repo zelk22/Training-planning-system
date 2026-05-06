@@ -6380,163 +6380,155 @@ function initDarkMode(){
 // ═══════════════════════════════════════════════════════════
 
 function renderDashboard(){
-
   const lbl=document.getElementById('dashDateLbl');
-
   if(lbl){const d=new Date(currentDate+'T12:00:00');lbl.textContent=d.toLocaleDateString('he-IL',{weekday:'long',day:'numeric',month:'long'});}
 
   const kpiGrid=document.getElementById('kpiGrid');
-
   const barsWrap=document.getElementById('dashBarsWrap');
-
   if(!kpiGrid)return;
 
-  if(!trips.length){
+  // ── KPI row: only trips + lessons (no conflicts) ──────────────
+  const totalTrips=trips.length;
+  const totalMin=trips.reduce((s,t)=>s+t.route.reduce((ss,r)=>ss+r.t,0),0);
+  const totalLessons=totalMin/45;
+  const tripNames=[...new Set(trips.map(t=>t.name))];
 
+  if(totalTrips>0){
+    kpiGrid.innerHTML=`
+      <div class="kpi-card ok"><div class="kpi-val">${totalTrips}</div><div class="kpi-lbl">נסיעות סה"כ</div></div>
+      <div class="kpi-card ok"><div class="kpi-val">${totalLessons.toFixed(1)}</div><div class="kpi-lbl">שיעורים סה"כ</div></div>
+      <div class="kpi-card"><div class="kpi-val">${tripNames.length}</div><div class="kpi-lbl">מדריכים בנסיעות</div></div>`;
+  } else {
     kpiGrid.innerHTML='<div style="color:#aaa;font-size:13px;grid-column:1/-1;">אין נסיעות להיום</div>';
-
-    if(barsWrap)barsWrap.innerHTML='';
-
-    return;
-
   }
 
-  const totalTrips=trips.length;
+  if(barsWrap)barsWrap.innerHTML='';
 
-  const totalMin=trips.reduce((s,t)=>s+t.route.reduce((ss,r)=>ss+r.t,0),0);
-
-  const totalLessons=totalMin/45;
-
-  const names=[...new Set(trips.map(t=>t.name))];
-
-  const gap=parseInt(document.getElementById('gapV').value)||40;
-
-  let conflicts=0;
-
-  const segMap={};
-
-  trips.forEach(t=>t.timeline.forEach(seg=>{
-
-    if(!segMap[seg.id])segMap[seg.id]=[];
-
-    segMap[seg.id].push({startMin:seg.startMin,tripId:t.id});
-
-  }));
-
-  Object.values(segMap).forEach(arr=>{
-
-    for(let i=0;i<arr.length;i++)for(let j=i+1;j<arr.length;j++)
-
-      if(Math.abs(arr[i].startMin-arr[j].startMin)<gap)conflicts++;
-
-  });
-
-  const byName={};
-
-  trips.forEach(t=>{
-
-    if(!byName[t.name])byName[t.name]={trips:0,min:0};
-
-    byName[t.name].trips++;
-
-    byName[t.name].min+=t.route.reduce((s,r)=>s+r.t,0);
-
-  });
-
-  const maxMin=Math.max(...Object.values(byName).map(v=>v.min),1);
-
-  kpiGrid.innerHTML=`
-
-    <div class="kpi-card ok"><div class="kpi-val">${totalTrips}</div><div class="kpi-lbl">נסיעות סה"כ</div></div>
-
-    <div class="kpi-card ok"><div class="kpi-val">${totalLessons.toFixed(1)}</div><div class="kpi-lbl">שיעורים סה"כ</div></div>
-
-    <div class="kpi-card"><div class="kpi-val">${names.length}</div><div class="kpi-lbl">מדריכים פעילים</div></div>
-
-    <div class="kpi-card ${conflicts>0?'warn':'ok'}"><div class="kpi-val">${conflicts}</div><div class="kpi-lbl">התנגשויות</div></div>
-
-    <div class="kpi-card"><div class="kpi-val">${Math.round(totalMin/names.length||0)}</div><div class="kpi-lbl">דק' ממוצע למדריך</div></div>
-
-    <div class="kpi-card ok"><div class="kpi-val">${(totalLessons/names.length||0).toFixed(1)}</div><div class="kpi-lbl">שיעורים ממוצע</div></div>
-
-  `;
-
-  const colors=['#2980b9','#27ae60','#8e44ad','#e67e22','#c0392b','#16a085','#d35400','#1abc9c'];
-
-  barsWrap.innerHTML=`<div style="font-size:12px;font-weight:bold;color:#888;margin:12px 0 6px;letter-spacing:.3px;">ניצול לפי מדריך</div>
-
-  <div class="dash-bars">${Object.entries(byName).map(([name,v],i)=>{
-
-    const pct=Math.round((v.min/maxMin)*100);
-
-    const lessons=(v.min/45).toFixed(1);
-
-    return`<div class="dash-bar-row">
-
-      <div class="dash-bar-name" title="${name}">${name}</div>
-
-      <div class="dash-bar-track"><div class="dash-bar-fill" style="width:${pct}%;background:${colors[i%colors.length]};"></div></div>
-
-      <div class="dash-bar-pct">${lessons} שיעורים</div>
-
-    </div>`;
-
-  }).join('')}</div>`;
-
-  // ── Daily schedule summary (all instructors + tasks) ──────────────
+  // ── Task-grouped dashboard ─────────────────────────────────────
   renderDailyScheduleSummary();
-
 }
 
 function renderDailyScheduleSummary(){
   const wrap=document.getElementById('dailyScheduleSummary');
   if(!wrap)return;
 
-  const todayEntries=schedData[currentDate]||[];
+  const todayEntries=(schedData[currentDate]||[]);
   if(!todayEntries.length){wrap.innerHTML='';return;}
 
-  // Group entries by instructor
-  const byInstr={};
+  const SHIFT_LABEL={morning:'🌅 בוקר',afternoon:'☀️ צהריים',evening:'🌙 ערב',custom:'⏰ מותאם'};
+  const SHIFT_ORDER={morning:0,afternoon:1,evening:2,custom:3};
+
+  // Group entries by taskId
+  const byTask={};
   todayEntries.forEach(e=>{
-    if(!byInstr[e.name])byInstr[e.name]=[];
-    byInstr[e.name].push(e);
+    const key=e.task||'other';
+    if(!byTask[key])byTask[key]=[];
+    byTask[key].push(e);
   });
 
-  const SHIFT_ICO={morning:'🌅',afternoon:'☀️',evening:'🌙',custom:'⏰'};
+  // Sort task groups: trip tasks first, then others
+  const taskOrder=Object.keys(byTask).sort((a,b)=>{
+    const ta=taskDefs.find(t=>t.id===a)||{};
+    const tb=taskDefs.find(t=>t.id===b)||{};
+    return (tb.isTrip?1:0)-(ta.isTrip?1:0);
+  });
 
-  const rows=Object.entries(byInstr).map(([name,entries])=>{
-    const cells=entries.map(e=>{
-      const tDef=taskDefs.find(t=>t.id===e.task)||{label:e.task||'?',icon:'📋'};
-      const sh=SHIFT_HOURS[e.shift]||{s:e.startTime||'',e:e.endTime||''};
-      const shiftIco=SHIFT_ICO[e.shift]||'';
-      const timeStr=e.shift==='custom'
-        ?`${e.startTime||''}–${e.endTime||''}`
-        :`${sh.s}–${sh.e}`;
-      const noteTag=e.note?`<span title="${e.note}" style="font-size:11px;color:#e67e22;margin-right:4px;">💬</span>`:'';
-      return`<span style="display:inline-flex;align-items:center;gap:4px;background:#f0f4f8;border-radius:6px;padding:3px 8px;margin:2px;font-size:12px;white-space:nowrap;">
-        ${tDef.icon} <b>${tDef.label}</b>
-        <span style="color:#888;font-size:11px;">${shiftIco} ${timeStr}</span>
-        ${noteTag}
-      </span>`;
+  const sections=taskOrder.map(taskId=>{
+    const tDef=taskDefs.find(t=>t.id===taskId)||{label:taskId,icon:'📋',isTrip:false};
+    const entries=byTask[taskId];
+
+    // ── TRIP TASK SECTION ──────────────────────────────────────
+    if(tDef.isTrip){
+      const instrRows=entries.map(e=>{
+        const sh=SHIFT_HOURS[e.shift]||{s:e.startTime||'',e:e.endTime||''};
+        const timeStr=e.shift==='custom'?`${e.startTime}–${e.endTime}`:`${sh.s}–${sh.e}`;
+        const shiftLbl=SHIFT_LABEL[e.shift]||'';
+        // Count trips for this instructor
+        const myTrips=trips.filter(t=>t.name===e.name);
+        const tripCount=myTrips.length;
+        const lessonCount=(myTrips.reduce((s,t)=>s+t.route.reduce((ss,r)=>ss+r.t,0),0)/45).toFixed(1);
+        const instrKey=(e.name||'').replace(/[.#$[\]/]/g,'_');
+        const instrSt=(instrStatuses&&instrStatuses[instrKey])||{};
+        const stBadge=instrSt.status==='returned'
+          ?'<span style="font-size:10px;color:#27ae60;font-weight:bold;margin-right:4px;">✓</span>'
+          :instrSt.status==='on-trip'
+          ?'<span style="font-size:10px;color:#e74c3c;margin-right:4px;">🚇</span>'
+          :'';
+        return`<tr style="border-bottom:1px solid #f0f0f0;">
+          <td style="padding:6px 10px;font-weight:600;font-size:13px;">${stBadge}${e.name}</td>
+          <td style="padding:6px 8px;font-size:12px;color:#555;">${shiftLbl} ${timeStr}</td>
+          <td style="padding:6px 8px;font-size:12px;text-align:center;font-weight:bold;color:var(--primary);">${tripCount}</td>
+          <td style="padding:6px 8px;font-size:12px;text-align:center;font-weight:bold;color:var(--secondary);">${lessonCount}</td>
+          ${e.note?`<td style="padding:6px 8px;font-size:11px;color:#e67e22;">💬 ${e.note}</td>`:'<td></td>'}
+        </tr>`;
+      }).join('');
+
+      const totalT=entries.reduce((s,e)=>s+trips.filter(t=>t.name===e.name).length,0);
+      const totalL=(entries.reduce((s,e)=>s+trips.filter(t=>t.name===e.name).reduce((ss,t)=>ss+t.route.reduce((sss,r)=>sss+r.t,0),0),0)/45).toFixed(1);
+
+      return`<div style="margin-bottom:16px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+          <div style="font-size:14px;font-weight:bold;color:var(--primary);">${tDef.icon} ${tDef.label}</div>
+          <div style="font-size:11px;color:#888;">${entries.length} מדריכים | ${totalT} נסיעות | ${totalL} שיעורים</div>
+        </div>
+        <table style="width:100%;border-collapse:collapse;background:white;border-radius:8px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.07);">
+          <thead><tr style="background:#eaf4fd;">
+            <th style="padding:7px 10px;font-size:11px;text-align:right;color:#555;border-bottom:2px solid #c8e0f5;">מדריך</th>
+            <th style="padding:7px 8px;font-size:11px;text-align:right;color:#555;border-bottom:2px solid #c8e0f5;">משמרת</th>
+            <th style="padding:7px 8px;font-size:11px;text-align:center;color:#555;border-bottom:2px solid #c8e0f5;">נסיעות</th>
+            <th style="padding:7px 8px;font-size:11px;text-align:center;color:#555;border-bottom:2px solid #c8e0f5;">שיעורים</th>
+            <th style="padding:7px 8px;font-size:11px;text-align:right;color:#555;border-bottom:2px solid #c8e0f5;">הערה</th>
+          </tr></thead>
+          <tbody>${instrRows}</tbody>
+        </table>
+      </div>`;
+    }
+
+    // ── NON-TRIP TASK SECTION ──────────────────────────────────
+    // Sort by shift
+    const sorted=[...entries].sort((a,b)=>(SHIFT_ORDER[a.shift]||0)-(SHIFT_ORDER[b.shift]||0));
+
+    // Group by shift for display
+    const byShift={};
+    sorted.forEach(e=>{
+      if(!byShift[e.shift])byShift[e.shift]=[];
+      byShift[e.shift].push(e);
+    });
+
+    const shiftRows=Object.entries(byShift).map(([shift,shEntries])=>{
+      const instrList=shEntries.map(e=>{
+        const sh=SHIFT_HOURS[shift]||{s:e.startTime||'',e:e.endTime||''};
+        const timeStr=shift==='custom'?`${e.startTime}–${e.endTime}`:`${sh.s}–${sh.e}`;
+        return`<span style="display:inline-block;background:#f8f0ff;border-radius:6px;padding:3px 8px;margin:2px;font-size:12px;">${e.name}
+          <span style="color:#888;font-size:11px;">${timeStr}</span>
+          ${e.note?`<span title="${e.note}" style="color:#e67e22;">💬</span>`:''}
+        </span>`;
+      }).join('');
+      return`<tr style="border-bottom:1px solid #f0f0f0;">
+        <td style="padding:6px 10px;font-size:12px;color:#555;white-space:nowrap;">${SHIFT_LABEL[shift]||shift}</td>
+        <td style="padding:6px 10px;">${instrList}</td>
+        <td style="padding:6px 10px;font-size:12px;text-align:center;font-weight:bold;color:#555;">${shEntries.length}</td>
+      </tr>`;
     }).join('');
 
-    return`<tr>
-      <td style="font-weight:bold;font-size:13px;padding:6px 10px;white-space:nowrap;border-bottom:1px solid #eee;">${name}</td>
-      <td style="padding:6px 10px;border-bottom:1px solid #eee;">${cells}</td>
-    </tr>`;
+    return`<div style="margin-bottom:16px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+        <div style="font-size:14px;font-weight:bold;color:var(--primary);">${tDef.icon} ${tDef.label}</div>
+        <div style="font-size:11px;color:#888;">${entries.length} מדריכים</div>
+      </div>
+      <table style="width:100%;border-collapse:collapse;background:white;border-radius:8px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.07);">
+        <thead><tr style="background:#f3eeff;">
+          <th style="padding:7px 10px;font-size:11px;text-align:right;color:#555;border-bottom:2px solid #d9c8f5;">משמרת</th>
+          <th style="padding:7px 10px;font-size:11px;text-align:right;color:#555;border-bottom:2px solid #d9c8f5;">מדריכים</th>
+          <th style="padding:7px 10px;font-size:11px;text-align:center;color:#555;border-bottom:2px solid #d9c8f5;">כמות</th>
+        </tr></thead>
+        <tbody>${shiftRows}</tbody>
+      </table>
+    </div>`;
   }).join('');
 
-  wrap.innerHTML=`
-    <div style="font-size:12px;font-weight:bold;color:#888;margin:12px 0 8px;letter-spacing:.3px;">📋 לוז יומי — כל המדריכים</div>
-    <table style="width:100%;border-collapse:collapse;background:white;border-radius:10px;overflow:hidden;box-shadow:0 1px 6px rgba(0,0,0,.06);">
-      <thead><tr style="background:#f0f4f8;">
-        <th style="text-align:right;padding:8px 10px;font-size:12px;color:#555;border-bottom:2px solid #dde;">מדריך</th>
-        <th style="text-align:right;padding:8px 10px;font-size:12px;color:#555;border-bottom:2px solid #dde;">משימות</th>
-      </tr></thead>
-      <tbody>${rows}</tbody>
-    </table>`;
+  wrap.innerHTML=sections||'<div style="color:#aaa;font-size:13px;">אין שיבוצים להיום</div>';
 }
-
 // ═══════════════════════════════════════════════════════════
 
 // EXPORT
