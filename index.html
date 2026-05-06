@@ -1983,7 +1983,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
       <div style="overflow-x:auto;">
         <table class="mgmt-table" style="width:100%;min-width:600px;">
           <thead><tr>
-            <th>מסלול מתוכנן</th><th>שעת יציאה</th><th>שעת סיום</th><th>שעת נסיעה הבאה</th><th>שיעורים</th><th>מיקום התחלת נסיעה הבאה</th><th>פעולות עריכת נסיעה</th>
+            <th></th><th>מסלול מתוכנן</th><th></th><th>שעת יציאה</th><th>שעת סיום</th><th>שעת נסיעה הבאה</th><th>שיעורים</th><th>מיקום התחלת נסיעה הבאה</th><th>פעולות עריכת נסיעה</th>
           </tr></thead>
           <tbody id="myTripsList"></tbody>
         </table>
@@ -2604,7 +2604,9 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
         <thead><tr>
 
           <th>מדריך</th>
+          <th></th>
           <th>מסלול מתוכנן</th>
+          <th></th>
           <th>שעת יציאה</th>
           <th>שעת סיום</th>
           <th>שעת נסיעה הבאה</th>
@@ -4311,7 +4313,7 @@ function renderLog(){
 
         <td data-label="מדריך"><b>${t.name||'?'}</b></td>
 
-        <td colspan="6" style="color:#aaa;font-size:12px;">נסיעה ללא נתוני מסלול</td>
+        <td colspan="8" style="color:#aaa;font-size:12px;">נסיעה ללא נתוני מסלול</td>
 
         <td><button class="btn-sm del" onclick="delTrip('${t.id}')" title="מחק נסיעה">🗑️</button></td>
 
@@ -4352,9 +4354,13 @@ function renderLog(){
 
       <td data-label="מדריך"><b>${t.name}</b></td>
 
+      <td style="text-align:center;padding:4px;">${_instrChazartiBtn}</td>
+
       <td data-label="מסלול"><small title="${routeStr}">${routeStr.length>22?routeStr.slice(0,22)+'…':routeStr}</small></td>
 
-      <td data-label="יציאה">${t.startStr}${delayTag}${_instrYatzatiBtn}</td>
+      <td style="text-align:center;padding:4px;">${_instrYatzatiBtn}</td>
+
+      <td data-label="יציאה">${t.startStr}${delayTag}</td>
 
       <td data-label="סיום">${toHHMM(endMin)}</td>
 
@@ -4365,7 +4371,6 @@ function renderLog(){
       <td data-label="מיקום">${loc}</td>
 
       <td style="white-space:nowrap;">
-          ${_instrChazartiBtn}
           <button class="btn-sm edit" onclick="openTripEditModal('${t.id}')" title="ערוך נסיעה">✏️</button>
 
           <button class="btn-sm delay" onclick="openDelayModal('${t.id}')" title="הוסף עיכוב">⏱️</button>
@@ -11308,7 +11313,7 @@ function renderTodayTasks(){
             <span style="font-size:12px;color:#888;margin-right:8px;">${shiftName} ${timeStr}</span>
             ${isDone?'<span style="font-size:11px;color:#27ae60;font-weight:bold;">✅ דווח</span>':''}
           </div>
-          <button onclick="openTaskReportModal('${entry.id}','${today}','${(taskDef.id||'').replace(/'/g,"\\'")}'" style="width:auto;padding:6px 14px;background:${isDone?'#27ae60':'#e67e22'};color:white;border:none;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;">
+          <button onclick="openTaskReportModal(this.dataset.e,this.dataset.d,this.dataset.t)" data-e="${entry.id}" data-d="${today}" data-t="${taskDef.id||''}" style="width:auto;padding:6px 14px;background:${isDone?'#27ae60':'#e67e22'};color:white;border:none;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;">
             📝 ${isDone?'ערוך דיווח':'עדכן סיום משימה'}
           </button>
         </div>
