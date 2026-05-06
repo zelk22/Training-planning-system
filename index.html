@@ -2610,6 +2610,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
           <th>נסיעה הבאה</th>
           <th>שיעורים</th>
           <th>מיקום</th>
+          <th style="width:90px;">סטטוס</th>
           <th>פעולות</th>
 
         </tr></thead>
@@ -4316,7 +4317,7 @@ function renderLog(){
 
         <td data-label="מדריך"><b>${t.name||'?'}</b></td>
 
-        <td colspan="6" style="color:#aaa;font-size:12px;">נסיעה ללא נתוני מסלול</td>
+        <td colspan="7" style="color:#aaa;font-size:12px;">נסיעה ללא נתוני מסלול</td>
 
         <td><button class="btn-sm del" onclick="delTrip('${t.id}')" title="מחק נסיעה">🗑️</button></td>
 
@@ -4342,6 +4343,20 @@ function renderLog(){
     const _nowMin=new Date().getHours()*60+new Date().getMinutes();
     const isOnThisTrip=_mySt2.status==='on-trip'&&_mySt2.tripIdx===tIdx;
     const isOnAnyTrip=_mySt2.status==='on-trip';
+
+    // Manager read-only status badge
+    const _instrKey=(t.name||'').replace(/[.#$[\]/]/g,'_');
+    const _instrSt=instrStatuses?.[_instrKey]||{};
+    let _mgr_statusBadge='<span style="font-size:10px;color:#ccc;">—</span>';
+    if(_instrSt.status==='on-trip'){
+      const _onTrip=myTrips[_instrSt.tripIdx];
+      const _sameTrip=_onTrip&&_onTrip.id===t.id;
+      _mgr_statusBadge=_sameTrip
+        ?'<span style="font-size:11px;color:#e74c3c;font-weight:bold;">🚇 בנסיעה</span>'
+        :'<span style="font-size:10px;color:#e67e22;">בנסיעה אחרת</span>';
+    } else if(_instrSt.status==='returned'){
+      _mgr_statusBadge='<span style="font-size:11px;color:#27ae60;font-weight:bold;">✅ חזר</span>';
+    }
     const isPast=currentDate===_localDateStr(new Date())&&(t.timeline?.length?(t.timeline[t.timeline.length-1]?.endMin||0)<_nowMin:false);
 
     // Pre-compute trip buttons (avoid nested template literals)
@@ -4377,6 +4392,8 @@ function renderLog(){
       <td data-label="שיעורים" style="font-weight:bold;color:var(--primary);">${lessons}</td>
 
       <td data-label="מיקום">${loc}</td>
+
+      <td style="text-align:center;padding:4px;">${_mgr_statusBadge}</td>
 
       <td style="white-space:nowrap;">
           <button class="btn-sm edit" onclick="openTripEditModal('${t.id}')" title="ערוך נסיעה">✏️</button>
@@ -11104,14 +11121,13 @@ function _trySetOnTrip(tripIdx){
   const myTrips=trips.filter(t=>t.name===currentUserName);
   const trip=myTrips[tripIdx];
   if(!trip){showToast('נסיעה לא נמצאה','warning');return;}
-  const today=_localDateStr(new Date());
-  if(currentDate>today){showToast('⛔ לא ניתן לסמן יציאה לנסיעה עתידית','warning');return;}
-  const nowM=new Date().getHours()*60+new Date().getMinutes();
-  const tripStartMin=timeToMin(trip.startStr||'00:00');
-  if(currentDate===today&&tripStartMin>nowM+15){
-    showToast(`⛔ הנסיעה מתחילה ב-${trip.startStr} — לא ניתן לסמן כעת`,'warning');return;
-  }
   setMyStatus('on-trip',tripIdx);
+  // Update local state immediately for UI refresh
+  const key=currentUserName.replace(/[.#$[\]/]/g,'_');
+  if(!instrStatuses)window.instrStatuses={};
+  instrStatuses[key]={name:currentUserName,status:'on-trip',tripIdx,time:toHHMM(new Date().getHours()*60+new Date().getMinutes())};
+  showToast('✅ יציאה לנסיעה סומנה','success');
+  setTimeout(renderInstrTripJournal,200);
 }
 
 // ══ FIX: Update nav bar when switching instructor ══
@@ -11742,7 +11758,14 @@ function _mkTripBtn(type,idx){
   if(type==='chazarti') return '<button onclick="_doChazarti('+idx+')" style="margin-left:3px;padding:3px 9px;background:#e74c3c;color:white;border:none;border-radius:5px;cursor:pointer;font-size:11px;font-weight:bold;">🏁 חזרתי</button>';
   return '';
 }
-function _doChazarti(idx){ setMyStatus('returned',idx); }
+function _doChazarti(idx){
+  setMyStatus('returned',idx);
+  const key=currentUserName.replace(/[.#$[\]/]/g,'_');
+  if(!instrStatuses)window.instrStatuses={};
+  instrStatuses[key]={name:currentUserName,status:'returned',tripIdx:idx,time:toHHMM(new Date().getHours()*60+new Date().getMinutes())};
+  showToast('🏁 חזרה מהנסיעה סומנה','success');
+  setTimeout(renderInstrTripJournal,200);
+}
 
 </script>
 
