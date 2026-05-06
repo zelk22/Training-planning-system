@@ -4365,20 +4365,32 @@ function renderLog(){
     const isOnThisTrip=_mySt2.status==='on-trip'&&_mySt2.tripIdx===tIdx;
     const isOnAnyTrip=_mySt2.status==='on-trip';
 
-    // Manager read-only status badge
+    // Manager status badge
     const _instrKey=(t.name||'').replace(/[.#$[\]/]/g,'_');
     const _instrSt=(instrStatuses&&instrStatuses[_instrKey])||{};
-    // Find instructor's trips to check if THIS trip matches their current tripIdx
     const _instrTrips=_renderTrips.filter(x=>x.name===t.name);
     const _instrTripAtIdx=_instrTrips[_instrSt.tripIdx];
     const _isThisTrip=_instrTripAtIdx&&_instrTripAtIdx.id===t.id;
-    let _mgr_statusBadge='<span style="font-size:10px;color:#ccc;">—</span>';
-    if(_instrSt.status==='on-trip'){
-      _mgr_statusBadge=_isThisTrip
-        ?'<span style="font-size:12px;color:#e74c3c;font-weight:bold;">🚇 בנסיעה</span>'
-        :'<span style="font-size:10px;color:#e67e22;">בנסיעה<br>אחרת</span>';
-    } else if(_instrSt.status==='returned'){
-      _mgr_statusBadge='<span style="font-size:12px;color:#27ae60;font-weight:bold;">✅ חזר</span>';
+    const _mgrStl='width:82px;padding:4px 0;border:none;border-radius:7px;cursor:pointer;font-size:11px;font-weight:bold;';
+    const _nowM2=new Date().getHours()*60+new Date().getMinutes();
+    const _startMin2=timeToMin(t.startStr||'00:00');
+    const _endMin2=t.timeline?.length?t.timeline[t.timeline.length-1].endMin||0:0;
+    const _mgrTripStarted=currentDate===_localDateStr(new Date())&&_startMin2<=_nowM2;
+    const _mgrTripPast=currentDate===_localDateStr(new Date())&&_endMin2<_nowM2;
+
+    let _mgr_statusBadge='';
+    if(_instrSt.status==='returned'&&_isThisTrip){
+      // Case 4: completed
+      _mgr_statusBadge='<span style="font-size:12px;color:#27ae60;font-weight:bold;">✓ בוצע</span>';
+    } else if(_instrSt.status==='on-trip'&&_isThisTrip){
+      // Case 2: on this trip
+      _mgr_statusBadge='<span style="font-size:12px;color:#e74c3c;font-weight:bold;">🚇 בנסיעה</span>';
+    } else if(_mgrTripPast&&_instrSt.status!=='returned'){
+      // Case 3: past and unconfirmed
+      _mgr_statusBadge='<button onclick="_mgrConfirmTrip(\''+t.id+'\',\''+t.name+'\')" style="'+_mgrStl+'background:#e74c3c;color:white;">⚠️ אשר נסיעה</button>';
+    } else if(_mgrTripStarted){
+      // Case 2: time arrived, awaiting instructor action
+      _mgr_statusBadge='<span style="font-size:11px;color:#888;">ממתין...</span>';
     }
     const isPast=currentDate===_localDateStr(new Date())&&(t.timeline?.length?(t.timeline[t.timeline.length-1]?.endMin||0)<_nowMin:false);
 
@@ -9232,16 +9244,23 @@ function renderInstrTripJournal(){
     const isOnThis=mySt.status==='on-trip'&&mySt.tripIdx===tIdx;
     const isOnOther=mySt.status==='on-trip'&&mySt.tripIdx!==tIdx;
 
-    // Single status button (Option A)
+    // Status column logic
+    const isReturned=mySt.status==='returned'&&mySt.tripIdx===tIdx;
+    const tripStarted=currentDate===today&&tripStartMin<=nowM;
+    const tripPast=currentDate===today&&endMin<nowM;
+    const _stl='width:82px;padding:5px 0;border:none;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;';
+
     let statusBtn='';
-    if(isOnThis){
-      statusBtn='<button onclick="_doChazarti('+tIdx+')" style="width:82px;padding:5px 0;background:#e74c3c;color:white;border:none;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;">🏁 חזרתי</button>';
+    if(isReturned){
+      statusBtn='<span style="font-size:12px;color:#27ae60;font-weight:bold;">✓ בוצע</span>';
+    } else if(isOnThis){
+      statusBtn='<button onclick="_doChazarti('+tIdx+')" style="'+_stl+'background:#e74c3c;color:white;">🏁 חזרתי</button>';
+    } else if(tripPast&&!isOnOther){
+      statusBtn='<button onclick="_confirmTripRetro('+tIdx+')" style="'+_stl+'background:#e74c3c;color:white;font-size:11px;">⚠️ אשר נסיעה</button>';
+    } else if(tripStarted&&!isOnOther){
+      statusBtn='<button onclick="_trySetOnTrip('+tIdx+')" style="'+_stl+'background:#27ae60;color:white;">✅ יצאתי</button>';
     } else if(isOnOther){
-      statusBtn='<span style="font-size:10px;color:#aaa;display:block;text-align:center;">בנסיעה<br>אחרת</span>';
-    } else if(isEnded){
-      statusBtn='<span style="font-size:11px;color:#27ae60;font-weight:bold;">✅ הסתיים</span>';
-    } else {
-      statusBtn='<button onclick="_trySetOnTrip('+tIdx+')" style="width:82px;padding:5px 0;background:#27ae60;color:white;border:none;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;">✅ יצאתי</button>';
+      statusBtn='<span style="font-size:10px;color:#aaa;text-align:center;display:block;">בנסיעה<br>אחרת</span>';
     }
 
     return`<tr id="instr-row-${t.id}">
@@ -11790,6 +11809,36 @@ function _doChazarti(idx){
   instrStatuses[key]={name:currentUserName,status:'returned',tripIdx:idx,time:toHHMM(new Date().getHours()*60+new Date().getMinutes())};
   showToast('🏁 חזרה מהנסיעה סומנה','success');
   setTimeout(renderInstrTripJournal,200);
+}
+
+
+
+// Retroactive trip confirmation — marks as both departed and returned
+function _confirmTripRetro(tripIdx){
+  const myTrips=trips.filter(t=>t.name===currentUserName);
+  const trip=myTrips[tripIdx];
+  if(!trip){showToast('נסיעה לא נמצאה','warning');return;}
+  setMyStatus('returned',tripIdx);
+  const key=currentUserName.replace(/[.#$[\]/]/g,'_');
+  instrStatuses[key]={name:currentUserName,status:'returned',tripIdx,time:toHHMM(new Date().getHours()*60+new Date().getMinutes())};
+  showToast('✅ נסיעה אושרה רטרואקטיבית','success');
+  setTimeout(renderInstrTripJournal,200);
+}
+
+// Manager confirms trip retroactively on behalf of instructor
+async function _mgrConfirmTrip(tripId,instrName){
+  if(!confirm('לאשר נסיעה זו עבור '+instrName+'?'))return;
+  const myTrips=trips.filter(t=>t.name===instrName);
+  const tripIdx=myTrips.findIndex(t=>t.id===tripId);
+  if(tripIdx<0){showToast('נסיעה לא נמצאה','warning');return;}
+  const key=instrName.replace(/[.#$[\]/]/g,'_');
+  const entry={name:instrName,status:'returned',tripIdx,time:toHHMM(new Date().getHours()*60+new Date().getMinutes())};
+  instrStatuses[key]=entry;
+  if(window._fbDb){
+    try{await _fbSet(_fbRef(_db,statusPath()+'/'+key),entry);}catch(e){}
+  }
+  showToast('✅ נסיעה אושרה עבור '+instrName,'success');
+  renderLog();
 }
 
 </script>
