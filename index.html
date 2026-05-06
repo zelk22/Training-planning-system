@@ -1955,6 +1955,16 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
       </div>
     </div>
 
+    <!-- ══ INLINE TASK REPORT ══════════════════════════ -->
+    <div id="inlineTaskReport" style="display:none;background:#fffbf0;border-radius:12px;border:1.5px solid #f0c050;padding:16px;margin-bottom:12px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+        <h3 id="inlineReportTitle" style="margin:0;font-size:15px;color:var(--primary);">📝 סיכום משימה</h3>
+        <button onclick="closeInlineTaskReport()" style="width:auto;background:none;border:1.5px solid #ccc;border-radius:50%;width:28px;height:28px;cursor:pointer;font-size:16px;color:#666;padding:0;">×</button>
+      </div>
+      <div id="inlineReportFields" style="display:flex;flex-direction:column;gap:12px;margin-bottom:14px;"></div>
+      <button onclick="submitTaskReport()" style="width:100%;padding:11px;background:var(--primary);color:white;border:none;border-radius:9px;cursor:pointer;font-size:14px;font-weight:bold;">✅ שמור דיווח</button>
+    </div>
+
     <div id="nextTripCard"></div>
 
     <!-- Placeholder for manualSection — moved here dynamically for instructor -->
@@ -4329,15 +4339,14 @@ function renderLog(){
     const isPast=currentDate===_localDateStr(new Date())&&(t.timeline?.length?(t.timeline[t.timeline.length-1]?.endMin||0)<_nowMin:false);
 
     // Pre-compute trip buttons (avoid nested template literals)
-    const _tripInstrBtns=(function(){
-      if(currentRole!=='instructor') return '';
-      let _h='';
-      if(!isOnThisTrip&&!isPast&&tIdx>=0)
-        _h+='<button class="btn-sm" onclick="_trySetOnTrip('+tIdx+')" style="background:#27ae60;color:white;border:none;padding:3px 8px;border-radius:5px;cursor:pointer;font-size:11px;font-weight:bold;margin-left:2px;">✅ יצאתי</button>';
-      if(isOnThisTrip)
-        _h+='<button class="btn-sm" onclick="setMyStatus(' + "'" + 'returned' + "'" + ','+tIdx+')" style="background:#e74c3c;color:white;border:none;padding:3px 8px;border-radius:5px;cursor:pointer;font-size:11px;font-weight:bold;margin-left:2px;">🏁 חזרתי</button>';
-      return _h;
-    })();
+    // יצאתי button: shown in departure time cell
+    const _instrYatzatiBtn=(currentRole==='instructor'&&!isOnThisTrip&&!isPast&&tIdx>=0)
+      ?'<button onclick="_trySetOnTrip('+tIdx+')" style="margin-right:6px;padding:3px 9px;background:#27ae60;color:white;border:none;border-radius:5px;cursor:pointer;font-size:11px;font-weight:bold;">✅ יצאתי</button>'
+      :'';
+    // חזרתי button: shown in actions cell
+    const _instrChazartiBtn=(currentRole==='instructor'&&isOnThisTrip)
+      ?'<button onclick="setMyStatus(\'returned\','+tIdx+')" style="margin-left:3px;padding:3px 9px;background:#e74c3c;color:white;border:none;border-radius:5px;cursor:pointer;font-size:11px;font-weight:bold;">🏁 חזרתי</button>'
+      :'';
 
     return`<tr id="row-${t.id}">
 
@@ -4345,7 +4354,7 @@ function renderLog(){
 
       <td data-label="מסלול"><small title="${routeStr}">${routeStr.length>22?routeStr.slice(0,22)+'…':routeStr}</small></td>
 
-      <td data-label="יציאה">${t.startStr}${delayTag}</td>
+      <td data-label="יציאה">${t.startStr}${delayTag}${_instrYatzatiBtn}</td>
 
       <td data-label="סיום">${toHHMM(endMin)}</td>
 
@@ -4356,7 +4365,7 @@ function renderLog(){
       <td data-label="מיקום">${loc}</td>
 
       <td style="white-space:nowrap;">
-          ${_tripInstrBtns}
+          ${_instrChazartiBtn}
           <button class="btn-sm edit" onclick="openTripEditModal('${t.id}')" title="ערוך נסיעה">✏️</button>
 
           <button class="btn-sm delay" onclick="openDelayModal('${t.id}')" title="הוסף עיכוב">⏱️</button>
@@ -11373,42 +11382,32 @@ function openTaskReportModal(entryId,date,taskId){
   const taskDef=taskDefs.find(t=>t.id===taskId)||{label:'משימה',summaryFields:[]};
   _taskReportContext={entryId,date,taskId};
 
-  document.getElementById('taskReportTitle').textContent=`📝 סיכום — ${taskDef.label}`;
+  const titleEl=document.getElementById('inlineReportTitle');
+  if(titleEl)titleEl.textContent='📝 סיכום — '+taskDef.label;
 
-  const reportKey=`${date}__${currentUserName}__${entryId}`;
-  const existing=window._taskReportsCache?.[reportKey]||{};
-
+  const reportKey=date+'__'+currentUserName+'__'+entryId;
+  const existing=(window._taskReportsCache&&window._taskReportsCache[reportKey])||{};
   const fields=(taskDef.summaryFields||[]);
 
-  // Build measurement fields (quantity/duration from taskDef)
-  const measureFields=fields.map(f=>`
-    <div>
-      <label style="display:block;font-size:13px;font-weight:bold;margin-bottom:5px;color:var(--primary);">${f.type==='quantity'?'🔢':'⏱'} ${f.label}</label>
-      <input id="trField_${f.type}" type="number" min="0" value="${existing[f.type]||''}"
-        placeholder="${f.type==='quantity'?'הזן מספר':'הזן דקות'}"
-        style="width:100%;padding:9px 12px;border:1.5px solid #ddd;border-radius:8px;font-size:15px;box-sizing:border-box;text-align:center;">
-    </div>`).join('');
+  const measureFields=fields.map(f=>'<div><label style="display:block;font-size:13px;font-weight:bold;margin-bottom:5px;color:var(--primary);">'+(f.type==='quantity'?'🔢':'⏱')+' '+f.label+'</label><input id="trField_'+f.type+'" type="number" min="0" value="'+(existing[f.type]||'')+'" placeholder="'+(f.type==='quantity'?'הזן מספר':'הזן דקות')+'" style="width:100%;padding:9px 12px;border:1.5px solid #ddd;border-radius:8px;font-size:15px;box-sizing:border-box;text-align:center;"></div>').join('');
 
-  // Always add: challenges + free notes
-  const extraFields=`
-    <div>
-      <label style="display:block;font-size:13px;font-weight:bold;margin-bottom:5px;color:#7f8c8d;">⚠️ אתגרים / בעיות</label>
-      <textarea id="trField_challenges" rows="2" placeholder="תאר אתגרים או בעיות שנתקלת בהם..."
-        style="width:100%;padding:9px 12px;border:1.5px solid #ddd;border-radius:8px;font-size:13px;box-sizing:border-box;resize:vertical;">${existing.challenges||''}</textarea>
-    </div>
-    <div>
-      <label style="display:block;font-size:13px;font-weight:bold;margin-bottom:5px;color:#7f8c8d;">💬 הערות חופשיות</label>
-      <textarea id="trField_notes" rows="2" placeholder="הערות נוספות..."
-        style="width:100%;padding:9px 12px;border:1.5px solid #ddd;border-radius:8px;font-size:13px;box-sizing:border-box;resize:vertical;">${existing.notes||''}</textarea>
-    </div>`;
+  const extraFields='<div><label style="display:block;font-size:13px;font-weight:bold;margin-bottom:5px;color:#7f8c8d;">⚠️ אתגרים / בעיות</label><textarea id="trField_challenges" rows="2" placeholder="תאר אתגרים..." style="width:100%;padding:9px;border:1.5px solid #ddd;border-radius:8px;font-size:13px;box-sizing:border-box;resize:vertical;">'+(existing.challenges||'')+'</textarea></div>'
+    +'<div><label style="display:block;font-size:13px;font-weight:bold;margin-bottom:5px;color:#7f8c8d;">💬 הערות חופשיות</label><textarea id="trField_notes" rows="2" placeholder="הערות נוספות..." style="width:100%;padding:9px;border:1.5px solid #ddd;border-radius:8px;font-size:13px;box-sizing:border-box;resize:vertical;">'+(existing.notes||'')+'</textarea></div>';
 
-  const all=(measureFields||'<div style="color:#aaa;font-size:12px;text-align:center;padding:4px 0;">לא הוגדרו שדות מדידה — מלא הערות בלבד</div>')+extraFields;
-  document.getElementById('taskReportFields').innerHTML=all;
+  const fieldsEl=document.getElementById('inlineReportFields');
+  if(fieldsEl)fieldsEl.innerHTML=(measureFields||'<div style="color:#aaa;font-size:12px;text-align:center;padding:4px 0;">מלא הערות בלבד</div>')+extraFields;
 
-  const modal=document.getElementById('taskReportModal');
-  modal.style.display='flex';
+  const panel=document.getElementById('inlineTaskReport');
+  if(panel){
+    panel.style.display='block';
+    panel.scrollIntoView({behavior:'smooth',block:'start'});
+  }
 }
-function closeTaskReportModal(){
+
+function closeInlineTaskReport(){
+  const panel=document.getElementById('inlineTaskReport');
+  if(panel)panel.style.display='none';
+}function closeTaskReportModal(){
   document.getElementById('taskReportModal').style.display='none';
 }
 
@@ -11455,7 +11454,7 @@ async function submitTaskReport(){
     localStorage.setItem(lsKey,JSON.stringify(existing));
   }catch(e){}
 
-  closeTaskReportModal();
+  closeInlineTaskReport();
   showToast('✅ הדיווח נשמר בהצלחה!','success');
   renderTodayTasks();
 }
