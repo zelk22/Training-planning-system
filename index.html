@@ -4367,16 +4367,18 @@ function renderLog(){
 
     // Manager read-only status badge
     const _instrKey=(t.name||'').replace(/[.#$[\]/]/g,'_');
-    const _instrSt=instrStatuses?.[_instrKey]||{};
+    const _instrSt=(instrStatuses&&instrStatuses[_instrKey])||{};
+    // Find instructor's trips to check if THIS trip matches their current tripIdx
+    const _instrTrips=_renderTrips.filter(x=>x.name===t.name);
+    const _instrTripAtIdx=_instrTrips[_instrSt.tripIdx];
+    const _isThisTrip=_instrTripAtIdx&&_instrTripAtIdx.id===t.id;
     let _mgr_statusBadge='<span style="font-size:10px;color:#ccc;">—</span>';
     if(_instrSt.status==='on-trip'){
-      const _onTrip=myTrips[_instrSt.tripIdx];
-      const _sameTrip=_onTrip&&_onTrip.id===t.id;
-      _mgr_statusBadge=_sameTrip
-        ?'<span style="font-size:11px;color:#e74c3c;font-weight:bold;">🚇 בנסיעה</span>'
-        :'<span style="font-size:10px;color:#e67e22;">בנסיעה אחרת</span>';
+      _mgr_statusBadge=_isThisTrip
+        ?'<span style="font-size:12px;color:#e74c3c;font-weight:bold;">🚇 בנסיעה</span>'
+        :'<span style="font-size:10px;color:#e67e22;">בנסיעה<br>אחרת</span>';
     } else if(_instrSt.status==='returned'){
-      _mgr_statusBadge='<span style="font-size:11px;color:#27ae60;font-weight:bold;">✅ חזר</span>';
+      _mgr_statusBadge='<span style="font-size:12px;color:#27ae60;font-weight:bold;">✅ חזר</span>';
     }
     const isPast=currentDate===_localDateStr(new Date())&&(t.timeline?.length?(t.timeline[t.timeline.length-1]?.endMin||0)<_nowMin:false);
 
