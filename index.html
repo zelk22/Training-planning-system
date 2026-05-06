@@ -1983,7 +1983,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
       <div style="overflow-x:auto;">
         <table class="mgmt-table" style="width:100%;min-width:600px;">
           <thead><tr>
-            <th></th><th>מסלול מתוכנן</th><th></th><th>שעת יציאה</th><th>שעת סיום</th><th>שעת נסיעה הבאה</th><th>שיעורים</th><th>מיקום התחלת נסיעה הבאה</th><th>פעולות עריכת נסיעה</th>
+            <th style="width:36px;padding:4px;"></th><th>מסלול מתוכנן</th><th style="width:36px;padding:4px;"></th><th>שעת יציאה</th><th>שעת סיום</th><th style="width:60px;font-size:11px;white-space:nowrap;">שעת הבאה</th><th>שיעורים</th><th>מיקום התחלת נסיעה הבאה</th><th>פעולות עריכת נסיעה</th>
           </tr></thead>
           <tbody id="myTripsList"></tbody>
         </table>
@@ -2604,12 +2604,12 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
         <thead><tr>
 
           <th>מדריך</th>
-          <th></th>
+          <th style="width:36px;padding:4px;"></th>
           <th>מסלול מתוכנן</th>
-          <th></th>
+          <th style="width:36px;padding:4px;"></th>
           <th>שעת יציאה</th>
           <th>שעת סיום</th>
-          <th>שעת נסיעה הבאה</th>
+          <th style="width:60px;font-size:11px;white-space:nowrap;">שעת הבאה</th>
           <th>שיעורים</th>
           <th>מיקום התחלת נסיעה הבאה</th>
           <th>פעולות עריכת נסיעה</th>
@@ -4294,7 +4294,12 @@ function renderLog(){
   if(trips.length===0){b.innerHTML='<tr><td colspan="8" style="color:#aaa;padding:18px;text-align:center;">אין נסיעות רשומות</td></tr>';renderTimeline();return;}
 
   // Sort (manager only)
-  let _renderTrips=[...trips];
+  let _renderTrips=currentRole==='instructor'
+    ?[...trips].filter(t=>t.name===currentUserName)
+    :[...trips];
+  // For instructor: pre-compute myTrips for status button index
+  const _myTripsForBtn=trips.filter(t=>t.name===currentUserName)
+    .sort((a,b)=>(a.timeline[0]?.startMin||0)-(b.timeline[0]?.startMin||0));
   if(currentRole==='admin'){
     const _sortBy=(document.getElementById('logSortBy')?.value)||'default';
     const _toM=str=>{const[h,m]=(str||'00:00').split(':');return+h*60+ +m;};
@@ -4335,36 +4340,41 @@ function renderLog(){
 
     const _myKey2=(currentUserName||'').replace(/[.#$[\]/]/g,'_');
     const _mySt2=instrStatuses?.[_myKey2]||{status:'pending',tripIdx:-1};
-    const tIdx=_renderTrips.indexOf(t);
+    const tIdx=currentRole==='instructor'?_myTripsForBtn.indexOf(t):_renderTrips.indexOf(t);
     const _nowMin=new Date().getHours()*60+new Date().getMinutes();
     const isOnThisTrip=_mySt2.status==='on-trip'&&_mySt2.tripIdx===tIdx;
     const isPast=currentDate===_localDateStr(new Date())&&(t.timeline?.length?(t.timeline[t.timeline.length-1]?.endMin||0)<_nowMin:false);
 
     // Pre-compute trip buttons (avoid nested template literals)
     // יצאתי button: shown in departure time cell
-    const _instrYatzatiBtn=(currentRole==='instructor'&&!isOnThisTrip&&!isPast&&tIdx>=0)
-      ?'<button onclick="_trySetOnTrip('+tIdx+')" style="margin-right:6px;padding:3px 9px;background:#27ae60;color:white;border:none;border-radius:5px;cursor:pointer;font-size:11px;font-weight:bold;">✅ יצאתי</button>'
-      :'';
-    // חזרתי button: shown in actions cell
-    const _instrChazartiBtn=(currentRole==='instructor'&&isOnThisTrip)
-      ?'<button onclick="setMyStatus(\'returned\','+tIdx+')" style="margin-left:3px;padding:3px 9px;background:#e74c3c;color:white;border:none;border-radius:5px;cursor:pointer;font-size:11px;font-weight:bold;">🏁 חזרתי</button>'
-      :'';
+    // יצאתי button — in departure time cell
+    let _instrYatzatiBtn="";
+    if(currentRole==="instructor"&&!isOnThisTrip&&tIdx>=0){
+      _instrYatzatiBtn=_mkTripBtn("yatzati",tIdx);
+    }
+    // חזרתי button — in actions cell
+    let _instrChazartiBtn="";
+    if(currentRole==="instructor"&&isOnThisTrip){
+      _instrChazartiBtn=_mkTripBtn("chazarti",tIdx);
+
+    }
+
 
     return`<tr id="row-${t.id}">
 
       <td data-label="מדריך"><b>${t.name}</b></td>
 
-      <td style="text-align:center;padding:4px;">${_instrChazartiBtn}</td>
+      <td style="width:36px;padding:4px;text-align:center;">${_instrChazartiBtn}</td>
 
       <td data-label="מסלול"><small title="${routeStr}">${routeStr.length>22?routeStr.slice(0,22)+'…':routeStr}</small></td>
 
-      <td style="text-align:center;padding:4px;">${_instrYatzatiBtn}</td>
+      <td style="width:36px;padding:4px;text-align:center;">${_instrYatzatiBtn}</td>
 
       <td data-label="יציאה">${t.startStr}${delayTag}</td>
 
       <td data-label="סיום">${toHHMM(endMin)}</td>
 
-      <td data-label="נסיעה הבאה" style="color:var(--danger);font-weight:bold;">${toHHMM(endMin+75)}</td>
+      <td style="color:var(--danger);font-weight:bold;font-size:12px;">${toHHMM(endMin+75)}</td>
 
       <td data-label="שיעורים" style="font-weight:bold;color:var(--primary);">${lessons}</td>
 
@@ -11708,6 +11718,15 @@ function normalizeTaskDefs(){
     summaryFields: Array.isArray(t.summaryFields)?t.summaryFields:[],
   }));
 }
+
+
+// Helper: build trip status button HTML
+function _mkTripBtn(type,idx){
+  if(type==='yatzati') return '<button onclick="_trySetOnTrip('+idx+')" style="margin-left:6px;padding:3px 9px;background:#27ae60;color:white;border:none;border-radius:5px;cursor:pointer;font-size:11px;font-weight:bold;">✅ יצאתי</button>';
+  if(type==='chazarti') return '<button onclick="_doChazarti('+idx+')" style="margin-left:3px;padding:3px 9px;background:#e74c3c;color:white;border:none;border-radius:5px;cursor:pointer;font-size:11px;font-weight:bold;">🏁 חזרתי</button>';
+  return '';
+}
+function _doChazarti(idx){ setMyStatus('returned',idx); }
 
 </script>
 
