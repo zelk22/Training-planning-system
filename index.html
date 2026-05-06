@@ -4321,6 +4321,13 @@ function renderLog(){
 
     const delayTag=t.delayMin>0?`<span style="color:var(--warning);font-size:11px;"> (+${t.delayMin} דק')</span>`:'';
 
+    const _myKey2=(currentUserName||'').replace(/[.#$[\]/]/g,'_');
+    const _mySt2=instrStatuses?.[_myKey2]||{status:'pending',tripIdx:-1};
+    const tIdx=_renderTrips.indexOf(t);
+    const _nowMin=new Date().getHours()*60+new Date().getMinutes();
+    const isOnThisTrip=_mySt2.status==='on-trip'&&_mySt2.tripIdx===tIdx;
+    const isPast=currentDate===_localDateStr(new Date())&&(t.timeline?.length?(t.timeline[t.timeline.length-1]?.endMin||0)<_nowMin:false);
+
     return`<tr id="row-${t.id}">
 
       <td data-label="מדריך"><b>${t.name}</b></td>
@@ -4337,7 +4344,12 @@ function renderLog(){
 
       <td data-label="מיקום">${loc}</td>
 
-      <td><button class="btn-sm edit" onclick="openTripEditModal('${t.id}')" title="ערוך נסיעה">✏️</button>
+      <td style="white-space:nowrap;">
+          ${currentRole==='instructor'?`
+            ${!isOnThisTrip&&!isPast?`<button class="btn-sm" onclick="_trySetOnTrip(${tIdx})" title="יצאתי לנסיעה זו" style="background:#27ae60;color:white;border:none;padding:3px 8px;border-radius:5px;cursor:pointer;font-size:11px;font-weight:bold;margin-left:2px;">✅ יצאתי</button>`:''}
+            ${isOnThisTrip?`<button class="btn-sm" onclick="setMyStatus('returned',${tIdx})" title="חזרתי מנסיעה זו" style="background:#e74c3c;color:white;border:none;padding:3px 8px;border-radius:5px;cursor:pointer;font-size:11px;font-weight:bold;margin-left:2px;">🏁 חזרתי</button>`:''}
+          `:''}
+          <button class="btn-sm edit" onclick="openTripEditModal('${t.id}')" title="ערוך נסיעה">✏️</button>
 
           <button class="btn-sm delay" onclick="openDelayModal('${t.id}')" title="הוסף עיכוב">⏱️</button>
 
@@ -11254,21 +11266,14 @@ function renderTodayTasks(){
 
     // ── Trip task: show יצאתי/חזרתי ──
     if(taskDef.isTrip){
-      const upcoming=myTrips.find(t=>(t.timeline[t.timeline.length-1]?.endMin||0)>nowM);
-      const idx=upcoming?myTrips.indexOf(upcoming):-1;
-      const isOn=mySt.status==='on-trip'&&mySt.tripIdx===idx;
-      const tripBtns=(idx>=0)
-        ?(!isOn
-          ?`<button onclick="_trySetOnTrip(${idx})" style="width:auto;padding:5px 12px;background:#27ae60;color:white;border:none;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;">✅ יצאתי</button>`
-          :`<button onclick="setMyStatus('returned',${idx})" style="width:auto;padding:5px 12px;background:#e74c3c;color:white;border:none;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;">🏁 חזרתי</button>`)
-        :'';
+      const upcomingCount=myTrips.filter(t=>(t.timeline[t.timeline.length-1]?.endMin||0)>nowM).length;
       return`<div style="background:#eaf4fd;border-radius:10px;padding:12px 14px;border:1px solid #b5d4f4;">
         <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:${(taskDef.message||entry.note)?'10px':'0'};">
           <div>
             <span style="font-size:15px;font-weight:bold;color:var(--primary);">${taskDef.icon||'🚇'} ${taskDef.label}</span>
             <span style="font-size:12px;color:#888;margin-right:8px;">${shiftName} ${timeStr}</span>
           </div>
-          <div style="display:flex;gap:6px;">${tripBtns}</div>
+          <span style="font-size:11px;color:#2980b9;background:#ddeeff;padding:3px 8px;border-radius:5px;">${myTrips.length} נסיעות — ראה יומן למטה</span>
         </div>
         ${_buildTaskDetails(taskDef,entry)}
       </div>`;
@@ -11363,10 +11368,12 @@ function openTaskReportModal(entryId,date,taskId){
   document.getElementById('taskReportTitle').textContent=`📝 סיכום — ${taskDef.label}`;
 
   const reportKey=`${date}__${currentUserName}__${entryId}`;
-  const existing=window._taskReportsCache[reportKey]||{};
+  const existing=window._taskReportsCache?.[reportKey]||{};
 
   const fields=(taskDef.summaryFields||[]);
-  const fieldsHtml=fields.map(f=>`
+
+  // Build measurement fields (quantity/duration from taskDef)
+  const measureFields=fields.map(f=>`
     <div>
       <label style="display:block;font-size:13px;font-weight:bold;margin-bottom:5px;color:var(--primary);">${f.type==='quantity'?'🔢':'⏱'} ${f.label}</label>
       <input id="trField_${f.type}" type="number" min="0" value="${existing[f.type]||''}"
@@ -11374,17 +11381,25 @@ function openTaskReportModal(entryId,date,taskId){
         style="width:100%;padding:9px 12px;border:1.5px solid #ddd;border-radius:8px;font-size:15px;box-sizing:border-box;text-align:center;">
     </div>`).join('');
 
-  if(!fields.length){
-    document.getElementById('taskReportFields').innerHTML=
-      '<div style="color:#aaa;text-align:center;padding:10px;">לא הוגדרו שדות מדידה למשימה זו</div>';
-  } else {
-    document.getElementById('taskReportFields').innerHTML=fieldsHtml;
-  }
+  // Always add: challenges + free notes
+  const extraFields=`
+    <div>
+      <label style="display:block;font-size:13px;font-weight:bold;margin-bottom:5px;color:#7f8c8d;">⚠️ אתגרים / בעיות</label>
+      <textarea id="trField_challenges" rows="2" placeholder="תאר אתגרים או בעיות שנתקלת בהם..."
+        style="width:100%;padding:9px 12px;border:1.5px solid #ddd;border-radius:8px;font-size:13px;box-sizing:border-box;resize:vertical;">${existing.challenges||''}</textarea>
+    </div>
+    <div>
+      <label style="display:block;font-size:13px;font-weight:bold;margin-bottom:5px;color:#7f8c8d;">💬 הערות חופשיות</label>
+      <textarea id="trField_notes" rows="2" placeholder="הערות נוספות..."
+        style="width:100%;padding:9px 12px;border:1.5px solid #ddd;border-radius:8px;font-size:13px;box-sizing:border-box;resize:vertical;">${existing.notes||''}</textarea>
+    </div>`;
+
+  const all=(measureFields||'<div style="color:#aaa;font-size:12px;text-align:center;padding:4px 0;">לא הוגדרו שדות מדידה — מלא הערות בלבד</div>')+extraFields;
+  document.getElementById('taskReportFields').innerHTML=all;
 
   const modal=document.getElementById('taskReportModal');
   modal.style.display='flex';
 }
-
 function closeTaskReportModal(){
   document.getElementById('taskReportModal').style.display='none';
 }
@@ -11406,6 +11421,11 @@ async function submitTaskReport(){
       report[f.type+'Label']=f.label;
     }
   });
+  // Always save challenges and notes
+  const chEl=document.getElementById('trField_challenges');
+  const ntEl=document.getElementById('trField_notes');
+  if(chEl)report.challenges=chEl.value.trim();
+  if(ntEl)report.notes=ntEl.value.trim();
 
   // Save to cache
   const reportKey=`${date}__${currentUserName}__${entryId}`;
