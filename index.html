@@ -6111,6 +6111,8 @@ async function loadTaskDefs(){
 
       taskDefs=Array.isArray(raw)?raw:Object.values(raw);
 
+      try{normalizeTaskDefs();}catch(e){}
+
       syncTaskLabels();
 
     }
@@ -8243,12 +8245,12 @@ async function autoGenerateTripsForWeek(){
 
   for(const dateISO of days){
 
-    // Generate for ALL entries with ANY task (not just isTrip)
-    const entries=(schedData[dateISO]||[]).filter(e=>
-
-      e.status==='approved'||e.status==='pending'
-
-    );
+    // Only entries whose task has isTrip:true
+    const entries=(schedData[dateISO]||[]).filter(e=>{
+      if(e.status!=='approved'&&e.status!=='pending')return false;
+      const tDef=taskDefs.find(t=>t.id===e.task);
+      return tDef?!!tDef.isTrip:false;
+    });
 
     if(!entries.length)continue;
 
@@ -11215,9 +11217,7 @@ function renderTodayTasks(){
     dateLbl.textContent=d.toLocaleDateString('he-IL',{weekday:'short',day:'numeric',month:'long'});
   }
 
-  // Get today's schedule entries for this instructor
   const entries=(schedData[today]||[]).filter(e=>e.name===currentUserName);
-
   if(!entries.length){
     container.innerHTML='<div style="color:#aaa;font-size:13px;text-align:center;padding:10px;">אין משימות מתוכננות להיום</div>';
     return;
@@ -11229,46 +11229,98 @@ function renderTodayTasks(){
   const myKey=currentUserName.replace(/[.#$[\]/]/g,'_');
   const mySt=instrStatuses[myKey]||{status:'pending',tripIdx:-1};
 
-  container.innerHTML=entries.map((entry,ei)=>{
-    const taskDef=taskDefs.find(t=>t.id===entry.task)||{label:entry.task||'משימה',icon:'📋',isTrip:false};
-    const shiftLabel=SHIFT_LABELS?.[entry.shift]||entry.shift||'';
+  container.innerHTML=entries.map((entry)=>{
+    const taskDef=taskDefs.find(t=>t.id===entry.task)||
+      {label:entry.task||'משימה',icon:'📋',isTrip:false,requiresSummary:false,summaryFields:[],message:''};
 
+    const sh=entry.shift==='custom'
+      ?{s:entry.startTime||'07:00',e:entry.endTime||'15:30'}
+      :(SHIFT_HOURS[entry.shift]||{s:'?',e:'?'});
+    const timeStr=`${sh.s}–${sh.e}`;
+    const shiftName=SHIFT_LABELS?.[entry.shift]||entry.shift||'';
+
+    // ── Trip task: show יצאתי/חזרתי ──
     if(taskDef.isTrip){
-      // Trip task — show יצאתי/חזרתי buttons
       const upcoming=myTrips.find(t=>(t.timeline[t.timeline.length-1]?.endMin||0)>nowM);
       const idx=upcoming?myTrips.indexOf(upcoming):-1;
       const isOn=mySt.status==='on-trip'&&mySt.tripIdx===idx;
-      return`<div style="background:#eaf4fd;border-radius:9px;padding:10px 12px;border:1px solid #b5d4f4;">
-        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
-          <span style="font-weight:bold;font-size:13px;">${taskDef.icon||'🚇'} ${taskDef.label} <span style="font-size:11px;color:#888;font-weight:normal;">${shiftLabel}</span></span>
-          <div style="display:flex;gap:6px;">
-            ${!isOn&&idx>=0?`<button onclick="_trySetOnTrip(${idx})" style="width:auto;padding:5px 12px;background:#27ae60;color:white;border:none;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;">✅ יצאתי</button>`:''}
-            ${isOn?`<button onclick="setMyStatus('returned',${idx})" style="width:auto;padding:5px 12px;background:#e74c3c;color:white;border:none;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;">🏁 חזרתי</button>`:''}
+      const tripBtns=(idx>=0)
+        ?(!isOn
+          ?`<button onclick="_trySetOnTrip(${idx})" style="width:auto;padding:5px 12px;background:#27ae60;color:white;border:none;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;">✅ יצאתי</button>`
+          :`<button onclick="setMyStatus('returned',${idx})" style="width:auto;padding:5px 12px;background:#e74c3c;color:white;border:none;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;">🏁 חזרתי</button>`)
+        :'';
+      return`<div style="background:#eaf4fd;border-radius:10px;padding:12px 14px;border:1px solid #b5d4f4;">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:${(taskDef.message||entry.note)?'10px':'0'};">
+          <div>
+            <span style="font-size:15px;font-weight:bold;color:var(--primary);">${taskDef.icon||'🚇'} ${taskDef.label}</span>
+            <span style="font-size:12px;color:#888;margin-right:8px;">${shiftName} ${timeStr}</span>
           </div>
+          <div style="display:flex;gap:6px;">${tripBtns}</div>
         </div>
+        ${_buildTaskDetails(taskDef,entry)}
       </div>`;
-    } else if(taskDef.requiresSummary){
-      // Summary form task
+    }
+
+    // ── Summary-form task ──
+    if(taskDef.requiresSummary){
       const reportKey=`${today}__${currentUserName}__${entry.id}`;
       const existingReport=window._taskReportsCache?.[reportKey];
       const isDone=!!existingReport;
-      return`<div style="background:${isDone?'#eaf5e8':'#fffbf0'};border-radius:9px;padding:10px 12px;border:1px solid ${isDone?'#a8d5a2':'#f0c050'};">
-        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
-          <span style="font-weight:bold;font-size:13px;">${taskDef.icon||'📋'} ${taskDef.label} <span style="font-size:11px;color:#888;font-weight:normal;">${shiftLabel}</span>
-            ${isDone?'<span style="font-size:11px;color:#27ae60;margin-right:6px;">✅ דווח</span>':''}</span>
-          <button onclick="openTaskReportModal('${entry.id}','${today}','${(taskDef.id||'').replace(/'/g,"\\'")}'" style="width:auto;padding:5px 12px;background:${isDone?'#27ae60':'#e67e22'};color:white;border:none;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;">
+      return`<div style="background:${isDone?'#eaf5e8':'#fffbf0'};border-radius:10px;padding:12px 14px;border:1px solid ${isDone?'#a8d5a2':'#f0c050'};">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:${(taskDef.message||entry.note)?'10px':'0'};">
+          <div>
+            <span style="font-size:15px;font-weight:bold;color:var(--primary);">${taskDef.icon||'📋'} ${taskDef.label}</span>
+            <span style="font-size:12px;color:#888;margin-right:8px;">${shiftName} ${timeStr}</span>
+            ${isDone?'<span style="font-size:11px;color:#27ae60;font-weight:bold;">✅ דווח</span>':''}
+          </div>
+          <button onclick="openTaskReportModal('${entry.id}','${today}','${(taskDef.id||'').replace(/'/g,"\\'")}'" style="width:auto;padding:6px 14px;background:${isDone?'#27ae60':'#e67e22'};color:white;border:none;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;">
             📝 ${isDone?'ערוך דיווח':'עדכן סיום משימה'}
           </button>
         </div>
-        ${isDone?`<div style="font-size:11px;color:#555;margin-top:6px;">${formatReportSummary(existingReport,taskDef)}</div>`:''}
-      </div>`;
-    } else {
-      // Regular task — just show it
-      return`<div style="background:#f8f8f8;border-radius:9px;padding:10px 12px;border:1px solid #ddd;">
-        <span style="font-weight:bold;font-size:13px;">${taskDef.icon||'📋'} ${taskDef.label} <span style="font-size:11px;color:#888;font-weight:normal;">${shiftLabel}</span></span>
+        ${_buildTaskDetails(taskDef,entry)}
+        ${isDone?`<div style="font-size:11px;color:#666;margin-top:8px;padding-top:8px;border-top:1px solid #ddd;">📊 ${formatReportSummary(existingReport,taskDef)}</div>`:''}
       </div>`;
     }
+
+    // ── Regular task ──
+    return`<div style="background:#f8f8f8;border-radius:10px;padding:12px 14px;border:1px solid #e0e0e0;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:${(taskDef.message||entry.note)?'10px':'0'};">
+        <span style="font-size:15px;font-weight:bold;color:var(--primary);">${taskDef.icon||'📋'} ${taskDef.label}</span>
+        <span style="font-size:12px;color:#888;">${shiftName} ${timeStr}</span>
+      </div>
+      ${_buildTaskDetails(taskDef,entry)}
+    </div>`;
   }).join('');
+}
+
+// Build task details section (instructions + personal note)
+function _buildTaskDetails(taskDef,entry){
+  const parts=[];
+
+  // Task instructions from taskDef.message
+  if(taskDef.message&&taskDef.message.trim()){
+    parts.push(`<div style="display:flex;gap:6px;align-items:flex-start;">
+      <span style="font-size:13px;flex-shrink:0;">📋</span>
+      <div>
+        <span style="font-size:11px;font-weight:bold;color:#555;display:block;margin-bottom:2px;">פרטי משימה</span>
+        <span style="font-size:12px;color:#333;white-space:pre-wrap;">${taskDef.message.trim()}</span>
+      </div>
+    </div>`);
+  }
+
+  // Personal note from schedEntry.note
+  if(entry.note&&entry.note.trim()){
+    parts.push(`<div style="display:flex;gap:6px;align-items:flex-start;">
+      <span style="font-size:13px;flex-shrink:0;">💬</span>
+      <div>
+        <span style="font-size:11px;font-weight:bold;color:#555;display:block;margin-bottom:2px;">הערה מהמנהל</span>
+        <span style="font-size:12px;color:#333;">${entry.note.trim()}</span>
+      </div>
+    </div>`);
+  }
+
+  if(!parts.length)return'';
+  return`<div style="display:flex;flex-direction:column;gap:8px;padding-top:8px;border-top:1px solid rgba(0,0,0,0.07);">${parts.join('')}</div>`;
 }
 
 function formatReportSummary(report,taskDef){
@@ -11597,6 +11649,19 @@ function changeManagerDate(delta){
     lbl.textContent=dd.toLocaleDateString('he-IL',{weekday:'short',day:'numeric',month:'long'});
   }
   loadFromStorage().then(()=>{renderLog();renderCalendar();}).catch(()=>{renderLog();renderCalendar();});
+}
+
+
+
+// Safety: normalize taskDefs to always have explicit isTrip boolean
+// Runs after loadSettings to fix any Firebase entries missing isTrip
+function normalizeTaskDefs(){
+  taskDefs=taskDefs.map(t=>({
+    ...t,
+    isTrip: t.isTrip===true, // coerce to strict boolean (undefined/null → false)
+    requiresSummary: t.requiresSummary===true,
+    summaryFields: Array.isArray(t.summaryFields)?t.summaryFields:[],
+  }));
 }
 
 </script>
