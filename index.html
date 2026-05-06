@@ -2872,6 +2872,12 @@ function enterApp(role,name){
 
       try{if(typeof renderInstrTripJournal==='function')renderInstrTripJournal();}catch(e){}
 
+      // Load task reports and render today's tasks
+      try{
+        const _td=_localDateStr(new Date());
+        loadTaskReportsForDate(_td).then(()=>renderTodayTasks()).catch(()=>renderTodayTasks());
+      }catch(e){try{renderTodayTasks();}catch(e2){}}
+
     },300);
 
   }
@@ -6624,6 +6630,9 @@ function startSchedSync(){
     }
 
     renderCalendar();
+
+    // Refresh today tasks
+    try{if(currentRole==='instructor')setTimeout(renderTodayTasks,100);}catch(e){}
 
   });
 
@@ -11099,6 +11108,10 @@ function switchToInstructorView(previewName){
     try{renderLog();}catch(e){}
     try{if(typeof renderInstrView==='function')renderInstrView();}catch(e){}
     try{renderCalendar();}catch(e){}
+    try{
+      const _td2=_localDateStr(new Date());
+      loadTaskReportsForDate(_td2).then(()=>renderTodayTasks()).catch(()=>renderTodayTasks());
+    }catch(e){try{renderTodayTasks();}catch(e2){}}
   },200);
 }
 
