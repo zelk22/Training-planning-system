@@ -2862,8 +2862,17 @@ function enterApp(role,name){
     const swBtn=document.getElementById('switchViewBtn');
     if(swBtn)swBtn.style.display='inline-block';
 
-    // Sync statuses for admin view too
-    setTimeout(()=>{try{startInstrSync();}catch(e){}},500);
+    // Sync status badges only (no trips listener for admin — uses loadFromStorage)
+    setTimeout(()=>{
+      try{
+        if(window._fbDb){
+          _fbRef(_db,statusPath()).on('value',snap=>{
+            instrStatuses=snap.exists()?snap.val():{};
+            try{renderLog();}catch(e){}
+          });
+        }
+      }catch(e){}
+    },500);
 
   } else {
 
@@ -3097,11 +3106,18 @@ function startInstrSync(){
 
   });
 
-  const unsubTrips=_fbRef(_db,dbPath()).on('value',s=>{
+  const unsubTrips=_fbRef(_db,dbPath()).on('value',snap=>{
 
-    trips=s.exists()?Object.values(s.val()).map(parseTrip):[];
+    trips=snap.exists()?Object.values(snap.val()).map(parseTrip):[];
 
-    renderInstrView();
+    // Render based on current role
+    try{renderTimeline();}catch(e){}
+    if(currentRole==='instructor'){
+      try{renderInstrTripJournal();}catch(e){}
+      try{renderInstrView();}catch(e){}
+    } else {
+      try{renderLog();}catch(e){}
+    }
 
   });
 
@@ -3350,8 +3366,8 @@ async function loadFromStorage(){
       trips=snap.exists()?Object.values(snap.val()).map(parseTrip):[];
 
       renderLog();renderTimeline();
-
       renderCalendar();
+      try{renderInstrTripJournal();}catch(e){}
 
     }catch(e){trips=[];}
 
@@ -9568,6 +9584,8 @@ function switchBackToAdmin(){
   // Restore instrNavBar to hidden
   const _navBar=document.getElementById('instrNavBar');
   if(_navBar)_navBar.style.display='none';
+  // Reload trips for current date (fresh fetch after returning from instructor view)
+  setTimeout(()=>{try{loadFromStorage().then(()=>renderLog());}catch(e){}},100);
   setTimeout(()=>moveManualSectionToManager(),50);
   try{renderLog();}catch(e){}
   try{renderCalendar();}catch(e){}
