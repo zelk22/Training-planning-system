@@ -4328,6 +4328,17 @@ function renderLog(){
     const isOnThisTrip=_mySt2.status==='on-trip'&&_mySt2.tripIdx===tIdx;
     const isPast=currentDate===_localDateStr(new Date())&&(t.timeline?.length?(t.timeline[t.timeline.length-1]?.endMin||0)<_nowMin:false);
 
+    // Pre-compute trip buttons (avoid nested template literals)
+    const _tripInstrBtns=(function(){
+      if(currentRole!=='instructor') return '';
+      let _h='';
+      if(!isOnThisTrip&&!isPast&&tIdx>=0)
+        _h+='<button class="btn-sm" onclick="_trySetOnTrip('+tIdx+')" style="background:#27ae60;color:white;border:none;padding:3px 8px;border-radius:5px;cursor:pointer;font-size:11px;font-weight:bold;margin-left:2px;">✅ יצאתי</button>';
+      if(isOnThisTrip)
+        _h+='<button class="btn-sm" onclick="setMyStatus(' + "'" + 'returned' + "'" + ','+tIdx+')" style="background:#e74c3c;color:white;border:none;padding:3px 8px;border-radius:5px;cursor:pointer;font-size:11px;font-weight:bold;margin-left:2px;">🏁 חזרתי</button>';
+      return _h;
+    })();
+
     return`<tr id="row-${t.id}">
 
       <td data-label="מדריך"><b>${t.name}</b></td>
@@ -4345,10 +4356,7 @@ function renderLog(){
       <td data-label="מיקום">${loc}</td>
 
       <td style="white-space:nowrap;">
-          ${currentRole==='instructor'?`
-            ${!isOnThisTrip&&!isPast?`<button class="btn-sm" onclick="_trySetOnTrip(${tIdx})" title="יצאתי לנסיעה זו" style="background:#27ae60;color:white;border:none;padding:3px 8px;border-radius:5px;cursor:pointer;font-size:11px;font-weight:bold;margin-left:2px;">✅ יצאתי</button>`:''}
-            ${isOnThisTrip?`<button class="btn-sm" onclick="setMyStatus('returned',${tIdx})" title="חזרתי מנסיעה זו" style="background:#e74c3c;color:white;border:none;padding:3px 8px;border-radius:5px;cursor:pointer;font-size:11px;font-weight:bold;margin-left:2px;">🏁 חזרתי</button>`:''}
-          `:''}
+          ${_tripInstrBtns}
           <button class="btn-sm edit" onclick="openTripEditModal('${t.id}')" title="ערוך נסיעה">✏️</button>
 
           <button class="btn-sm delay" onclick="openDelayModal('${t.id}')" title="הוסף עיכוב">⏱️</button>
