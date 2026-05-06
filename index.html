@@ -2056,6 +2056,8 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 
     <div id="dashBarsWrap"></div>
 
+    <div id="dailyScheduleSummary" style="margin-top:14px;"></div>
+
   </div>
 
   <!-- ── SCHEDULE ─────────────────────────────────────── -->
@@ -4385,10 +4387,10 @@ function renderLog(){
     } else if(_instrSt.status==='on-trip'&&_isThisTrip){
       // Case 2: on this trip
       _mgr_statusBadge='<span style="font-size:12px;color:#e74c3c;font-weight:bold;">🚇 בנסיעה</span>';
-    } else if(_mgrTripPast&&_instrSt.status!=='returned'){
-      // Case 3: past and unconfirmed
+    } else if(_mgrTripPast&&!(_instrSt.status==='returned'&&_isThisTrip)){
+      // Case 3: past and THIS trip not confirmed yet
       _mgr_statusBadge='<button onclick="_mgrConfirmTrip(\''+t.id+'\',\''+t.name+'\')" style="'+_mgrStl+'background:#e74c3c;color:white;">⚠️ אשר נסיעה</button>';
-    } else if(_mgrTripStarted){
+    } else if(_mgrTripStarted&&!_isThisTrip){
       // Case 2: time arrived, awaiting instructor action
       _mgr_statusBadge='<span style="font-size:11px;color:#888;">ממתין...</span>';
     }
@@ -6481,6 +6483,58 @@ function renderDashboard(){
 
   }).join('')}</div>`;
 
+  // ── Daily schedule summary (all instructors + tasks) ──────────────
+  renderDailyScheduleSummary();
+
+}
+
+function renderDailyScheduleSummary(){
+  const wrap=document.getElementById('dailyScheduleSummary');
+  if(!wrap)return;
+
+  const todayEntries=schedData[currentDate]||[];
+  if(!todayEntries.length){wrap.innerHTML='';return;}
+
+  // Group entries by instructor
+  const byInstr={};
+  todayEntries.forEach(e=>{
+    if(!byInstr[e.name])byInstr[e.name]=[];
+    byInstr[e.name].push(e);
+  });
+
+  const SHIFT_ICO={morning:'🌅',afternoon:'☀️',evening:'🌙',custom:'⏰'};
+
+  const rows=Object.entries(byInstr).map(([name,entries])=>{
+    const cells=entries.map(e=>{
+      const tDef=taskDefs.find(t=>t.id===e.task)||{label:e.task||'?',icon:'📋'};
+      const sh=SHIFT_HOURS[e.shift]||{s:e.startTime||'',e:e.endTime||''};
+      const shiftIco=SHIFT_ICO[e.shift]||'';
+      const timeStr=e.shift==='custom'
+        ?`${e.startTime||''}–${e.endTime||''}`
+        :`${sh.s}–${sh.e}`;
+      const noteTag=e.note?`<span title="${e.note}" style="font-size:11px;color:#e67e22;margin-right:4px;">💬</span>`:'';
+      return`<span style="display:inline-flex;align-items:center;gap:4px;background:#f0f4f8;border-radius:6px;padding:3px 8px;margin:2px;font-size:12px;white-space:nowrap;">
+        ${tDef.icon} <b>${tDef.label}</b>
+        <span style="color:#888;font-size:11px;">${shiftIco} ${timeStr}</span>
+        ${noteTag}
+      </span>`;
+    }).join('');
+
+    return`<tr>
+      <td style="font-weight:bold;font-size:13px;padding:6px 10px;white-space:nowrap;border-bottom:1px solid #eee;">${name}</td>
+      <td style="padding:6px 10px;border-bottom:1px solid #eee;">${cells}</td>
+    </tr>`;
+  }).join('');
+
+  wrap.innerHTML=`
+    <div style="font-size:12px;font-weight:bold;color:#888;margin:12px 0 8px;letter-spacing:.3px;">📋 לוז יומי — כל המדריכים</div>
+    <table style="width:100%;border-collapse:collapse;background:white;border-radius:10px;overflow:hidden;box-shadow:0 1px 6px rgba(0,0,0,.06);">
+      <thead><tr style="background:#f0f4f8;">
+        <th style="text-align:right;padding:8px 10px;font-size:12px;color:#555;border-bottom:2px solid #dde;">מדריך</th>
+        <th style="text-align:right;padding:8px 10px;font-size:12px;color:#555;border-bottom:2px solid #dde;">משימות</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
 }
 
 // ═══════════════════════════════════════════════════════════
