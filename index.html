@@ -2862,6 +2862,9 @@ function enterApp(role,name){
     const swBtn=document.getElementById('switchViewBtn');
     if(swBtn)swBtn.style.display='inline-block';
 
+    // Sync statuses for admin view too
+    setTimeout(()=>{try{startInstrSync();}catch(e){}},500);
+
   } else {
 
     document.getElementById('instrView').classList.add('show');
@@ -3089,6 +3092,8 @@ function startInstrSync(){
     instrStatuses=s.exists()?s.val():{};
 
     renderInstrView();
+    // Also refresh manager log with updated statuses
+    try{if(currentRole==='admin')renderLog();}catch(e){}
 
   });
 
