@@ -9344,7 +9344,6 @@ document.addEventListener('click',e=>{
 // ═══════════════════════════════════════════════════════════
 
 let _editingTripInModal=null;
-  _editingForInstructor=null;
 let _editingForInstructor=null; // which instructor's trip is being edited
 let _modalEditRoute=[];
 
@@ -9410,6 +9409,7 @@ function applyTripEditFromManual(){
   trip.timeline=buildTimeline(startStr,curRoute);
 
   _editingTripInModal=null;
+  _editingForInstructor=null;
 
   // Restore save button
   const saveB=document.getElementById('saveB');
@@ -9430,6 +9430,7 @@ function applyTripEditFromManual(){
 function closeTripEditModal(){
   document.getElementById('tripEditModal').classList.remove('open');
   _editingTripInModal=null;
+  _editingForInstructor=null;
   _modalEditRoute=[];
 }
 
