@@ -2926,6 +2926,9 @@ function enterApp(role,name){
 
   }
 
+  // Set dateSelector to today and update label
+  try{updateDateLabel();}catch(e){}
+
   // Render calendar immediately with whatever data we have
   renderCalendar();
 
@@ -8167,7 +8170,11 @@ function addWeeklyCustomRow(){
 
   const shiftOpts=`<option value="none">—</option>${Object.keys(SHIFT_HOURS).filter(k=>k!=='custom').map(k=>`<option value="${k}">${(typeof SHIFT_LABELS!=='undefined'&&SHIFT_LABELS[k])||('⏰ '+k)}</option>`).join('')}<option value="custom">⏰ הגדר שעות</option>`;
 
-  
+  // Define taskOpts locally (was missing — caused silent failure)
+  const taskOpts=taskDefs.length
+    ?taskDefs.map(t=>`<option value="${t.id}">${t.icon||''} ${t.label}</option>`).join('')
+    :'<option value="training">🚇 הדרכה</option>';
+
   const tbody=document.querySelector("#weeklySchedTable table tbody");
   if(!tbody)return;
 
@@ -9663,10 +9670,10 @@ async function submitWeeklySchedRequest(){
   const endTime=endEl?endEl.value:'';
 
   const baseDate=new Date(schedEditDate+'T12:00:00');
-  // Find Monday of the current week
+  // Find Sunday of the current week (week starts Sunday)
   const day=baseDate.getDay(); // 0=Sun, 1=Mon
-  const monday=new Date(baseDate);
-  monday.setDate(baseDate.getDate()-((day+6)%7));
+  const monday=new Date(baseDate); // named monday but is actually Sunday
+  monday.setDate(baseDate.getDate()-(day%7));
 
   let savedCount=0;
   for(let i=0;i<7;i++){
@@ -11243,11 +11250,22 @@ function switchToInstructorView(previewName){
   try{moveManualSectionToInstr();}catch(e){}
 
   // Sync and render
+  // Reset manual section edit state when switching instructor
+  try{
+    const ms=document.getElementById('manualSection');
+    if(ms)ms.removeAttribute('open');
+    const eb=document.getElementById('editBanner');
+    if(eb)eb.style.display='none';
+    if(window.curRoute!==undefined)curRoute=[];
+    if(window._editingTripInModal!==undefined)_editingTripInModal=null;
+  }catch(e){}
+
   try{if(typeof startInstrSync==='function')startInstrSync();}catch(e){}
   setTimeout(()=>{
     try{renderLog();}catch(e){}
     try{if(typeof renderInstrView==='function')renderInstrView();}catch(e){}
     try{renderCalendar();}catch(e){}
+    try{renderInstrTripJournal();}catch(e){}
     try{
       const _td2=_localDateStr(new Date());
       loadTaskReportsForDate(_td2).then(()=>renderTodayTasks()).catch(()=>renderTodayTasks());
