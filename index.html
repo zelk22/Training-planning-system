@@ -2058,6 +2058,25 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 
     <div id="dailyScheduleSummary" style="margin-top:14px;"></div>
 
+    <!-- ── DAY SUMMARY button + panel ── -->
+    <div style="margin-top:14px;border-top:1px solid #eee;padding-top:12px;">
+      <button onclick="toggleDaySummary()" id="daySummaryToggleBtn"
+        style="width:auto;padding:7px 18px;background:#f0f4f8;border:1.5px solid #c8d8e8;border-radius:8px;cursor:pointer;font-size:13px;font-weight:bold;color:var(--primary);">
+        📊 סיכום יום ▼
+      </button>
+    </div>
+    <div id="daySummaryPanel" style="display:none;margin-top:12px;">
+      <!-- date nav -->
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+        <button onclick="changeDaySummaryDate(-1)" style="width:auto;background:#f0f4f8;border:1px solid #ccc;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:14px;">‹</button>
+        <span id="daySummaryDateLbl" style="font-size:13px;font-weight:bold;color:var(--primary);min-width:130px;text-align:center;"></span>
+        <button onclick="changeDaySummaryDate(1)" style="width:auto;background:#f0f4f8;border:1px solid #ccc;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:14px;">›</button>
+        <input type="date" id="daySummaryDatePicker" onchange="setDaySummaryDate(this.value)"
+          style="width:auto;padding:4px 8px;border:1px solid #ccc;border-radius:6px;font-size:12px;cursor:pointer;">
+      </div>
+      <div id="daySummaryContent"></div>
+    </div>
+
   </div>
 
   <!-- ── SCHEDULE ─────────────────────────────────────── -->
@@ -6387,24 +6406,57 @@ function renderDashboard(){
   const barsWrap=document.getElementById('dashBarsWrap');
   if(!kpiGrid)return;
 
-  // ── KPI row: only trips + lessons (no conflicts) ──────────────
+  if(!trips.length){
+    kpiGrid.innerHTML='<div style="color:#aaa;font-size:13px;grid-column:1/-1;">אין נסיעות להיום</div>';
+    if(barsWrap)barsWrap.innerHTML='';
+    renderDailyScheduleSummary();
+    return;
+  }
+
   const totalTrips=trips.length;
   const totalMin=trips.reduce((s,t)=>s+t.route.reduce((ss,r)=>ss+r.t,0),0);
   const totalLessons=totalMin/45;
-  const tripNames=[...new Set(trips.map(t=>t.name))];
+  const names=[...new Set(trips.map(t=>t.name))];
+  const gap=parseInt(document.getElementById('gapV')?.value)||40;
+  let conflicts=0;
+  const segMap={};
+  trips.forEach(t=>t.timeline.forEach(seg=>{
+    if(!segMap[seg.id])segMap[seg.id]=[];
+    segMap[seg.id].push({startMin:seg.startMin,tripId:t.id});
+  }));
+  Object.values(segMap).forEach(arr=>{
+    for(let i=0;i<arr.length;i++)for(let j=i+1;j<arr.length;j++)
+      if(Math.abs(arr[i].startMin-arr[j].startMin)<gap)conflicts++;
+  });
+  const byName={};
+  trips.forEach(t=>{
+    if(!byName[t.name])byName[t.name]={trips:0,min:0};
+    byName[t.name].trips++;
+    byName[t.name].min+=t.route.reduce((s,r)=>s+r.t,0);
+  });
+  const maxMin=Math.max(...Object.values(byName).map(v=>v.min),1);
 
-  if(totalTrips>0){
-    kpiGrid.innerHTML=`
-      <div class="kpi-card ok"><div class="kpi-val">${totalTrips}</div><div class="kpi-lbl">נסיעות סה"כ</div></div>
-      <div class="kpi-card ok"><div class="kpi-val">${totalLessons.toFixed(1)}</div><div class="kpi-lbl">שיעורים סה"כ</div></div>
-      <div class="kpi-card"><div class="kpi-val">${tripNames.length}</div><div class="kpi-lbl">מדריכים בנסיעות</div></div>`;
-  } else {
-    kpiGrid.innerHTML='<div style="color:#aaa;font-size:13px;grid-column:1/-1;">אין נסיעות להיום</div>';
-  }
+  kpiGrid.innerHTML=`
+    <div class="kpi-card ok"><div class="kpi-val">${totalTrips}</div><div class="kpi-lbl">נסיעות סה"כ</div></div>
+    <div class="kpi-card ok"><div class="kpi-val">${totalLessons.toFixed(1)}</div><div class="kpi-lbl">שיעורים סה"כ</div></div>
+    <div class="kpi-card"><div class="kpi-val">${names.length}</div><div class="kpi-lbl">מדריכים פעילים</div></div>
+    <div class="kpi-card ${conflicts>0?'warn':'ok'}"><div class="kpi-val">${conflicts}</div><div class="kpi-lbl">התנגשויות</div></div>
+    <div class="kpi-card"><div class="kpi-val">${Math.round(totalMin/names.length||0)}</div><div class="kpi-lbl">דק' ממוצע למדריך</div></div>
+    <div class="kpi-card ok"><div class="kpi-val">${(totalLessons/names.length||0).toFixed(1)}</div><div class="kpi-lbl">שיעורים ממוצע</div></div>
+  `;
 
-  if(barsWrap)barsWrap.innerHTML='';
+  const colors=['#2980b9','#27ae60','#8e44ad','#e67e22','#c0392b','#16a085','#d35400','#1abc9c'];
+  barsWrap.innerHTML=`<div style="font-size:12px;font-weight:bold;color:#888;margin:12px 0 6px;letter-spacing:.3px;">ניצול לפי מדריך</div>
+  <div class="dash-bars">${Object.entries(byName).map(([name,v],i)=>{
+    const pct=Math.round((v.min/maxMin)*100);
+    const lessons=(v.min/45).toFixed(1);
+    return`<div class="dash-bar-row">
+      <div class="dash-bar-name" title="${name}">${name}</div>
+      <div class="dash-bar-track"><div class="dash-bar-fill" style="width:${pct}%;background:${colors[i%colors.length]};"></div></div>
+      <div class="dash-bar-pct">${lessons} שיעורים</div>
+    </div>`;
+  }).join('')}</div>`;
 
-  // ── Task-grouped dashboard ─────────────────────────────────────
   renderDailyScheduleSummary();
 }
 
@@ -6412,124 +6464,46 @@ function renderDailyScheduleSummary(){
   const wrap=document.getElementById('dailyScheduleSummary');
   if(!wrap)return;
 
-  const todayEntries=(schedData[currentDate]||[]);
+  const todayEntries=schedData[currentDate]||[];
   if(!todayEntries.length){wrap.innerHTML='';return;}
 
-  const SHIFT_LABEL={morning:'🌅 בוקר',afternoon:'☀️ צהריים',evening:'🌙 ערב',custom:'⏰ מותאם'};
-  const SHIFT_ORDER={morning:0,afternoon:1,evening:2,custom:3};
-
-  // Group entries by taskId
-  const byTask={};
+  const byInstr={};
   todayEntries.forEach(e=>{
-    const key=e.task||'other';
-    if(!byTask[key])byTask[key]=[];
-    byTask[key].push(e);
+    if(!byInstr[e.name])byInstr[e.name]=[];
+    byInstr[e.name].push(e);
   });
 
-  // Sort task groups: trip tasks first, then others
-  const taskOrder=Object.keys(byTask).sort((a,b)=>{
-    const ta=taskDefs.find(t=>t.id===a)||{};
-    const tb=taskDefs.find(t=>t.id===b)||{};
-    return (tb.isTrip?1:0)-(ta.isTrip?1:0);
-  });
+  const SHIFT_ICO={morning:'🌅',afternoon:'☀️',evening:'🌙',custom:'⏰'};
 
-  const sections=taskOrder.map(taskId=>{
-    const tDef=taskDefs.find(t=>t.id===taskId)||{label:taskId,icon:'📋',isTrip:false};
-    const entries=byTask[taskId];
-
-    // ── TRIP TASK SECTION ──────────────────────────────────────
-    if(tDef.isTrip){
-      const instrRows=entries.map(e=>{
-        const sh=SHIFT_HOURS[e.shift]||{s:e.startTime||'',e:e.endTime||''};
-        const timeStr=e.shift==='custom'?`${e.startTime}–${e.endTime}`:`${sh.s}–${sh.e}`;
-        const shiftLbl=SHIFT_LABEL[e.shift]||'';
-        // Count trips for this instructor
-        const myTrips=trips.filter(t=>t.name===e.name);
-        const tripCount=myTrips.length;
-        const lessonCount=(myTrips.reduce((s,t)=>s+t.route.reduce((ss,r)=>ss+r.t,0),0)/45).toFixed(1);
-        const instrKey=(e.name||'').replace(/[.#$[\]/]/g,'_');
-        const instrSt=(instrStatuses&&instrStatuses[instrKey])||{};
-        const stBadge=instrSt.status==='returned'
-          ?'<span style="font-size:10px;color:#27ae60;font-weight:bold;margin-right:4px;">✓</span>'
-          :instrSt.status==='on-trip'
-          ?'<span style="font-size:10px;color:#e74c3c;margin-right:4px;">🚇</span>'
-          :'';
-        return`<tr style="border-bottom:1px solid #f0f0f0;">
-          <td style="padding:6px 10px;font-weight:600;font-size:13px;">${stBadge}${e.name}</td>
-          <td style="padding:6px 8px;font-size:12px;color:#555;">${shiftLbl} ${timeStr}</td>
-          <td style="padding:6px 8px;font-size:12px;text-align:center;font-weight:bold;color:var(--primary);">${tripCount}</td>
-          <td style="padding:6px 8px;font-size:12px;text-align:center;font-weight:bold;color:var(--secondary);">${lessonCount}</td>
-          ${e.note?`<td style="padding:6px 8px;font-size:11px;color:#e67e22;">💬 ${e.note}</td>`:'<td></td>'}
-        </tr>`;
-      }).join('');
-
-      const totalT=entries.reduce((s,e)=>s+trips.filter(t=>t.name===e.name).length,0);
-      const totalL=(entries.reduce((s,e)=>s+trips.filter(t=>t.name===e.name).reduce((ss,t)=>ss+t.route.reduce((sss,r)=>sss+r.t,0),0),0)/45).toFixed(1);
-
-      return`<div style="margin-bottom:16px;">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-          <div style="font-size:14px;font-weight:bold;color:var(--primary);">${tDef.icon} ${tDef.label}</div>
-          <div style="font-size:11px;color:#888;">${entries.length} מדריכים | ${totalT} נסיעות | ${totalL} שיעורים</div>
-        </div>
-        <table style="width:100%;border-collapse:collapse;background:white;border-radius:8px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.07);">
-          <thead><tr style="background:#eaf4fd;">
-            <th style="padding:7px 10px;font-size:11px;text-align:right;color:#555;border-bottom:2px solid #c8e0f5;">מדריך</th>
-            <th style="padding:7px 8px;font-size:11px;text-align:right;color:#555;border-bottom:2px solid #c8e0f5;">משמרת</th>
-            <th style="padding:7px 8px;font-size:11px;text-align:center;color:#555;border-bottom:2px solid #c8e0f5;">נסיעות</th>
-            <th style="padding:7px 8px;font-size:11px;text-align:center;color:#555;border-bottom:2px solid #c8e0f5;">שיעורים</th>
-            <th style="padding:7px 8px;font-size:11px;text-align:right;color:#555;border-bottom:2px solid #c8e0f5;">הערה</th>
-          </tr></thead>
-          <tbody>${instrRows}</tbody>
-        </table>
-      </div>`;
-    }
-
-    // ── NON-TRIP TASK SECTION ──────────────────────────────────
-    // Sort by shift
-    const sorted=[...entries].sort((a,b)=>(SHIFT_ORDER[a.shift]||0)-(SHIFT_ORDER[b.shift]||0));
-
-    // Group by shift for display
-    const byShift={};
-    sorted.forEach(e=>{
-      if(!byShift[e.shift])byShift[e.shift]=[];
-      byShift[e.shift].push(e);
-    });
-
-    const shiftRows=Object.entries(byShift).map(([shift,shEntries])=>{
-      const instrList=shEntries.map(e=>{
-        const sh=SHIFT_HOURS[shift]||{s:e.startTime||'',e:e.endTime||''};
-        const timeStr=shift==='custom'?`${e.startTime}–${e.endTime}`:`${sh.s}–${sh.e}`;
-        return`<span style="display:inline-block;background:#f8f0ff;border-radius:6px;padding:3px 8px;margin:2px;font-size:12px;">${e.name}
-          <span style="color:#888;font-size:11px;">${timeStr}</span>
-          ${e.note?`<span title="${e.note}" style="color:#e67e22;">💬</span>`:''}
-        </span>`;
-      }).join('');
-      return`<tr style="border-bottom:1px solid #f0f0f0;">
-        <td style="padding:6px 10px;font-size:12px;color:#555;white-space:nowrap;">${SHIFT_LABEL[shift]||shift}</td>
-        <td style="padding:6px 10px;">${instrList}</td>
-        <td style="padding:6px 10px;font-size:12px;text-align:center;font-weight:bold;color:#555;">${shEntries.length}</td>
-      </tr>`;
+  const rows=Object.entries(byInstr).map(([name,entries])=>{
+    const cells=entries.map(e=>{
+      const tDef=taskDefs.find(t=>t.id===e.task)||{label:e.task||'?',icon:'📋'};
+      const sh=SHIFT_HOURS[e.shift]||{s:e.startTime||'',e:e.endTime||''};
+      const timeStr=e.shift==='custom'?`${e.startTime||''}–${e.endTime||''}`:`${sh.s}–${sh.e}`;
+      const shiftIco=SHIFT_ICO[e.shift]||'';
+      const noteTag=e.note?`<span title="${e.note}" style="font-size:11px;color:#e67e22;margin-right:4px;">💬</span>`:'';
+      return`<span style="display:inline-flex;align-items:center;gap:4px;background:#f0f4f8;border-radius:6px;padding:3px 8px;margin:2px;font-size:12px;white-space:nowrap;">
+        ${tDef.icon} <b>${tDef.label}</b>
+        <span style="color:#888;font-size:11px;">${shiftIco} ${timeStr}</span>
+        ${noteTag}
+      </span>`;
     }).join('');
-
-    return`<div style="margin-bottom:16px;">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-        <div style="font-size:14px;font-weight:bold;color:var(--primary);">${tDef.icon} ${tDef.label}</div>
-        <div style="font-size:11px;color:#888;">${entries.length} מדריכים</div>
-      </div>
-      <table style="width:100%;border-collapse:collapse;background:white;border-radius:8px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.07);">
-        <thead><tr style="background:#f3eeff;">
-          <th style="padding:7px 10px;font-size:11px;text-align:right;color:#555;border-bottom:2px solid #d9c8f5;">משמרת</th>
-          <th style="padding:7px 10px;font-size:11px;text-align:right;color:#555;border-bottom:2px solid #d9c8f5;">מדריכים</th>
-          <th style="padding:7px 10px;font-size:11px;text-align:center;color:#555;border-bottom:2px solid #d9c8f5;">כמות</th>
-        </tr></thead>
-        <tbody>${shiftRows}</tbody>
-      </table>
-    </div>`;
+    return`<tr>
+      <td style="font-weight:bold;font-size:13px;padding:6px 10px;white-space:nowrap;border-bottom:1px solid #eee;">${name}</td>
+      <td style="padding:6px 10px;border-bottom:1px solid #eee;">${cells}</td>
+    </tr>`;
   }).join('');
 
-  wrap.innerHTML=sections||'<div style="color:#aaa;font-size:13px;">אין שיבוצים להיום</div>';
-}
-// ═══════════════════════════════════════════════════════════
+  wrap.innerHTML=`
+    <div style="font-size:12px;font-weight:bold;color:#888;margin:12px 0 8px;letter-spacing:.3px;">📋 לוז יומי — כל המדריכים</div>
+    <table style="width:100%;border-collapse:collapse;background:white;border-radius:10px;overflow:hidden;box-shadow:0 1px 6px rgba(0,0,0,.06);">
+      <thead><tr style="background:#f0f4f8;">
+        <th style="text-align:right;padding:8px 10px;font-size:12px;color:#555;border-bottom:2px solid #dde;">מדריך</th>
+        <th style="text-align:right;padding:8px 10px;font-size:12px;color:#555;border-bottom:2px solid #dde;">משימות</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+}// ═══════════════════════════════════════════════════════════
 
 // EXPORT
 
@@ -11885,6 +11859,164 @@ async function _mgrConfirmTrip(tripId,instrName){
   }
   showToast('✅ נסיעה אושרה עבור '+instrName,'success');
   renderLog();
+}
+
+
+
+// ══════════════════════════════════════════════════════
+// DAY SUMMARY — ביצוע מול תכנון
+// ══════════════════════════════════════════════════════
+
+let _daySummaryDate=null; // null = use currentDate
+let _daySummaryOpen=false;
+
+function toggleDaySummary(){
+  _daySummaryOpen=!_daySummaryOpen;
+  const panel=document.getElementById('daySummaryPanel');
+  const btn=document.getElementById('daySummaryToggleBtn');
+  if(panel)panel.style.display=_daySummaryOpen?'block':'none';
+  if(btn)btn.textContent=_daySummaryOpen?'📊 סיכום יום ▲':'📊 סיכום יום ▼';
+  if(_daySummaryOpen)renderDaySummary();
+}
+
+function _getDaySummaryDate(){
+  return _daySummaryDate||currentDate||_localDateStr(new Date());
+}
+
+function changeDaySummaryDate(delta){
+  const d=new Date(_getDaySummaryDate()+'T12:00:00');
+  d.setDate(d.getDate()+delta);
+  _daySummaryDate=_localDateStr(d);
+  const picker=document.getElementById('daySummaryDatePicker');
+  if(picker)picker.value=_daySummaryDate;
+  renderDaySummary();
+}
+
+function setDaySummaryDate(val){
+  _daySummaryDate=val;
+  renderDaySummary();
+}
+
+async function renderDaySummary(){
+  const dateStr=_getDaySummaryDate();
+  const d=new Date(dateStr+'T12:00:00');
+
+  // Update date label
+  const lbl=document.getElementById('daySummaryDateLbl');
+  if(lbl)lbl.textContent=d.toLocaleDateString('he-IL',{weekday:'short',day:'numeric',month:'long'});
+  const picker=document.getElementById('daySummaryDatePicker');
+  if(picker&&!picker.value)picker.value=dateStr;
+
+  const wrap=document.getElementById('daySummaryContent');
+  if(!wrap)return;
+  wrap.innerHTML='<div style="color:#aaa;font-size:13px;text-align:center;padding:10px;">טוען...</div>';
+
+  // Load trips for this date
+  let dayTrips=[];
+  if(dateStr===currentDate){
+    dayTrips=[...trips];
+  } else if(window._fbDb){
+    try{
+      const snap=await _fbGet(_fbRef(_db,'trips/'+dateStr));
+      dayTrips=snap.exists()?Object.values(snap.val()).map(parseTrip):[];
+    }catch(e){}
+  }
+
+  // Load task reports for this date
+  await loadTaskReportsForDate(dateStr);
+
+  // Load statuses for this date
+  let dayStatuses={};
+  if(dateStr===currentDate){
+    dayStatuses={...instrStatuses};
+  } else if(window._fbDb){
+    try{
+      const snap=await _fbGet(_fbRef(_db,'instrStatus/'+dateStr));
+      dayStatuses=snap.exists()?snap.val():{};
+    }catch(e){}
+  }
+
+  // Get schedData for this date
+  const dayEntries=schedData[dateStr]||[];
+
+  if(!dayEntries.length){
+    wrap.innerHTML='<div style="color:#aaa;font-size:13px;text-align:center;padding:14px;">אין שיבוצים לתאריך זה</div>';
+    return;
+  }
+
+  // Build rows per instructor
+  const rows=dayEntries.map(e=>{
+    const tDef=taskDefs.find(t=>t.id===e.task)||{label:e.task||'?',icon:'📋',isTrip:false,requiresSummary:false,summaryFields:[]};
+    const sh=SHIFT_HOURS[e.shift]||{s:e.startTime||'',e:e.endTime||''};
+    const timeStr=e.shift==='custom'?`${e.startTime||''}–${e.endTime||''}`:`${sh.s}–${sh.e}`;
+
+    let plannedCell='';
+    let executedCell='';
+    let statusCell='';
+
+    if(tDef.isTrip){
+      // Trip task
+      const myTrips=dayTrips.filter(t=>t.name===e.name);
+      const totalTrips=myTrips.length;
+      const instrKey=(e.name||'').replace(/[.#$[\]/]/g,'_');
+      const instrSt=dayStatuses[instrKey]||{};
+      const confirmedCount=instrSt.status==='returned'?totalTrips:0;
+
+      plannedCell=`<span style="font-size:12px;">${totalTrips} נסיעות</span>`;
+
+      if(confirmedCount>0){
+        executedCell=`<span style="font-size:12px;color:#27ae60;font-weight:bold;">✅ ${confirmedCount} אושרו</span>`;
+        statusCell='<span style="background:#eaf5e8;color:#27ae60;font-size:11px;padding:2px 8px;border-radius:10px;font-weight:bold;">הושלם</span>';
+      } else if(totalTrips>0){
+        executedCell='<span style="font-size:12px;color:#e74c3c;">❌ לא אושרו</span>';
+        statusCell='<span style="background:#fdecea;color:#e74c3c;font-size:11px;padding:2px 8px;border-radius:10px;font-weight:bold;">חסר</span>';
+      } else {
+        executedCell='<span style="font-size:12px;color:#aaa;">אין נסיעות</span>';
+        statusCell='<span style="font-size:11px;color:#aaa;">—</span>';
+      }
+    } else if(tDef.requiresSummary){
+      // Task with summary form
+      const reportKey=`${dateStr}__${e.name}__${e.id}`;
+      const report=(window._taskReportsCache&&window._taskReportsCache[reportKey])||null;
+      plannedCell=`<span style="font-size:12px;">משמרת ${timeStr}</span>`;
+      if(report){
+        const parts=(tDef.summaryFields||[]).map(f=>`${f.label}: <b>${report[f.type]||'—'}</b>`).join(' | ');
+        const challenges=report.challenges?`<span style="font-size:10px;color:#e67e22;">⚠️ ${report.challenges}</span>`:'';
+        executedCell=`<span style="font-size:12px;">${parts||'דווח'}</span> ${challenges}`;
+        statusCell='<span style="background:#eaf5e8;color:#27ae60;font-size:11px;padding:2px 8px;border-radius:10px;font-weight:bold;">הושלם</span>';
+      } else {
+        executedCell='<span style="font-size:12px;color:#e74c3c;">❌ טופס לא מולא</span>';
+        statusCell='<span style="background:#fdecea;color:#e74c3c;font-size:11px;padding:2px 8px;border-radius:10px;font-weight:bold;">חסר</span>';
+      }
+    } else {
+      // Regular task — default: completed
+      plannedCell=`<span style="font-size:12px;">משמרת ${timeStr}</span>`;
+      executedCell='<span style="font-size:12px;color:#27ae60;">✅ בוצע</span>';
+      statusCell='<span style="background:#eaf5e8;color:#27ae60;font-size:11px;padding:2px 8px;border-radius:10px;font-weight:bold;">הושלם</span>';
+    }
+
+    const noteTag=e.note?`<span title="${e.note}" style="font-size:11px;color:#e67e22;margin-right:4px;">💬</span>`:'';
+
+    return`<tr style="border-bottom:1px solid #f0f0f0;">
+      <td style="padding:8px 10px;font-weight:bold;font-size:13px;white-space:nowrap;">${e.name}</td>
+      <td style="padding:8px 10px;font-size:12px;">${tDef.icon} ${tDef.label} ${noteTag}</td>
+      <td style="padding:8px 10px;">${plannedCell}</td>
+      <td style="padding:8px 10px;">${executedCell}</td>
+      <td style="padding:8px 10px;text-align:center;">${statusCell}</td>
+    </tr>`;
+  }).join('');
+
+  wrap.innerHTML=`
+    <table style="width:100%;border-collapse:collapse;background:white;border-radius:10px;overflow:hidden;box-shadow:0 1px 6px rgba(0,0,0,.06);">
+      <thead><tr style="background:#f5f0ff;">
+        <th style="padding:9px 10px;font-size:12px;text-align:right;color:#555;border-bottom:2px solid #d9c8f5;">מדריך</th>
+        <th style="padding:9px 10px;font-size:12px;text-align:right;color:#555;border-bottom:2px solid #d9c8f5;">משימה</th>
+        <th style="padding:9px 10px;font-size:12px;text-align:right;color:#555;border-bottom:2px solid #d9c8f5;">מתוכנן</th>
+        <th style="padding:9px 10px;font-size:12px;text-align:right;color:#555;border-bottom:2px solid #d9c8f5;">בוצע</th>
+        <th style="padding:9px 10px;font-size:12px;text-align:center;color:#555;border-bottom:2px solid #d9c8f5;">סטטוס</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
 }
 
 </script>
