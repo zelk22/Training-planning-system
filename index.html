@@ -9344,6 +9344,8 @@ document.addEventListener('click',e=>{
 // ═══════════════════════════════════════════════════════════
 
 let _editingTripInModal=null;
+  _editingForInstructor=null;
+let _editingForInstructor=null; // which instructor's trip is being edited
 let _modalEditRoute=[];
 
 function openTripEditModal(tripId){
@@ -9355,6 +9357,7 @@ function openTripEditModal(tripId){
   }
 
   _editingTripInModal=tripId;
+  _editingForInstructor=trip.name; // track which instructor owns this edit
 
   // Load trip route into curRoute
   curRoute=JSON.parse(JSON.stringify(trip.route||[]));
@@ -11250,15 +11253,8 @@ function switchToInstructorView(previewName){
   try{moveManualSectionToInstr();}catch(e){}
 
   // Sync and render
-  // Reset manual section edit state when switching instructor
-  try{
-    const ms=document.getElementById('manualSection');
-    if(ms)ms.removeAttribute('open');
-    const eb=document.getElementById('editBanner');
-    if(eb)eb.style.display='none';
-    if(window.curRoute!==undefined)curRoute=[];
-    if(window._editingTripInModal!==undefined)_editingTripInModal=null;
-  }catch(e){}
+  // Show/hide manual section based on which instructor owns the current edit
+  try{_syncManualSectionVisibility();}catch(e){}
 
   try{if(typeof startInstrSync==='function')startInstrSync();}catch(e){}
   setTimeout(()=>{
@@ -11266,6 +11262,7 @@ function switchToInstructorView(previewName){
     try{if(typeof renderInstrView==='function')renderInstrView();}catch(e){}
     try{renderCalendar();}catch(e){}
     try{renderInstrTripJournal();}catch(e){}
+    try{_syncManualSectionVisibility();}catch(e){}
     try{
       const _td2=_localDateStr(new Date());
       loadTaskReportsForDate(_td2).then(()=>renderTodayTasks()).catch(()=>renderTodayTasks());
@@ -12031,7 +12028,25 @@ async function renderDaySummary(){
         <th style="padding:9px 10px;font-size:12px;text-align:right;color:#555;border-bottom:2px solid #d9c8f5;">משימה</th>
         <th style="padding:9px 10px;font-size:12px;text-align:right;color:#555;border-bottom:2px solid #d9c8f5;">מתוכנן</th>
         <th style="padding:9px 10px;font-size:12px;text-align:right;color:#555;border-bottom:2px solid #d9c8f5;">בוצע</th>
-        <th style="padding:9px 10px;font-size:12px;text-align:center;color:#555;border-bottom:2px solid #d9c8f5;">סטטוס</th>
+        <th
+
+// ══ MANUAL SECTION VISIBILITY — per-instructor ══
+function _syncManualSectionVisibility(){
+  const ms=document.getElementById('manualSection');
+  if(!ms)return;
+  if(!_editingForInstructor||_editingForInstructor===currentUserName){
+    // This instructor owns the edit (or no edit active) — show as-is
+    // If there's an active edit for this instructor, keep it open
+    if(_editingForInstructor===currentUserName&&_editingTripInModal){
+      ms.open=true;
+    }
+  } else {
+    // Different instructor — hide the section content (close details)
+    ms.removeAttribute('open');
+  }
+}
+
+ style="padding:9px 10px;font-size:12px;text-align:center;color:#555;border-bottom:2px solid #d9c8f5;">סטטוס</th>
       </tr></thead>
       <tbody>${rows}</tbody>
     </table>`;
