@@ -10302,6 +10302,7 @@ function changeMonthlyDash(delta){
 async function loadMonthlyDash(){
   const yr=_monthlyDashDate.getFullYear();
   const mo=_monthlyDashDate.getMonth();
+  const stats={}; // per-instructor stats accumulator
   const label=new Date(yr,mo,1).toLocaleDateString('he-IL',{month:'long',year:'numeric'});
   const lbl=document.getElementById('monthlyDashLabel');
   if(lbl)lbl.textContent=label;
