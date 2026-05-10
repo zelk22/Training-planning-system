@@ -11323,7 +11323,7 @@ function switchToInstructorView(previewName){
 // ══════════════════════════════════════════════════════════════════════
 // DASHBOARD TAB SWITCHER (restored)
 // ══════════════════════════════════════════════════════════════════════
-function switchDashTab(tab){
+async function switchDashTab(tab){
   const tabs={
     segments:'dashTabSegments', timesheet:'dashTabTimesheet',
     compare:'dashTabCompare', coverage:'dashTabCoverage', efficiency:'dashTabEfficiency'
@@ -11347,7 +11347,7 @@ function switchDashTab(tab){
   if(tab==='timesheet')renderTimesheet();
   if(tab==='segments'&&Object.keys(_monthHistoryCache||{}).length)renderSegmentAnalysis();
   if(tab==='compare')initCompareSelects();
-  if(tab==='coverage'){initCoverageWeekSelect();renderCoverageTab();}
+  if(tab==='coverage'){initCoverageWeekSelect();await renderCoverageTab();}
   if(tab==='efficiency')renderEfficiencyTab();
 }
 
@@ -11837,7 +11837,7 @@ function renderTasksTab(instrTaskStats){
 
 // Register tasks tab in switchDashTab
 const _switchDashTabWithTasks=switchDashTab;
-function switchDashTab(tab){
+async function switchDashTab(tab){
   _switchDashTabWithTasks(tab);
   const tasksEl=document.getElementById('dashTabTasks');
   const tasksBtn=document.getElementById('tabTasks');
