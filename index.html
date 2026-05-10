@@ -10160,6 +10160,9 @@ function toggleMonthlyDash(){
   panel.style.display=_monthlyDashOpen?'block':'none';
   if(_monthlyDashOpen){
     panel.scrollIntoView({behavior:'smooth',block:'start'});
+    // Show current month in label before loading
+    const _lbl=document.getElementById('monthlyDashLabel');
+    if(_lbl)_lbl.textContent=_monthlyDashDate.toLocaleDateString('he-IL',{month:'long',year:'numeric'});
     loadMonthlyDash();
   }
 }
@@ -10290,6 +10293,9 @@ function updateApprovalBadge(){
 
 function changeMonthlyDash(delta){
   _monthlyDashDate=new Date(_monthlyDashDate.getFullYear(),_monthlyDashDate.getMonth()+delta,1);
+  // Update label immediately
+  const lbl=document.getElementById('monthlyDashLabel');
+  if(lbl)lbl.textContent=_monthlyDashDate.toLocaleDateString('he-IL',{month:'long',year:'numeric'});
   loadMonthlyDash();
 }
 
