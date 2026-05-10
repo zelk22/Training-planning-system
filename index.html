@@ -2111,6 +2111,15 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
       <button onclick="toggleApprovalPanel()" id="approvalToggleBtn" style="width:auto !important;display:inline-block;margin:2px;padding:8px 14px;background:#fef9e7;border:1px solid #f0c050;color:#856404;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;position:relative;">📋 אישור שיבוצים <span id="approvalBadge" style="display:none;background:#e74c3c;color:white;border-radius:10px;padding:1px 5px;font-size:10px;font-weight:bold;margin-right:3px;"></span></button>
     </div>
 
+    <!-- Demo mode banner (shown when demo is active) -->
+    <div id="demoBanner" style="display:none;background:#fff3cd;border:1.5px solid #f0ad4e;border-radius:8px;padding:8px 14px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+      <span style="font-size:13px;font-weight:bold;color:#856404;">🎭 מצב דמו פעיל — הנתונים המוצגים הם לדוגמה בלבד</span>
+      <div style="display:flex;gap:8px;">
+        <button onclick="exitDemoMode()" style="width:auto;padding:5px 12px;background:#856404;color:white;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:bold;">⏸ יציאה מדמו</button>
+        <button onclick="openDemoPanel()" style="width:auto;padding:5px 12px;background:#f0ad4e;color:#333;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:bold;">⚙️ הגדרות דמו</button>
+      </div>
+    </div>
+
     <!-- Legend -->
 
     <div class="sched-legend" style="margin-bottom:10px;">
@@ -3273,8 +3282,13 @@ function renderInstrView(){
   }).join('');
 
   renderGanttInto('ganttGridInstr');
-
+  // Load today's task reports and render (previously in wrapper)
+  try{
+    const _riv_today=_localDateStr(new Date());
+    loadTaskReportsForDate(_riv_today).then(()=>renderTodayTasks()).catch(()=>renderTodayTasks());
+  }catch(e){}
 }
+
 
 function renderGanttInto(targetId){
 
@@ -3634,8 +3648,12 @@ function changeDate(delta){
   resubscribeTripsListener();
 
   hidePlannerPreview();
-
+  // Refresh today tasks after date change
+  try{
+    loadTaskReportsForDate(currentDate).then(()=>renderTodayTasks()).catch(()=>renderTodayTasks());
+  }catch(e){}
 }
+
 
 function onDateChange(){
 
@@ -4400,7 +4418,9 @@ function renderLog(){
     const _instrSt=(instrStatuses&&instrStatuses[_instrKey])||{};
     const _instrTrips=_renderTrips.filter(x=>x.name===t.name);
     const _instrTripAtIdx=_instrTrips[_instrSt.tripIdx];
-    const _isThisTrip=_instrTripAtIdx&&_instrTripAtIdx.id===t.id;
+    const _confirmedSet=(_instrSt.confirmedTrips)||{};
+    const _instrTripIdx2=_instrTrips.findIndex(x=>x.id===t.id);
+    const _isThisTrip=_instrTripIdx2>=0&&(!!_confirmedSet[_instrTripIdx2]||(_instrTripAtIdx&&_instrTripAtIdx.id===t.id));
     const _mgrStl='width:82px;padding:4px 0;border:none;border-radius:7px;cursor:pointer;font-size:11px;font-weight:bold;';
     const _nowM2=new Date().getHours()*60+new Date().getMinutes();
     const _startMin2=timeToMin(t.startStr||'00:00');
@@ -9278,7 +9298,8 @@ function renderInstrTripJournal(){
     const isOnOther=mySt.status==='on-trip'&&mySt.tripIdx!==tIdx;
 
     // Status column logic
-    const isReturned=mySt.status==='returned'&&mySt.tripIdx===tIdx;
+    const _confSet=mySt.confirmedTrips||{};
+    const isReturned=!!_confSet[tIdx]||(mySt.status==='returned'&&mySt.tripIdx===tIdx);
     const tripStarted=currentDate===today&&tripStartMin<=nowM;
     const tripPast=currentDate===today&&endMin<nowM;
     const _stl='width:82px;padding:5px 0;border:none;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;';
@@ -10102,15 +10123,25 @@ async function _saveCustomTaskToDefs(name){
 
 async function loadTripHistory(dateISO){
   if(!window._fbDb){
-    const raw=localStorage.getItem('trips_'+dateISO);
-    return raw?Object.values(JSON.parse(raw)):[];
+    // localStorage: try history first, then current trips
+    try{const raw=localStorage.getItem('trips_'+dateISO);if(raw)return Object.values(JSON.parse(raw));}catch(e){}
+    return [];
   }
+  // Firebase: try history/ first, then trips/ as fallback
   try{
     const snap=await _fbGet(_fbRef(_db,'history/'+dateISO));
-    if(!snap.exists())return[];
-    const h=snap.val();
-    return h.trips?Object.values(h.trips):[];
-  }catch(e){return[];}
+    if(snap.exists()){
+      const h=snap.val();
+      const tripsData=h.trips?Object.values(h.trips):[];
+      if(tripsData.length)return tripsData;
+    }
+  }catch(e){}
+  // Fallback: read from trips/ path directly
+  try{
+    const snap2=await _fbGet(_fbRef(_db,'trips/'+dateISO));
+    if(snap2.exists())return Object.values(snap2.val()).map(parseTrip);
+  }catch(e){}
+  return[];
 }
 
 async function loadMonthHistory(year,month){
@@ -10393,7 +10424,11 @@ async function loadMonthlyDash(){
   // Store in cache for sub-tabs
   _monthHistoryCache=monthData;
   showToast(`✅ נטענו נתוני ${label}`,'success');
+
+  // Enhance with task reports data
+  try{await enhanceMonthlyDashWithTasks();}catch(e){console.warn('task dash:',e);}
 }
+
 
 // ══════════════════════════════════════════════════════════════════════
 // FEATURE 5: Export Monthly Report (CSV)
@@ -11691,26 +11726,9 @@ async function loadMonthTaskReports(year,month){
 }
 
 // Hook renderTodayTasks into renderInstrView
-const _origRenderInstrView=renderInstrView;
-function renderInstrView(){
-  _origRenderInstrView();
-  try{
-    const today=_localDateStr(new Date());
-    loadTaskReportsForDate(today).then(()=>renderTodayTasks());
-  }catch(e){}
-}
-
+/* renderInstrView merged */
 // Hook into date changes
-const _origChangeDate=changeDate;
-function changeDate(delta){
-  _origChangeDate(delta);
-  setTimeout(()=>{
-    try{
-      loadTaskReportsForDate(currentDate).then(()=>renderTodayTasks());
-    }catch(e){}
-  },200);
-}
-
+/* changeDate merged */
 
 
 // ══════════════════════════════════════════════════════════════════════
@@ -11718,13 +11736,7 @@ function changeDate(delta){
 // ══════════════════════════════════════════════════════════════════════
 
 // Hook into loadMonthlyDash to also load task reports and add columns
-const _origLoadMonthlyDash2=loadMonthlyDash;
-async function loadMonthlyDash(){
-  await _origLoadMonthlyDash2();
-  // Load task reports for this month and update table
-  try{await enhanceMonthlyDashWithTasks();}catch(e){console.warn('task dash:',e);}
-}
-
+/* loadMonthlyDash merged */
 async function enhanceMonthlyDashWithTasks(){
   const yr=_monthlyDashDate.getFullYear();
   const mo=_monthlyDashDate.getMonth();
@@ -11898,7 +11910,11 @@ function _confirmTripRetro(tripIdx){
   if(!trip){showToast('נסיעה לא נמצאה','warning');return;}
   setMyStatus('returned',tripIdx);
   const key=currentUserName.replace(/[.#$[\]/]/g,'_');
-  instrStatuses[key]={name:currentUserName,status:'returned',tripIdx,time:toHHMM(new Date().getHours()*60+new Date().getMinutes())};
+  if(!instrStatuses[key])instrStatuses[key]={name:currentUserName,status:'idle',confirmedTrips:{}};
+  instrStatuses[key].status='returned';
+  instrStatuses[key].tripIdx=tripIdx;
+  if(!instrStatuses[key].confirmedTrips)instrStatuses[key].confirmedTrips={};
+  instrStatuses[key].confirmedTrips[tripIdx]=true;
   showToast('✅ נסיעה אושרה רטרואקטיבית','success');
   setTimeout(renderInstrTripJournal,200);
 }
@@ -11910,8 +11926,12 @@ async function _mgrConfirmTrip(tripId,instrName){
   const tripIdx=myTrips.findIndex(t=>t.id===tripId);
   if(tripIdx<0){showToast('נסיעה לא נמצאה','warning');return;}
   const key=instrName.replace(/[.#$[\]/]/g,'_');
-  const entry={name:instrName,status:'returned',tripIdx,time:toHHMM(new Date().getHours()*60+new Date().getMinutes())};
-  instrStatuses[key]=entry;
+  if(!instrStatuses[key])instrStatuses[key]={name:instrName,status:'idle',confirmedTrips:{}};
+  instrStatuses[key].status='returned';
+  instrStatuses[key].tripIdx=tripIdx;
+  if(!instrStatuses[key].confirmedTrips)instrStatuses[key].confirmedTrips={};
+  instrStatuses[key].confirmedTrips[tripIdx]=true;
+  const entry=instrStatuses[key];
   if(window._fbDb){
     try{await _fbSet(_fbRef(_db,statusPath()+'/'+key),entry);}catch(e){}
   }
@@ -12133,6 +12153,326 @@ document.addEventListener('DOMContentLoaded',()=>{
   });
 });
 
+
+
+// ══════════════════════════════════════════════════════════════
+// DEMO MODE ENGINE
+// ══════════════════════════════════════════════════════════════
+
+const DEMO_PREFIX='demo_';
+const DEMO_BACKUP_PREFIX='realbackup_';
+const DEMO_LS_KEYS=['v100_sched_all','v100_instructors','v100_taskDefs','v100_settings','v100_shifts_def'];
+
+const DEMO_INSTRUCTORS=['אחמד עבדלאל','איאד סולימן','דודו היילו','לואי שהין','סמיר ג\'אבר'];
+const DEMO_NOTES=['לדבדיקה מיוחדת','להגיע מוקדם 15 דק\'','לתאם עם ממונה','לסיים עד 22:00 בדיוק','שים לב לפינת נווה יעקב','תלמיד VIP ברכב','נסיעה ארוכה — הכן חטיפים'];
+const DEMO_DELAY_REASONS=['עומס תנועה חריג','תקלה טכנית ברכב','תלמיד איחר','פקק בכביש 6','בעיה בהחלפת נהג','ביקורת בטיחות','אירוע חירום בדרך'];
+const DEMO_ROUTES=['D3','N1','N2','L2','O2','O1','L1','D4'];
+
+function openDemoPanel(){
+  const overlay=document.getElementById('demoPanelOverlay');
+  if(!overlay)return;
+  // Set default start month to 6 months ago
+  const d=new Date();d.setMonth(d.getMonth()-6);
+  const inp=document.getElementById('demoStartMonth');
+  if(inp){
+    const minD=new Date();minD.setFullYear(minD.getFullYear()-1);
+    inp.min=minD.toISOString().slice(0,7);
+    inp.max=new Date().toISOString().slice(0,7);
+    inp.value=d.toISOString().slice(0,7);
+  }
+  // Show exit button if demo is active
+  const isDemo=localStorage.getItem('demo_active')==='1';
+  document.getElementById('demoExitBtn').style.display=isDemo?'block':'none';
+  document.getElementById('demoGenerateBtn').style.display=isDemo?'none':'block';
+  overlay.style.display='flex';
+}
+
+function closeDemoPanel(){
+  document.getElementById('demoPanelOverlay').style.display='none';
+}
+
+async function generateAndActivateDemo(){
+  const startMonth=document.getElementById('demoStartMonth').value;
+  const instrCount=parseInt(document.getElementById('demoInstrCount').value)||5;
+  if(!startMonth){showToast('בחר חודש התחלה','warning');return;}
+
+  document.getElementById('demoProgress').style.display='block';
+  document.getElementById('demoGenerateBtn').disabled=true;
+
+  const setProgress=(pct,text)=>{
+    document.getElementById('demoProgressBar').style.width=pct+'%';
+    document.getElementById('demoProgressText').textContent=text;
+  };
+
+  try{
+    setProgress(5,'מכין רשימת ימים...');
+    await new Promise(r=>setTimeout(r,50));
+
+    const instrs=DEMO_INSTRUCTORS.slice(0,instrCount);
+    const today=new Date();
+    const [sy,sm]=startMonth.split('-').map(Number);
+    const start=new Date(sy,sm-1,1);
+
+    // Collect all weekdays in range
+    const days=[];
+    for(let d=new Date(start);d<=today;d.setDate(d.getDate()+1)){
+      if(d.getDay()!==6)days.push(_localDateStr(new Date(d))); // not Saturday
+    }
+
+    setProgress(10,'בונה הגדרות משימות...');
+    await new Promise(r=>setTimeout(r,30));
+
+    // Task defs for demo
+    const demoTaskDefs=[
+      {id:'training',icon:'🚇',label:'קורס מעשי',color:'#2980b9',isTrip:true,requiresSummary:false,summaryFields:[],trainees:'',message:'נהל את הנסיעה לפי הנחיות הבטיחות. בדוק ציוד לפני היציאה.'},
+      {id:'bakara',icon:'🔍',label:'בקרות',color:'#8e44ad',isTrip:false,requiresSummary:true,summaryFields:[{type:'quantity',label:'מספר בקרות'},{type:'duration',label:'זמן (דקות)'}],trainees:'',message:'בצע בקרות שדה. תעד חריגות.'},
+      {id:'drivers',icon:'🚌',label:'הדרכת נהגים',color:'#27ae60',isTrip:false,requiresSummary:false,summaryFields:[],trainees:'',message:'הדרכה בטיחותית לנהגים חדשים.'},
+    ];
+    localStorage.setItem(DEMO_PREFIX+'v100_taskDefs',JSON.stringify(demoTaskDefs));
+    localStorage.setItem(DEMO_PREFIX+'v100_instructors',JSON.stringify(instrs));
+
+    setProgress(15,'מייצר שיבוצים...');
+    await new Promise(r=>setTimeout(r,30));
+
+    // Build schedule
+    const SHIFTS=['morning','afternoon','evening'];
+    const SHIFT_H={morning:{s:'06:00',e:'14:30'},afternoon:{s:'14:00',e:'22:00'},evening:{s:'13:30',e:'22:00'}};
+    const sched={};
+    const TASKS_BY_INSTR=instrs.map((nm,i)=>i<Math.ceil(instrs.length*0.6)?'training':i<Math.ceil(instrs.length*0.8)?'bakara':'drivers');
+
+    const STATUSES=['approved','approved','approved','approved','approved','approved','pending','rejected'];
+
+    days.forEach(date=>{
+      sched[date]=[];
+      instrs.forEach((name,i)=>{
+        const shift=SHIFTS[Math.floor(_pseudoRand(date+name)*3)];
+        const task=TASKS_BY_INSTR[i];
+        const status=STATUSES[Math.floor(_pseudoRand(date+name+'status')*STATUSES.length)];
+        const hasNote=_pseudoRand(date+name+'note')>0.7;
+        sched[date].push({
+          id:'demo_'+date.replace(/-/g,'')+'_'+i,
+          name,shift,task,
+          startTime:SHIFT_H[shift].s,endTime:SHIFT_H[shift].e,
+          status,
+          note:hasNote?DEMO_NOTES[Math.floor(_pseudoRand(date+name+'notetxt')*DEMO_NOTES.length)]:'',
+          createdAt:Date.now(),submittedBy:name
+        });
+      });
+    });
+    localStorage.setItem(DEMO_PREFIX+'v100_sched_all',JSON.stringify(sched));
+
+    setProgress(40,'מייצר נסיעות...');
+    await new Promise(r=>setTimeout(r,30));
+
+    // Build trips per day
+    let totalTrips=0,totalDelays=0,totalReports=0;
+    const ROUTES_SEGS=[
+      [{id:'D3',t:10},{id:'N1',t:12},{id:'N2',t:18},{id:'L2',t:15},{id:'O2',t:22},{id:'O1',t:18},{id:'L1',t:15},{id:'D4',t:12}],
+    ];
+
+    for(let di=0;di<days.length;di++){
+      const date=days[di];
+      if(di%20===0){setProgress(40+Math.round((di/days.length)*30),'מייצר נסיעות ל-'+date);await new Promise(r=>setTimeout(r,5));}
+      const trips={};
+      const dayInstrs=instrs.filter((_,i)=>TASKS_BY_INSTR[i]==='training');
+      dayInstrs.forEach((name,ti)=>{
+        const schedEntry=sched[date]?.find(e=>e.name===name);
+        if(!schedEntry)return;
+        const baseStart=schedEntry.shift==='morning'?360:schedEntry.shift==='afternoon'?840:810;
+        // 2 trips per instructor
+        [0,1].forEach(tripNum=>{
+          const startMin=baseStart+tripNum*255;
+          const route=ROUTES_SEGS[0];
+          const totalDur=route.reduce((s,r)=>s+r.t,0);
+          const hasDelay=_pseudoRand(date+name+tripNum+'delay')>0.78;
+          const delayMin=hasDelay?Math.round(5+_pseudoRand(date+name+tripNum+'dm')*25):0;
+          const id='dt_'+date.replace(/-/g,'')+'_'+ti+'_'+tripNum;
+          const tl=[];let cur=startMin;
+          route.forEach(r=>{tl.push({id:r.id,startMin:cur,endMin:cur+r.t});cur+=r.t;});
+          trips[id]={
+            id,name,
+            startStr:toHHMM(startMin),
+            route:[...route],
+            timeline:tl,
+            delayMin,
+            delayNote:hasDelay?DEMO_DELAY_REASONS[Math.floor(_pseudoRand(date+name+tripNum+'dr')*DEMO_DELAY_REASONS.length)]:'',
+            savedAt:Date.now()
+          };
+          totalTrips++;
+          if(hasDelay)totalDelays++;
+        });
+      });
+      if(Object.keys(trips).length)localStorage.setItem(DEMO_PREFIX+'trips_'+date,JSON.stringify(trips));
+
+      // Task reports for non-trip instructors
+      const nonTripInstrs=instrs.filter((_,i)=>TASKS_BY_INSTR[i]!=='training'&&sched[date]?.find(e=>e.name===DEMO_INSTRUCTORS[i]));
+      const reports={};
+      nonTripInstrs.forEach((name,ni)=>{
+        if(_pseudoRand(date+name+'report')>0.28){// 72% filled
+          const entry=sched[date]?.find(e=>e.name===name);
+          if(!entry)return;
+          const safeKey=name.replace(/[.#$[\]/]/g,'_')+'__'+entry.id;
+          const qty=Math.round(2+_pseudoRand(date+name+'qty')*8);
+          const dur=Math.round(60+_pseudoRand(date+name+'dur')*120);
+          reports[safeKey]={
+            date,instructorName:name,taskId:entry.task,taskLabel:entry.task==='bakara'?'בקרות':'הדרכת נהגים',
+            entryId:entry.id,submittedAt:Date.now(),
+            quantity:qty,quantityLabel:'מספר בקרות',
+            duration:dur,durationLabel:'זמן (דקות)',
+            challenges:_pseudoRand(date+name+'chal')>0.6?'':'תקלה קלה בדרך',
+            notes:''
+          };
+          totalReports++;
+        }
+      });
+      if(Object.keys(reports).length)localStorage.setItem(DEMO_PREFIX+'taskReports_'+date,JSON.stringify(reports));
+
+      // instrStatus
+      const statuses={};
+      instrs.forEach((name,i)=>{
+        const k=name.replace(/[.#$[\]/]/g,'_');
+        const conf={};
+        if(TASKS_BY_INSTR[i]==='training')[0,1].forEach(ti=>{if(_pseudoRand(date+name+ti+'conf')>0.1)conf[ti]=true;});
+        statuses[k]={name,status:'returned',tripIdx:1,confirmedTrips:conf};
+      });
+      localStorage.setItem(DEMO_PREFIX+'instrStatus_'+date,JSON.stringify(statuses));
+    }
+
+    setProgress(85,'מגבה נתונים אמיתיים...');
+    await new Promise(r=>setTimeout(r,30));
+
+    // Backup real data
+    DEMO_LS_KEYS.forEach(k=>{
+      const v=localStorage.getItem(k);
+      if(v)localStorage.setItem(DEMO_BACKUP_PREFIX+k,v);
+    });
+    // Backup trips/taskReports/instrStatus for current and last 7 days
+    for(let d=0;d<7;d++){
+      const dd=new Date();dd.setDate(dd.getDate()-d);
+      const ds=_localDateStr(dd);
+      ['trips_','taskReports_','instrStatus_'].forEach(pfx=>{
+        const v=localStorage.getItem(pfx+ds);
+        if(v)localStorage.setItem(DEMO_BACKUP_PREFIX+pfx+ds,v);
+      });
+    }
+
+    setProgress(92,'מפעיל מצב דמו...');
+    await new Promise(r=>setTimeout(r,30));
+
+    // Activate: copy demo data to real keys
+    _activateDemoData(days);
+    localStorage.setItem('demo_active','1');
+    localStorage.setItem('demo_days',JSON.stringify(days));
+
+    setProgress(100,'✅ הדמו מוכן!');
+    await new Promise(r=>setTimeout(r,400));
+
+    document.getElementById('demoStats').style.display='block';
+    document.getElementById('demoStats').innerHTML=
+      `✅ <b>דמו נוצר בהצלחה</b><br>${days.length} ימי עבודה | ${totalTrips} נסיעות | ${totalDelays} עיכובים | ${totalReports} דיווחי משימות<br>${instrs.length} מדריכים | מ-${days[0]} עד ${days[days.length-1]}`;
+    document.getElementById('demoExitBtn').style.display='block';
+    document.getElementById('demoGenerateBtn').style.display='none';
+
+    // Reload data
+    _reloadAppWithDemoData();
+    showToast('🎭 מצב דמו פעיל!','success');
+    _updateDemoBanner(true);
+
+  }catch(err){
+    showToast('שגיאה ביצירת דמו: '+err.message,'warning');
+    console.error('Demo error:',err);
+  } finally {
+    document.getElementById('demoGenerateBtn').disabled=false;
+    document.getElementById('demoProgress').style.display='none';
+  }
+}
+
+function _activateDemoData(days){
+  // Copy demo schedule to real sched key
+  const demoSched=JSON.parse(localStorage.getItem(DEMO_PREFIX+'v100_sched_all')||'{}');
+  localStorage.setItem('v100_sched_all',JSON.stringify(demoSched));
+  localStorage.setItem('v100_taskDefs',localStorage.getItem(DEMO_PREFIX+'v100_taskDefs')||'[]');
+  localStorage.setItem('v100_instructors',localStorage.getItem(DEMO_PREFIX+'v100_instructors')||'[]');
+  // Copy trips, reports, statuses for all demo days
+  (days||[]).forEach(date=>{
+    ['trips_','taskReports_','instrStatus_'].forEach(pfx=>{
+      const v=localStorage.getItem(DEMO_PREFIX+pfx+date);
+      if(v)localStorage.setItem(pfx+date,v);
+      else localStorage.removeItem(pfx+date);
+    });
+  });
+}
+
+function _reloadAppWithDemoData(){
+  // Reload schedule and trips from localStorage
+  try{lsLoadSched();}catch(e){}
+  const today=_localDateStr(new Date());
+  try{
+    const raw=localStorage.getItem('trips_'+today);
+    trips=raw?Object.values(JSON.parse(raw)).map(parseTrip):[];
+  }catch(e){trips=[];}
+  try{normalizeTaskDefs();}catch(e){}
+  try{renderCalendar();}catch(e){}
+  try{renderLog();}catch(e){}
+  try{renderDashboard();}catch(e){}
+}
+
+function exitDemoMode(){
+  if(!confirm('לצאת ממצב דמו ולשחזר את הנתונים האמיתיים?'))return;
+  // Restore backed up real data
+  DEMO_LS_KEYS.forEach(k=>{
+    const v=localStorage.getItem(DEMO_BACKUP_PREFIX+k);
+    if(v)localStorage.setItem(k,v);
+    else localStorage.removeItem(k);
+  });
+  // Restore trips/reports/statuses
+  const days=JSON.parse(localStorage.getItem('demo_days')||'[]');
+  days.forEach(date=>{
+    ['trips_','taskReports_','instrStatus_'].forEach(pfx=>{
+      localStorage.removeItem(pfx+date); // remove demo data
+      const backup=localStorage.getItem(DEMO_BACKUP_PREFIX+pfx+date);
+      if(backup)localStorage.setItem(pfx+date,backup);
+    });
+  });
+  localStorage.removeItem('demo_active');
+  _updateDemoBanner(false);
+  closeDemoPanel();
+  _reloadAppWithDemoData();
+  showToast('✅ חזרת לנתונים האמיתיים','success');
+}
+
+function clearDemoData(){
+  if(!confirm('למחוק את כל נתוני הדמו?'))return;
+  const keys=Object.keys(localStorage).filter(k=>k.startsWith(DEMO_PREFIX)||k.startsWith(DEMO_BACKUP_PREFIX));
+  keys.forEach(k=>localStorage.removeItem(k));
+  localStorage.removeItem('demo_active');
+  localStorage.removeItem('demo_days');
+  _updateDemoBanner(false);
+  showToast('🗑️ נתוני הדמו נמחקו','info');
+}
+
+function _updateDemoBanner(active){
+  const banner=document.getElementById('demoBanner');
+  const btn=document.getElementById('demoBtnMain');
+  if(banner)banner.style.display=active?'flex':'none';
+  if(btn){btn.style.background=active?'#f0ad4e':'#6c3483';btn.style.color=active?'#333':'white';}
+}
+
+// Seeded pseudo-random (deterministic per key)
+function _pseudoRand(seed){
+  let h=0;for(let i=0;i<seed.length;i++)h=Math.imul(31,h)+seed.charCodeAt(i)|0;
+  return((h>>>0)/4294967296);
+}
+
+// On load: restore demo state if was active
+document.addEventListener('DOMContentLoaded',()=>{
+  if(localStorage.getItem('demo_active')==='1'){
+    _updateDemoBanner(true);
+    const days=JSON.parse(localStorage.getItem('demo_days')||'[]');
+    _activateDemoData(days);
+  }
+});
+
 </script>
 
 <!-- ══ TASK REPORT MODAL ══════════════════════════════ -->
@@ -12150,6 +12490,55 @@ document.addEventListener('DOMContentLoaded',()=>{
   </div>
 </div>
 
+<!-- ══ DEMO MODE PANEL ══════════════════════════════════════ -->
+<div id="demoPanelOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9500;align-items:center;justify-content:center;">
+  <div style="background:white;border-radius:16px;padding:28px;width:min(480px,95vw);direction:rtl;box-shadow:0 10px 50px rgba(0,0,0,.3);max-height:90vh;overflow-y:auto;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+      <h2 style="margin:0;font-size:20px;color:#6c3483;">🎭 מצב דמו</h2>
+      <button onclick="closeDemoPanel()" style="width:auto;background:none;border:2px solid #ccc;border-radius:50%;width:34px;height:34px;cursor:pointer;font-size:18px;color:#666;padding:0;">×</button>
+    </div>
+    <p style="font-size:13px;color:#666;margin-bottom:18px;">יצירת נתוני דמו ריאליסטיים לבדיקת המערכת. הנתונים נשמרים בנפרד ולא ידרסו את הנתונים האמיתיים.</p>
+
+    <div style="display:flex;flex-direction:column;gap:14px;margin-bottom:20px;">
+      <div>
+        <label style="font-size:13px;font-weight:bold;display:block;margin-bottom:5px;">📅 תחילת תקופה</label>
+        <input type="month" id="demoStartMonth" style="width:100%;padding:9px;border:1.5px solid #ddd;border-radius:8px;font-size:14px;box-sizing:border-box;">
+        <div style="font-size:11px;color:#888;margin-top:3px;">ניתן לבחור עד 12 חודשים אחורה</div>
+      </div>
+      <div>
+        <label style="font-size:13px;font-weight:bold;display:block;margin-bottom:5px;">👥 כמות מדריכים</label>
+        <select id="demoInstrCount" style="width:100%;padding:9px;border:1.5px solid #ddd;border-radius:8px;font-size:14px;">
+          <option value="3">3 מדריכים</option>
+          <option value="4">4 מדריכים</option>
+          <option value="5" selected>5 מדריכים</option>
+        </select>
+      </div>
+    </div>
+
+    <div id="demoProgress" style="display:none;margin-bottom:16px;">
+      <div style="font-size:13px;color:#555;margin-bottom:6px;" id="demoProgressText">מייצר נתונים...</div>
+      <div style="background:#eee;border-radius:6px;height:8px;overflow:hidden;">
+        <div id="demoProgressBar" style="height:100%;background:#6c3483;border-radius:6px;transition:width .3s;width:0%;"></div>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:10px;">
+      <button onclick="generateAndActivateDemo()" id="demoGenerateBtn"
+        style="width:100%;padding:12px;background:#6c3483;color:white;border:none;border-radius:9px;cursor:pointer;font-size:14px;font-weight:bold;">
+        ✨ צור נתוני דמו והפעל
+      </button>
+      <button onclick="exitDemoMode()" id="demoExitBtn" style="display:none;width:100%;padding:12px;background:#e74c3c;color:white;border:none;border-radius:9px;cursor:pointer;font-size:14px;font-weight:bold;">
+        ⏸ יציאה ממצב דמו (שחזור נתונים אמיתיים)
+      </button>
+      <button onclick="clearDemoData()" style="width:100%;padding:10px;background:#f8f9fa;border:1.5px solid #ddd;color:#666;border-radius:9px;cursor:pointer;font-size:13px;">
+        🗑️ מחק נתוני דמו שמורים
+      </button>
+    </div>
+
+    <div id="demoStats" style="display:none;margin-top:16px;padding:12px;background:#f5eeff;border-radius:8px;font-size:12px;color:#6c3483;"></div>
+  </div>
+</div>
+
 </body>
 
-</html>
+</html>6
