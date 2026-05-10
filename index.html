@@ -3484,13 +3484,18 @@ async function saveToStorage(){
 
     await _fbSet(_fbRef(_db,dbPath()),obj);
 
-    // Archive to permanent history (never deleted by resets)
-    if(trips.length>0){
-      try{
-        const histSnap={date:currentDate,trips:obj,savedAt:Date.now(),savedBy:currentUserName||'system'};
-        await _fbSet(_fbRef(_db,'history/'+currentDate),histSnap);
-      }catch(he){console.warn('History archive:',he);}
-    }
+    // Archive to permanent history (always save, even if no trips)
+    try{
+      const dayEntries=schedData[currentDate]||[];
+      const histSnap={
+        date:currentDate,
+        trips:trips.length>0?obj:{},
+        schedule:dayEntries.length>0?dayEntries:undefined,
+        savedAt:Date.now(),
+        savedBy:currentUserName||'system'
+      };
+      await _fbSet(_fbRef(_db,'history/'+currentDate),histSnap);
+    }catch(he){console.warn('History archive:',he);}
 
     const ind=document.getElementById('savedIndicator');
 
@@ -10636,6 +10641,7 @@ function initCompareSelects(){
 async function renderComparison(){
   const body=document.getElementById('compareBody');
   if(!body)return;
+  initCompareSelects(); // ensure selects are populated
   const selA=document.getElementById('compareMonthA');
   const selB=document.getElementById('compareMonthB');
   if(!selA||!selB)return;
@@ -10805,8 +10811,8 @@ function initCoverageWeekSelect(){
   if(!sel||sel.options.length>0)return;
   const today=new Date();
   for(let w=-2;w<=4;w++){
-    const monday=new Date(today);
-    monday.setDate(today.getDate()-((today.getDay()+6)%7)+w*7);
+    const monday=new Date(today); // actually Sunday
+    monday.setDate(today.getDate()-(today.getDay()%7)+w*7);
     const sunday=new Date(monday);sunday.setDate(monday.getDate()+6);
     const val=monday.toISOString().slice(0,10);
     const label=monday.toLocaleDateString('he-IL',{day:'numeric',month:'short'})+' – '+sunday.toLocaleDateString('he-IL',{day:'numeric',month:'short'});
@@ -10817,16 +10823,32 @@ function initCoverageWeekSelect(){
   }
 }
 
-function renderCoverageTab(){
+async function renderCoverageTab(){
   const sel=document.getElementById('coverageWeekSel');
   const body=document.getElementById('coverageBody');
   if(!sel||!body)return;
 
+  body.innerHTML='<div style="color:#aaa;font-size:13px;text-align:center;padding:14px;">⏳ טוען...</div>';
+
+  // Load schedule data for the selected week from Firebase if needed
   const monday=new Date(sel.value+'T12:00:00');
   const days=[];
   for(let i=0;i<7;i++){
     const d=new Date(monday);d.setDate(monday.getDate()+i);
-    days.push(d.toISOString().slice(0,10));
+    days.push(_localDateStr(d));
+  }
+
+  // Load schedule for each day in week (from Firebase or in-memory)
+  const weekSched={...schedData}; // start with current in-memory
+  if(window._fbDb){
+    await Promise.all(days.map(async date=>{
+      if(!weekSched[date]){
+        try{
+          const snap=await _fbGet(_fbRef(_db,schedPathForDate(date)+'/'+date));
+          if(snap.exists()) weekSched[date]=Object.values(snap.val());
+        }catch(e){}
+      }
+    }));
   }
 
   // Per instructor coverage
@@ -10844,7 +10866,7 @@ function renderCoverageTab(){
 
   // Per-day coverage (how many instructors have something)
   const dayCoverage=days.map(date=>{
-    const entries=schedData[date]||[];
+    const entries=weekSched[date]||[];
     const approvedCount=entries.filter(e=>e.status==='approved'||e.status==='pending').length;
     const d=new Date(date+'T12:00:00');
     return {date,label:d.toLocaleDateString('he-IL',{weekday:'short',day:'numeric'}),count:approvedCount};
