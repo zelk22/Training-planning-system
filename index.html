@@ -2209,7 +2209,8 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 
         <span>✏️ מצב עריכה: <span id="editBannerName"></span></span>
 
-        <button onclick="cancelEdit()" style="background:rgba(255,255,255,.3);border:1px solid white;color:white;padding:5px 12px;border-radius:8px;cursor:pointer;font-size:13px;width:auto;margin:0;">ביטול</button>
+        <button onclick="cancelEdit()" style="background:rgba(255,255,255,.3);border:1px solid white;color:white;padding:5px 12px;border-radius:8px;cursor:pointer;font-size:13px;width:auto;margin:0;">ביטול שינויים</button>
+        <button onclick="exitEditMode()" style="background:rgba(220,50,50,.8);border:1px solid white;color:white;padding:5px 12px;border-radius:8px;cursor:pointer;font-size:13px;width:auto;margin:0;">✕ יציאה ממצב עריכה</button>
 
       </div>
 
@@ -9356,6 +9357,7 @@ function openTripEditModal(tripId){
   }
 
   _editingTripInModal=tripId;
+  editingTripId=String(tripId); // also set old var so val() excludes this trip from conflict check
   _editingForInstructor=trip.name; // track which instructor owns this edit
 
   // Load trip route into curRoute
@@ -9412,6 +9414,7 @@ function applyTripEditFromManual(){
   trip.timeline=buildTimeline(startStr,curRoute);
 
   _editingTripInModal=null;
+  editingTripId=null;
   _editingForInstructor=null;
   try{const _ms=document.getElementById('manualSection');if(_ms){_ms.removeAttribute('data-editing-for');_ms.removeAttribute('open');}}catch(e){}
 
@@ -12074,6 +12077,44 @@ function _syncManualSectionVisibility(){
       <tbody>${rows}</tbody>
     </table>`;
 }
+
+
+
+// Exit edit mode completely — clears all edit state
+function exitEditMode(){
+  _editingTripInModal=null;
+  editingTripId=null;
+  _editingForInstructor=null;
+  curRoute=[];
+  try{
+    const ms=document.getElementById('manualSection');
+    if(ms){ms.removeAttribute('data-editing-for');ms.removeAttribute('open');}
+    const eb=document.getElementById('editBanner');
+    if(eb)eb.style.display='none';
+    const saveB=document.getElementById('saveB');
+    if(saveB){saveB.textContent='✅ אשר ושמור נסיעה';saveB.style.background='';saveB.onclick=null;saveB.disabled=false;}
+    // Clear form fields
+    const tID=document.getElementById('tID');if(tID)tID.value='';
+    const tS=document.getElementById('tS');if(tS)tS.value='07:00';
+    try{updateUI();val();}catch(e){}
+  }catch(e){}
+  showToast('יצאת ממצב עריכה','info');
+}
+
+// Auto-clear edit when wrong user opens the manual section
+document.addEventListener('DOMContentLoaded',()=>{
+  const ms=document.getElementById('manualSection');
+  if(!ms)return;
+  ms.addEventListener('toggle',()=>{
+    if(!ms.open)return; // closing — fine
+    const editFor=ms.getAttribute('data-editing-for')||'';
+    if(editFor&&editFor!==currentUserName){
+      // Wrong user opened it — clear edit state
+      exitEditMode();
+      showToast('אין עריכה פעילה עבורך','info');
+    }
+  });
+});
 
 </script>
 
