@@ -9370,9 +9370,12 @@ function openTripEditModal(tripId){
   updateUI();
   val();
 
-  // Show the manual section
+  // Show the manual section and tag it with the instructor
   const ms=document.getElementById('manualSection');
-  if(ms)ms.open=true;
+  if(ms){
+    ms.open=true;
+    ms.setAttribute('data-editing-for', trip.name||'');
+  }
 
   // Scroll to manual section
   const scrollTarget=ms;
@@ -9410,6 +9413,7 @@ function applyTripEditFromManual(){
 
   _editingTripInModal=null;
   _editingForInstructor=null;
+  try{const _ms=document.getElementById('manualSection');if(_ms){_ms.removeAttribute('data-editing-for');_ms.removeAttribute('open');}}catch(e){}
 
   // Restore save button
   const saveB=document.getElementById('saveB');
@@ -9431,6 +9435,7 @@ function closeTripEditModal(){
   document.getElementById('tripEditModal').classList.remove('open');
   _editingTripInModal=null;
   _editingForInstructor=null;
+  try{const _ms=document.getElementById('manualSection');if(_ms){_ms.removeAttribute('data-editing-for');_ms.removeAttribute('open');}}catch(e){}
   _modalEditRoute=[];
 }
 
@@ -11253,9 +11258,19 @@ function switchToInstructorView(previewName){
   // Move manualSection to instructor view
   try{moveManualSectionToInstr();}catch(e){}
 
-  // Sync and render
-  // Show/hide manual section based on which instructor owns the current edit
-  try{_syncManualSectionVisibility();}catch(e){}
+  // Sync visibility AFTER move (so it applies to the moved element)
+  // Tag the element with which instructor owns the edit
+  try{
+    const _ms=document.getElementById('manualSection');
+    if(_ms){
+      _ms.setAttribute('data-editing-for', _editingForInstructor||'');
+      if(_editingForInstructor&&_editingForInstructor!==previewName){
+        _ms.removeAttribute('open');
+      } else if(_editingForInstructor===previewName&&_editingTripInModal){
+        _ms.open=true;
+      }
+    }
+  }catch(e){}
 
   try{if(typeof startInstrSync==='function')startInstrSync();}catch(e){}
   setTimeout(()=>{
@@ -11263,7 +11278,14 @@ function switchToInstructorView(previewName){
     try{if(typeof renderInstrView==='function')renderInstrView();}catch(e){}
     try{renderCalendar();}catch(e){}
     try{renderInstrTripJournal();}catch(e){}
-    try{_syncManualSectionVisibility();}catch(e){}
+    // Sync manual section visibility last (after all renders)
+    try{
+      const _ms2=document.getElementById('manualSection');
+      const _editFor=_ms2?.getAttribute('data-editing-for')||'';
+      if(_ms2&&_editFor&&_editFor!==currentUserName){
+        _ms2.removeAttribute('open');
+      }
+    }catch(e){}
     try{
       const _td2=_localDateStr(new Date());
       loadTaskReportsForDate(_td2).then(()=>renderTodayTasks()).catch(()=>renderTodayTasks());
