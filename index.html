@@ -2408,6 +2408,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
       <button onclick="switchDashTab('compare')" id="tabComp" style="width:auto;padding:8px 16px;background:#f0f4f8;color:#555;border:1px solid #dde;border-bottom:none;border-radius:8px 8px 0 0;cursor:pointer;font-size:12px;font-weight:bold;margin-bottom:-2px;">📈 השוואת תקופות</button>
       <button onclick="switchDashTab('coverage')" id="tabCov" style="width:auto;padding:8px 16px;background:#f0f4f8;color:#555;border:1px solid #dde;border-bottom:none;border-radius:8px 8px 0 0;cursor:pointer;font-size:12px;font-weight:bold;margin-bottom:-2px;">📅 כיסוי שיבוץ</button>
       <button onclick="switchDashTab('efficiency')" id="tabEff" style="width:auto;padding:8px 16px;background:#f0f4f8;color:#555;border:1px solid #dde;border-bottom:none;border-radius:8px 8px 0 0;cursor:pointer;font-size:12px;font-weight:bold;margin-bottom:-2px;">⚡ יעילות מסלול</button>
+          <button id="tabTasks" onclick="switchDashTab('tasks')" style="width:auto;padding:8px 16px;background:#f0f4f8;color:#555;border:1px solid #dde;border-bottom:none;border-radius:8px 8px 0 0;cursor:pointer;font-size:12px;font-weight:bold;">📋 משימות</button>
     </div>
 
     <!-- TAB: Segment Load Analysis -->
@@ -2477,6 +2478,8 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
         <div style="color:#aaa;font-size:13px;padding:20px;text-align:center;">לחץ "טען נתונים" ואז "חשב" לצפייה</div>
       </div>
     </div>
+
+    <div id="dashTabTasks" style="display:none;margin-top:10px;"><div style="color:#aaa;font-size:13px;text-align:center;padding:14px;">לחץ "טען נתונים" כדי לטעון את הנתונים</div></div>
 
   </div>
 
@@ -10122,12 +10125,16 @@ async function _saveCustomTaskToDefs(name){
 // ══════════════════════════════════════════════════════════════
 
 async function loadTripHistory(dateISO){
+  // Demo mode: ALWAYS read from localStorage (demo data is only there)
+  if(localStorage.getItem('demo_active')==='1'){
+    try{const raw=localStorage.getItem('trips_'+dateISO);if(raw)return Object.values(JSON.parse(raw));}catch(e){}
+    return[];
+  }
   if(!window._fbDb){
-    // localStorage: try history first, then current trips
     try{const raw=localStorage.getItem('trips_'+dateISO);if(raw)return Object.values(JSON.parse(raw));}catch(e){}
     return [];
   }
-  // Firebase: try history/ first, then trips/ as fallback
+  // Firebase: try history/ first (includes schedule+status), then trips/ as fallback
   try{
     const snap=await _fbGet(_fbRef(_db,'history/'+dateISO));
     if(snap.exists()){
@@ -10136,7 +10143,6 @@ async function loadTripHistory(dateISO){
       if(tripsData.length)return tripsData;
     }
   }catch(e){}
-  // Fallback: read from trips/ path directly
   try{
     const snap2=await _fbGet(_fbRef(_db,'trips/'+dateISO));
     if(snap2.exists())return Object.values(snap2.val()).map(parseTrip);
@@ -10334,6 +10340,11 @@ async function loadMonthlyDash(){
   const yr=_monthlyDashDate.getFullYear();
   const mo=_monthlyDashDate.getMonth();
   const stats={}; // per-instructor stats accumulator
+  // Load schedule for this month from localStorage (for timesheet + coverage)
+  try{
+    const lsRaw=localStorage.getItem('v100_sched_all');
+    if(lsRaw){const lsSched=JSON.parse(lsRaw);Object.assign(schedData,lsSched);}
+  }catch(e){}
   const label=new Date(yr,mo,1).toLocaleDateString('he-IL',{month:'long',year:'numeric'});
   const lbl=document.getElementById('monthlyDashLabel');
   if(lbl)lbl.textContent=label;
@@ -10427,6 +10438,16 @@ async function loadMonthlyDash(){
 
   // Enhance with task reports data
   try{await enhanceMonthlyDashWithTasks();}catch(e){console.warn('task dash:',e);}
+
+  // Refresh current active tab
+  try{
+    const activePanels=['dashTabSegments','dashTabTimesheet','dashTabCompare','dashTabCoverage','dashTabEfficiency','dashTabTasks'];
+    const activeTab=activePanels.find(id=>{const el=document.getElementById(id);return el&&el.style.display!=='none';});
+    if(activeTab){
+      const tabKey=activeTab.replace('dashTab','').toLowerCase();
+      await switchDashTab(tabKey);
+    }
+  }catch(e){}
 }
 
 
@@ -10591,53 +10612,83 @@ function renderSegmentAnalysis(){
 async function renderTimesheet(){
   const tbody=document.getElementById('timesheetBody');
   if(!tbody)return;
-  if(!Object.keys(_monthHistoryCache).length){
-    tbody.innerHTML='<tr><td colspan="7" style="text-align:center;color:#aaa;padding:16px;">טען נתונים תחילה</td></tr>';
-    return;
-  }
 
+  const yr=_monthlyDashDate.getFullYear();
+  const mo=_monthlyDashDate.getMonth();
   const rows=[];
-  for(const [date,dayTrips] of Object.entries(_monthHistoryCache).sort()){
-    const d=new Date(date+'T12:00:00');
-    const dayLabel=d.toLocaleDateString('he-IL',{weekday:'short',day:'numeric',month:'short'});
-    // Group by instructor
-    const byInstr={};
-    dayTrips.forEach(t=>{
-      if(!byInstr[t.name])byInstr[t.name]=[];
-      byInstr[t.name].push(t);
+
+  // Build from schedule assignments (primary source of attendance)
+  const SHIFT_H={morning:{s:'06:00',e:'14:30'},afternoon:{s:'14:00',e:'22:00'},evening:{s:'13:30',e:'22:00'}};
+  const daysInMonth=new Date(yr,mo+1,0).getDate();
+
+  for(let d=1;d<=daysInMonth;d++){
+    const dateStr=`${yr}-${String(mo+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const dayEntries=schedData[dateStr]||[];
+    // In demo mode, also check localStorage sched
+    const lsSchedRaw=localStorage.getItem('v100_sched_all');
+    const lsSched=lsSchedRaw?JSON.parse(lsSchedRaw):{};
+    const allEntries=[...(lsSched[dateStr]||[]),...dayEntries.filter(e=>!(lsSched[dateStr]||[]).some(x=>x.id===e.id))];
+
+    const dayDate=new Date(dateStr+'T12:00:00');
+    const dayLabel=dayDate.toLocaleDateString('he-IL',{weekday:'short',day:'numeric',month:'short'});
+
+    allEntries.forEach(entry=>{
+      if(!entry.name)return;
+      const sh=SHIFT_H[entry.shift]||{s:entry.startTime||'07:00',e:entry.endTime||'15:30'};
+      const startStr=entry.shift==='custom'?(entry.startTime||sh.s):sh.s;
+      const endStr=entry.shift==='custom'?(entry.endTime||sh.e):sh.e;
+      const entryMin=timeToMin(startStr);
+      const exitMin=timeToMin(endStr);
+      const shiftHours=((exitMin-entryMin)/60).toFixed(1);
+
+      // Get trip data for this instructor on this day from cache
+      const dayTrips=(_monthHistoryCache[dateStr]||[]).filter(t=>t.name===entry.name);
+      const tripCount=dayTrips.length;
+      const tripMin=dayTrips.reduce((a,t)=>a+(t.route||[]).reduce((s,r)=>s+(r.t||0),0),0);
+      const lessons=(tripMin/45).toFixed(1);
+      const delays=dayTrips.filter(t=>t.delayMin>0).length;
+      const taskDef=taskDefs.find(t=>t.id===entry.task)||{label:entry.task||'?',icon:'📋'};
+
+      rows.push({date:dateStr,dayLabel,name:entry.name,
+        entry:startStr,exit:endStr,
+        hoursStr:shiftHours,
+        lessons:tripCount?lessons:'—',
+        delays,tripCount,
+        task:taskDef.icon+' '+taskDef.label,
+        status:entry.status||'approved',
+        note:entry.note||''});
     });
-    for(const [name,instrTrips] of Object.entries(byInstr)){
-      // First trip start, last trip end
-      const allStarts=instrTrips.map(t=>timeToMin(t.startStr||'00:00'));
-      const allEnds=instrTrips.map(t=>t.timeline?.length?t.timeline[t.timeline.length-1].endMin:0);
-      const entryMin=Math.min(...allStarts);
-      const exitMin=Math.max(...allEnds);
-      const totalMin=instrTrips.reduce((a,t)=>a+(t.route||[]).reduce((s,r)=>s+(r.t||0),0),0);
-      const lessons=instrTrips.reduce((a,t)=>a+(t.route||[]).reduce((s,r)=>s+(r.t||0),0)/45,0);
-      const delays=instrTrips.filter(t=>t.delayMin>0).length;
-      rows.push({date,dayLabel,name,entry:toHHMM(entryMin),exit:toHHMM(exitMin),
-        hoursStr:(totalMin/60).toFixed(1),lessons:lessons.toFixed(1),delays,totalMin,entryMin,exitMin});
-    }
   }
 
   if(!rows.length){
-    tbody.innerHTML='<tr><td colspan="7" style="text-align:center;color:#aaa;padding:20px;">אין נתונים לחודש זה</td></tr>';
+    tbody.innerHTML='<tr><td colspan="8" style="text-align:center;color:#aaa;padding:20px;">אין שיבוצים לחודש זה</td></tr>';
     return;
   }
+
+  const STATUS_CLR={approved:'#27ae60',pending:'#e67e22',rejected:'#e74c3c'};
+  const STATUS_LBL={approved:'✅ מאושר',pending:'⏳ ממתין',rejected:'❌ נדחה'};
 
   tbody.innerHTML=rows.map(r=>`<tr>
     <td><b>${r.name}</b></td>
     <td style="font-size:12px;color:#888;">${r.dayLabel}</td>
+    <td style="font-size:11px;color:#555;">${r.task}</td>
     <td style="font-weight:bold;color:#27ae60;">${r.entry}</td>
     <td style="font-weight:bold;color:#e74c3c;">${r.exit}</td>
-    <td style="text-align:center;">${r.hoursStr} שע'</td>
+    <td style="text-align:center;font-weight:bold;">${r.hoursStr} שע'</td>
     <td style="text-align:center;font-weight:bold;color:#2980b9;">${r.lessons}</td>
-    <td style="text-align:center;color:${r.delays>0?'#e74c3c':'#27ae60'};">${r.delays||'—'}</td>
+    <td style="text-align:center;color:${STATUS_CLR[r.status]||'#888'};font-size:11px;font-weight:bold;">${STATUS_LBL[r.status]||r.status}</td>
+    <td style="font-size:11px;color:#e67e22;">${r.note||''}</td>
   </tr>`).join('');
 
-  // Store rows for CSV export
+  // Update header to reflect new columns
+  const thead=document.getElementById('timesheetBody')?.closest('table')?.querySelector('thead tr');
+  if(thead){
+    thead.innerHTML=`<th>מדריך</th><th>תאריך</th><th>משימה</th><th>כניסה</th><th>יציאה</th><th>שעות</th><th>שיעורים</th><th>סטטוס</th><th>הערה</th>`;
+  }
+
   window._timesheetRows=rows;
 }
+
 
 async function exportTimesheetCSV(){
   if(!window._timesheetRows)await renderTimesheet();
@@ -10991,12 +11042,13 @@ function renderEfficiencyTab(){
       if(!t.timeline||!t.timeline.length)continue;
       const routeKey=(t.route||[]).filter(r=>r.id!=='TURN'&&r.id!=='TURN_ORA').map(r=>r.id).join('→');
       if(!routeKey)continue;
-      if(!routeStats[routeKey])routeStats[routeKey]={count:0,totalLessons:0,totalMin:0,instructors:new Set()};
+      if(!routeStats[routeKey])routeStats[routeKey]={count:0,totalLessons:0,totalMin:0,delays:0,instructors:new Set()};
       const s=routeStats[routeKey];
       s.count++;
       const dur=(t.route||[]).reduce((a,r)=>a+(r.t||0),0);
       s.totalMin+=dur;
       s.totalLessons+=dur/45;
+      if(t.delayMin>0)s.delays++;
       if(t.name)s.instructors.add(t.name);
     }
   }
@@ -11007,6 +11059,8 @@ function renderEfficiencyTab(){
       avgLessons:s.totalLessons/s.count,
       avgMin:s.totalMin/s.count,
       lessonsPerHour:(s.totalLessons/s.count)/(s.totalMin/s.count/60),
+      delays:s.delays,
+      delayPct:Math.round(s.delays/s.count*100),
       instrCount:s.instructors.size,
       instructors:[...s.instructors].join(', ')
     }))
@@ -11059,6 +11113,7 @@ function renderEfficiencyTab(){
           <th style="text-align:center;">שיעורים ממוצע</th>
           <th style="text-align:center;">משך ממוצע</th>
           <th style="text-align:center;">שיעורים/שעה</th>
+          <th style="text-align:center;">עיכובים</th>
           <th style="text-align:center;">מדריכים</th>
         </tr></thead>
         <tbody>${rows}</tbody>
@@ -11392,6 +11447,7 @@ async function switchDashTab(tab){
   if(tab==='compare')initCompareSelects();
   if(tab==='coverage'){initCoverageWeekSelect();await renderCoverageTab();}
   if(tab==='efficiency')renderEfficiencyTab();
+  if(tab==='tasks')renderTasksTab(_monthTaskStatsCache||{});
 }
 // ══════════════════════════════════════════════════════════════════════
 // AUDIT LOG — wire to key actions
@@ -11737,6 +11793,7 @@ async function loadMonthTaskReports(year,month){
 
 // Hook into loadMonthlyDash to also load task reports and add columns
 /* loadMonthlyDash merged */
+let _monthTaskStatsCache={};
 async function enhanceMonthlyDashWithTasks(){
   const yr=_monthlyDashDate.getFullYear();
   const mo=_monthlyDashDate.getMonth();
@@ -11786,7 +11843,8 @@ async function enhanceMonthlyDashWithTasks(){
     thead.appendChild(th);
   }
 
-  // Add tasks tab if not exists
+  // Cache and render tasks tab
+  _monthTaskStatsCache=instrTaskStats;
   renderTasksTab(instrTaskStats);
 }
 
@@ -12196,226 +12254,168 @@ async function generateAndActivateDemo(){
   const instrCount=parseInt(document.getElementById('demoInstrCount').value)||5;
   if(!startMonth){showToast('בחר חודש התחלה','warning');return;}
 
-  document.getElementById('demoProgress').style.display='block';
-  document.getElementById('demoGenerateBtn').disabled=true;
+  const btn=document.getElementById('demoGenerateBtn');
+  const progressEl=document.getElementById('demoProgress');
+  const barEl=document.getElementById('demoProgressBar');
+  const txtEl=document.getElementById('demoProgressText');
+  const setP=(pct,txt)=>{barEl.style.width=pct+'%';txtEl.textContent=txt;};
 
-  const setProgress=(pct,text)=>{
-    document.getElementById('demoProgressBar').style.width=pct+'%';
-    document.getElementById('demoProgressText').textContent=text;
-  };
+  btn.disabled=true;
+  progressEl.style.display='block';
 
   try{
-    setProgress(5,'מכין רשימת ימים...');
-    await new Promise(r=>setTimeout(r,50));
+    setP(3,'מכין נתונים...');await new Promise(r=>setTimeout(r,30));
 
     const instrs=DEMO_INSTRUCTORS.slice(0,instrCount);
     const today=new Date();
     const [sy,sm]=startMonth.split('-').map(Number);
     const start=new Date(sy,sm-1,1);
 
-    // Collect all weekdays in range
+    // Generate list of all weekdays (excluding Saturday)
     const days=[];
     for(let d=new Date(start);d<=today;d.setDate(d.getDate()+1)){
-      if(d.getDay()!==6)days.push(_localDateStr(new Date(d))); // not Saturday
+      if(d.getDay()!==6)days.push(_localDateStr(new Date(d)));
     }
 
-    setProgress(10,'בונה הגדרות משימות...');
-    await new Promise(r=>setTimeout(r,30));
+    const TASKS_BY_INSTR=instrs.map((_,i)=>
+      i<Math.ceil(instrs.length*0.6)?'training':i<Math.ceil(instrs.length*0.8)?'bakara':'drivers');
+    const SHIFTS=['morning','afternoon','evening'];
+    const SHIFT_H={morning:{s:'06:00',e:'14:30'},afternoon:{s:'14:00',e:'22:00'},evening:{s:'13:30',e:'22:00'}};
+    const STATUSES=['approved','approved','approved','approved','approved','pending','rejected'];
+    const ROUTE=[{id:'D3',t:10},{id:'N1',t:12},{id:'N2',t:18},{id:'L2',t:15},{id:'O2',t:22},{id:'O1',t:18},{id:'L1',t:15},{id:'D4',t:12}];
 
-    // Task defs for demo
+    // Group days by month
+    const byMonth={};
+    days.forEach(date=>{const mk=date.slice(0,7);if(!byMonth[mk])byMonth[mk]=[];byMonth[mk].push(date);});
+    const months=Object.keys(byMonth).sort();
+
+    setP(8,'מייצר שיבוצים...');await new Promise(r=>setTimeout(r,30));
+
+    // Demo task defs
     const demoTaskDefs=[
-      {id:'training',icon:'🚇',label:'קורס מעשי',color:'#2980b9',isTrip:true,requiresSummary:false,summaryFields:[],trainees:'',message:'נהל את הנסיעה לפי הנחיות הבטיחות. בדוק ציוד לפני היציאה.'},
+      {id:'training',icon:'🚇',label:'קורס מעשי',color:'#2980b9',isTrip:true,requiresSummary:false,summaryFields:[],trainees:'',message:'נהל את הנסיעה לפי הנחיות הבטיחות.'},
       {id:'bakara',icon:'🔍',label:'בקרות',color:'#8e44ad',isTrip:false,requiresSummary:true,summaryFields:[{type:'quantity',label:'מספר בקרות'},{type:'duration',label:'זמן (דקות)'}],trainees:'',message:'בצע בקרות שדה. תעד חריגות.'},
       {id:'drivers',icon:'🚌',label:'הדרכת נהגים',color:'#27ae60',isTrip:false,requiresSummary:false,summaryFields:[],trainees:'',message:'הדרכה בטיחותית לנהגים חדשים.'},
     ];
+
+    // Build FULL schedule (all days)
+    const fullSched={};
+    days.forEach(date=>{
+      fullSched[date]=instrs.map((name,i)=>({
+        id:'ds_'+date.replace(/-/g,'')+'_'+i,
+        name,shift:SHIFTS[Math.floor(_pseudoRand(date+name)*3)],
+        task:TASKS_BY_INSTR[i],
+        startTime:SHIFT_H[SHIFTS[Math.floor(_pseudoRand(date+name)*3)]].s,
+        endTime:SHIFT_H[SHIFTS[Math.floor(_pseudoRand(date+name)*3)]].e,
+        status:STATUSES[Math.floor(_pseudoRand(date+name+'st')*STATUSES.length)],
+        note:_pseudoRand(date+name+'n')>0.7?DEMO_NOTES[Math.floor(_pseudoRand(date+name+'nt')*DEMO_NOTES.length)]:'',
+        createdAt:Date.now(),submittedBy:name
+      }));
+    });
+
+    let totalTrips=0,totalDelays=0,totalReports=0;
+
+    // Store per month (one localStorage key per month)
+    for(let mi=0;mi<months.length;mi++){
+      const mk=months[mi];
+      const monthDays=byMonth[mk];
+      setP(10+Math.round((mi/months.length)*75),'מייצר '+mk+'...');
+      await new Promise(r=>setTimeout(r,10));
+
+      const monthTrips={};  // date → {id:trip}
+      const monthReports={};// date → {key:report}
+      const monthStatuses={};// date → {instrKey:status}
+
+      monthDays.forEach(date=>{
+        const tripMap={};
+        const tripInstrs=instrs.filter((_,i)=>TASKS_BY_INSTR[i]==='training');
+        tripInstrs.forEach((name,ti)=>{
+          [0,1].forEach(tn=>{
+            const entry=fullSched[date]?.find(e=>e.name===name);
+            if(!entry)return;
+            const baseMin=entry.shift==='morning'?360:entry.shift==='afternoon'?840:810;
+            const startMin=baseMin+tn*255;
+            const hasDelay=_pseudoRand(date+name+tn+'dl')>0.78;
+            const delayMin=hasDelay?Math.round(5+_pseudoRand(date+name+tn+'dm')*25):0;
+            const id='dt_'+date.replace(/-/g,'')+'_'+ti+'_'+tn;
+            let cur=startMin;
+            const tl=ROUTE.map(r=>{const seg={id:r.id,startMin:cur,endMin:cur+r.t};cur+=r.t;return seg;});
+            tripMap[id]={id,name,startStr:toHHMM(startMin),route:[...ROUTE],timeline:tl,
+              delayMin,delayNote:hasDelay?DEMO_DELAY_REASONS[Math.floor(_pseudoRand(date+name+tn+'dr')*DEMO_DELAY_REASONS.length)]:'',savedAt:Date.now()};
+            totalTrips++;if(hasDelay)totalDelays++;
+          });
+        });
+        if(Object.keys(tripMap).length)monthTrips[date]=tripMap;
+
+        const rptMap={};
+        instrs.filter((name,i)=>TASKS_BY_INSTR[i]!=='training').forEach(name=>{
+          if(_pseudoRand(date+name+'rp')>0.28){
+            const entry=fullSched[date]?.find(e=>e.name===name);
+            if(!entry)return;
+            const sk=name.replace(/[.#$[\]/]/g,'_')+'__'+entry.id;
+            rptMap[sk]={date,instructorName:name,taskId:entry.task,
+              taskLabel:entry.task==='bakara'?'בקרות':'הדרכת נהגים',
+              entryId:entry.id,submittedAt:Date.now(),
+              quantity:Math.round(2+_pseudoRand(date+name+'q')*8),
+              quantityLabel:'מספר בקרות',
+              duration:Math.round(60+_pseudoRand(date+name+'d')*120),
+              durationLabel:'זמן (דקות)',
+              challenges:_pseudoRand(date+name+'ch')<0.2?'תקלה קלה בדרך':'',notes:''};
+            totalReports++;
+          }
+        });
+        if(Object.keys(rptMap).length)monthReports[date]=rptMap;
+
+        const stMap={};
+        instrs.forEach((name,i)=>{
+          const k=name.replace(/[.#$[\]/]/g,'_');
+          const conf={};
+          if(TASKS_BY_INSTR[i]==='training')[0,1].forEach(tn=>{if(_pseudoRand(date+name+tn+'c')>0.1)conf[tn]=true;});
+          stMap[k]={name,status:'returned',tripIdx:1,confirmedTrips:conf};
+        });
+        monthStatuses[date]=stMap;
+      });
+
+      // ONE key per month per data type
+      localStorage.setItem(DEMO_PREFIX+'trips_'+mk,JSON.stringify(monthTrips));
+      localStorage.setItem(DEMO_PREFIX+'rpts_'+mk,JSON.stringify(monthReports));
+      localStorage.setItem(DEMO_PREFIX+'status_'+mk,JSON.stringify(monthStatuses));
+    }
+
+    // Store schedule and task defs
+    localStorage.setItem(DEMO_PREFIX+'v100_sched_all',JSON.stringify(fullSched));
     localStorage.setItem(DEMO_PREFIX+'v100_taskDefs',JSON.stringify(demoTaskDefs));
     localStorage.setItem(DEMO_PREFIX+'v100_instructors',JSON.stringify(instrs));
 
-    setProgress(15,'מייצר שיבוצים...');
-    await new Promise(r=>setTimeout(r,30));
-
-    // Build schedule
-    const SHIFTS=['morning','afternoon','evening'];
-    const SHIFT_H={morning:{s:'06:00',e:'14:30'},afternoon:{s:'14:00',e:'22:00'},evening:{s:'13:30',e:'22:00'}};
-    const sched={};
-    const TASKS_BY_INSTR=instrs.map((nm,i)=>i<Math.ceil(instrs.length*0.6)?'training':i<Math.ceil(instrs.length*0.8)?'bakara':'drivers');
-
-    const STATUSES=['approved','approved','approved','approved','approved','approved','pending','rejected'];
-
-    days.forEach(date=>{
-      sched[date]=[];
-      instrs.forEach((name,i)=>{
-        const shift=SHIFTS[Math.floor(_pseudoRand(date+name)*3)];
-        const task=TASKS_BY_INSTR[i];
-        const status=STATUSES[Math.floor(_pseudoRand(date+name+'status')*STATUSES.length)];
-        const hasNote=_pseudoRand(date+name+'note')>0.7;
-        sched[date].push({
-          id:'demo_'+date.replace(/-/g,'')+'_'+i,
-          name,shift,task,
-          startTime:SHIFT_H[shift].s,endTime:SHIFT_H[shift].e,
-          status,
-          note:hasNote?DEMO_NOTES[Math.floor(_pseudoRand(date+name+'notetxt')*DEMO_NOTES.length)]:'',
-          createdAt:Date.now(),submittedBy:name
-        });
-      });
-    });
-    localStorage.setItem(DEMO_PREFIX+'v100_sched_all',JSON.stringify(sched));
-
-    setProgress(40,'מייצר נסיעות...');
-    await new Promise(r=>setTimeout(r,30));
-
-    // Build trips per day
-    let totalTrips=0,totalDelays=0,totalReports=0;
-    const ROUTES_SEGS=[
-      [{id:'D3',t:10},{id:'N1',t:12},{id:'N2',t:18},{id:'L2',t:15},{id:'O2',t:22},{id:'O1',t:18},{id:'L1',t:15},{id:'D4',t:12}],
-    ];
-
-    for(let di=0;di<days.length;di++){
-      const date=days[di];
-      if(di%20===0){setProgress(40+Math.round((di/days.length)*30),'מייצר נסיעות ל-'+date);await new Promise(r=>setTimeout(r,5));}
-      const trips={};
-      const dayInstrs=instrs.filter((_,i)=>TASKS_BY_INSTR[i]==='training');
-      dayInstrs.forEach((name,ti)=>{
-        const schedEntry=sched[date]?.find(e=>e.name===name);
-        if(!schedEntry)return;
-        const baseStart=schedEntry.shift==='morning'?360:schedEntry.shift==='afternoon'?840:810;
-        // 2 trips per instructor
-        [0,1].forEach(tripNum=>{
-          const startMin=baseStart+tripNum*255;
-          const route=ROUTES_SEGS[0];
-          const totalDur=route.reduce((s,r)=>s+r.t,0);
-          const hasDelay=_pseudoRand(date+name+tripNum+'delay')>0.78;
-          const delayMin=hasDelay?Math.round(5+_pseudoRand(date+name+tripNum+'dm')*25):0;
-          const id='dt_'+date.replace(/-/g,'')+'_'+ti+'_'+tripNum;
-          const tl=[];let cur=startMin;
-          route.forEach(r=>{tl.push({id:r.id,startMin:cur,endMin:cur+r.t});cur+=r.t;});
-          trips[id]={
-            id,name,
-            startStr:toHHMM(startMin),
-            route:[...route],
-            timeline:tl,
-            delayMin,
-            delayNote:hasDelay?DEMO_DELAY_REASONS[Math.floor(_pseudoRand(date+name+tripNum+'dr')*DEMO_DELAY_REASONS.length)]:'',
-            savedAt:Date.now()
-          };
-          totalTrips++;
-          if(hasDelay)totalDelays++;
-        });
-      });
-      if(Object.keys(trips).length)localStorage.setItem(DEMO_PREFIX+'trips_'+date,JSON.stringify(trips));
-
-      // Task reports for non-trip instructors
-      const nonTripInstrs=instrs.filter((_,i)=>TASKS_BY_INSTR[i]!=='training'&&sched[date]?.find(e=>e.name===DEMO_INSTRUCTORS[i]));
-      const reports={};
-      nonTripInstrs.forEach((name,ni)=>{
-        if(_pseudoRand(date+name+'report')>0.28){// 72% filled
-          const entry=sched[date]?.find(e=>e.name===name);
-          if(!entry)return;
-          const safeKey=name.replace(/[.#$[\]/]/g,'_')+'__'+entry.id;
-          const qty=Math.round(2+_pseudoRand(date+name+'qty')*8);
-          const dur=Math.round(60+_pseudoRand(date+name+'dur')*120);
-          reports[safeKey]={
-            date,instructorName:name,taskId:entry.task,taskLabel:entry.task==='bakara'?'בקרות':'הדרכת נהגים',
-            entryId:entry.id,submittedAt:Date.now(),
-            quantity:qty,quantityLabel:'מספר בקרות',
-            duration:dur,durationLabel:'זמן (דקות)',
-            challenges:_pseudoRand(date+name+'chal')>0.6?'':'תקלה קלה בדרך',
-            notes:''
-          };
-          totalReports++;
-        }
-      });
-      if(Object.keys(reports).length)localStorage.setItem(DEMO_PREFIX+'taskReports_'+date,JSON.stringify(reports));
-
-      // instrStatus
-      const statuses={};
-      instrs.forEach((name,i)=>{
-        const k=name.replace(/[.#$[\]/]/g,'_');
-        const conf={};
-        if(TASKS_BY_INSTR[i]==='training')[0,1].forEach(ti=>{if(_pseudoRand(date+name+ti+'conf')>0.1)conf[ti]=true;});
-        statuses[k]={name,status:'returned',tripIdx:1,confirmedTrips:conf};
-      });
-      localStorage.setItem(DEMO_PREFIX+'instrStatus_'+date,JSON.stringify(statuses));
-    }
-
-    setProgress(85,'מגבה נתונים אמיתיים...');
-    await new Promise(r=>setTimeout(r,30));
+    setP(88,'מגבה נתונים ומפעיל...');await new Promise(r=>setTimeout(r,30));
 
     // Backup real data
-    DEMO_LS_KEYS.forEach(k=>{
-      const v=localStorage.getItem(k);
-      if(v)localStorage.setItem(DEMO_BACKUP_PREFIX+k,v);
+    ['v100_sched_all','v100_taskDefs','v100_instructors'].forEach(k=>{
+      const v=localStorage.getItem(k);if(v)localStorage.setItem(DEMO_BACKUP_PREFIX+k,v);
     });
-    // Backup trips/taskReports/instrStatus for current and last 7 days
-    for(let d=0;d<7;d++){
-      const dd=new Date();dd.setDate(dd.getDate()-d);
-      const ds=_localDateStr(dd);
-      ['trips_','taskReports_','instrStatus_'].forEach(pfx=>{
-        const v=localStorage.getItem(pfx+ds);
-        if(v)localStorage.setItem(DEMO_BACKUP_PREFIX+pfx+ds,v);
-      });
-    }
 
-    setProgress(92,'מפעיל מצב דמו...');
-    await new Promise(r=>setTimeout(r,30));
-
-    // Activate: copy demo data to real keys
-    _activateDemoData(days);
+    setP(95,'מפעיל דמו...');await new Promise(r=>setTimeout(r,30));
+    _activateDemoData(months);
     localStorage.setItem('demo_active','1');
-    localStorage.setItem('demo_days',JSON.stringify(days));
+    localStorage.setItem('demo_months',JSON.stringify(months));
 
-    setProgress(100,'✅ הדמו מוכן!');
-    await new Promise(r=>setTimeout(r,400));
+    setP(100,'✅ הדמו מוכן!');await new Promise(r=>setTimeout(r,300));
 
     document.getElementById('demoStats').style.display='block';
     document.getElementById('demoStats').innerHTML=
-      `✅ <b>דמו נוצר בהצלחה</b><br>${days.length} ימי עבודה | ${totalTrips} נסיעות | ${totalDelays} עיכובים | ${totalReports} דיווחי משימות<br>${instrs.length} מדריכים | מ-${days[0]} עד ${days[days.length-1]}`;
+      `✅ <b>דמו נוצר בהצלחה</b><br>${days.length} ימי עבודה | ${totalTrips} נסיעות | ${totalDelays} עיכובים (${Math.round(totalDelays/totalTrips*100)}%) | ${totalReports} דיווחי משימות`;
     document.getElementById('demoExitBtn').style.display='block';
     document.getElementById('demoGenerateBtn').style.display='none';
-
-    // Reload data
     _reloadAppWithDemoData();
-    showToast('🎭 מצב דמו פעיל!','success');
     _updateDemoBanner(true);
-
+    showToast('🎭 מצב דמו פעיל!','success');
   }catch(err){
-    showToast('שגיאה ביצירת דמו: '+err.message,'warning');
-    console.error('Demo error:',err);
-  } finally {
-    document.getElementById('demoGenerateBtn').disabled=false;
-    document.getElementById('demoProgress').style.display='none';
+    showToast('שגיאה ביצירת דמו: '+err.message,'warning');console.error('Demo error:',err);
+  }finally{
+    btn.disabled=false;progressEl.style.display='none';
   }
 }
 
-function _activateDemoData(days){
-  // Copy demo schedule to real sched key
-  const demoSched=JSON.parse(localStorage.getItem(DEMO_PREFIX+'v100_sched_all')||'{}');
-  localStorage.setItem('v100_sched_all',JSON.stringify(demoSched));
-  localStorage.setItem('v100_taskDefs',localStorage.getItem(DEMO_PREFIX+'v100_taskDefs')||'[]');
-  localStorage.setItem('v100_instructors',localStorage.getItem(DEMO_PREFIX+'v100_instructors')||'[]');
-  // Copy trips, reports, statuses for all demo days
-  (days||[]).forEach(date=>{
-    ['trips_','taskReports_','instrStatus_'].forEach(pfx=>{
-      const v=localStorage.getItem(DEMO_PREFIX+pfx+date);
-      if(v)localStorage.setItem(pfx+date,v);
-      else localStorage.removeItem(pfx+date);
-    });
-  });
-}
-
-function _reloadAppWithDemoData(){
-  // Reload schedule and trips from localStorage
-  try{lsLoadSched();}catch(e){}
-  const today=_localDateStr(new Date());
-  try{
-    const raw=localStorage.getItem('trips_'+today);
-    trips=raw?Object.values(JSON.parse(raw)).map(parseTrip):[];
-  }catch(e){trips=[];}
-  try{normalizeTaskDefs();}catch(e){}
-  try{renderCalendar();}catch(e){}
-  try{renderLog();}catch(e){}
-  try{renderDashboard();}catch(e){}
-}
 
 function exitDemoMode(){
   if(!confirm('לצאת ממצב דמו ולשחזר את הנתונים האמיתיים?'))return;
@@ -12426,14 +12426,15 @@ function exitDemoMode(){
     else localStorage.removeItem(k);
   });
   // Restore trips/reports/statuses
-  const days=JSON.parse(localStorage.getItem('demo_days')||'[]');
-  days.forEach(date=>{
-    ['trips_','taskReports_','instrStatus_'].forEach(pfx=>{
-      localStorage.removeItem(pfx+date); // remove demo data
-      const backup=localStorage.getItem(DEMO_BACKUP_PREFIX+pfx+date);
-      if(backup)localStorage.setItem(pfx+date,backup);
+  // Remove all per-day demo copies
+  const months2=JSON.parse(localStorage.getItem('demo_months')||'[]');
+  months2.forEach(mk=>{
+    ['trips_','rpts_','status_'].forEach(pfx=>{
+      const data=JSON.parse(localStorage.getItem(DEMO_PREFIX+pfx+mk)||'{}');
+      Object.keys(data).forEach(date=>['trips_','taskReports_','instrStatus_'].forEach(p=>localStorage.removeItem(p+date)));
     });
   });
+  localStorage.removeItem('demo_months');
   localStorage.removeItem('demo_active');
   _updateDemoBanner(false);
   closeDemoPanel();
@@ -12468,10 +12469,40 @@ function _pseudoRand(seed){
 document.addEventListener('DOMContentLoaded',()=>{
   if(localStorage.getItem('demo_active')==='1'){
     _updateDemoBanner(true);
-    const days=JSON.parse(localStorage.getItem('demo_days')||'[]');
-    _activateDemoData(days);
+    const months=JSON.parse(localStorage.getItem('demo_months')||'[]');
+    _activateDemoData(months);
   }
 });
+
+
+function _activateDemoData(months){
+  // Restore schedule and defs
+  const ds=localStorage.getItem(DEMO_PREFIX+'v100_sched_all');if(ds)localStorage.setItem('v100_sched_all',ds);
+  const dt=localStorage.getItem(DEMO_PREFIX+'v100_taskDefs');if(dt)localStorage.setItem('v100_taskDefs',dt);
+  const di=localStorage.getItem(DEMO_PREFIX+'v100_instructors');if(di)localStorage.setItem('v100_instructors',di);
+
+  // Copy monthly buckets into per-day keys for existing code compatibility
+  (months||[]).forEach(mk=>{
+    const trips=JSON.parse(localStorage.getItem(DEMO_PREFIX+'trips_'+mk)||'{}');
+    Object.entries(trips).forEach(([date,tripMap])=>localStorage.setItem('trips_'+date,JSON.stringify(tripMap)));
+    const rpts=JSON.parse(localStorage.getItem(DEMO_PREFIX+'rpts_'+mk)||'{}');
+    Object.entries(rpts).forEach(([date,rptMap])=>localStorage.setItem('taskReports_'+date,JSON.stringify(rptMap)));
+    const sts=JSON.parse(localStorage.getItem(DEMO_PREFIX+'status_'+mk)||'{}');
+    Object.entries(sts).forEach(([date,stMap])=>localStorage.setItem('instrStatus_'+date,JSON.stringify(stMap)));
+  });
+}
+
+function _reloadAppWithDemoData(){
+  try{lsLoadSched();}catch(e){}
+  try{normalizeTaskDefs();}catch(e){}
+  const today=_localDateStr(new Date());
+  try{const raw=localStorage.getItem('trips_'+today);trips=raw?Object.values(JSON.parse(raw)).map(parseTrip):[];}catch(e){trips=[];}
+  try{renderCalendar();}catch(e){}
+  try{renderLog();}catch(e){}
+  try{renderDashboard();}catch(e){}
+  try{renderInstrTripJournal();}catch(e){}
+}
+
 
 </script>
 
@@ -12541,4 +12572,4 @@ document.addEventListener('DOMContentLoaded',()=>{
 
 </body>
 
-</html>6
+</html>
