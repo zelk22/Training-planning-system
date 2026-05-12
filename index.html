@@ -12532,8 +12532,20 @@ function exitDemoMode(){
   localStorage.removeItem('demo_months');
   localStorage.removeItem('demo_active');
   _updateDemoBanner(false);
-  closeDemoPanel();
-  _reloadAppWithDemoData();
+  // DON'T close panel — allow re-activation without refresh
+  // Reload real data
+  try{lsLoadSched();}catch(e){}
+  try{normalizeTaskDefs();}catch(e){}
+  const _exitToday=_localDateStr(new Date());
+  try{const raw=localStorage.getItem('trips_'+_exitToday);trips=raw?Object.values(JSON.parse(raw)).map(parseTrip):[];}catch(e){trips=[];}
+  try{renderCalendar();}catch(e){}
+  try{renderLog();}catch(e){}
+  try{renderDashboard();}catch(e){}
+  // Update panel buttons
+  const _genBtn=document.getElementById('demoGenerateBtn');
+  const _exitBtn=document.getElementById('demoExitBtn');
+  if(_genBtn)_genBtn.style.display='block';
+  if(_exitBtn)_exitBtn.style.display='none';
   showToast('✅ חזרת לנתונים האמיתיים','success');
 }
 
@@ -12550,8 +12562,14 @@ function clearDemoData(){
 function _updateDemoBanner(active){
   const banner=document.getElementById('demoBanner');
   const btn=document.getElementById('demoBtnMain');
+  // Banner shows when demo is active
   if(banner)banner.style.display=active?'flex':'none';
-  if(btn){btn.style.background=active?'#f0ad4e':'#6c3483';btn.style.color=active?'#333':'white';}
+  // Button always visible — changes color to indicate state
+  if(btn){
+    btn.style.background=active?'#f0ad4e':'#6c3483';
+    btn.style.color=active?'#333':'white';
+    btn.title=active?'מצב דמו פעיל — לחץ לניהול':'הפעל מצב דמו';
+  }
 }
 
 // Seeded pseudo-random (deterministic per key)
@@ -12562,11 +12580,10 @@ function _pseudoRand(seed){
 
 // On load: restore demo state if was active
 document.addEventListener('DOMContentLoaded',()=>{
-  if(localStorage.getItem('demo_active')==='1'){
-    _updateDemoBanner(true);
-    const months=JSON.parse(localStorage.getItem('demo_months')||'[]');
-    _activateDemoData(months);
-  }
+  // Just sync the banner — don't auto-activate demo data on load
+  // (real data is always loaded on start; demo is opt-in only)
+  const isDemo=localStorage.getItem('demo_active')==='1';
+  _updateDemoBanner(isDemo);
 });
 
 
