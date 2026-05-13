@@ -2405,6 +2405,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
         <button onclick="exportMonthlyReport()" style="width:auto;padding:7px 12px;background:#8e44ad;color:white;border:none;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;">📥 ייצא נסיעות CSV</button>
         <button onclick="exportScheduleReport()" style="width:auto;padding:7px 12px;background:#2c3e50;color:white;border:none;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;">📋 ייצא שיבוצים CSV</button>
         <button onclick="exportPDFReport()" style="width:auto;padding:7px 12px;background:#c0392b;color:white;border:none;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;">📄 הפק דו"ח PDF</button>
+        <button onclick="exportDashboardXLSX()" style="width:auto;padding:7px 12px;background:#217346;color:white;border:none;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;">📊 ייצוא Excel</button>
       </div>
     </div>
 
@@ -11168,7 +11169,7 @@ function renderEfficiencyTab(){
           <div style="width:${eff}%;height:100%;background:${effCol};border-radius:4px;"></div>
         </div>
       </td>
-      <td style="text-align:center;font-size:11px;color:#888;">${r.instrCount}</td>
+      <td style="text-align:center;font-size:11px;color:#555;" title="${r.instructors}">${r.instrCount} <small style="color:#aaa;">(${r.instructors.length>30?r.instructors.slice(0,30)+'...':r.instructors})</small></td>
     </tr>`;
   }).join('');
 
@@ -12861,7 +12862,80 @@ function _renderMonthSchedBreakdown(yr,mo){
         <th style="padding:8px 10px;font-size:11px;text-align:right;color:#555;border-bottom:2px solid #d9c8f5;">משימה</th>
         <th style="padding:8px 10px;font-size:11px;text-align:center;color:#555;border-bottom:2px solid #d9c8f5;">מדריכים</th>
         <th style="padding:8px 10px;font-size:11px;text-align:center;color:#555;border-bottom:2px solid #d9c8f5;">הקצאות</th>
-        <th style="padding:8px 10px;font-size:11px;text-align:right;color:#555;border-bottom:2px solid #d9c8f5;">מדריכים שהוקצו</th>
+        <th style="padding:8px 10px;font-size:11px;text-align:right;color:#555;border-bottom
+
+// ══ XLSX EXPORT ══════════════════════════════════════════════
+async function exportDashboardXLSX(){
+  showToast('⏳ מכין קובץ Excel...','info');
+  try{
+    const XLSX=await import('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js').catch(()=>window.XLSX);
+    if(!XLSX){showToast('שגיאה: ספריית Excel לא נטענה','warning');return;}
+    const wb=XLSX.utils.book_new();
+    const yr=_monthlyDashDate.getFullYear();
+    const mo=_monthlyDashDate.getMonth();
+    const label=_monthlyDashDate.toLocaleDateString('he-IL',{month:'long',year:'numeric'});
+
+    // Sheet 1: instructors summary
+    const monthData=_monthHistoryCache||{};
+    const byInstr={};
+    Object.values(monthData).forEach(day=>(day||[]).forEach(t=>{
+      if(!byInstr[t.name])byInstr[t.name]={trips:0,lessons:0,minutes:0,delays:0,routeChanges:0};
+      const v=byInstr[t.name];v.trips++;
+      const dur=(t.route||[]).reduce((s,r)=>s+(r.t||0),0);
+      v.lessons+=dur/45;v.minutes+=dur;
+      if(t.delayMin>0)v.delays++;
+      if(t.routeVariant>0)v.routeChanges++;
+    }));
+    const instrRows=[['מדריך','נסיעות','שיעורים','שעות','עיכובים','שינויי מסלול']];
+    Object.entries(byInstr).sort().forEach(([name,v])=>instrRows.push([name,v.trips,+v.lessons.toFixed(1),+(v.minutes/60).toFixed(1),v.delays,v.routeChanges]));
+    const ws1=XLSX.utils.aoa_to_sheet(instrRows);
+    XLSX.utils.book_append_sheet(wb,ws1,'סיכום מדריכים');
+
+    // Sheet 2: route efficiency
+    const routeStats={};
+    Object.values(monthData).forEach(day=>(day||[]).forEach(t=>{
+      const rk=(t.route||[]).map(r=>r.id).join('→');
+      if(!routeStats[rk])routeStats[rk]={count:0,lessons:0,min:0,delays:0};
+      const v=routeStats[rk];v.count++;
+      const dur=(t.route||[]).reduce((s,r)=>s+(r.t||0),0);
+      v.lessons+=dur/45;v.min+=dur;
+      if(t.delayMin>0)v.delays++;
+    }));
+    const routeRows=[['מסלול','נסיעות','שיעורים ממוצע','משך ממוצע (דק)','עיכובים']];
+    Object.entries(routeStats).sort((a,b)=>b[1].count-a[1].count).forEach(([r,v])=>
+      routeRows.push([r,v.count,+(v.lessons/v.count).toFixed(1),Math.round(v.min/v.count),v.delays]));
+    const ws2=XLSX.utils.aoa_to_sheet(routeRows);
+    XLSX.utils.book_append_sheet(wb,ws2,'יעילות מסלול');
+
+    // Sheet 3: task reports
+    const taskRpts=await loadMonthTaskReports(yr,mo);
+    const taskRows=[['מדריך','משימה','כמות','משך (דק)','הערות','נהגים שנבקרו']];
+    Object.values(taskRpts).forEach(r=>taskRows.push([r.instructorName,r.taskLabel||r.taskId,r.quantity||0,r.duration||0,r.notes||'',r.inspectedDrivers||'']));
+    const ws3=XLSX.utils.aoa_to_sheet(taskRows);
+    XLSX.utils.book_append_sheet(wb,ws3,'משימות');
+
+    // Sheet 4: delays
+    const delayRows=[['מדריך','תאריך','מסלול','עיכוב (דק)','סיבה']];
+    Object.entries(monthData).forEach(([date,day])=>(day||[]).forEach(t=>{
+      if(t.delayMin>0)delayRows.push([t.name,date,(t.route||[]).map(r=>r.id).join('→'),t.delayMin,t.delayNote||'']);
+    }));
+    const ws4=XLSX.utils.aoa_to_sheet(delayRows);
+    XLSX.utils.book_append_sheet(wb,ws4,'עיכובים');
+
+    // Sheet 5: route changes
+    const rcRows=[['מדריך','תאריך','מסלול שבוצע','סיבה']];
+    Object.entries(monthData).forEach(([date,day])=>(day||[]).forEach(t=>{
+      if(t.routeVariant>0)rcRows.push([t.name,date,(t.route||[]).map(r=>r.id).join('→'),t.delayNote||'שינוי מסלול']);
+    }));
+    const ws5=XLSX.utils.aoa_to_sheet(rcRows);
+    XLSX.utils.book_append_sheet(wb,ws5,'שינויי מסלול');
+
+    XLSX.writeFile(wb,'דשבורד_'+label.replace(/ /g,'_')+'.xlsx');
+    showToast('✅ קובץ Excel הורד','success');
+  }catch(e){console.error(e);showToast('שגיאה ביצוא: '+e.message,'warning');}
+}
+
+:2px solid #d9c8f5;">מדריכים שהוקצו</th>
       </tr></thead>
       <tbody>${rows}</tbody>
     </table>`;
