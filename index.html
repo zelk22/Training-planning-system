@@ -10873,6 +10873,55 @@ async function renderComparison(){
       </table>
     </div>`;
 
+  // Add non-trip tasks comparison
+  try{
+    const [rptA,rptB]=await Promise.all([
+      loadMonthTaskReports(yrA,moA),
+      loadMonthTaskReports(yrB,moB)
+    ]);
+    const _aggTasks=(rpts)=>{
+      const byTask={};
+      Object.values(rpts).forEach(r=>{
+        if(!byTask[r.taskId])byTask[r.taskId]={label:r.taskLabel||r.taskId,qty:0,dur:0,count:0};
+        byTask[r.taskId].qty+=(r.quantity||0);
+        byTask[r.taskId].dur+=(r.duration||0);
+        byTask[r.taskId].count++;
+      });
+      return byTask;
+    };
+    const taskA=_aggTasks(rptA), taskB=_aggTasks(rptB);
+    const allTids=[...new Set([...Object.keys(taskA),...Object.keys(taskB)])];
+    if(allTids.length){
+      const taskRows=allTids.map(tid=>{
+        const tDef=taskDefs.find(t=>t.id===tid)||{label:tid,icon:'📋'};
+        const a=taskA[tid]||{qty:0,dur:0,count:0};
+        const b=taskB[tid]||{qty:0,dur:0,count:0};
+        const diff=b.qty-a.qty;
+        const diffTag=diff===0?'—':diff>0?`<span style="color:#27ae60;">▲${diff}</span>`:`<span style="color:#e74c3c;">▼${Math.abs(diff)}</span>`;
+        return`<tr style="border-bottom:1px solid #f5f5f5;">
+          <td style="padding:6px 10px;">${tDef.icon||'📋'} ${tDef.label}</td>
+          <td style="text-align:center;font-weight:bold;">${a.qty}</td><td style="text-align:center;color:#888;">${(a.dur/60).toFixed(1)} שע'</td>
+          <td style="text-align:center;font-weight:bold;">${b.qty}</td><td style="text-align:center;color:#888;">${(b.dur/60).toFixed(1)} שע'</td>
+          <td style="text-align:center;">${diffTag}</td>
+        </tr>`;
+      }).join('');
+      const taskSection=`<div style="margin-top:16px;">
+        <div style="font-size:12px;font-weight:bold;color:#888;margin-bottom:8px;">📋 השוואת משימות</div>
+        <table style="width:100%;border-collapse:collapse;background:white;border-radius:10px;overflow:hidden;box-shadow:0 1px 6px rgba(0,0,0,.06);">
+          <thead><tr style="background:#f5f0ff;">
+            <th style="padding:7px 10px;font-size:11px;text-align:right;color:#555;border-bottom:2px solid #d9c8f5;">משימה</th>
+            <th colspan="2" style="text-align:center;font-size:11px;color:#555;border-bottom:2px solid #d9c8f5;">${labelA}</th>
+            <th colspan="2" style="text-align:center;font-size:11px;color:#555;border-bottom:2px solid #d9c8f5;">${labelB}</th>
+            <th style="text-align:center;font-size:11px;color:#555;border-bottom:2px solid #d9c8f5;">שינוי</th>
+          </tr></thead>
+          <tbody>${taskRows}</tbody>
+        </table>
+      </div>`;
+      const body=document.getElementById('compareBody');
+      if(body)body.innerHTML+=taskSection;
+    }
+  }catch(e){console.warn('Task comparison:',e);}
+
   showToast('✅ השוואה הושלמה','success');
 }
 
@@ -12347,6 +12396,11 @@ async function generateAndActivateDemo(){
       if(d.getDay()!==6)days.push(_localDateStr(new Date(d)));
     }
 
+    // Use actual taskDefs from settings (not hardcoded)
+    const demoTaskDefs=taskDefs.length>0?[...taskDefs]:[
+      {id:'training',icon:'🚇',label:'קורס מעשי',color:'#2980b9',isTrip:true,requiresSummary:false,summaryFields:[],message:''},
+    ];
+
     // Assign tasks from actual taskDefs: trip tasks first, then non-trip
     const _tripTasks=demoTaskDefs.filter(t=>t.isTrip).map(t=>t.id);
     const _nonTripTasks=demoTaskDefs.filter(t=>!t.isTrip).map(t=>t.id);
@@ -12393,11 +12447,7 @@ async function generateAndActivateDemo(){
     setP(8,'מייצר שיבוצים...');await new Promise(r=>setTimeout(r,30));
 
     // Demo task defs
-    const demoTaskDefs=[
-      {id:'training',icon:'🚇',label:'קורס מעשי',color:'#2980b9',isTrip:true,requiresSummary:false,summaryFields:[],trainees:'',message:'נהל את הנסיעה לפי הנחיות הבטיחות.'},
-      {id:'bakara',icon:'🔍',label:'בקרות',color:'#8e44ad',isTrip:false,requiresSummary:true,driverFields:true,summaryFields:[{type:'quantity',label:'מספר בקרות'},{type:'duration',label:'זמן (דקות)'}],trainees:'',message:'בצע בקרות שדה. תעד חריגות.'},
-      {id:'drivers',icon:'🚌',label:'הדרכת נהגים',color:'#27ae60',isTrip:false,requiresSummary:false,summaryFields:[],trainees:'',message:'הדרכה בטיחותית לנהגים חדשים.'},
-    ];
+    // demoTaskDefs now defined earlier from system taskDefs
 
     // Build FULL schedule (all days)
     const fullSched={};
