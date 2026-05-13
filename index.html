@@ -10455,6 +10455,9 @@ async function loadMonthlyDash(){
   // Enhance with task reports data
   try{await enhanceMonthlyDashWithTasks();}catch(e){console.warn('task dash:',e);}
 
+  // Build schedule-based task breakdown for the month
+  try{_renderMonthSchedBreakdown(yr,mo);}catch(e){}
+
   // Refresh current active tab
   try{
     const activePanels=['dashTabSegments','dashTabTimesheet','dashTabCompare','dashTabCoverage','dashTabEfficiency','dashTabTasks'];
@@ -11679,7 +11682,12 @@ function openTaskReportModal(entryId,date,taskId){
 
   const measureFields=fields.map(f=>'<div><label style="display:block;font-size:13px;font-weight:bold;margin-bottom:5px;color:var(--primary);">'+(f.type==='quantity'?'🔢':'⏱')+' '+f.label+'</label><input id="trField_'+f.type+'" type="number" min="0" value="'+(existing[f.type]||'')+'" placeholder="'+(f.type==='quantity'?'הזן מספר':'הזן דקות')+'" style="width:100%;padding:9px 12px;border:1.5px solid #ddd;border-radius:8px;font-size:15px;box-sizing:border-box;text-align:center;"></div>').join('');
 
-  const extraFields='<div><label style="display:block;font-size:13px;font-weight:bold;margin-bottom:5px;color:#7f8c8d;">⚠️ אתגרים / בעיות</label><textarea id="trField_challenges" rows="2" placeholder="תאר אתגרים..." style="width:100%;padding:9px;border:1.5px solid #ddd;border-radius:8px;font-size:13px;box-sizing:border-box;resize:vertical;">'+(existing.challenges||'')+'</textarea></div>'
+  // Add drivers field for tasks that have driverFields flag
+  const showDrivers=!!(taskDef.driverFields);
+  const driversField=showDrivers
+    ?'<div><label style="display:block;font-size:13px;font-weight:bold;margin-bottom:5px;color:#8e44ad;">👤 נהגים שנבקרו (מופרדים בפסיקים)</label><input id="trField_drivers" type="text" value="'+(existing.inspectedDrivers||'')+'" placeholder="למשל: דוד כהן, דני לוי, רונית גל" style="width:100%;padding:9px 12px;border:1.5px solid #c39bd3;border-radius:8px;font-size:13px;box-sizing:border-box;"></div>'
+    :'';
+  const extraFields=driversField+'<div><label style="display:block;font-size:13px;font-weight:bold;margin-bottom:5px;color:#7f8c8d;">⚠️ אתגרים / בעיות</label><textarea id="trField_challenges" rows="2" placeholder="תאר אתגרים..." style="width:100%;padding:9px;border:1.5px solid #ddd;border-radius:8px;font-size:13px;box-sizing:border-box;resize:vertical;">'+(existing.challenges||'')+'</textarea></div>'
     +'<div><label style="display:block;font-size:13px;font-weight:bold;margin-bottom:5px;color:#7f8c8d;">💬 הערות חופשיות</label><textarea id="trField_notes" rows="2" placeholder="הערות נוספות..." style="width:100%;padding:9px;border:1.5px solid #ddd;border-radius:8px;font-size:13px;box-sizing:border-box;resize:vertical;">'+(existing.notes||'')+'</textarea></div>';
 
   const fieldsEl=document.getElementById('inlineReportFields');
@@ -11876,87 +11884,83 @@ function renderTasksTab(instrTaskStats){
   if(!taskTab)return;
 
   const allNames=Object.keys(instrTaskStats).sort();
-  const allTaskIds=[...new Set(Object.values(instrTaskStats).flatMap(ts=>Object.keys(ts)))];
+  // Get ALL task IDs from taskDefs (not just ones with data)
+  const allTaskIds=taskDefs.filter(t=>!t.isTrip&&t.requiresSummary).map(t=>t.id);
+  const allTaskIdsWithData=[...new Set([...allTaskIds,...Object.values(instrTaskStats).flatMap(ts=>Object.keys(ts))])];
 
   if(!allNames.length){
     taskTab.innerHTML='<div style="color:#aaa;text-align:center;padding:20px;font-size:13px;">אין נתוני משימות לחודש זה — לחץ "טען נתונים"</div>';
     return;
   }
 
-  // Monthly totals per task
-  const totals={};
-  allTaskIds.forEach(id=>{
-    totals[id]={quantity:0,duration:0,count:0,label:'',notes:[]};
+  // Build a section per task type
+  const sections=allTaskIdsWithData.map(taskId=>{
+    const tDef=taskDefs.find(t=>t.id===taskId)||{id:taskId,label:taskId,icon:'📋',driverFields:false};
+    
+    // Collect all reports for this task across all instructors
+    let totalQty=0,totalDur=0,totalCount=0;
+    const allNotes=[];
+    const instrRows=[];
+    
     allNames.forEach(name=>{
-      const t=instrTaskStats[name]?.[id];
-      if(t){
-        totals[id].quantity+=t.quantity||0;
-        totals[id].duration+=t.duration||0;
-        totals[id].count+=t.count||0;
-        totals[id].label=t.taskLabel||id;
-        if(t.notes&&t.notes.length)t.notes.forEach(n=>{if(n.trim())totals[id].notes.push({instr:name,note:n});});
-      }
+      const t=(instrTaskStats[name]||{})[taskId];
+      if(!t)return;
+      totalQty+=t.quantity||0;
+      totalDur+=t.duration||0;
+      totalCount+=t.count||0;
+      if(t.notes&&t.notes.length)t.notes.forEach(n=>{if(n.trim())allNotes.push({instr:name,note:n});});
+
+      // Per-instructor row
+      const driversList=t.drivers&&t.drivers.length
+        ?'<div style="font-size:10px;color:#8e44ad;margin-top:2px;">👤 '+t.drivers.join(', ')+'</div>':'';
+      const noteBadge=t.notes&&t.notes.length
+        ?'<span title="'+t.notes.join(' | ')+'" style="font-size:10px;color:#e67e22;cursor:help;margin-right:4px;">💬'+t.notes.length+'</span>':'';
+      instrRows.push(`<tr style="border-bottom:1px solid #f5f5f5;">
+        <td style="padding:7px 10px;font-weight:bold;font-size:13px;">${name}</td>
+        <td style="padding:7px 10px;text-align:center;font-weight:bold;color:var(--primary);">${t.quantity||'—'}</td>
+        <td style="padding:7px 10px;text-align:center;color:#888;">${t.duration?Math.round(t.duration)+' דק\'':'—'}</td>
+        <td style="padding:7px 10px;font-size:11px;">${noteBadge}${driversList}</td>
+      </tr>`);
     });
-  });
 
-  // Summary cards at top
-  const summaryCards=allTaskIds.map(id=>{
-    const tot=totals[id];
-    const qty=tot.quantity;
-    const hrs=Math.round(tot.duration/60*10)/10;
-    const notesCount=tot.notes.length;
-    return`<div style="background:white;border-radius:10px;padding:14px 18px;box-shadow:0 1px 6px rgba(0,0,0,.07);min-width:160px;">
-      <div style="font-size:13px;color:#888;margin-bottom:4px;">${tot.label}</div>
-      <div style="font-size:22px;font-weight:bold;color:var(--primary);">${qty}</div>
-      <div style="font-size:11px;color:#555;">${hrs} שעות סה"כ</div>
-      <div style="font-size:11px;color:#e67e22;margin-top:3px;">${notesCount} הערות</div>
-    </div>`;
-  }).join('');
+    if(!instrRows.length)return'';
 
-  // Per-instructor breakdown
-  const instrRows=allNames.map(name=>{
-    const ts=instrTaskStats[name]||{};
-    const cells=allTaskIds.map(id=>{
-      const t=ts[id];
-      if(!t||(!t.quantity&&!t.duration))return'<td colspan="2" style="text-align:center;color:#ddd;">—</td>';
-      const noteBadge=t.notes?.length?`<span title="${t.notes.join(' | ')}" style="cursor:pointer;font-size:10px;color:#e67e22;margin-right:3px;">💬 ${t.notes.length}</span>`:'';
-      const cellContent=noteBadge+(t.quantity||0)+(t.duration?'<small style="color:#888;margin-right:6px;"> '+Math.round(t.duration)+' דק</small>':'');
-      return'<td colspan="2" style="text-align:center;">'+cellContent+'</td>';
-    }).join('');
-    return`<tr><td style="font-weight:bold;">${name}</td>${cells}</tr>`;
-  }).join('');
+    const hrs=(totalDur/60).toFixed(1);
+    const notesHtml=allNotes.length
+      ?`<div style="margin-top:10px;border-top:1px solid #eee;padding-top:10px;">
+          <div style="font-size:11px;font-weight:bold;color:#888;margin-bottom:6px;">💬 הערות החודש</div>
+          ${allNotes.map(n=>`<div style="background:#fff8f0;border-radius:6px;padding:6px 10px;margin-bottom:4px;font-size:12px;border-right:3px solid #f39c12;">
+            <b>${n.instr}:</b> ${n.note}
+          </div>`).join('')}
+        </div>`:'';
 
-  const thds=allTaskIds.map(id=>`<th style="text-align:center;">${totals[id].label}<br><small style="font-weight:normal;font-size:10px;">${totals[id].quantity} · ${Math.round(totals[id].duration/60*10)/10} שע'</small></th>`).join('');
-  const subthds='';
+    const driversHeader=tDef.driverFields?`<th style="padding:7px 10px;font-size:11px;text-align:right;color:#555;border-bottom:2px solid #dde;">נהגים / הערות</th>`:'<th></th>';
+    const qtyLabel=tDef.summaryFields&&tDef.summaryFields[0]?tDef.summaryFields[0].label:'כמות';
+    const durLabel=tDef.summaryFields&&tDef.summaryFields[1]?tDef.summaryFields[1].label:'משך';
 
-  // Notes list
-  const allNotes=allTaskIds.flatMap(id=>totals[id].notes.map(n=>({...n,task:totals[id].label})));
-  const notesHtml=allNotes.length?`
-    <div style="margin-top:14px;">
-      <div style="font-size:12px;font-weight:bold;color:#888;margin-bottom:8px;">💬 הערות מדריכים לחודש</div>
-      <div style="display:flex;flex-direction:column;gap:6px;">
-        ${allNotes.map(n=>`<div style="background:#fff8f0;border-radius:7px;padding:8px 12px;font-size:12px;border-right:3px solid #f39c12;">
-          <span style="font-weight:bold;color:#856404;">${n.instr}</span>
-          <span style="color:#888;font-size:11px;margin:0 6px;">·</span>
-          <span style="color:#555;">${n.task}</span>
-          <span style="color:#888;font-size:11px;margin:0 6px;">·</span>
-          ${n.note}
-        </div>`).join('')}
+    return`<div style="margin-bottom:20px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:6px;">
+        <div style="font-size:15px;font-weight:bold;color:var(--primary);">${tDef.icon||'📋'} ${tDef.label}</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          <span style="background:#eaf4fb;color:var(--primary);border-radius:20px;padding:3px 12px;font-size:12px;font-weight:bold;">${totalQty} ${qtyLabel}</span>
+          <span style="background:#f0f0f0;color:#555;border-radius:20px;padding:3px 12px;font-size:12px;">${hrs} שעות</span>
+          ${allNotes.length?`<span style="background:#fff3e0;color:#e67e22;border-radius:20px;padding:3px 12px;font-size:12px;">💬 ${allNotes.length} הערות</span>`:''}
+        </div>
       </div>
-    </div>`:'';
-
-  taskTab.innerHTML=`
-    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px;">${summaryCards}</div>
-    <div style="overflow-x:auto;">
-      <table class="mgmt-table" style="width:100%;min-width:400px;">
-        <thead>
-          <tr><th>מדריך</th>${thds}</tr>
-          
-        </thead>
-        <tbody>${instrRows}</tbody>
+      <table style="width:100%;border-collapse:collapse;background:white;border-radius:10px;overflow:hidden;box-shadow:0 1px 6px rgba(0,0,0,.06);">
+        <thead><tr style="background:#f0f4f8;">
+          <th style="padding:7px 10px;font-size:11px;text-align:right;color:#555;border-bottom:2px solid #dde;">מדריך</th>
+          <th style="padding:7px 10px;font-size:11px;text-align:center;color:#555;border-bottom:2px solid #dde;">${qtyLabel}</th>
+          <th style="padding:7px 10px;font-size:11px;text-align:center;color:#555;border-bottom:2px solid #dde;">${durLabel}</th>
+          ${driversHeader}
+        </tr></thead>
+        <tbody>${instrRows.join('')}</tbody>
       </table>
-    </div>
-    ${notesHtml}`;
+      ${notesHtml}
+    </div>`;
+  }).filter(Boolean).join('');
+
+  taskTab.innerHTML=sections||'<div style="color:#aaa;text-align:center;padding:20px;">אין נתוני משימות</div>';
 }
 
 // Register tasks tab in switchDashTab
@@ -12378,7 +12382,7 @@ async function generateAndActivateDemo(){
     // Demo task defs
     const demoTaskDefs=[
       {id:'training',icon:'🚇',label:'קורס מעשי',color:'#2980b9',isTrip:true,requiresSummary:false,summaryFields:[],trainees:'',message:'נהל את הנסיעה לפי הנחיות הבטיחות.'},
-      {id:'bakara',icon:'🔍',label:'בקרות',color:'#8e44ad',isTrip:false,requiresSummary:true,summaryFields:[{type:'quantity',label:'מספר בקרות'},{type:'duration',label:'זמן (דקות)'}],trainees:'',message:'בצע בקרות שדה. תעד חריגות.'},
+      {id:'bakara',icon:'🔍',label:'בקרות',color:'#8e44ad',isTrip:false,requiresSummary:true,driverFields:true,summaryFields:[{type:'quantity',label:'מספר בקרות'},{type:'duration',label:'זמן (דקות)'}],trainees:'',message:'בצע בקרות שדה. תעד חריגות.'},
       {id:'drivers',icon:'🚌',label:'הדרכת נהגים',color:'#27ae60',isTrip:false,requiresSummary:false,summaryFields:[],trainees:'',message:'הדרכה בטיחותית לנהגים חדשים.'},
     ];
 
@@ -12692,7 +12696,60 @@ function toggleDelayFilter(){
         const reason=dc.getAttribute('data-reason')||'';
         if(reason)dc.innerHTML=dc.innerHTML+'<br><small style="color:#888;">'+reason+'</small>';
       }
-      const hasDelay=dc&&dc.textContent.trim()!=='';
+      const hasDelay=dc&&dc.textContent.trim(
+
+// ══ SCHEDULE BREAKDOWN BY TASK TYPE ══════════════════════════
+function _renderMonthSchedBreakdown(yr,mo){
+  const wrap=document.getElementById('monthSchedBreakdown');
+  if(!wrap)return;
+
+  // Count schedule entries per task for this month
+  const prefix=`${yr}-${String(mo+1).padStart(2,'0')}`;
+  const countByTask={};
+  const instrByTask={};
+
+  // Load from schedData (covers all dates in memory)
+  const allSched=JSON.parse(localStorage.getItem('v100_sched_all')||'{}');
+  Object.entries(allSched).forEach(([date,entries])=>{
+    if(!date.startsWith(prefix))return;
+    (entries||[]).forEach(e=>{
+      const tid=e.task||'other';
+      if(!countByTask[tid])countByTask[tid]=0;
+      if(!instrByTask[tid])instrByTask[tid]=new Set();
+      countByTask[tid]++;
+      instrByTask[tid].add(e.name);
+    });
+  });
+
+  if(!Object.keys(countByTask).length){wrap.innerHTML='';return;}
+
+  // Show ALL taskDefs (even ones with 0 assignments)
+  const rows=taskDefs.map(tDef=>{
+    const cnt=countByTask[tDef.id]||0;
+    const instrs=instrByTask[tDef.id]?[...instrByTask[tDef.id]].join(', '):'—';
+    const instrCnt=instrByTask[tDef.id]?instrByTask[tDef.id].size:0;
+    return`<tr style="border-bottom:1px solid #f0f0f0;">
+      <td style="padding:7px 10px;font-size:13px;">${tDef.icon||'📋'} ${tDef.label}</td>
+      <td style="padding:7px 10px;text-align:center;font-weight:bold;color:${cnt?'var(--primary)':'#ccc'};">${instrCnt}</td>
+      <td style="padding:7px 10px;text-align:center;color:#888;">${cnt}</td>
+      <td style="padding:7px 10px;font-size:11px;color:#555;">${cnt?instrs:'—'}</td>
+    </tr>`;
+  }).join('');
+
+  wrap.innerHTML=`
+    <div style="font-size:12px;font-weight:bold;color:#888;margin-bottom:8px;letter-spacing:.3px;">📊 שיבוצים לפי משימה — החודש</div>
+    <table style="width:100%;border-collapse:collapse;background:white;border-radius:10px;overflow:hidden;box-shadow:0 1px 6px rgba(0,0,0,.06);">
+      <thead><tr style="background:#f5f0ff;">
+        <th style="padding:8px 10px;font-size:11px;text-align:right;color:#555;border-bottom:2px solid #d9c8f5;">משימה</th>
+        <th style="padding:8px 10px;font-size:11px;text-align:center;color:#555;border-bottom:2px solid #d9c8f5;">מדריכים</th>
+        <th style="padding:8px 10px;font-size:11px;text-align:center;color:#555;border-bottom:2px solid #d9c8f5;">הקצאות</th>
+        <th style="padding:8px 10px;font-size:11px;text-align:right;color:#555;border-bottom:2px solid #d9c8f5;">מדריכים שהוקצו</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+}
+
+)!=='';
       row.style.display=hasDelay?'':'none';
     } else {
       row.style.display='';
