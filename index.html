@@ -4496,7 +4496,7 @@ function renderLog(){
 
       <td data-label="מיקום">${loc}</td>
 
-      <td id="delayCell_${t.id}" style="display:none;text-align:center;font-size:11px;color:#e74c3c;" data-reason="${(t.delayNote||'').replace(/"/g,'&quot;')}">${t.delayMin>0?t.delayMin+' דק \'':''}</td>
+      <td id="delayCell_${t.id}" style="display:none;text-align:center;font-size:11px;" data-delay="${t.delayMin||0}" data-reason="${((t.delayNote||t.routeVariant&&t.routeVariant>0?'שינוי מסלול: '+(t.delayNote||''):'')+'').replace(/"/g,'&quot;')}" data-route-change="${t.routeVariant&&t.routeVariant>0?1:0}"></td>
       <td style="text-align:center;padding:4px;">${_mgr_statusBadge}</td>
 
       <td style="white-space:nowrap;">
@@ -6748,7 +6748,8 @@ function lsLoadSched(){
 function startSchedSync(){
   setTimeout(()=>{try{checkCoverageAlerts();}catch(e){}},2000);
 
-  if(!window._fbDb){lsLoadSched();return;}
+  // In demo mode: always use localStorage schedule data
+  if(_isDemoMode()||!window._fbDb){lsLoadSched();return;}
 
   _fbRef(_db,'schedule').on('value',snap=>{
 
@@ -12346,8 +12347,20 @@ async function generateAndActivateDemo(){
       if(d.getDay()!==6)days.push(_localDateStr(new Date(d)));
     }
 
-    const TASKS_BY_INSTR=instrs.map((_,i)=>
-      i<Math.ceil(instrs.length*0.6)?'training':i<Math.ceil(instrs.length*0.8)?'bakara':'drivers');
+    // Assign tasks from actual taskDefs: trip tasks first, then non-trip
+    const _tripTasks=demoTaskDefs.filter(t=>t.isTrip).map(t=>t.id);
+    const _nonTripTasks=demoTaskDefs.filter(t=>!t.isTrip).map(t=>t.id);
+    const _allDemoTasks=[..._tripTasks,..._nonTripTasks];
+    const TASKS_BY_INSTR=instrs.map((_,i)=>{
+      if(!_allDemoTasks.length)return 'training';
+      // 60% trip tasks, rest distributed among non-trip
+      if(i<Math.ceil(instrs.length*0.6)&&_tripTasks.length)
+        return _tripTasks[i%_tripTasks.length];
+      if(_nonTripTasks.length)
+        return _nonTripTasks[(i-Math.ceil(instrs.length*0.6))%_nonTripTasks.length];
+      return _tripTasks[0]||'training';
+    });
+    const _tripTaskIds=new Set(_tripTasks);
     const SHIFTS=['morning','afternoon','evening'];
     const SHIFT_H={morning:{s:'06:00',e:'14:30'},afternoon:{s:'14:00',e:'22:00'},evening:{s:'13:30',e:'22:00'}};
     const STATUSES=['approved','approved','approved','approved','approved','pending','rejected'];
@@ -12416,7 +12429,7 @@ async function generateAndActivateDemo(){
 
       monthDays.forEach(date=>{
         const tripMap={};
-        const tripInstrs=instrs.filter((_,i)=>TASKS_BY_INSTR[i]==='training');
+        const tripInstrs=instrs.filter((_,i)=>_tripTaskIds.has(TASKS_BY_INSTR[i]));
         tripInstrs.forEach((name,ti)=>{
           [0,1].forEach(tn=>{
             const entry=fullSched[date]?.find(e=>e.name===name);
@@ -12480,6 +12493,7 @@ async function generateAndActivateDemo(){
     // Store schedule and task defs
     localStorage.setItem(DEMO_PREFIX+'v100_sched_all',JSON.stringify(fullSched));
     localStorage.setItem(DEMO_PREFIX+'v100_taskDefs',JSON.stringify(demoTaskDefs));
+    // Also store currently active taskDefs (backup real ones first if needed)
     localStorage.setItem(DEMO_PREFIX+'v100_instructors',JSON.stringify(instrs));
 
     setP(88,'מגבה נתונים ומפעיל...');await new Promise(r=>setTimeout(r,30));
