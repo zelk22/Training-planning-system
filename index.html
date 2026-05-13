@@ -2413,6 +2413,9 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
     <div id="monthlyKPIs" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:16px;"></div>
 
     <!-- Per-instructor table -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;margin-top:4px;">
+      <div style="font-size:15px;font-weight:bold;color:var(--primary);">🚇 קורס מעשי</div>
+    </div>
     <div style="overflow-x:auto;">
       <table class="mgmt-table" id="monthlyInstrTable" style="width:100%;min-width:500px;">
         <thead><tr>
@@ -2437,7 +2440,6 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
       <button onclick="switchDashTab('compare')" id="tabComp" style="width:auto;padding:8px 16px;background:#f0f4f8;color:#555;border:1px solid #dde;border-bottom:none;border-radius:8px 8px 0 0;cursor:pointer;font-size:12px;font-weight:bold;margin-bottom:-2px;">📈 השוואת תקופות</button>
       <button onclick="switchDashTab('coverage')" id="tabCov" style="width:auto;padding:8px 16px;background:#f0f4f8;color:#555;border:1px solid #dde;border-bottom:none;border-radius:8px 8px 0 0;cursor:pointer;font-size:12px;font-weight:bold;margin-bottom:-2px;">📅 כיסוי שיבוץ</button>
       <button onclick="switchDashTab('efficiency')" id="tabEff" style="width:auto;padding:8px 16px;background:#f0f4f8;color:#555;border:1px solid #dde;border-bottom:none;border-radius:8px 8px 0 0;cursor:pointer;font-size:12px;font-weight:bold;margin-bottom:-2px;">⚡ יעילות מסלול</button>
-          <button id="tabTasks" onclick="switchDashTab('tasks')" style="width:auto;padding:8px 16px;background:#f0f4f8;color:#555;border:1px solid #dde;border-bottom:none;border-radius:8px 8px 0 0;cursor:pointer;font-size:12px;font-weight:bold;">📋 משימות</button>
     </div>
 
     <!-- TAB: Segment Load Analysis -->
@@ -2508,7 +2510,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
       </div>
     </div>
 
-    <div id="dashTabTasks" style="display:none;margin-top:10px;"><div style="color:#aaa;font-size:13px;text-align:center;padding:14px;">לחץ "טען נתונים" כדי לטעון את הנתונים</div></div>
+<!-- dashTabTasks moved to main view -->
 
   </div>
 
@@ -10465,7 +10467,7 @@ async function loadMonthlyDash(){
 
   // Refresh current active tab
   try{
-    const activePanels=['dashTabSegments','dashTabTimesheet','dashTabCompare','dashTabCoverage','dashTabEfficiency','dashTabTasks'];
+    const activePanels=['dashTabSegments','dashTabTimesheet','dashTabCompare','dashTabCoverage','dashTabEfficiency'];
     const activeTab=activePanels.find(id=>{const el=document.getElementById(id);return el&&el.style.display!=='none';});
     if(activeTab){
       const tabKey=activeTab.replace('dashTab','').toLowerCase();
@@ -11496,12 +11498,11 @@ function switchToInstructorView(previewName){
 async function switchDashTab(tab){
   const tabs={
     segments:'dashTabSegments', timesheet:'dashTabTimesheet',
-    compare:'dashTabCompare', coverage:'dashTabCoverage', efficiency:'dashTabEfficiency',
-    tasks:'dashTabTasks'
+    compare:'dashTabCompare', coverage:'dashTabCoverage', efficiency:'dashTabEfficiency'
   };
   const btns={
     segments:'tabSegs', timesheet:'tabTime', compare:'tabComp',
-    coverage:'tabCov', efficiency:'tabEff', tasks:'tabTasks'
+    coverage:'tabCov', efficiency:'tabEff'
   };
   Object.entries(tabs).forEach(([k,id])=>{
     const el=document.getElementById(id);
@@ -11520,7 +11521,6 @@ async function switchDashTab(tab){
   if(tab==='compare')initCompareSelects();
   if(tab==='coverage'){initCoverageWeekSelect();await renderCoverageTab();}
   if(tab==='efficiency')renderEfficiencyTab();
-  if(tab==='tasks')renderTasksTab(_monthTaskStatsCache||{});
 }
 // ══════════════════════════════════════════════════════════════════════
 // AUDIT LOG — wire to key actions
@@ -11930,7 +11930,7 @@ async function enhanceMonthlyDashWithTasks(){
 
   // Cache and render tasks tab
   _monthTaskStatsCache=instrTaskStats;
-  renderTasksTab(instrTaskStats);
+  renderTasksTab(instrTaskStats); // renders inline in main view
 }
 
 function renderTasksTab(instrTaskStats){
