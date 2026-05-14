@@ -2109,7 +2109,6 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
       <button onclick="toggleAuditLog()" id="auditLogBtn" style="width:auto !important;display:inline-block;margin:2px;padding:8px 14px;background:#f8f0ff;border:1px solid #9b59b6;color:#9b59b6;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;">🔍 לוג פעולות</button>
       <button onclick="toggleMonthlyDash()" id="monthlyDashBtn" style="width:auto !important;display:inline-block;margin:2px;padding:8px 14px;background:#eaf4fd;border:1px solid var(--secondary);color:var(--secondary);border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;">📊 דשבורד חודשי</button>
       <button onclick="toggleApprovalPanel()" id="approvalToggleBtn" style="width:auto !important;display:inline-block;margin:2px;padding:8px 14px;background:#fef9e7;border:1px solid #f0c050;color:#856404;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;position:relative;">📋 אישור שיבוצים <span id="approvalBadge" style="display:none;background:#e74c3c;color:white;border-radius:10px;padding:1px 5px;font-size:10px;font-weight:bold;margin-right:3px;"></span></button>
-      <button onclick="openDemoPanel()" id="demoBtnMain" style="width:auto !important;display:inline-block;margin:2px;padding:8px 14px;background:#6c3483;color:white;border:none;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;">🎭 מצב דמו</button>
     </div>
 
     <!-- Demo mode banner (shown when demo is active) -->
@@ -2405,21 +2404,27 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
         <button onclick="exportMonthlyReport()" style="width:auto;padding:7px 12px;background:#8e44ad;color:white;border:none;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;">📥 ייצא נסיעות CSV</button>
         <button onclick="exportScheduleReport()" style="width:auto;padding:7px 12px;background:#2c3e50;color:white;border:none;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;">📋 ייצא שיבוצים CSV</button>
         <button onclick="exportPDFReport()" style="width:auto;padding:7px 12px;background:#c0392b;color:white;border:none;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;">📄 הפק דו"ח PDF</button>
-        <button onclick="exportDashboardXLSX()" style="width:auto;padding:7px 12px;background:#217346;color:white;border:none;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;">📊 ייצוא Excel</button>
       </div>
     </div>
 
     <!-- KPI row -->
     <div id="monthlyKPIs" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:16px;"></div>
 
-    <!-- Per-instructor table (hidden - data shown in tasks tab) -->
-    <div style="display:none;">
+    <!-- Per-instructor table -->
+    <div style="overflow-x:auto;">
       <table class="mgmt-table" id="monthlyInstrTable" style="width:100%;min-width:500px;">
         <thead><tr>
-          <th>מדריך</th><th>נסיעות</th><th>שיעורים</th>
-          <th>שעות נסיעה</th><th>עיכובים</th><th>ממוצע עיכוב (דק')</th><th>ביצוע</th>
+          <th>מדריך</th>
+          <th>נסיעות</th>
+          <th>שיעורים</th>
+          <th>שעות נסיעה</th>
+          <th>עיכובים</th>
+          <th>ממוצע עיכוב (דק')</th>
+          <th>ביצוע</th>
         </tr></thead>
-        <tbody id="monthlyInstrBody"></tbody>
+        <tbody id="monthlyInstrBody">
+          <tr><td colspan="7" style="text-align:center;color:#aaa;padding:20px;">לחץ "טען נתונים" לצפייה</td></tr>
+        </tbody>
       </table>
     </div>
 
@@ -2430,7 +2435,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
       <button onclick="switchDashTab('compare')" id="tabComp" style="width:auto;padding:8px 16px;background:#f0f4f8;color:#555;border:1px solid #dde;border-bottom:none;border-radius:8px 8px 0 0;cursor:pointer;font-size:12px;font-weight:bold;margin-bottom:-2px;">📈 השוואת תקופות</button>
       <button onclick="switchDashTab('coverage')" id="tabCov" style="width:auto;padding:8px 16px;background:#f0f4f8;color:#555;border:1px solid #dde;border-bottom:none;border-radius:8px 8px 0 0;cursor:pointer;font-size:12px;font-weight:bold;margin-bottom:-2px;">📅 כיסוי שיבוץ</button>
       <button onclick="switchDashTab('efficiency')" id="tabEff" style="width:auto;padding:8px 16px;background:#f0f4f8;color:#555;border:1px solid #dde;border-bottom:none;border-radius:8px 8px 0 0;cursor:pointer;font-size:12px;font-weight:bold;margin-bottom:-2px;">⚡ יעילות מסלול</button>
-          <button onclick="switchDashTab('tasks')" id="tabTasks" style="width:auto;padding:8px 16px;background:#f0f4f8;color:#555;border:1px solid #dde;border-bottom:none;border-radius:8px 8px 0 0;cursor:pointer;font-size:12px;font-weight:bold;margin-bottom:-1px;">📋 משימות</button>
+          <button id="tabTasks" onclick="switchDashTab('tasks')" style="width:auto;padding:8px 16px;background:#f0f4f8;color:#555;border:1px solid #dde;border-bottom:none;border-radius:8px 8px 0 0;cursor:pointer;font-size:12px;font-weight:bold;">📋 משימות</button>
     </div>
 
     <!-- TAB: Segment Load Analysis -->
@@ -2496,14 +2501,12 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
         <span style="font-size:13px;color:#666;">יעילות מסלול — שיעורים לשעת נסיעה, מסלולים מבוצעים לעומת מתוכננים</span>
         <button onclick="renderEfficiencyTab()" style="width:auto;padding:6px 12px;background:#e67e22;color:white;border:none;border-radius:7px;cursor:pointer;font-size:11px;font-weight:bold;">🔄 חשב</button>
       </div>
-
-    <div id="dashTabTasks" style="display:none;margin-top:10px;"><div style="color:#aaa;font-size:13px;text-align:center;padding:14px;">לחץ "טען נתונים" לצפייה</div></div>
       <div id="efficiencyBody">
         <div style="color:#aaa;font-size:13px;padding:20px;text-align:center;">לחץ "טען נתונים" ואז "חשב" לצפייה</div>
       </div>
     </div>
 
-
+    <div id="dashTabTasks" style="display:none;margin-top:10px;"><div style="color:#aaa;font-size:13px;text-align:center;padding:14px;">לחץ "טען נתונים" כדי לטעון את הנתונים</div></div>
 
   </div>
 
@@ -2668,7 +2671,6 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
           <th>נסיעה הבאה</th>
           <th>שיעורים</th>
           <th>מיקום</th>
-          <th id="delayColHeader" style="width:90px;display:none;">⏱️ עיכוב</th>
           <th style="width:90px;">סטטוס</th>
           <th>פעולות</th>
 
@@ -3697,22 +3699,36 @@ function onDateChange(){
 
 // Re-attach the Firebase trips listener to the new currentDate.
 function resubscribeTripsListener(){
-  // Demo mode: always read from localStorage
-  if(_isDemoMode()||!window._fbDb){
+
+  if(!window._fbDb){
+
+    // No Firebase: load trips for this specific date from localStorage
     try{
+
       const raw=localStorage.getItem('trips_'+currentDate);
-      const parsed=raw?JSON.parse(raw):null;
-      trips=parsed?(Array.isArray(parsed)?parsed:Object.values(parsed)).map(t=>{try{return parseTrip(t);}catch(e){return t;}}):[];
+
+      trips=raw?JSON.parse(raw).map(parseTrip):[];
+
     }catch(e){trips=[];}
+
     renderLog();renderTimeline();renderCalendar();
+
     return;
+
   }
-  // Live Firebase subscription
+
+  // Detach ALL old trip listeners first
   try{_fbRef(_db,dbPath()).off('value');}catch(e){}
+
+  // Subscribe to trips for new currentDate
   _fbRef(_db,dbPath()).on('value',snap=>{
+
     trips=snap.exists()?Object.values(snap.val()).map(parseTrip):[];
+
     renderLog();renderTimeline();
+
   });
+
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -4492,7 +4508,6 @@ function renderLog(){
 
       <td data-label="מיקום">${loc}</td>
 
-      <td id="delayCell_${t.id}" style="display:none;text-align:center;font-size:11px;" data-delay="${t.delayMin||0}" data-reason="${((t.delayNote||t.routeVariant&&t.routeVariant>0?'שינוי מסלול: '+(t.delayNote||''):'')+'').replace(/"/g,'&quot;')}" data-route-change="${t.routeVariant&&t.routeVariant>0?1:0}"></td>
       <td style="text-align:center;padding:4px;">${_mgr_statusBadge}</td>
 
       <td style="white-space:nowrap;">
@@ -6744,8 +6759,7 @@ function lsLoadSched(){
 function startSchedSync(){
   setTimeout(()=>{try{checkCoverageAlerts();}catch(e){}},2000);
 
-  // In demo mode: always use localStorage schedule data
-  if(_isDemoMode()||!window._fbDb){lsLoadSched();return;}
+  if(!window._fbDb){lsLoadSched();return;}
 
   _fbRef(_db,'schedule').on('value',snap=>{
 
@@ -10361,9 +10375,6 @@ async function loadMonthlyDash(){
   const label=new Date(yr,mo,1).toLocaleDateString('he-IL',{month:'long',year:'numeric'});
   const lbl=document.getElementById('monthlyDashLabel');
   if(lbl)lbl.textContent=label;
-  // Add קורס מעשי title above instructor table
-  const tableTitle=document.getElementById('monthlyTableTitle');
-  if(tableTitle)tableTitle.innerHTML='<span style="font-size:15px;font-weight:bold;color:var(--primary);">🚇 קורס מעשי</span>';
   const tbody=document.getElementById('monthlyInstrBody');
   const kpiEl=document.getElementById('monthlyKPIs');
   if(tbody)tbody.innerHTML='<tr><td colspan="7" style="text-align:center;color:#aaa;padding:16px;">⏳ טוען נתוני חודש...</td></tr>';
@@ -10454,9 +10465,6 @@ async function loadMonthlyDash(){
 
   // Enhance with task reports data
   try{await enhanceMonthlyDashWithTasks();}catch(e){console.warn('task dash:',e);}
-
-  // Build schedule-based task breakdown for the month
-  try{_renderMonthSchedBreakdown(yr,mo);}catch(e){}
 
   // Refresh current active tab
   try{
@@ -10872,55 +10880,6 @@ async function renderComparison(){
       </table>
     </div>`;
 
-  // Add non-trip tasks comparison
-  try{
-    const [rptA,rptB]=await Promise.all([
-      loadMonthTaskReports(yrA,moA-1),
-      loadMonthTaskReports(yrB,moB-1)
-    ]);
-    const _aggTasks=(rpts)=>{
-      const byTask={};
-      Object.values(rpts).forEach(r=>{
-        if(!byTask[r.taskId])byTask[r.taskId]={label:r.taskLabel||r.taskId,qty:0,dur:0,count:0};
-        byTask[r.taskId].qty+=(r.quantity||0);
-        byTask[r.taskId].dur+=(r.duration||0);
-        byTask[r.taskId].count++;
-      });
-      return byTask;
-    };
-    const taskA=_aggTasks(rptA), taskB=_aggTasks(rptB);
-    const allTids=[...new Set([...Object.keys(taskA),...Object.keys(taskB)])];
-    if(allTids.length){
-      const taskRows=allTids.map(tid=>{
-        const tDef=taskDefs.find(t=>t.id===tid)||{label:tid,icon:'📋'};
-        const a=taskA[tid]||{qty:0,dur:0,count:0};
-        const b=taskB[tid]||{qty:0,dur:0,count:0};
-        const diff=b.qty-a.qty;
-        const diffTag=diff===0?'—':diff>0?`<span style="color:#27ae60;">▲${diff}</span>`:`<span style="color:#e74c3c;">▼${Math.abs(diff)}</span>`;
-        return`<tr style="border-bottom:1px solid #f5f5f5;">
-          <td style="padding:6px 10px;">${tDef.icon||'📋'} ${tDef.label}</td>
-          <td style="text-align:center;font-weight:bold;">${a.qty}</td><td style="text-align:center;color:#888;">${(a.dur/60).toFixed(1)} שע'</td>
-          <td style="text-align:center;font-weight:bold;">${b.qty}</td><td style="text-align:center;color:#888;">${(b.dur/60).toFixed(1)} שע'</td>
-          <td style="text-align:center;">${diffTag}</td>
-        </tr>`;
-      }).join('');
-      const taskSection=`<div style="margin-top:16px;">
-        <div style="font-size:12px;font-weight:bold;color:#888;margin-bottom:8px;">📋 השוואת משימות</div>
-        <table style="width:100%;border-collapse:collapse;background:white;border-radius:10px;overflow:hidden;box-shadow:0 1px 6px rgba(0,0,0,.06);">
-          <thead><tr style="background:#f5f0ff;">
-            <th style="padding:7px 10px;font-size:11px;text-align:right;color:#555;border-bottom:2px solid #d9c8f5;">משימה</th>
-            <th colspan="2" style="text-align:center;font-size:11px;color:#555;border-bottom:2px solid #d9c8f5;">${labelA}</th>
-            <th colspan="2" style="text-align:center;font-size:11px;color:#555;border-bottom:2px solid #d9c8f5;">${labelB}</th>
-            <th style="text-align:center;font-size:11px;color:#555;border-bottom:2px solid #d9c8f5;">שינוי</th>
-          </tr></thead>
-          <tbody>${taskRows}</tbody>
-        </table>
-      </div>`;
-      const body=document.getElementById('compareBody');
-      if(body)body.innerHTML+=taskSection;
-    }
-  }catch(e){console.warn('Task comparison:',e);}
-
   showToast('✅ השוואה הושלמה','success');
 }
 
@@ -11167,7 +11126,7 @@ function renderEfficiencyTab(){
           <div style="width:${eff}%;height:100%;background:${effCol};border-radius:4px;"></div>
         </div>
       </td>
-      <td style="text-align:center;font-size:11px;color:#555;" title="${r.instructors}">${r.instrCount} <small style="color:#aaa;">(${r.instructors.length>30?r.instructors.slice(0,30)+'...':r.instructors})</small></td>
+      <td style="text-align:center;font-size:11px;color:#888;">${r.instrCount}</td>
     </tr>`;
   }).join('');
 
@@ -11515,13 +11474,7 @@ async function switchDashTab(tab){
   if(tab==='compare')initCompareSelects();
   if(tab==='coverage'){initCoverageWeekSelect();await renderCoverageTab();}
   if(tab==='efficiency')renderEfficiencyTab();
-  if(tab==='tasks'){
-    if(!Object.keys(_monthTaskStatsCache||{}).length&&!Object.keys(_monthHistoryCache||{}).length){
-      await loadMonthlyDash();
-    } else {
-      renderTasksTab(_monthTaskStatsCache||{});
-    }
-  }
+  if(tab==='tasks')renderTasksTab(_monthTaskStatsCache||{});
 }
 // ══════════════════════════════════════════════════════════════════════
 // AUDIT LOG — wire to key actions
@@ -11737,12 +11690,7 @@ function openTaskReportModal(entryId,date,taskId){
 
   const measureFields=fields.map(f=>'<div><label style="display:block;font-size:13px;font-weight:bold;margin-bottom:5px;color:var(--primary);">'+(f.type==='quantity'?'🔢':'⏱')+' '+f.label+'</label><input id="trField_'+f.type+'" type="number" min="0" value="'+(existing[f.type]||'')+'" placeholder="'+(f.type==='quantity'?'הזן מספר':'הזן דקות')+'" style="width:100%;padding:9px 12px;border:1.5px solid #ddd;border-radius:8px;font-size:15px;box-sizing:border-box;text-align:center;"></div>').join('');
 
-  // Add drivers field for tasks that have driverFields flag
-  const showDrivers=!!(taskDef.driverFields);
-  const driversField=showDrivers
-    ?'<div><label style="display:block;font-size:13px;font-weight:bold;margin-bottom:5px;color:#8e44ad;">👤 נהגים שנבקרו (מופרדים בפסיקים)</label><input id="trField_drivers" type="text" value="'+(existing.inspectedDrivers||'')+'" placeholder="למשל: דוד כהן, דני לוי, רונית גל" style="width:100%;padding:9px 12px;border:1.5px solid #c39bd3;border-radius:8px;font-size:13px;box-sizing:border-box;"></div>'
-    :'';
-  const extraFields=driversField+'<div><label style="display:block;font-size:13px;font-weight:bold;margin-bottom:5px;color:#7f8c8d;">⚠️ אתגרים / בעיות</label><textarea id="trField_challenges" rows="2" placeholder="תאר אתגרים..." style="width:100%;padding:9px;border:1.5px solid #ddd;border-radius:8px;font-size:13px;box-sizing:border-box;resize:vertical;">'+(existing.challenges||'')+'</textarea></div>'
+  const extraFields='<div><label style="display:block;font-size:13px;font-weight:bold;margin-bottom:5px;color:#7f8c8d;">⚠️ אתגרים / בעיות</label><textarea id="trField_challenges" rows="2" placeholder="תאר אתגרים..." style="width:100%;padding:9px;border:1.5px solid #ddd;border-radius:8px;font-size:13px;box-sizing:border-box;resize:vertical;">'+(existing.challenges||'')+'</textarea></div>'
     +'<div><label style="display:block;font-size:13px;font-weight:bold;margin-bottom:5px;color:#7f8c8d;">💬 הערות חופשיות</label><textarea id="trField_notes" rows="2" placeholder="הערות נוספות..." style="width:100%;padding:9px;border:1.5px solid #ddd;border-radius:8px;font-size:13px;box-sizing:border-box;resize:vertical;">'+(existing.notes||'')+'</textarea></div>';
 
   const fieldsEl=document.getElementById('inlineReportFields');
@@ -11839,23 +11787,16 @@ async function loadMonthTaskReports(year,month){
   for(let d=1;d<=daysInMonth;d++){
     const dateStr=`${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
     tasks.push((async()=>{
-      // Always read localStorage (includes demo data)
-      try{
-        const raw=localStorage.getItem('taskReports_'+dateStr);
-        if(raw){
-          const obj=JSON.parse(raw);
-          Object.entries(obj).forEach(([k,v])=>{
-            const rk=`${v.date||dateStr}__${v.instructorName||''}__${v.entryId||k}`;
-            result[rk]=v;
-          });
-        }
-      }catch(e){}
-      // Also Firebase if not in demo mode
-      if(_isDemoMode()||!window._fbDb)return;
+      if(!window._fbDb){
+        try{const raw=localStorage.getItem('taskReports_'+dateStr);
+          if(raw){const obj=JSON.parse(raw);Object.assign(result,obj);}}catch(e){}
+        return;
+      }
       try{
         const snap=await _fbGet(_fbRef(_db,'taskReports/'+dateStr));
         if(snap.exists()){
-          Object.entries(snap.val()).forEach(([k,v])=>{
+          const val=snap.val();
+          Object.entries(val).forEach(([k,v])=>{
             const rk=`${v.date}__${v.instructorName}__${v.entryId}`;
             result[rk]=v;
           });
@@ -11890,17 +11831,10 @@ async function enhanceMonthlyDashWithTasks(){
   Object.values(taskReports).forEach(r=>{
     if(!instrTaskStats[r.instructorName])instrTaskStats[r.instructorName]={};
     const ts=instrTaskStats[r.instructorName];
-    if(!ts[r.taskId])ts[r.taskId]={count:0,quantity:0,duration:0,taskLabel:r.taskLabel||r.taskId,notes:[],drivers:[]};
-    const tEntry=ts[r.taskId];
-    tEntry.count++;
-    if(r.quantity)tEntry.quantity+=r.quantity;
-    if(r.duration)tEntry.duration+=r.duration;
-    if(r.notes&&r.notes.trim())tEntry.notes.push(r.notes.trim());
-    if(r.inspectedDrivers&&r.inspectedDrivers.trim()){
-      r.inspectedDrivers.split(',').map(d=>d.trim()).filter(Boolean).forEach(d=>{
-        if(!tEntry.drivers.includes(d))tEntry.drivers.push(d);
-      });
-    }
+    if(!ts[r.taskId])ts[r.taskId]={count:0,quantity:0,duration:0,taskLabel:r.taskLabel||r.taskId};
+    ts[r.taskId].count++;
+    if(r.quantity)ts[r.taskId].quantity+=r.quantity;
+    if(r.duration)ts[r.taskId].duration+=r.duration;
   });
 
   // Update instructor table - add task columns
@@ -11938,7 +11872,7 @@ async function enhanceMonthlyDashWithTasks(){
 
   // Cache and render tasks tab
   _monthTaskStatsCache=instrTaskStats;
-  renderTasksTab(instrTaskStats); // renders inline in main view
+  renderTasksTab(instrTaskStats);
 }
 
 function renderTasksTab(instrTaskStats){
@@ -11946,134 +11880,87 @@ function renderTasksTab(instrTaskStats){
   if(!taskTab)return;
 
   const allNames=Object.keys(instrTaskStats).sort();
-  const allTaskIds=taskDefs.filter(t=>!t.isTrip&&t.requiresSummary).map(t=>t.id);
-  const allTaskIdsWithData=[...new Set([...allTaskIds,...Object.values(instrTaskStats).flatMap(ts=>Object.keys(ts))])];
+  const allTaskIds=[...new Set(Object.values(instrTaskStats).flatMap(ts=>Object.keys(ts)))];
 
-  // ── TRIP SECTION from instructor table data ────────────────
-  let tripSection='';
-  const tripTaskDefs=taskDefs.filter(t=>t.isTrip);
-  const monthTrips=Object.values(_monthHistoryCache||{}).flat();
-  if(tripTaskDefs.length&&monthTrips.length){
-    tripTaskDefs.forEach(tDef=>{
-      const byInstr={};
-      monthTrips.forEach(t=>{
-        if(!t||!t.name)return;
-        if(!byInstr[t.name])byInstr[t.name]={trips:0,lessons:0,minutes:0};
-        const v=byInstr[t.name];
-        v.trips++;
-        const dur=(t.route||[]).reduce((s,r)=>s+(r.t||0),0);
-        v.lessons+=dur/45;v.minutes+=dur;
-      });
-      const names=Object.keys(byInstr).sort();
-      if(!names.length)return;
-      const totTrips=names.reduce((s,n)=>s+byInstr[n].trips,0);
-      const totLessons=names.reduce((s,n)=>s+byInstr[n].lessons,0);
-      const totHrs=(names.reduce((s,n)=>s+byInstr[n].minutes,0)/60);
-      const instrRows=names.map(name=>{
-        const v=byInstr[name];
-        return`<tr style="border-bottom:1px solid #f5f5f5;">
-          <td style="padding:7px 10px;font-weight:bold;font-size:13px;">${name}</td>
-          <td style="padding:7px 10px;text-align:center;font-weight:bold;color:var(--primary);">${v.trips}</td>
-          <td style="padding:7px 10px;text-align:center;font-weight:bold;color:var(--secondary);">${v.lessons.toFixed(1)}</td>
-          <td style="padding:7px 10px;text-align:center;color:#888;">${(v.minutes/60).toFixed(1)} שע'</td>
-        </tr>`;
-      }).join('');
-      tripSection+=`<div style="margin-bottom:20px;">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:6px;">
-          <div style="font-size:15px;font-weight:bold;color:var(--primary);">${tDef.icon||'🚇'} ${tDef.label}</div>
-          <div style="display:flex;gap:10px;flex-wrap:wrap;">
-            <span style="background:#eaf4fb;color:var(--primary);border-radius:20px;padding:3px 12px;font-size:12px;font-weight:bold;">${totTrips} נסיעות</span>
-            <span style="background:#eaffea;color:#27ae60;border-radius:20px;padding:3px 12px;font-size:12px;font-weight:bold;">${totLessons.toFixed(1)} שיעורים</span>
-            <span style="background:#f0f0f0;color:#555;border-radius:20px;padding:3px 12px;font-size:12px;">${totHrs.toFixed(1)} שעות</span>
-          </div>
-        </div>
-        <table style="width:100%;border-collapse:collapse;background:white;border-radius:10px;overflow:hidden;box-shadow:0 1px 6px rgba(0,0,0,.06);">
-          <thead><tr style="background:#eaf4fb;">
-            <th style="padding:7px 10px;font-size:11px;text-align:right;color:#555;border-bottom:2px solid #c8e0f5;">מדריך</th>
-            <th style="padding:7px 10px;font-size:11px;text-align:center;color:#555;border-bottom:2px solid #c8e0f5;">נסיעות</th>
-            <th style="padding:7px 10px;font-size:11px;text-align:center;color:#555;border-bottom:2px solid #c8e0f5;">שיעורים</th>
-            <th style="padding:7px 10px;font-size:11px;text-align:center;color:#555;border-bottom:2px solid #c8e0f5;">שעות</th>
-          </tr></thead>
-          <tbody>${instrRows}</tbody>
-        </table>
-      </div>`;
-    });
-  }
-
-  if(!allNames.length&&!tripSection){
+  if(!allNames.length){
     taskTab.innerHTML='<div style="color:#aaa;text-align:center;padding:20px;font-size:13px;">אין נתוני משימות לחודש זה — לחץ "טען נתונים"</div>';
     return;
   }
 
-  // Build a section per task type
-  const sections=allTaskIdsWithData.map(taskId=>{
-    const tDef=taskDefs.find(t=>t.id===taskId)||{id:taskId,label:taskId,icon:'📋',driverFields:false};
-    
-    // Collect all reports for this task across all instructors
-    let totalQty=0,totalDur=0,totalCount=0;
-    const allNotes=[];
-    const instrRows=[];
-    
+  // Monthly totals per task
+  const totals={};
+  allTaskIds.forEach(id=>{
+    totals[id]={quantity:0,duration:0,count:0,label:'',notes:[]};
     allNames.forEach(name=>{
-      const t=(instrTaskStats[name]||{})[taskId];
-      if(!t)return;
-      totalQty+=t.quantity||0;
-      totalDur+=t.duration||0;
-      totalCount+=t.count||0;
-      if(t.notes&&t.notes.length)t.notes.forEach(n=>{if(n.trim())allNotes.push({instr:name,note:n});});
-
-      // Per-instructor row
-      const driversList=t.drivers&&t.drivers.length
-        ?'<div style="font-size:10px;color:#8e44ad;margin-top:2px;">👤 '+t.drivers.join(', ')+'</div>':'';
-      const noteBadge=t.notes&&t.notes.length
-        ?'<span title="'+t.notes.join(' | ')+'" style="font-size:10px;color:#e67e22;cursor:help;margin-right:4px;">💬'+t.notes.length+'</span>':'';
-      instrRows.push(`<tr style="border-bottom:1px solid #f5f5f5;">
-        <td style="padding:7px 10px;font-weight:bold;font-size:13px;">${name}</td>
-        <td style="padding:7px 10px;text-align:center;font-weight:bold;color:var(--primary);">${t.quantity||'—'}</td>
-        <td style="padding:7px 10px;text-align:center;color:#888;">${t.duration?Math.round(t.duration)+' דק\'':'—'}</td>
-        <td style="padding:7px 10px;font-size:11px;">${noteBadge}${driversList}</td>
-      </tr>`);
+      const t=instrTaskStats[name]?.[id];
+      if(t){
+        totals[id].quantity+=t.quantity||0;
+        totals[id].duration+=t.duration||0;
+        totals[id].count+=t.count||0;
+        totals[id].label=t.taskLabel||id;
+        if(t.notes&&t.notes.length)t.notes.forEach(n=>{if(n.trim())totals[id].notes.push({instr:name,note:n});});
+      }
     });
+  });
 
-    if(!instrRows.length)return'';
-
-    const hrs=(totalDur/60).toFixed(1);
-    const notesHtml=allNotes.length
-      ?`<div style="margin-top:10px;border-top:1px solid #eee;padding-top:10px;">
-          <div style="font-size:11px;font-weight:bold;color:#888;margin-bottom:6px;">💬 הערות החודש</div>
-          ${allNotes.map(n=>`<div style="background:#fff8f0;border-radius:6px;padding:6px 10px;margin-bottom:4px;font-size:12px;border-right:3px solid #f39c12;">
-            <b>${n.instr}:</b> ${n.note}
-          </div>`).join('')}
-        </div>`:'';
-
-    const driversHeader=tDef.driverFields?`<th style="padding:7px 10px;font-size:11px;text-align:right;color:#555;border-bottom:2px solid #dde;">נהגים / הערות</th>`:'<th></th>';
-    const qtyLabel=tDef.summaryFields&&tDef.summaryFields[0]?tDef.summaryFields[0].label:'כמות';
-    const durLabel=tDef.summaryFields&&tDef.summaryFields[1]?tDef.summaryFields[1].label:'משך';
-
-    return`<div style="margin-bottom:20px;">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:6px;">
-        <div style="font-size:15px;font-weight:bold;color:var(--primary);">${tDef.icon||'📋'} ${tDef.label}</div>
-        <div style="display:flex;gap:10px;flex-wrap:wrap;">
-          <span style="background:#eaf4fb;color:var(--primary);border-radius:20px;padding:3px 12px;font-size:12px;font-weight:bold;">${totalQty} ${qtyLabel}</span>
-          <span style="background:#f0f0f0;color:#555;border-radius:20px;padding:3px 12px;font-size:12px;">${hrs} שעות</span>
-          ${allNotes.length?`<span style="background:#fff3e0;color:#e67e22;border-radius:20px;padding:3px 12px;font-size:12px;">💬 ${allNotes.length} הערות</span>`:''}
-        </div>
-      </div>
-      <table style="width:100%;border-collapse:collapse;background:white;border-radius:10px;overflow:hidden;box-shadow:0 1px 6px rgba(0,0,0,.06);">
-        <thead><tr style="background:#f0f4f8;">
-          <th style="padding:7px 10px;font-size:11px;text-align:right;color:#555;border-bottom:2px solid #dde;">מדריך</th>
-          <th style="padding:7px 10px;font-size:11px;text-align:center;color:#555;border-bottom:2px solid #dde;">${qtyLabel}</th>
-          <th style="padding:7px 10px;font-size:11px;text-align:center;color:#555;border-bottom:2px solid #dde;">${durLabel}</th>
-          ${driversHeader}
-        </tr></thead>
-        <tbody>${instrRows.join('')}</tbody>
-      </table>
-      ${notesHtml}
+  // Summary cards at top
+  const summaryCards=allTaskIds.map(id=>{
+    const tot=totals[id];
+    const qty=tot.quantity;
+    const hrs=Math.round(tot.duration/60*10)/10;
+    const notesCount=tot.notes.length;
+    return`<div style="background:white;border-radius:10px;padding:14px 18px;box-shadow:0 1px 6px rgba(0,0,0,.07);min-width:160px;">
+      <div style="font-size:13px;color:#888;margin-bottom:4px;">${tot.label}</div>
+      <div style="font-size:22px;font-weight:bold;color:var(--primary);">${qty}</div>
+      <div style="font-size:11px;color:#555;">${hrs} שעות סה"כ</div>
+      <div style="font-size:11px;color:#e67e22;margin-top:3px;">${notesCount} הערות</div>
     </div>`;
-  }).filter(Boolean).join('');
+  }).join('');
 
-  taskTab.innerHTML=tripSection+(sections||'');
-  if(!tripSection&&!sections)taskTab.innerHTML='<div style="color:#aaa;text-align:center;padding:20px;">אין נתוני משימות</div>';
+  // Per-instructor breakdown
+  const instrRows=allNames.map(name=>{
+    const ts=instrTaskStats[name]||{};
+    const cells=allTaskIds.map(id=>{
+      const t=ts[id];
+      if(!t||(!t.quantity&&!t.duration))return'<td colspan="2" style="text-align:center;color:#ddd;">—</td>';
+      const noteBadge=t.notes?.length?`<span title="${t.notes.join(' | ')}" style="cursor:pointer;font-size:10px;color:#e67e22;margin-right:3px;">💬 ${t.notes.length}</span>`:'';
+      const cellContent=noteBadge+(t.quantity||0)+(t.duration?'<small style="color:#888;margin-right:6px;"> '+Math.round(t.duration)+' דק</small>':'');
+      return'<td colspan="2" style="text-align:center;">'+cellContent+'</td>';
+    }).join('');
+    return`<tr><td style="font-weight:bold;">${name}</td>${cells}</tr>`;
+  }).join('');
+
+  const thds=allTaskIds.map(id=>`<th style="text-align:center;">${totals[id].label}<br><small style="font-weight:normal;font-size:10px;">${totals[id].quantity} · ${Math.round(totals[id].duration/60*10)/10} שע'</small></th>`).join('');
+  const subthds='';
+
+  // Notes list
+  const allNotes=allTaskIds.flatMap(id=>totals[id].notes.map(n=>({...n,task:totals[id].label})));
+  const notesHtml=allNotes.length?`
+    <div style="margin-top:14px;">
+      <div style="font-size:12px;font-weight:bold;color:#888;margin-bottom:8px;">💬 הערות מדריכים לחודש</div>
+      <div style="display:flex;flex-direction:column;gap:6px;">
+        ${allNotes.map(n=>`<div style="background:#fff8f0;border-radius:7px;padding:8px 12px;font-size:12px;border-right:3px solid #f39c12;">
+          <span style="font-weight:bold;color:#856404;">${n.instr}</span>
+          <span style="color:#888;font-size:11px;margin:0 6px;">·</span>
+          <span style="color:#555;">${n.task}</span>
+          <span style="color:#888;font-size:11px;margin:0 6px;">·</span>
+          ${n.note}
+        </div>`).join('')}
+      </div>
+    </div>`:'';
+
+  taskTab.innerHTML=`
+    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px;">${summaryCards}</div>
+    <div style="overflow-x:auto;">
+      <table class="mgmt-table" style="width:100%;min-width:400px;">
+        <thead>
+          <tr><th>מדריך</th>${thds}</tr>
+          
+        </thead>
+        <tbody>${instrRows}</tbody>
+      </table>
+    </div>
+    ${notesHtml}`;
 }
 
 // Register tasks tab in switchDashTab
@@ -12459,29 +12346,8 @@ async function generateAndActivateDemo(){
       if(d.getDay()!==6)days.push(_localDateStr(new Date(d)));
     }
 
-    // Use actual taskDefs from settings (not hardcoded)
-    // Use system taskDefs; fallback to common defaults if settings empty
-    const demoTaskDefs=taskDefs.length>0?[...taskDefs]:[
-      {id:'training',icon:'🚇',label:'קורס מעשי',color:'#2980b9',isTrip:true,requiresSummary:false,summaryFields:[],driverFields:false,message:''},
-      {id:'bakara',icon:'🔍',label:'מתקנות, בקרות ופיק',color:'#8e44ad',isTrip:false,requiresSummary:true,driverFields:true,summaryFields:[{type:'quantity',label:'מספר בקרות'},{type:'duration',label:'זמן (דקות)'}],message:''},
-      {id:'driving',icon:'🚌',label:'נהיגה בקו',color:'#27ae60',isTrip:false,requiresSummary:true,driverFields:false,summaryFields:[{type:'quantity',label:'מספר נסיעות'},{type:'duration',label:'זמן (דקות)'}],message:''},
-      {id:'greenline',icon:'🌿',label:'קו ירוק',color:'#2ecc71',isTrip:false,requiresSummary:false,driverFields:false,summaryFields:[],message:''},
-    ];
-
-    // Assign tasks from actual taskDefs: trip tasks first, then non-trip
-    const _tripTasks=demoTaskDefs.filter(t=>t.isTrip).map(t=>t.id);
-    const _nonTripTasks=demoTaskDefs.filter(t=>!t.isTrip).map(t=>t.id);
-    const _allDemoTasks=[..._tripTasks,..._nonTripTasks];
-    const TASKS_BY_INSTR=instrs.map((_,i)=>{
-      if(!_allDemoTasks.length)return 'training';
-      // 60% trip tasks, rest distributed among non-trip
-      if(i<Math.ceil(instrs.length*0.6)&&_tripTasks.length)
-        return _tripTasks[i%_tripTasks.length];
-      if(_nonTripTasks.length)
-        return _nonTripTasks[(i-Math.ceil(instrs.length*0.6))%_nonTripTasks.length];
-      return _tripTasks[0]||'training';
-    });
-    const _tripTaskIds=new Set(_tripTasks);
+    const TASKS_BY_INSTR=instrs.map((_,i)=>
+      i<Math.ceil(instrs.length*0.6)?'training':i<Math.ceil(instrs.length*0.8)?'bakara':'drivers');
     const SHIFTS=['morning','afternoon','evening'];
     const SHIFT_H={morning:{s:'06:00',e:'14:30'},afternoon:{s:'14:00',e:'22:00'},evening:{s:'13:30',e:'22:00'}};
     const STATUSES=['approved','approved','approved','approved','approved','pending','rejected'];
@@ -12514,30 +12380,25 @@ async function generateAndActivateDemo(){
     setP(8,'מייצר שיבוצים...');await new Promise(r=>setTimeout(r,30));
 
     // Demo task defs
-    // demoTaskDefs now defined earlier from system taskDefs
+    const demoTaskDefs=[
+      {id:'training',icon:'🚇',label:'קורס מעשי',color:'#2980b9',isTrip:true,requiresSummary:false,summaryFields:[],trainees:'',message:'נהל את הנסיעה לפי הנחיות הבטיחות.'},
+      {id:'bakara',icon:'🔍',label:'בקרות',color:'#8e44ad',isTrip:false,requiresSummary:true,summaryFields:[{type:'quantity',label:'מספר בקרות'},{type:'duration',label:'זמן (דקות)'}],trainees:'',message:'בצע בקרות שדה. תעד חריגות.'},
+      {id:'drivers',icon:'🚌',label:'הדרכת נהגים',color:'#27ae60',isTrip:false,requiresSummary:false,summaryFields:[],trainees:'',message:'הדרכה בטיחותית לנהגים חדשים.'},
+    ];
 
     // Build FULL schedule (all days)
     const fullSched={};
     days.forEach(date=>{
-      // For non-trip instructors: rotate tasks by day so ALL non-trip tasks appear
-      const _dayIdx=days.indexOf(date);
-      fullSched[date]=instrs.map((name,i)=>{
-        let _task=TASKS_BY_INSTR[i];
-        if(!_tripTaskIds.has(_task)&&_nonTripTasks.length>1){
-          // Rotate through all non-trip tasks by day
-          const _nonTripIdx=(i-Math.ceil(instrs.length*0.6)+_dayIdx)%_nonTripTasks.length;
-          _task=_nonTripTasks[Math.abs(_nonTripIdx)];
-        }
-        return({
+      fullSched[date]=instrs.map((name,i)=>({
         id:'ds_'+date.replace(/-/g,'')+'_'+i,
-        name,shift:SHIFTS[Math.floor(_pseudoRand(date+name+_task)*3)],
-        task:_task,
-        startTime:SHIFT_H[SHIFTS[Math.floor(_pseudoRand(date+name+_task)*3)]].s,
-        endTime:SHIFT_H[SHIFTS[Math.floor(_pseudoRand(date+name+_task)*3)]].e,
+        name,shift:SHIFTS[Math.floor(_pseudoRand(date+name)*3)],
+        task:TASKS_BY_INSTR[i],
+        startTime:SHIFT_H[SHIFTS[Math.floor(_pseudoRand(date+name)*3)]].s,
+        endTime:SHIFT_H[SHIFTS[Math.floor(_pseudoRand(date+name)*3)]].e,
         status:STATUSES[Math.floor(_pseudoRand(date+name+'st')*STATUSES.length)],
         note:_pseudoRand(date+name+'n')>0.7?DEMO_NOTES[Math.floor(_pseudoRand(date+name+'nt')*DEMO_NOTES.length)]:'',
         createdAt:Date.now(),submittedBy:name
-      });});
+      }));
     });
 
     let totalTrips=0,totalDelays=0,totalReports=0;
@@ -12555,7 +12416,7 @@ async function generateAndActivateDemo(){
 
       monthDays.forEach(date=>{
         const tripMap={};
-        const tripInstrs=instrs.filter((_,i)=>_tripTaskIds.has(TASKS_BY_INSTR[i]));
+        const tripInstrs=instrs.filter((_,i)=>TASKS_BY_INSTR[i]==='training');
         tripInstrs.forEach((name,ti)=>{
           [0,1].forEach(tn=>{
             const entry=fullSched[date]?.find(e=>e.name===name);
@@ -12619,7 +12480,6 @@ async function generateAndActivateDemo(){
     // Store schedule and task defs
     localStorage.setItem(DEMO_PREFIX+'v100_sched_all',JSON.stringify(fullSched));
     localStorage.setItem(DEMO_PREFIX+'v100_taskDefs',JSON.stringify(demoTaskDefs));
-    // Also store currently active taskDefs (backup real ones first if needed)
     localStorage.setItem(DEMO_PREFIX+'v100_instructors',JSON.stringify(instrs));
 
     setP(88,'מגבה נתונים ומפעיל...');await new Promise(r=>setTimeout(r,30));
@@ -12672,20 +12532,8 @@ function exitDemoMode(){
   localStorage.removeItem('demo_months');
   localStorage.removeItem('demo_active');
   _updateDemoBanner(false);
-  // DON'T close panel — allow re-activation without refresh
-  // Reload real data
-  try{lsLoadSched();}catch(e){}
-  try{normalizeTaskDefs();}catch(e){}
-  const _exitToday=_localDateStr(new Date());
-  try{const raw=localStorage.getItem('trips_'+_exitToday);trips=raw?Object.values(JSON.parse(raw)).map(parseTrip):[];}catch(e){trips=[];}
-  try{renderCalendar();}catch(e){}
-  try{renderLog();}catch(e){}
-  try{renderDashboard();}catch(e){}
-  // Update panel buttons
-  const _genBtn=document.getElementById('demoGenerateBtn');
-  const _exitBtn=document.getElementById('demoExitBtn');
-  if(_genBtn)_genBtn.style.display='block';
-  if(_exitBtn)_exitBtn.style.display='none';
+  closeDemoPanel();
+  _reloadAppWithDemoData();
   showToast('✅ חזרת לנתונים האמיתיים','success');
 }
 
@@ -12702,14 +12550,8 @@ function clearDemoData(){
 function _updateDemoBanner(active){
   const banner=document.getElementById('demoBanner');
   const btn=document.getElementById('demoBtnMain');
-  // Banner shows when demo is active
   if(banner)banner.style.display=active?'flex':'none';
-  // Button always visible — changes color to indicate state
-  if(btn){
-    btn.style.background=active?'#f0ad4e':'#6c3483';
-    btn.style.color=active?'#333':'white';
-    btn.title=active?'מצב דמו פעיל — לחץ לניהול':'הפעל מצב דמו';
-  }
+  if(btn){btn.style.background=active?'#f0ad4e':'#6c3483';btn.style.color=active?'#333':'white';}
 }
 
 // Seeded pseudo-random (deterministic per key)
@@ -12720,10 +12562,11 @@ function _pseudoRand(seed){
 
 // On load: restore demo state if was active
 document.addEventListener('DOMContentLoaded',()=>{
-  // Just sync the banner — don't auto-activate demo data on load
-  // (real data is always loaded on start; demo is opt-in only)
-  const isDemo=localStorage.getItem('demo_active')==='1';
-  _updateDemoBanner(isDemo);
+  if(localStorage.getItem('demo_active')==='1'){
+    _updateDemoBanner(true);
+    const months=JSON.parse(localStorage.getItem('demo_months')||'[]');
+    _activateDemoData(months);
+  }
 });
 
 
@@ -12802,172 +12645,6 @@ function applyPredefinedRoute(routeId){
   curRoute=pr.route.filter(s=>s.t>0).map(s=>({...s}));
   updateUI();val();
   showToast('מסלול "'+pr.label+'" נטען','success');
-}
-
-
-
-// Demo mode helper — when active, always read from localStorage
-function _isDemoMode(){return localStorage.getItem('demo_active')==='1';}
-
-
-
-// ══ DELAY FILTER ══════════════════════════════════════════════
-let _delayFilterActive=false;
-
-function toggleDelayFilter(){
-  _delayFilterActive=!_delayFilterActive;
-  const btn=document.getElementById('delayFilterBtn');
-  if(btn){
-    btn.style.background=_delayFilterActive?'#f39c12':'#fff3e0';
-    btn.style.color=_delayFilterActive?'white':'#e67e22';
-    btn.textContent=_delayFilterActive?'⏱️ כל הנסיעות':'⏱️ עיכובים בלבד';
-  }
-  // Show/hide delay column header
-  const dch=document.getElementById('delayColHeader');
-  if(dch)dch.style.display=_delayFilterActive?'':'none';
-  // Show/hide delay cells and filter rows
-  const rows=document.querySelectorAll('#logBody tr');
-  rows.forEach(row=>{
-    const dc=row.querySelector('[id^="delayCell_"]');
-    if(dc)dc.style.display=_delayFilterActive?'':'none';
-    if(_delayFilterActive){
-      // Hide rows with no delay
-      if(dc){
-        const reason=dc.getAttribute('data-reason')||'';
-        if(reason)dc.innerHTML=dc.innerHTML+'<br><small style="color:#888;">'+reason+'</small>';
-      }
-      const hasDelay=dc&&dc.textContent.trim(
-
-// ══ SCHEDULE BREAKDOWN BY TASK TYPE ══════════════════════════
-function _renderMonthSchedBreakdown(yr,mo){
-  const wrap=document.getElementById('monthSchedBreakdown');
-  if(!wrap)return;
-
-  // Count schedule entries per task for this month
-  const prefix=`${yr}-${String(mo+1).padStart(2,'0')}`;
-  const countByTask={};
-  const instrByTask={};
-
-  // Load from schedData (covers all dates in memory)
-  const allSched=JSON.parse(localStorage.getItem('v100_sched_all')||'{}');
-  Object.entries(allSched).forEach(([date,entries])=>{
-    if(!date.startsWith(prefix))return;
-    (entries||[]).forEach(e=>{
-      const tid=e.task||'other';
-      if(!countByTask[tid])countByTask[tid]=0;
-      if(!instrByTask[tid])instrByTask[tid]=new Set();
-      countByTask[tid]++;
-      instrByTask[tid].add(e.name);
-    });
-  });
-
-  if(!Object.keys(countByTask).length){wrap.innerHTML='';return;}
-
-  // Show ALL taskDefs (even ones with 0 assignments)
-  const rows=taskDefs.map(tDef=>{
-    const cnt=countByTask[tDef.id]||0;
-    const instrs=instrByTask[tDef.id]?[...instrByTask[tDef.id]].join(', '):'—';
-    const instrCnt=instrByTask[tDef.id]?instrByTask[tDef.id].size:0;
-    return`<tr style="border-bottom:1px solid #f0f0f0;">
-      <td style="padding:7px 10px;font-size:13px;">${tDef.icon||'📋'} ${tDef.label}</td>
-      <td style="padding:7px 10px;text-align:center;font-weight:bold;color:${cnt?'var(--primary)':'#ccc'};">${instrCnt}</td>
-      <td style="padding:7px 10px;text-align:center;color:#888;">${cnt}</td>
-      <td style="padding:7px 10px;font-size:11px;color:#555;">${cnt?instrs:'—'}</td>
-    </tr>`;
-  }).join('');
-
-  wrap.innerHTML=`
-    <div style="font-size:12px;font-weight:bold;color:#888;margin-bottom:8px;letter-spacing:.3px;">📊 שיבוצים לפי משימה — החודש</div>
-    <table style="width:100%;border-collapse:collapse;background:white;border-radius:10px;overflow:hidden;box-shadow:0 1px 6px rgba(0,0,0,.06);">
-      <thead><tr style="background:#f5f0ff;">
-        <th style="padding:8px 10px;font-size:11px;text-align:right;color:#555;border-bottom:2px solid #d9c8f5;">משימה</th>
-        <th style="padding:8px 10px;font-size:11px;text-align:center;color:#555;border-bottom:2px solid #d9c8f5;">מדריכים</th>
-        <th style="padding:8px 10px;font-size:11px;text-align:center;color:#555;border-bottom:2px solid #d9c8f5;">הקצאות</th>
-        <th style="padding:8px 10px;font-size:11px;text-align:right;color:#555;border-bottom
-
-// ══ XLSX EXPORT ══════════════════════════════════════════════
-async function exportDashboardXLSX(){
-  showToast('⏳ מכין קובץ Excel...','info');
-  try{
-    const XLSX=await import('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js').catch(()=>window.XLSX);
-    if(!XLSX){showToast('שגיאה: ספריית Excel לא נטענה','warning');return;}
-    const wb=XLSX.utils.book_new();
-    const yr=_monthlyDashDate.getFullYear();
-    const mo=_monthlyDashDate.getMonth();
-    const label=_monthlyDashDate.toLocaleDateString('he-IL',{month:'long',year:'numeric'});
-
-    // Sheet 1: instructors summary
-    const monthData=_monthHistoryCache||{};
-    const byInstr={};
-    Object.values(monthData).forEach(day=>(day||[]).forEach(t=>{
-      if(!byInstr[t.name])byInstr[t.name]={trips:0,lessons:0,minutes:0,delays:0,routeChanges:0};
-      const v=byInstr[t.name];v.trips++;
-      const dur=(t.route||[]).reduce((s,r)=>s+(r.t||0),0);
-      v.lessons+=dur/45;v.minutes+=dur;
-      if(t.delayMin>0)v.delays++;
-      if(t.routeVariant>0)v.routeChanges++;
-    }));
-    const instrRows=[['מדריך','נסיעות','שיעורים','שעות','עיכובים','שינויי מסלול']];
-    Object.entries(byInstr).sort().forEach(([name,v])=>instrRows.push([name,v.trips,+v.lessons.toFixed(1),+(v.minutes/60).toFixed(1),v.delays,v.routeChanges]));
-    const ws1=XLSX.utils.aoa_to_sheet(instrRows);
-    XLSX.utils.book_append_sheet(wb,ws1,'סיכום מדריכים');
-
-    // Sheet 2: route efficiency
-    const routeStats={};
-    Object.values(monthData).forEach(day=>(day||[]).forEach(t=>{
-      const rk=(t.route||[]).map(r=>r.id).join('→');
-      if(!routeStats[rk])routeStats[rk]={count:0,lessons:0,min:0,delays:0};
-      const v=routeStats[rk];v.count++;
-      const dur=(t.route||[]).reduce((s,r)=>s+(r.t||0),0);
-      v.lessons+=dur/45;v.min+=dur;
-      if(t.delayMin>0)v.delays++;
-    }));
-    const routeRows=[['מסלול','נסיעות','שיעורים ממוצע','משך ממוצע (דק)','עיכובים']];
-    Object.entries(routeStats).sort((a,b)=>b[1].count-a[1].count).forEach(([r,v])=>
-      routeRows.push([r,v.count,+(v.lessons/v.count).toFixed(1),Math.round(v.min/v.count),v.delays]));
-    const ws2=XLSX.utils.aoa_to_sheet(routeRows);
-    XLSX.utils.book_append_sheet(wb,ws2,'יעילות מסלול');
-
-    // Sheet 3: task reports
-    const taskRpts=await loadMonthTaskReports(yr,mo);
-    const taskRows=[['מדריך','משימה','כמות','משך (דק)','הערות','נהגים שנבקרו']];
-    Object.values(taskRpts).forEach(r=>taskRows.push([r.instructorName,r.taskLabel||r.taskId,r.quantity||0,r.duration||0,r.notes||'',r.inspectedDrivers||'']));
-    const ws3=XLSX.utils.aoa_to_sheet(taskRows);
-    XLSX.utils.book_append_sheet(wb,ws3,'משימות');
-
-    // Sheet 4: delays
-    const delayRows=[['מדריך','תאריך','מסלול','עיכוב (דק)','סיבה']];
-    Object.entries(monthData).forEach(([date,day])=>(day||[]).forEach(t=>{
-      if(t.delayMin>0)delayRows.push([t.name,date,(t.route||[]).map(r=>r.id).join('→'),t.delayMin,t.delayNote||'']);
-    }));
-    const ws4=XLSX.utils.aoa_to_sheet(delayRows);
-    XLSX.utils.book_append_sheet(wb,ws4,'עיכובים');
-
-    // Sheet 5: route changes
-    const rcRows=[['מדריך','תאריך','מסלול שבוצע','סיבה']];
-    Object.entries(monthData).forEach(([date,day])=>(day||[]).forEach(t=>{
-      if(t.routeVariant>0)rcRows.push([t.name,date,(t.route||[]).map(r=>r.id).join('→'),t.delayNote||'שינוי מסלול']);
-    }));
-    const ws5=XLSX.utils.aoa_to_sheet(rcRows);
-    XLSX.utils.book_append_sheet(wb,ws5,'שינויי מסלול');
-
-    XLSX.writeFile(wb,'דשבורד_'+label.replace(/ /g,'_')+'.xlsx');
-    showToast('✅ קובץ Excel הורד','success');
-  }catch(e){console.error(e);showToast('שגיאה ביצוא: '+e.message,'warning');}
-}
-
-:2px solid #d9c8f5;">מדריכים שהוקצו</th>
-      </tr></thead>
-      <tbody>${rows}</tbody>
-    </table>`;
-}
-
-)!=='';
-      row.style.display=hasDelay?'':'none';
-    } else {
-      row.style.display='';
-    }
-  });
 }
 
 </script>
