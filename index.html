@@ -11515,7 +11515,13 @@ async function switchDashTab(tab){
   if(tab==='compare')initCompareSelects();
   if(tab==='coverage'){initCoverageWeekSelect();await renderCoverageTab();}
   if(tab==='efficiency')renderEfficiencyTab();
-  if(tab==='tasks')renderTasksTab(_monthTaskStatsCache||{});
+  if(tab==='tasks'){
+    if(!Object.keys(_monthTaskStatsCache||{}).length&&!Object.keys(_monthHistoryCache||{}).length){
+      await loadMonthlyDash();
+    } else {
+      renderTasksTab(_monthTaskStatsCache||{});
+    }
+  }
 }
 // ══════════════════════════════════════════════════════════════════════
 // AUDIT LOG — wire to key actions
