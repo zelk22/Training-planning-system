@@ -736,6 +736,12 @@ body.dark-mode .dashboard-section{background:#242938;border-color:#3a4060;}
 
 .dash-title h4{margin:0;color:var(--primary);}
 
+#dashboardSection .dash-tabs{margin-bottom:12px;}
+#dashboardSection .dash-tab{background:#f0f4f8;border:1px solid #dde;border-radius:8px;padding:8px 14px;cursor:pointer;font-size:13px;font-weight:bold;color:#555;}
+#dashboardSection .dash-tab.active{background:#2980b9;color:#fff;border-color:#2980b9;}
+body.dark-mode #dashboardSection .dash-tab{background:#2d3348;color:#ccc;border-color:#3a4060;}
+body.dark-mode #dashboardSection .dash-tab.active{background:#2980b9;color:#fff;}
+
 .kpi-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;margin-bottom:16px;}
 
 .kpi-card{background:#f7f9ff;border:1px solid #e0e8f8;border-radius:10px;padding:12px 14px;text-align:center;}
@@ -2052,6 +2058,14 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 
     </div>
 
+    <!-- DASHBOARD TABS (יומי — switchMainDashTab; הדשבורד החודשי נשאר עם switchDashTab) -->
+    <div class="dash-tabs" style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;border-bottom:2px solid #eef2f8;padding-bottom:12px;">
+      <button type="button" onclick="switchMainDashTab('overview')" class="dash-tab active" id="tab-main-overview">📊 סקירה כללית</button>
+      <button type="button" onclick="switchMainDashTab('tasks')" class="dash-tab" id="tab-main-tasks">📋 משימות</button>
+      <button type="button" onclick="switchMainDashTab('trips')" class="dash-tab" id="tab-main-trips">🚆 נסיעות היום</button>
+    </div>
+
+    <div id="dash-overview-panel" class="dash-panel" style="display:block;">
     <div class="kpi-grid" id="kpiGrid"><div style="color:#aaa;font-size:13px;">אין נסיעות להיום</div></div>
 
     <div id="dashBarsWrap"></div>
@@ -2075,6 +2089,21 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
           style="width:auto;padding:4px 8px;border:1px solid #ccc;border-radius:6px;font-size:12px;cursor:pointer;">
       </div>
       <div id="daySummaryContent"></div>
+    </div>
+    </div>
+
+    <div id="dash-tasks-panel" class="dash-panel" style="display:none;">
+      <div style="background:white;border-radius:12px;padding:20px;box-shadow:var(--shadow);min-height:280px;border:1px solid #e8eef6;">
+        <h4 style="margin:0 0 16px;color:var(--primary);">📋 משימות והדרכות — יום הנבחר בלוח</h4>
+        <div id="managerDashTasksList" style="min-height:200px;"></div>
+      </div>
+    </div>
+
+    <div id="dash-trips-panel" class="dash-panel" style="display:none;">
+      <div style="background:white;border-radius:12px;padding:20px;box-shadow:var(--shadow);min-height:280px;border:1px solid #e8eef6;">
+        <h4 style="margin:0 0 16px;color:var(--primary);">🚆 נסיעות מתוכננות — יום הנבחר בלוח</h4>
+        <div id="managerDashTripsList" style="min-height:200px;"></div>
+      </div>
     </div>
 
   </div>
@@ -2496,11 +2525,14 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
         <span style="font-size:13px;color:#666;">יעילות מסלול — שיעורים לשעת נסיעה, מסלולים מבוצעים לעומת מתוכננים</span>
         <button onclick="renderEfficiencyTab()" style="width:auto;padding:6px 12px;background:#e67e22;color:white;border:none;border-radius:7px;cursor:pointer;font-size:11px;font-weight:bold;">🔄 חשב</button>
       </div>
-
-    <div id="dashTabTasks" style="display:none;margin-top:10px;"><div style="color:#aaa;font-size:13px;text-align:center;padding:14px;">לחץ "טען נתונים" לצפייה</div></div>
       <div id="efficiencyBody">
         <div style="color:#aaa;font-size:13px;padding:20px;text-align:center;">לחץ "טען נתונים" ואז "חשב" לצפייה</div>
       </div>
+    </div>
+
+    <!-- TAB: Monthly tasks (אח לטאבים — לא בתוך dashTabEfficiency) -->
+    <div id="dashTabTasks" style="display:none;margin-top:10px;">
+      <div style="color:#aaa;font-size:13px;text-align:center;padding:14px;">לחץ "טען נתונים" או עבור לטאב זה לטעינת סיכום משימות</div>
     </div>
 
 
@@ -6454,6 +6486,12 @@ function renderDashboard(){
     kpiGrid.innerHTML='<div style="color:#aaa;font-size:13px;grid-column:1/-1;">אין נסיעות להיום</div>';
     if(barsWrap)barsWrap.innerHTML='';
     renderDailyScheduleSummary();
+    try{
+      const trp=document.getElementById('dash-trips-panel');
+      if(trp&&trp.style.display==='block')renderManagerDashTripsPanel();
+      const tk=document.getElementById('dash-tasks-panel');
+      if(tk&&tk.style.display==='block')loadManagerDashTodayTasks();
+    }catch(e){}
     return;
   }
 
@@ -6502,6 +6540,12 @@ function renderDashboard(){
   }).join('')}</div>`;
 
   renderDailyScheduleSummary();
+  try{
+    const trp=document.getElementById('dash-trips-panel');
+    if(trp&&trp.style.display==='block')renderManagerDashTripsPanel();
+    const tk=document.getElementById('dash-tasks-panel');
+    if(tk&&tk.style.display==='block')loadManagerDashTodayTasks();
+  }catch(e){}
 }
 
 function renderDailyScheduleSummary(){
@@ -10417,6 +10461,8 @@ async function loadMonthlyDash(){
   if(!allNames.length){
     if(tbody)tbody.innerHTML='<tr><td colspan="7" style="text-align:center;color:#aaa;padding:20px;">אין נתוני נסיעות לחודש זה בהיסטוריה</td></tr>';
     showToast('אין נתונים לחודש זה — נסיעות ישנות לא נשמרו בהיסטוריה','warning');
+    _monthHistoryCache=monthData;
+    try{await renderTasksTab();}catch(e){console.warn('renderTasksTab:',e);}
     return;
   }
 
@@ -11516,11 +11562,12 @@ async function switchDashTab(tab){
   if(tab==='coverage'){initCoverageWeekSelect();await renderCoverageTab();}
   if(tab==='efficiency')renderEfficiencyTab();
   if(tab==='tasks'){
-      if(!Object.keys(_monthTaskStatsCache||{}).length&&!Object.keys(_monthHistoryCache||{}).length){
-          await loadMonthlyDash();
-    } else {
-      renderTasksTab();
+    if(!Object.keys(_monthTaskStatsCache||{}).length&&!Object.keys(_monthHistoryCache||{}).length){
+      await loadMonthlyDash();
+    }else{
+      await renderTasksTab();
     }
+    try{await renderTasksTab();}catch(e){console.warn('renderTasksTab:',e);}
   }
 }
 // ══════════════════════════════════════════════════════════════════════
@@ -11952,22 +11999,6 @@ async function renderTasksTab(){
   const prefix=`${yr}-${String(mo+1).padStart(2,'0')}`;
   const daysInMonth=new Date(yr,mo+1,0).getDate();
 
-  // DEBUG: show what's in localStorage
-  const debugKeys=Object.keys(localStorage).filter(k=>k.startsWith('trips_'+prefix)||k.startsWith('taskReports_'+prefix)||k==='v100_sched_all');
-  const schedRaw=localStorage.getItem('v100_sched_all');
-  const schedAll=schedRaw?JSON.parse(schedRaw):{};
-  const schedDates=Object.keys(schedAll).filter(d=>d.startsWith(prefix));
-  const sampleSched=schedDates.length?schedAll[schedDates[0]]:[];
-  
-  taskTab.innerHTML=`<div style="background:#fff3cd;border:1px solid #f0ad4e;border-radius:8px;padding:12px;font-size:12px;direction:ltr;text-align:left;margin-bottom:16px;">
-    <b>DEBUG:</b> prefix=${prefix}, daysInMonth=${daysInMonth}<br>
-    LS keys (trips+reports+sched): ${debugKeys.join(', ')||'NONE'}<br>
-    sched dates for month: ${schedDates.length} (e.g. ${schedDates.slice(0,3).join(', ')})<br>
-    sample sched[0]: ${JSON.stringify(sampleSched&&sampleSched[0]).slice(0,100)}<br>
-    taskDefs: ${taskDefs.map(t=>t.id+':'+t.isTrip).join(', ')}<br>
-    _isDemoMode: ${_isDemoMode()}
-  </div>`;
-
   // 1. Load trips directly from localStorage for this month
   const monthTrips=[];
   for(let d=1;d<=daysInMonth;d++){
@@ -11977,6 +12008,7 @@ async function renderTasksTab(){
       if(raw){const p=JSON.parse(raw);const arr=Array.isArray(p)?p:Object.values(p);monthTrips.push(...arr);}
     }catch(e){}
   }
+  // Fallback: use _monthHistoryCache if available
   if(!monthTrips.length)monthTrips.push(...Object.values(_monthHistoryCache||{}).flat());
 
   // 2. Load task reports directly from localStorage
@@ -12822,12 +12854,13 @@ function toggleDelayFilter(){
     const dc=row.querySelector('[id^="delayCell_"]');
     if(dc)dc.style.display=_delayFilterActive?'':'none';
     if(_delayFilterActive){
-      // Hide rows with no delay
-      if(dc){
-        const reason=dc.getAttribute('data-reason')||'';
-        if(reason)dc.innerHTML=dc.innerHTML+'<br><small style="color:#888;">'+reason+'</small>';
-      }
-      const hasDelay=dc&&dc.textContent.trim(
+      const hasDelay=dc&&dc.textContent.trim()!=='';
+      row.style.display=hasDelay?'':'none';
+    }else{
+      row.style.display='';
+    }
+  });
+}
 
 // ══ SCHEDULE BREAKDOWN BY TASK TYPE ══════════════════════════
 function _renderMonthSchedBreakdown(yr,mo){
@@ -12874,7 +12907,11 @@ function _renderMonthSchedBreakdown(yr,mo){
         <th style="padding:8px 10px;font-size:11px;text-align:right;color:#555;border-bottom:2px solid #d9c8f5;">משימה</th>
         <th style="padding:8px 10px;font-size:11px;text-align:center;color:#555;border-bottom:2px solid #d9c8f5;">מדריכים</th>
         <th style="padding:8px 10px;font-size:11px;text-align:center;color:#555;border-bottom:2px solid #d9c8f5;">הקצאות</th>
-        <th style="padding:8px 10px;font-size:11px;text-align:right;color:#555;border-bottom
+        <th style="padding:8px 10px;font-size:11px;text-align:right;color:#555;border-bottom:2px solid #d9c8f5;">פירוט</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+}
 
 // ══ XLSX EXPORT ══════════════════════════════════════════════
 async function exportDashboardXLSX(){
@@ -12947,19 +12984,96 @@ async function exportDashboardXLSX(){
   }catch(e){console.error(e);showToast('שגיאה ביצוא: '+e.message,'warning');}
 }
 
-:2px solid #d9c8f5;">מדריכים שהוקצו</th>
-      </tr></thead>
-      <tbody>${rows}</tbody>
-    </table>`;
+// ====================== MANAGER DAILY DASHBOARD TABS & TASKS (לא מחליף את switchDashTab של הדשבורד החודשי) ======================
+function switchMainDashTab(tab){
+  document.querySelectorAll('#dashboardSection .dash-tab').forEach(b=>b.classList.remove('active'));
+  const btnIds={overview:'tab-main-overview',tasks:'tab-main-tasks',trips:'tab-main-trips'};
+  const bid=btnIds[tab];
+  if(bid){const el=document.getElementById(bid);if(el)el.classList.add('active');}
+  document.querySelectorAll('#dashboardSection .dash-panel').forEach(p=>{p.style.display='none';});
+  if(tab==='overview'){
+    const ov=document.getElementById('dash-overview-panel');
+    if(ov)ov.style.display='block';
+  }else if(tab==='tasks'){
+    const tp=document.getElementById('dash-tasks-panel');
+    if(tp)tp.style.display='block';
+    loadManagerDashTodayTasks();
+  }else if(tab==='trips'){
+    const trp=document.getElementById('dash-trips-panel');
+    if(trp){trp.style.display='block';renderManagerDashTripsPanel();}
+  }
 }
 
-)!=='';
-      row.style.display=hasDelay?'':'none';
-    } else {
-      row.style.display='';
+async function loadManagerDashTodayTasks(){
+  const container=document.getElementById('managerDashTasksList');
+  if(!container)return;
+  container.innerHTML='<div style="text-align:center;padding:40px 20px;color:#888;"><div style="font-size:36px;margin-bottom:10px;opacity:0.65;">📋</div>טוען משימות...</div>';
+  try{
+    const dateStr=(typeof currentDate==='string'&&currentDate)?currentDate:_localDateStr(new Date());
+    let reports=[];
+    if(typeof _isDemoMode==='function'&&_isDemoMode()){
+      try{
+        const allData=JSON.parse(localStorage.getItem('demo_taskReports')||'{}');
+        reports=Object.values(allData[dateStr]||{});
+      }catch(e){reports=[];}
+    }else if(window._fbDb&&typeof _fbGet==='function'&&typeof _fbRef==='function'){
+      const snap=await _fbGet(_fbRef(_db,'taskReports/'+dateStr));
+      reports=(snap&&typeof snap.exists==='function'&&snap.exists())?Object.values(snap.val()):[];
+    }else{
+      const raw=localStorage.getItem('taskReports_'+dateStr);
+      reports=raw?Object.values(JSON.parse(raw)).filter(Boolean):[];
     }
-  });
+    if(!reports.length){
+      container.innerHTML='<div style="text-align:center;padding:60px 20px;color:#777;"><div style="font-size:44px;margin-bottom:12px;">📭</div><div>אין דיווחי משימות ליום זה</div></div>';
+      return;
+    }
+    let html='<div style="display:grid;gap:12px;">';
+    reports.forEach(r=>{
+      if(!r)return;
+      const esc=s=>String(s==null?'':s).replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      html+='<div style="border:1px solid #e0e8f5;border-radius:10px;padding:14px;background:#f8faff;">'+
+        '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;flex-wrap:wrap;">'+
+        '<strong style="font-size:15px;">'+esc(r.instructorName||'מדריך')+'</strong>'+
+        '<span style="background:#eafaf1;color:#27ae60;padding:2px 10px;border-radius:12px;font-size:12px;">'+esc(r.taskLabel||r.taskId||'משימה')+'</span></div>'+
+        '<div style="margin-top:8px;font-size:14px;color:#444;">'+
+        (r.quantity!=null&&r.quantity!==''?('כמות: '+esc(r.quantity)):'')+
+        (r.duration?' • '+esc(r.duration)+" דק'":'')+
+        '</div>'+
+        (r.notes?'<div style="margin-top:8px;font-size:13px;color:#e67e22;">💬 '+esc(r.notes)+'</div>':'')+
+        '</div>';
+    });
+    html+='</div>';
+    container.innerHTML=html;
+  }catch(err){
+    console.error('loadManagerDashTodayTasks',err);
+    container.innerHTML='<div style="color:#c0392b;padding:24px;text-align:center;">שגיאה בטעינת משימות<br><small>'+escHtml(err&&err.message||String(err))+'</small></div>';
+  }
 }
+function escHtml(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+function renderManagerDashTripsPanel(){
+  const el=document.getElementById('managerDashTripsList');
+  if(!el)return;
+  const list=(typeof trips!=='undefined'&&Array.isArray(trips))?trips:[];
+  if(!list.length){
+    el.innerHTML='<div style="text-align:center;padding:50px 20px;color:#888;">אין נסיעות מתוכננות ליום הנבחר בלוח</div>';
+    return;
+  }
+  el.innerHTML='<div style="display:flex;flex-direction:column;gap:10px;">'+list.map(t=>{
+    const name=(t&&t.name)?String(t.name).replace(/</g,'&lt;').replace(/>/g,'&gt;'):'?';
+    const segs=(t.timeline||[]).map(s=>s.id).join(' → ');
+    const dm=(t.route||[]).reduce((s,r)=>s+(r&&r.t?r.t:0),0);
+    return'<div style="border:1px solid #dde8f5;border-radius:10px;padding:12px 14px;background:#fff;"><strong>'+name+'</strong>'+
+      '<div style="font-size:13px;color:#555;margin-top:6px;">'+(segs||'—')+'</div>'+
+      '<div style="font-size:12px;color:#888;margin-top:4px;">'+(dm/45).toFixed(1)+' שיעורים • '+dm+" דק'</div></div>";
+  }).join('')+'</div>';
+}
+
+document.addEventListener('DOMContentLoaded',()=>{
+  setTimeout(()=>{
+    if(document.getElementById('tab-main-overview'))switchMainDashTab('overview');
+  },800);
+});
 
 </script>
 
