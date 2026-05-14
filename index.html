@@ -12491,20 +12491,11 @@ async function generateAndActivateDemo(){
       {id:'greenline',icon:'🌿',label:'קו ירוק',color:'#2ecc71',isTrip:false,requiresSummary:false,driverFields:false,summaryFields:[],message:''},
     ];
 
-    // Assign tasks from actual taskDefs: trip tasks first, then non-trip
     const _tripTasks=demoTaskDefs.filter(t=>t.isTrip).map(t=>t.id);
-    const _nonTripTasks=demoTaskDefs.filter(t=>!t.isTrip).map(t=>t.id);
-    const _allDemoTasks=[..._tripTasks,..._nonTripTasks];
-    const TASKS_BY_INSTR=instrs.map((_,i)=>{
-      if(!_allDemoTasks.length)return 'training';
-      // 60% trip tasks, rest distributed among non-trip
-      if(i<Math.ceil(instrs.length*0.6)&&_tripTasks.length)
-        return _tripTasks[i%_tripTasks.length];
-      if(_nonTripTasks.length)
-        return _nonTripTasks[(i-Math.ceil(instrs.length*0.6))%_nonTripTasks.length];
-      return _tripTasks[0]||'training';
-    });
     const _tripTaskIds=new Set(_tripTasks);
+    let rotTaskIds=demoTaskDefs.map(t=>t&&t.id).filter(Boolean);
+    if(!rotTaskIds.length)rotTaskIds=['training'];
+    const rotLen=rotTaskIds.length;
     const SHIFTS=['morning','afternoon','evening'];
     const SHIFT_H={morning:{s:'06:00',e:'14:30'},afternoon:{s:'14:00',e:'22:00'},evening:{s:'13:30',e:'22:00'}};
     const STATUSES=['approved','approved','approved','approved','approved','pending','rejected'];
@@ -12542,15 +12533,9 @@ async function generateAndActivateDemo(){
     // Build FULL schedule (all days)
     const fullSched={};
     days.forEach(date=>{
-      // For non-trip instructors: rotate tasks by day so ALL non-trip tasks appear
       const _dayIdx=days.indexOf(date);
       fullSched[date]=instrs.map((name,i)=>{
-        let _task=TASKS_BY_INSTR[i];
-        if(!_tripTaskIds.has(_task)&&_nonTripTasks.length>1){
-          // Rotate through all non-trip tasks by day
-          const _nonTripIdx=(i-Math.ceil(instrs.length*0.6)+_dayIdx)%_nonTripTasks.length;
-          _task=_nonTripTasks[Math.abs(_nonTripIdx)];
-        }
+        const _task=rotTaskIds[(i+_dayIdx)%rotLen];
         return({
         id:'ds_'+date.replace(/-/g,'')+'_'+i,
         name,shift:SHIFTS[Math.floor(_pseudoRand(date+name+_task)*3)],
@@ -12578,16 +12563,15 @@ async function generateAndActivateDemo(){
 
       monthDays.forEach(date=>{
         const tripMap={};
-        const tripInstrs=instrs.filter((_,i)=>_tripTaskIds.has(TASKS_BY_INSTR[i]));
-        tripInstrs.forEach((name,ti)=>{
+        instrs.forEach((name,i)=>{
+          const entry=fullSched[date]&&fullSched[date][i];
+          if(!entry||!_tripTaskIds.has(entry.task))return;
           [0,1].forEach(tn=>{
-            const entry=fullSched[date]?.find(e=>e.name===name);
-            if(!entry)return;
             const baseMin=entry.shift==='morning'?360:entry.shift==='afternoon'?840:810;
             const startMin=baseMin+tn*255;
             const hasDelay=_pseudoRand(date+name+tn+'dl')>0.78;
             const delayMin=hasDelay?Math.round(5+_pseudoRand(date+name+tn+'dm')*25):0;
-            const id='dt_'+date.replace(/-/g,'')+'_'+ti+'_'+tn;
+            const id='dt_'+date.replace(/-/g,'')+'_'+i+'_'+tn;
             // Select route variant by weighted random
             const _isEvening=entry.shift==='evening';
             const _pool=_isEvening?EVENING_ROUTES:(_pseudoRand(date+name+tn+'sh')>0.9?SHORT_ROUTES:MORNING_ROUTES);
@@ -12604,20 +12588,23 @@ async function generateAndActivateDemo(){
         if(Object.keys(tripMap).length)monthTrips[date]=tripMap;
 
         const rptMap={};
-        instrs.filter((name,i)=>TASKS_BY_INSTR[i]!=='training').forEach(name=>{
-          if(_pseudoRand(date+name+'rp')>0.28){
-            const entry=fullSched[date]?.find(e=>e.name===name);
-            if(!entry)return;
+        instrs.forEach((name,i)=>{
+          if(_pseudoRand(date+name+'rp')>0.06){
+            const entry=fullSched[date]&&fullSched[date][i];
+            if(!entry||_tripTaskIds.has(entry.task))return;
             const sk=name.replace(/[.#$[\]/]/g,'_')+'__'+entry.id;
+            const tDef=demoTaskDefs.find(t=>t.id===entry.task)||{label:entry.task||'משימה',summaryFields:[]};
+            const qLbl=(tDef.summaryFields||[]).find(f=>f.type==='quantity')?.label||'כמות';
+            const dLbl=(tDef.summaryFields||[]).find(f=>f.type==='duration')?.label||"משך (דק')";
             rptMap[sk]={date,instructorName:name,taskId:entry.task,
-              taskLabel:entry.task==='bakara'?'בקרות':'הדרכת נהגים',
+              taskLabel:tDef.label||entry.task,
               entryId:entry.id,submittedAt:Date.now(),
               quantity:Math.round(2+_pseudoRand(date+name+'q')*8),
-              quantityLabel:'מספר בקרות',
+              quantityLabel:qLbl,
               duration:Math.round(60+_pseudoRand(date+name+'d')*120),
-              durationLabel:'זמן (דקות)',
+              durationLabel:dLbl,
               challenges:_pseudoRand(date+name+'ch')<0.2?'תקלה קלה בדרך':'',notes:_pseudoRand(date+name+'nt')>0.3?DEMO_TASK_NOTES[Math.floor(_pseudoRand(date+name+'nts')*DEMO_TASK_NOTES.length)]:'',
-            names:_generateInspectedNames(date,name)};
+            inspectedDrivers:_generateInspectedNames(date,name)};
             totalReports++;
           }
         });
@@ -12627,7 +12614,8 @@ async function generateAndActivateDemo(){
         instrs.forEach((name,i)=>{
           const k=name.replace(/[.#$[\]/]/g,'_');
           const conf={};
-          if(TASKS_BY_INSTR[i]==='training')[0,1].forEach(tn=>{if(_pseudoRand(date+name+tn+'c')>0.1)conf[tn]=true;});
+          const entrySt=fullSched[date]&&fullSched[date][i];
+          if(entrySt&&_tripTaskIds.has(entrySt.task))[0,1].forEach(tn=>{if(_pseudoRand(date+name+tn+'c')>0.1)conf[tn]=true;});
           stMap[k]={name,status:'returned',tripIdx:1,confirmedTrips:conf};
         });
         monthStatuses[date]=stMap;
@@ -13013,8 +13001,12 @@ async function loadManagerDashTodayTasks(){
     let reports=[];
     if(typeof _isDemoMode==='function'&&_isDemoMode()){
       try{
-        const allData=JSON.parse(localStorage.getItem('demo_taskReports')||'{}');
-        reports=Object.values(allData[dateStr]||{});
+        const fromLsKey=(k)=>{try{const raw=localStorage.getItem(k);if(!raw)return[];const o=JSON.parse(raw);return Object.values(o||{}).filter(Boolean);}catch(e){return[];}};
+        reports=fromLsKey('taskReports_'+dateStr);
+        if(!reports.length){
+          const allData=JSON.parse(localStorage.getItem('demo_taskReports')||'{}');
+          reports=Object.values(allData[dateStr]||{});
+        }
       }catch(e){reports=[];}
     }else if(window._fbDb&&typeof _fbGet==='function'&&typeof _fbRef==='function'){
       const snap=await _fbGet(_fbRef(_db,'taskReports/'+dateStr));
@@ -13036,9 +13028,10 @@ async function loadManagerDashTodayTasks(){
         '<strong style="font-size:15px;">'+esc(r.instructorName||'מדריך')+'</strong>'+
         '<span style="background:#eafaf1;color:#27ae60;padding:2px 10px;border-radius:12px;font-size:12px;">'+esc(r.taskLabel||r.taskId||'משימה')+'</span></div>'+
         '<div style="margin-top:8px;font-size:14px;color:#444;">'+
-        (r.quantity!=null&&r.quantity!==''?('כמות: '+esc(r.quantity)):'')+
-        (r.duration?' • '+esc(r.duration)+" דק'":'')+
+        (r.quantity!=null&&r.quantity!==''?(esc(r.quantityLabel||'כמות')+': '+esc(r.quantity)):'')+
+        (r.duration!=null&&r.duration!==''?(r.quantity!=null&&r.quantity!==''?' • ':'')+(esc(r.durationLabel||"משך (דק')")+': '+esc(r.duration)):'')+
         '</div>'+
+        (r.challenges?'<div style="margin-top:8px;font-size:13px;color:#8e44ad;">⚠ '+esc(r.challenges)+'</div>':'')+
         (r.notes?'<div style="margin-top:8px;font-size:13px;color:#e67e22;">💬 '+esc(r.notes)+'</div>':'')+
         '</div>';
     });
