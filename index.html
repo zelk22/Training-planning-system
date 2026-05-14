@@ -10173,7 +10173,6 @@ async function loadMonthHistory(year,month){
     tasks.push(loadTripHistory(dateStr).then(trips=>{if(trips.length)result[dateStr]=trips;}));
   }
   await Promise.all(tasks);
-  console.log('[Tasks] loadMonthTaskReports result size:', Object.keys(result).length, 'for', year, month+1);
   return result;
 }
 
@@ -11517,10 +11516,8 @@ async function switchDashTab(tab){
   if(tab==='coverage'){initCoverageWeekSelect();await renderCoverageTab();}
   if(tab==='efficiency')renderEfficiencyTab();
   if(tab==='tasks'){
-    console.log('[Tasks] tab clicked. _monthTaskStatsCache:', Object.keys(_monthTaskStatsCache||{}).length, '_monthHistoryCache:', Object.keys(_monthHistoryCache||{}).length);
-    if(!Object.keys(_monthTaskStatsCache||{}).length&&!Object.keys(_monthHistoryCache||{}).length){
-      console.log('[Tasks] auto-loading dash...');
-      await loadMonthlyDash();
+      if(!Object.keys(_monthTaskStatsCache||{}).length&&!Object.keys(_monthHistoryCache||{}).length){
+          await loadMonthlyDash();
     } else {
       renderTasksTab(_monthTaskStatsCache||{});
     }
@@ -11887,7 +11884,6 @@ async function enhanceMonthlyDashWithTasks(){
   const yr=_monthlyDashDate.getFullYear();
   const mo=_monthlyDashDate.getMonth();
   const taskReports=await loadMonthTaskReports(yr,mo);
-  console.log('[Tasks] loadMonthTaskReports returned:', Object.keys(taskReports).length, 'entries');
   if(Object.keys(taskReports).length>0) console.log('[Tasks] sample:', JSON.stringify(Object.values(taskReports)[0]).slice(0,100));
 
   // Aggregate per instructor per task type
@@ -11947,18 +11943,10 @@ async function enhanceMonthlyDashWithTasks(){
 }
 
 function renderTasksTab(instrTaskStats){
-  console.log('[Tasks] renderTasksTab called, instrTaskStats keys:', Object.keys(instrTaskStats||{}));
-  console.log('[Tasks] _monthHistoryCache days:', Object.keys(_monthHistoryCache||{}).length);
-  console.log('[Tasks] taskDefs:', taskDefs.map(t=>t.id));
   let taskTab=document.getElementById('dashTabTasks');
-  if(!taskTab){console.log('[Tasks] ERROR: dashTabTasks not found!');return;}
-  console.log('[Tasks] dashTabTasks display:', taskTab.style.display);
+  if(!taskTab)return;
 
-  const allNames=Object.keys(instrTaskStats).sort();
-  const allTaskIds=taskDefs.filter(t=>!t.isTrip&&t.requiresSummary).map(t=>t.id);
-  const allTaskIdsWithData=[...new Set([...allTaskIds,...Object.values(instrTaskStats).flatMap(ts=>Object.keys(ts))])];
-
-  // ── TRIP SECTION from instructor table data ────────────────
+  // ── TRIP SECTION (from _monthHistoryCache) ──────────────────
   let tripSection='';
   const tripTaskDefs=taskDefs.filter(t=>t.isTrip);
   const monthTrips=Object.values(_monthHistoryCache||{}).flat();
@@ -11968,8 +11956,7 @@ function renderTasksTab(instrTaskStats){
       monthTrips.forEach(t=>{
         if(!t||!t.name)return;
         if(!byInstr[t.name])byInstr[t.name]={trips:0,lessons:0,minutes:0};
-        const v=byInstr[t.name];
-        v.trips++;
+        const v=byInstr[t.name];v.trips++;
         const dur=(t.route||[]).reduce((s,r)=>s+(r.t||0),0);
         v.lessons+=dur/45;v.minutes+=dur;
       });
@@ -12009,80 +11996,89 @@ function renderTasksTab(instrTaskStats){
     });
   }
 
-  if(!allNames.length&&!tripSection){
+  // ── NON-TRIP SECTIONS (from schedule + task reports) ─────────
+  // Read schedule data for this month to get assignments for ALL non-trip tasks
+  const nonTripDefs=taskDefs.filter(t=>!t.isTrip);
+  if(!nonTripDefs.length&&!tripSection){
     taskTab.innerHTML='<div style="color:#aaa;text-align:center;padding:20px;font-size:13px;">אין נתוני משימות לחודש זה — לחץ "טען נתונים"</div>';
     return;
   }
 
-  // Build a section per task type
-  const sections=allTaskIdsWithData.map(taskId=>{
-    const tDef=taskDefs.find(t=>t.id===taskId)||{id:taskId,label:taskId,icon:'📋',driverFields:false};
-    
-    // Collect all reports for this task across all instructors
-    let totalQty=0,totalDur=0,totalCount=0;
-    const allNotes=[];
-    const instrRows=[];
-    
-    allNames.forEach(name=>{
-      const t=(instrTaskStats[name]||{})[taskId];
-      if(!t)return;
-      totalQty+=t.quantity||0;
-      totalDur+=t.duration||0;
-      totalCount+=t.count||0;
-      if(t.notes&&t.notes.length)t.notes.forEach(n=>{if(n.trim())allNotes.push({instr:name,note:n});});
-
-      // Per-instructor row
-      const driversList=t.drivers&&t.drivers.length
-        ?'<div style="font-size:10px;color:#8e44ad;margin-top:2px;">👤 '+t.drivers.join(', ')+'</div>':'';
-      const noteBadge=t.notes&&t.notes.length
-        ?'<span title="'+t.notes.join(' | ')+'" style="font-size:10px;color:#e67e22;cursor:help;margin-right:4px;">💬'+t.notes.length+'</span>':'';
-      instrRows.push(`<tr style="border-bottom:1px solid #f5f5f5;">
-        <td style="padding:7px 10px;font-weight:bold;font-size:13px;">${name}</td>
-        <td style="padding:7px 10px;text-align:center;font-weight:bold;color:var(--primary);">${t.quantity||'—'}</td>
-        <td style="padding:7px 10px;text-align:center;color:#888;">${t.duration?Math.round(t.duration)+' דק\'':'—'}</td>
-        <td style="padding:7px 10px;font-size:11px;">${noteBadge}${driversList}</td>
-      </tr>`);
+  // Build schedule counts per task per instructor
+  const yr=_monthlyDashDate.getFullYear();
+  const mo=_monthlyDashDate.getMonth();
+  const prefix=`${yr}-${String(mo+1).padStart(2,'0')}`;
+  const allSched=JSON.parse(localStorage.getItem('v100_sched_all')||'{}');
+  const schedByTask={}; // taskId → {instrName → {days:0, minutes:0}}
+  Object.entries(allSched).forEach(([date,entries])=>{
+    if(!date.startsWith(prefix))return;
+    (entries||[]).forEach(e=>{
+      if(!e.task||taskDefs.find(t=>t.id===e.task&&t.isTrip))return;
+      if(!schedByTask[e.task])schedByTask[e.task]={};
+      if(!schedByTask[e.task][e.name])schedByTask[e.task][e.name]={days:0,minutes:0};
+      schedByTask[e.task][e.name].days++;
+      // Add shift hours
+      const sh=e.startTime,en=e.endTime;
+      if(sh&&en){
+        const toMin=t=>parseInt(t.split(':')[0])*60+parseInt(t.split(':')[1]);
+        schedByTask[e.task][e.name].minutes+=Math.max(0,toMin(en)-toMin(sh));
+      }
     });
+  });
 
-    if(!instrRows.length)return'';
+  const nonTripSections=nonTripDefs.map(tDef=>{
+    const schedData=schedByTask[tDef.id]||{};
+    const rptData=instrTaskStats||{};
 
-    const hrs=(totalDur/60).toFixed(1);
-    const notesHtml=allNotes.length
-      ?`<div style="margin-top:10px;border-top:1px solid #eee;padding-top:10px;">
-          <div style="font-size:11px;font-weight:bold;color:#888;margin-bottom:6px;">💬 הערות החודש</div>
-          ${allNotes.map(n=>`<div style="background:#fff8f0;border-radius:6px;padding:6px 10px;margin-bottom:4px;font-size:12px;border-right:3px solid #f39c12;">
-            <b>${n.instr}:</b> ${n.note}
-          </div>`).join('')}
-        </div>`:'';
+    // Merge schedule + report data
+    const instrNames=[...new Set([...Object.keys(schedData),...Object.keys(rptData).filter(n=>(rptData[n]||{})[tDef.id])])].sort();
+    if(!instrNames.length)return'';
 
-    const driversHeader=tDef.driverFields?`<th style="padding:7px 10px;font-size:11px;text-align:right;color:#555;border-bottom:2px solid #dde;">נהגים / הערות</th>`:'<th></th>';
-    const qtyLabel=tDef.summaryFields&&tDef.summaryFields[0]?tDef.summaryFields[0].label:'כמות';
-    const durLabel=tDef.summaryFields&&tDef.summaryFields[1]?tDef.summaryFields[1].label:'משך';
+    const totalDays=Object.values(schedData).reduce((s,v)=>s+v.days,0);
+    const totalMins=Object.values(schedData).reduce((s,v)=>s+v.minutes,0);
+
+    const instrRows=instrNames.map(name=>{
+      const sched=schedData[name]||{days:0,minutes:0};
+      const rpt=(rptData[name]||{})[tDef.id]||null;
+      const daysCell=`<td style="padding:7px 10px;text-align:center;color:#555;">${sched.days} ימים</td>`;
+      const hoursCell=`<td style="padding:7px 10px;text-align:center;color:#888;">${(sched.minutes/60).toFixed(1)} שע'</td>`;
+      const rptCell=rpt
+        ?`<td style="padding:7px 10px;font-size:11px;color:#555;">${rpt.quantity?rpt.quantity+' יח':''}${rpt.duration?' / '+(rpt.duration/60).toFixed(1)+"שע'":''}${rpt.notes&&rpt.notes.length?'<br><small style="color:#e67e22;">💬 '+rpt.notes.join(' | ')+'</small>':''}</td>`
+        :`<td style="padding:7px 10px;font-size:11px;color:#ccc;">—</td>`;
+      const driversCell=tDef.driverFields&&rpt&&rpt.drivers&&rpt.drivers.length
+        ?`<td style="padding:7px 10px;font-size:11px;color:#8e44ad;">👤 ${rpt.drivers.join(', ')}</td>`
+        :tDef.driverFields?'<td style="color:#ccc;padding:7px 10px;">—</td>':'';
+      return`<tr style="border-bottom:1px solid #f5f5f5;">
+        <td style="padding:7px 10px;font-weight:bold;font-size:13px;">${name}</td>
+        ${daysCell}${hoursCell}${rptCell}${driversCell}
+      </tr>`;
+    }).join('');
+
+    const driversHeader=tDef.driverFields?'<th style="padding:7px 10px;font-size:11px;text-align:right;color:#555;border-bottom:2px solid #dde;">נהגים שנבקרו</th>':'';
+    const rptHeader=tDef.requiresSummary?'<th style="padding:7px 10px;font-size:11px;text-align:right;color:#555;border-bottom:2px solid #dde;">דיווח</th>':'<th></th>';
 
     return`<div style="margin-bottom:20px;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:6px;">
         <div style="font-size:15px;font-weight:bold;color:var(--primary);">${tDef.icon||'📋'} ${tDef.label}</div>
         <div style="display:flex;gap:10px;flex-wrap:wrap;">
-          <span style="background:#eaf4fb;color:var(--primary);border-radius:20px;padding:3px 12px;font-size:12px;font-weight:bold;">${totalQty} ${qtyLabel}</span>
-          <span style="background:#f0f0f0;color:#555;border-radius:20px;padding:3px 12px;font-size:12px;">${hrs} שעות</span>
-          ${allNotes.length?`<span style="background:#fff3e0;color:#e67e22;border-radius:20px;padding:3px 12px;font-size:12px;">💬 ${allNotes.length} הערות</span>`:''}
+          <span style="background:#eaf4fb;color:var(--primary);border-radius:20px;padding:3px 12px;font-size:12px;font-weight:bold;">${totalDays} הקצאות</span>
+          <span style="background:#f0f0f0;color:#555;border-radius:20px;padding:3px 12px;font-size:12px;">${(totalMins/60).toFixed(1)} שעות</span>
         </div>
       </div>
       <table style="width:100%;border-collapse:collapse;background:white;border-radius:10px;overflow:hidden;box-shadow:0 1px 6px rgba(0,0,0,.06);">
         <thead><tr style="background:#f0f4f8;">
           <th style="padding:7px 10px;font-size:11px;text-align:right;color:#555;border-bottom:2px solid #dde;">מדריך</th>
-          <th style="padding:7px 10px;font-size:11px;text-align:center;color:#555;border-bottom:2px solid #dde;">${qtyLabel}</th>
-          <th style="padding:7px 10px;font-size:11px;text-align:center;color:#555;border-bottom:2px solid #dde;">${durLabel}</th>
-          ${driversHeader}
+          <th style="padding:7px 10px;font-size:11px;text-align:center;color:#555;border-bottom:2px solid #dde;">ימי הקצאה</th>
+          <th style="padding:7px 10px;font-size:11px;text-align:center;color:#555;border-bottom:2px solid #dde;">שעות</th>
+          ${rptHeader}${driversHeader}
         </tr></thead>
-        <tbody>${instrRows.join('')}</tbody>
+        <tbody>${instrRows}</tbody>
       </table>
-      ${notesHtml}
     </div>`;
   }).filter(Boolean).join('');
 
-  taskTab.innerHTML=tripSection+(sections||'');
-  if(!tripSection&&!sections)taskTab.innerHTML='<div style="color:#aaa;text-align:center;padding:20px;">אין נתוני משימות</div>';
+  taskTab.innerHTML=tripSection+nonTripSections;
+  if(!tripSection&&!nonTripSections)taskTab.innerHTML='<div style="color:#aaa;text-align:center;padding:20px;">אין נתוני משימות</div>';
 }
 
 // Register tasks tab in switchDashTab
