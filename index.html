@@ -11891,10 +11891,17 @@ async function enhanceMonthlyDashWithTasks(){
   Object.values(taskReports).forEach(r=>{
     if(!instrTaskStats[r.instructorName])instrTaskStats[r.instructorName]={};
     const ts=instrTaskStats[r.instructorName];
-    if(!ts[r.taskId])ts[r.taskId]={count:0,quantity:0,duration:0,taskLabel:r.taskLabel||r.taskId};
-    ts[r.taskId].count++;
-    if(r.quantity)ts[r.taskId].quantity+=r.quantity;
-    if(r.duration)ts[r.taskId].duration+=r.duration;
+    if(!ts[r.taskId])ts[r.taskId]={count:0,quantity:0,duration:0,taskLabel:r.taskLabel||r.taskId,notes:[],drivers:[]};
+    const tEntry=ts[r.taskId];
+    tEntry.count++;
+    if(r.quantity)tEntry.quantity+=r.quantity;
+    if(r.duration)tEntry.duration+=r.duration;
+    if(r.notes&&r.notes.trim())tEntry.notes.push(r.notes.trim());
+    if(r.inspectedDrivers&&r.inspectedDrivers.trim()){
+      r.inspectedDrivers.split(',').map(d=>d.trim()).filter(Boolean).forEach(d=>{
+        if(!tEntry.drivers.includes(d))tEntry.drivers.push(d);
+      });
+    }
   });
 
   // Update instructor table - add task columns
