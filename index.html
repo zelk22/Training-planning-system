@@ -12026,9 +12026,19 @@ function renderTasksTab(instrTaskStats){
     });
   });
 
-  const nonTripSections=nonTripDefs.map(tDef=>{
-    const schedData=schedByTask[tDef.id]||{};
+  // Loop over ALL task IDs found in SCHEDULE (not just taskDef IDs)
+  // This handles mismatches between schedule taskIds and taskDef IDs
+  const allSchedTaskIds=[...new Set([
+    ...Object.keys(schedByTask),
+    ...Object.values(instrTaskStats||{}).flatMap(ts=>Object.keys(ts))
+  ])];
+
+  const nonTripSections=allSchedTaskIds.map(taskId=>{
+    const tDef=taskDefs.find(t=>t.id===taskId)||{id:taskId,label:taskId,icon:'📋',driverFields:false,requiresSummary:false};
+    if(tDef.isTrip)return''; // skip trip tasks
+    const schedData=schedByTask[taskId]||{};
     const rptData=instrTaskStats||{};
+    const tDefId=taskId; // use actual taskId for lookups
 
     // Merge schedule + report data
     const instrNames=[...new Set([...Object.keys(schedData),...Object.keys(rptData).filter(n=>(rptData[n]||{})[tDef.id])])].sort();
@@ -12039,7 +12049,7 @@ function renderTasksTab(instrTaskStats){
 
     const instrRows=instrNames.map(name=>{
       const sched=schedData[name]||{days:0,minutes:0};
-      const rpt=(rptData[name]||{})[tDef.id]||null;
+      const rpt=(rptData[name]||{})[tDefId]||null;
       const daysCell=`<td style="padding:7px 10px;text-align:center;color:#555;">${sched.days} ימים</td>`;
       const hoursCell=`<td style="padding:7px 10px;text-align:center;color:#888;">${(sched.minutes/60).toFixed(1)} שע'</td>`;
       const rptCell=rpt
