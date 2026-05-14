@@ -12460,8 +12460,12 @@ async function generateAndActivateDemo(){
     }
 
     // Use actual taskDefs from settings (not hardcoded)
+    // Use system taskDefs; fallback to common defaults if settings empty
     const demoTaskDefs=taskDefs.length>0?[...taskDefs]:[
-      {id:'training',icon:'🚇',label:'קורס מעשי',color:'#2980b9',isTrip:true,requiresSummary:false,summaryFields:[],message:''},
+      {id:'training',icon:'🚇',label:'קורס מעשי',color:'#2980b9',isTrip:true,requiresSummary:false,summaryFields:[],driverFields:false,message:''},
+      {id:'bakara',icon:'🔍',label:'מתקנות, בקרות ופיק',color:'#8e44ad',isTrip:false,requiresSummary:true,driverFields:true,summaryFields:[{type:'quantity',label:'מספר בקרות'},{type:'duration',label:'זמן (דקות)'}],message:''},
+      {id:'driving',icon:'🚌',label:'נהיגה בקו',color:'#27ae60',isTrip:false,requiresSummary:true,driverFields:false,summaryFields:[{type:'quantity',label:'מספר נסיעות'},{type:'duration',label:'זמן (דקות)'}],message:''},
+      {id:'greenline',icon:'🌿',label:'קו ירוק',color:'#2ecc71',isTrip:false,requiresSummary:false,driverFields:false,summaryFields:[],message:''},
     ];
 
     // Assign tasks from actual taskDefs: trip tasks first, then non-trip
