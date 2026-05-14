@@ -2412,21 +2412,14 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
     <!-- KPI row -->
     <div id="monthlyKPIs" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:16px;"></div>
 
-    <!-- Per-instructor table -->
-    <div style="overflow-x:auto;">
+    <!-- Per-instructor table (hidden - data shown in tasks tab) -->
+    <div style="display:none;">
       <table class="mgmt-table" id="monthlyInstrTable" style="width:100%;min-width:500px;">
         <thead><tr>
-          <th>מדריך</th>
-          <th>נסיעות</th>
-          <th>שיעורים</th>
-          <th>שעות נסיעה</th>
-          <th>עיכובים</th>
-          <th>ממוצע עיכוב (דק')</th>
-          <th>ביצוע</th>
+          <th>מדריך</th><th>נסיעות</th><th>שיעורים</th>
+          <th>שעות נסיעה</th><th>עיכובים</th><th>ממוצע עיכוב (דק')</th><th>ביצוע</th>
         </tr></thead>
-        <tbody id="monthlyInstrBody">
-          <tr><td colspan="7" style="text-align:center;color:#aaa;padding:20px;">לחץ "טען נתונים" לצפייה</td></tr>
-        </tbody>
+        <tbody id="monthlyInstrBody"></tbody>
       </table>
     </div>
 
@@ -11947,11 +11940,61 @@ function renderTasksTab(instrTaskStats){
   if(!taskTab)return;
 
   const allNames=Object.keys(instrTaskStats).sort();
-  // Get ALL task IDs from taskDefs (not just ones with data)
   const allTaskIds=taskDefs.filter(t=>!t.isTrip&&t.requiresSummary).map(t=>t.id);
   const allTaskIdsWithData=[...new Set([...allTaskIds,...Object.values(instrTaskStats).flatMap(ts=>Object.keys(ts))])];
 
-  if(!allNames.length){
+  // ── TRIP SECTION from instructor table data ────────────────
+  let tripSection='';
+  const tripTaskDefs=taskDefs.filter(t=>t.isTrip);
+  const monthTrips=Object.values(_monthHistoryCache||{}).flat();
+  if(tripTaskDefs.length&&monthTrips.length){
+    tripTaskDefs.forEach(tDef=>{
+      const byInstr={};
+      monthTrips.forEach(t=>{
+        if(!t||!t.name)return;
+        if(!byInstr[t.name])byInstr[t.name]={trips:0,lessons:0,minutes:0};
+        const v=byInstr[t.name];
+        v.trips++;
+        const dur=(t.route||[]).reduce((s,r)=>s+(r.t||0),0);
+        v.lessons+=dur/45;v.minutes+=dur;
+      });
+      const names=Object.keys(byInstr).sort();
+      if(!names.length)return;
+      const totTrips=names.reduce((s,n)=>s+byInstr[n].trips,0);
+      const totLessons=names.reduce((s,n)=>s+byInstr[n].lessons,0);
+      const totHrs=(names.reduce((s,n)=>s+byInstr[n].minutes,0)/60);
+      const instrRows=names.map(name=>{
+        const v=byInstr[name];
+        return`<tr style="border-bottom:1px solid #f5f5f5;">
+          <td style="padding:7px 10px;font-weight:bold;font-size:13px;">${name}</td>
+          <td style="padding:7px 10px;text-align:center;font-weight:bold;color:var(--primary);">${v.trips}</td>
+          <td style="padding:7px 10px;text-align:center;font-weight:bold;color:var(--secondary);">${v.lessons.toFixed(1)}</td>
+          <td style="padding:7px 10px;text-align:center;color:#888;">${(v.minutes/60).toFixed(1)} שע'</td>
+        </tr>`;
+      }).join('');
+      tripSection+=`<div style="margin-bottom:20px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:6px;">
+          <div style="font-size:15px;font-weight:bold;color:var(--primary);">${tDef.icon||'🚇'} ${tDef.label}</div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            <span style="background:#eaf4fb;color:var(--primary);border-radius:20px;padding:3px 12px;font-size:12px;font-weight:bold;">${totTrips} נסיעות</span>
+            <span style="background:#eaffea;color:#27ae60;border-radius:20px;padding:3px 12px;font-size:12px;font-weight:bold;">${totLessons.toFixed(1)} שיעורים</span>
+            <span style="background:#f0f0f0;color:#555;border-radius:20px;padding:3px 12px;font-size:12px;">${totHrs.toFixed(1)} שעות</span>
+          </div>
+        </div>
+        <table style="width:100%;border-collapse:collapse;background:white;border-radius:10px;overflow:hidden;box-shadow:0 1px 6px rgba(0,0,0,.06);">
+          <thead><tr style="background:#eaf4fb;">
+            <th style="padding:7px 10px;font-size:11px;text-align:right;color:#555;border-bottom:2px solid #c8e0f5;">מדריך</th>
+            <th style="padding:7px 10px;font-size:11px;text-align:center;color:#555;border-bottom:2px solid #c8e0f5;">נסיעות</th>
+            <th style="padding:7px 10px;font-size:11px;text-align:center;color:#555;border-bottom:2px solid #c8e0f5;">שיעורים</th>
+            <th style="padding:7px 10px;font-size:11px;text-align:center;color:#555;border-bottom:2px solid #c8e0f5;">שעות</th>
+          </tr></thead>
+          <tbody>${instrRows}</tbody>
+        </table>
+      </div>`;
+    });
+  }
+
+  if(!allNames.length&&!tripSection){
     taskTab.innerHTML='<div style="color:#aaa;text-align:center;padding:20px;font-size:13px;">אין נתוני משימות לחודש זה — לחץ "טען נתונים"</div>';
     return;
   }
@@ -12023,7 +12066,8 @@ function renderTasksTab(instrTaskStats){
     </div>`;
   }).filter(Boolean).join('');
 
-  taskTab.innerHTML=sections||'<div style="color:#aaa;text-align:center;padding:20px;">אין נתוני משימות</div>';
+  taskTab.innerHTML=tripSection+(sections||'');
+  if(!tripSection&&!sections)taskTab.innerHTML='<div style="color:#aaa;text-align:center;padding:20px;">אין נתוני משימות</div>';
 }
 
 // Register tasks tab in switchDashTab
