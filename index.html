@@ -11952,6 +11952,22 @@ async function renderTasksTab(){
   const prefix=`${yr}-${String(mo+1).padStart(2,'0')}`;
   const daysInMonth=new Date(yr,mo+1,0).getDate();
 
+  // DEBUG: show what's in localStorage
+  const debugKeys=Object.keys(localStorage).filter(k=>k.startsWith('trips_'+prefix)||k.startsWith('taskReports_'+prefix)||k==='v100_sched_all');
+  const schedRaw=localStorage.getItem('v100_sched_all');
+  const schedAll=schedRaw?JSON.parse(schedRaw):{};
+  const schedDates=Object.keys(schedAll).filter(d=>d.startsWith(prefix));
+  const sampleSched=schedDates.length?schedAll[schedDates[0]]:[];
+  
+  taskTab.innerHTML=`<div style="background:#fff3cd;border:1px solid #f0ad4e;border-radius:8px;padding:12px;font-size:12px;direction:ltr;text-align:left;margin-bottom:16px;">
+    <b>DEBUG:</b> prefix=${prefix}, daysInMonth=${daysInMonth}<br>
+    LS keys (trips+reports+sched): ${debugKeys.join(', ')||'NONE'}<br>
+    sched dates for month: ${schedDates.length} (e.g. ${schedDates.slice(0,3).join(', ')})<br>
+    sample sched[0]: ${JSON.stringify(sampleSched&&sampleSched[0]).slice(0,100)}<br>
+    taskDefs: ${taskDefs.map(t=>t.id+':'+t.isTrip).join(', ')}<br>
+    _isDemoMode: ${_isDemoMode()}
+  </div>`;
+
   // 1. Load trips directly from localStorage for this month
   const monthTrips=[];
   for(let d=1;d<=daysInMonth;d++){
@@ -11961,7 +11977,6 @@ async function renderTasksTab(){
       if(raw){const p=JSON.parse(raw);const arr=Array.isArray(p)?p:Object.values(p);monthTrips.push(...arr);}
     }catch(e){}
   }
-  // Fallback: use _monthHistoryCache if available
   if(!monthTrips.length)monthTrips.push(...Object.values(_monthHistoryCache||{}).flat());
 
   // 2. Load task reports directly from localStorage
