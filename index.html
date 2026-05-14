@@ -12458,16 +12458,25 @@ async function generateAndActivateDemo(){
     // Build FULL schedule (all days)
     const fullSched={};
     days.forEach(date=>{
-      fullSched[date]=instrs.map((name,i)=>({
+      // For non-trip instructors: rotate tasks by day so ALL non-trip tasks appear
+      const _dayIdx=days.indexOf(date);
+      fullSched[date]=instrs.map((name,i)=>{
+        let _task=TASKS_BY_INSTR[i];
+        if(!_tripTaskIds.has(_task)&&_nonTripTasks.length>1){
+          // Rotate through all non-trip tasks by day
+          const _nonTripIdx=(i-Math.ceil(instrs.length*0.6)+_dayIdx)%_nonTripTasks.length;
+          _task=_nonTripTasks[Math.abs(_nonTripIdx)];
+        }
+        return({
         id:'ds_'+date.replace(/-/g,'')+'_'+i,
-        name,shift:SHIFTS[Math.floor(_pseudoRand(date+name)*3)],
-        task:TASKS_BY_INSTR[i],
-        startTime:SHIFT_H[SHIFTS[Math.floor(_pseudoRand(date+name)*3)]].s,
-        endTime:SHIFT_H[SHIFTS[Math.floor(_pseudoRand(date+name)*3)]].e,
+        name,shift:SHIFTS[Math.floor(_pseudoRand(date+name+_task)*3)],
+        task:_task,
+        startTime:SHIFT_H[SHIFTS[Math.floor(_pseudoRand(date+name+_task)*3)]].s,
+        endTime:SHIFT_H[SHIFTS[Math.floor(_pseudoRand(date+name+_task)*3)]].e,
         status:STATUSES[Math.floor(_pseudoRand(date+name+'st')*STATUSES.length)],
         note:_pseudoRand(date+name+'n')>0.7?DEMO_NOTES[Math.floor(_pseudoRand(date+name+'nt')*DEMO_NOTES.length)]:'',
         createdAt:Date.now(),submittedBy:name
-      }));
+      });});
     });
 
     let totalTrips=0,totalDelays=0,totalReports=0;
