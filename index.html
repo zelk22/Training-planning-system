@@ -2437,6 +2437,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
       <button onclick="switchDashTab('compare')" id="tabComp" style="width:auto;padding:8px 16px;background:#f0f4f8;color:#555;border:1px solid #dde;border-bottom:none;border-radius:8px 8px 0 0;cursor:pointer;font-size:12px;font-weight:bold;margin-bottom:-2px;">📈 השוואת תקופות</button>
       <button onclick="switchDashTab('coverage')" id="tabCov" style="width:auto;padding:8px 16px;background:#f0f4f8;color:#555;border:1px solid #dde;border-bottom:none;border-radius:8px 8px 0 0;cursor:pointer;font-size:12px;font-weight:bold;margin-bottom:-2px;">📅 כיסוי שיבוץ</button>
       <button onclick="switchDashTab('efficiency')" id="tabEff" style="width:auto;padding:8px 16px;background:#f0f4f8;color:#555;border:1px solid #dde;border-bottom:none;border-radius:8px 8px 0 0;cursor:pointer;font-size:12px;font-weight:bold;margin-bottom:-2px;">⚡ יעילות מסלול</button>
+          <button onclick="switchDashTab('tasks')" id="tabTasks" style="width:auto;padding:8px 16px;background:#f0f4f8;color:#555;border:1px solid #dde;border-bottom:none;border-radius:8px 8px 0 0;cursor:pointer;font-size:12px;font-weight:bold;margin-bottom:-1px;">📋 משימות</button>
     </div>
 
     <!-- TAB: Segment Load Analysis -->
@@ -2502,6 +2503,8 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
         <span style="font-size:13px;color:#666;">יעילות מסלול — שיעורים לשעת נסיעה, מסלולים מבוצעים לעומת מתוכננים</span>
         <button onclick="renderEfficiencyTab()" style="width:auto;padding:6px 12px;background:#e67e22;color:white;border:none;border-radius:7px;cursor:pointer;font-size:11px;font-weight:bold;">🔄 חשב</button>
       </div>
+
+    <div id="dashTabTasks" style="display:none;margin-top:10px;"><div style="color:#aaa;font-size:13px;text-align:center;padding:14px;">לחץ "טען נתונים" לצפייה</div></div>
       <div id="efficiencyBody">
         <div style="color:#aaa;font-size:13px;padding:20px;text-align:center;">לחץ "טען נתונים" ואז "חשב" לצפייה</div>
       </div>
