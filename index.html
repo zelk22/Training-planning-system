@@ -3677,6 +3677,13 @@ function changeDate(delta){
   resubscribeTripsListener();
 
   hidePlannerPreview();
+  // Refresh instructor view if active
+  try{
+    const iv=document.getElementById('instrView');
+    if(iv&&iv.style.display!=='none'){
+      setTimeout(()=>{try{renderInstrTripJournal();}catch(e){}},100);
+    }
+  }catch(e){}
   // Refresh today tasks after date change
   try{
     loadTaskReportsForDate(currentDate).then(()=>renderTodayTasks()).catch(()=>renderTodayTasks());
@@ -3705,7 +3712,15 @@ function resubscribeTripsListener(){
       const parsed=raw?JSON.parse(raw):null;
       trips=parsed?(Array.isArray(parsed)?parsed:Object.values(parsed)).map(t=>{try{return parseTrip(t);}catch(e){return t;}}):[];
     }catch(e){trips=[];}
+    // Also reload instrStatuses for this date
+    try{
+      const stRaw=localStorage.getItem('instrStatus_'+currentDate);
+      if(stRaw)instrStatuses=JSON.parse(stRaw);
+      else instrStatuses={};
+    }catch(e){instrStatuses={};}
     renderLog();renderTimeline();renderCalendar();
+    // Refresh instructor view if active
+    try{if(document.getElementById('instrView')?.style.display!=='none')renderInstrView();}catch(e){}
     return;
   }
   // Live Firebase subscription
@@ -9292,7 +9307,8 @@ function renderInstrTripJournal(){
   }
 
   const nowM=new Date().getHours()*60+new Date().getMinutes();
-  const today=new Date().toISOString().slice(0,10);
+  const today=_localDateStr(new Date());
+  const isToday=(currentDate===today);
 
   const myKey=currentUserName.replace(/[.#$[\]/]/g,'_');
   const mySt=instrStatuses[myKey]||{status:'idle',tripIdx:-1};
@@ -9309,16 +9325,16 @@ function renderInstrTripJournal(){
     const lessons=(t.route.reduce((s,r)=>s+r.t,0)/45).toFixed(1);
     const delayTag=t.delayMin>0?`<span style="color:var(--warning);font-size:11px;"> (+${t.delayMin} דק')</span>`:'';
     const tripStartMin=timeToMin(t.startStr||'00:00');
-    const isStarted=currentDate===today&&tripStartMin<=nowM;
-    const isEnded=currentDate===today&&endMin<=nowM;
+    const isStarted=isToday&&tripStartMin<=nowM;
+    const isEnded=isToday&&endMin<=nowM;
     const isOnThis=mySt.status==='on-trip'&&mySt.tripIdx===tIdx;
     const isOnOther=mySt.status==='on-trip'&&mySt.tripIdx!==tIdx;
 
     // Status column logic
     const _confSet=mySt.confirmedTrips||{};
     const isReturned=!!_confSet[tIdx]||(mySt.status==='returned'&&mySt.tripIdx===tIdx);
-    const tripStarted=currentDate===today&&tripStartMin<=nowM;
-    const tripPast=currentDate===today&&endMin<nowM;
+    const tripStarted=isToday&&tripStartMin<=nowM;
+    const tripPast=isToday&&endMin<nowM;
     const _stl='width:82px;padding:5px 0;border:none;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;';
 
     let statusBtn='';
@@ -11248,6 +11264,15 @@ function toggleAuditLog(){
   _approvalPanelOpen=false;_monthlyDashOpen=false;
   panel.style.display=open?'none':'block';
   if(!open){
+    // Reset tabs — all closed when opening dashboard
+    _activeDashTab=null;
+    ['dashTabSegments','dashTabTimesheet','dashTabCompare','dashTabCoverage','dashTabEfficiency','dashTabTasks'].forEach(id=>{
+      const el=document.getElementById(id);if(el)el.style.display='none';
+    });
+    ['tabSegs','tabTime','tabComp','tabCov','tabEff','tabTasks'].forEach(id=>{
+      const btn=document.getElementById(id);
+      if(btn){btn.style.background='#f0f4f8';btn.style.color='#555';btn.style.border='1px solid #dde';}
+    });
     panel.scrollIntoView({behavior:'smooth',block:'start'});
     renderAuditLog();
   }
@@ -11490,6 +11515,8 @@ function switchToInstructorView(previewName){
 // ══════════════════════════════════════════════════════════════════════
 // DASHBOARD TAB SWITCHER (restored)
 // ══════════════════════════════════════════════════════════════════════
+let _activeDashTab=null; // null = all closed
+
 async function switchDashTab(tab){
   const tabs={
     segments:'dashTabSegments', timesheet:'dashTabTimesheet',
@@ -11500,24 +11527,32 @@ async function switchDashTab(tab){
     segments:'tabSegs', timesheet:'tabTime', compare:'tabComp',
     coverage:'tabCov', efficiency:'tabEff', tasks:'tabTasks'
   };
+
+  // Toggle: same tab clicked = close it
+  const newTab=(_activeDashTab===tab)?null:tab;
+  _activeDashTab=newTab;
+
   Object.entries(tabs).forEach(([k,id])=>{
     const el=document.getElementById(id);
     const btn=document.getElementById(btns[k]);
-    const active=(k===tab);
+    const active=(k===newTab);
     if(el)el.style.display=active?'block':'none';
     if(btn){
       btn.style.background=active?'#2980b9':'#f0f4f8';
       btn.style.color=active?'white':'#555';
       btn.style.border=active?'none':'1px solid #dde';
+      btn.style.borderBottom=active?'none':'1px solid #dde';
     }
   });
-  // Auto-render when switching
-  if(tab==='timesheet')renderTimesheet();
-  if(tab==='segments'&&Object.keys(_monthHistoryCache||{}).length)renderSegmentAnalysis();
-  if(tab==='compare')initCompareSelects();
-  if(tab==='coverage'){initCoverageWeekSelect();await renderCoverageTab();}
-  if(tab==='efficiency')renderEfficiencyTab();
-  if(tab==='tasks'){await renderTasksTab();}
+
+  // Render only when opening (not closing)
+  if(!newTab)return;
+  if(newTab==='timesheet')renderTimesheet();
+  if(newTab==='segments'&&Object.keys(_monthHistoryCache||{}).length)renderSegmentAnalysis();
+  if(newTab==='compare')initCompareSelects();
+  if(newTab==='coverage'){initCoverageWeekSelect();await renderCoverageTab();}
+  if(newTab==='efficiency')renderEfficiencyTab();
+  if(newTab==='tasks'){await renderTasksTab();}
 }
 // ══════════════════════════════════════════════════════════════════════
 // AUDIT LOG — wire to key actions
