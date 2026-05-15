@@ -2079,6 +2079,20 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 
   </div>
 
+  <!-- ══ COVERAGE ALERTS BANNER ══════════════════════════ -->
+
+  <div id="coverageAlertsBanner" style="display:none;margin-bottom:14px;background:#fef9e7;border:1.5px solid #f0c050;border-radius:10px;padding:12px 16px;">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
+      <div>
+        <span style="font-weight:bold;font-size:13px;color:#856404;">⚠️ ימים ללא כיסוי שיבוץ — 7 הימים הקרובים:</span>
+        <div id="coverageAlertsList" style="font-size:12px;color:#856404;margin-top:5px;line-height:1.8;"></div>
+      </div>
+      <button onclick="document.getElementById('coverageAlertsBanner').style.display='none'" style="width:auto;padding:3px 8px;background:none;border:1px solid #f0c050;border-radius:5px;color:#856404;cursor:pointer;font-size:12px;white-space:nowrap;">× סגור</button>
+    </div>
+  </div>
+
+  <!-- ══ APPROVAL PANEL ══════════════════════════════════ -->
+
   <!-- ── SCHEDULE ─────────────────────────────────────── -->
 
   <div class="schedule-section" id="scheduleSection">
@@ -2109,6 +2123,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
       <button onclick="toggleAuditLog()" id="auditLogBtn" style="width:auto !important;display:inline-block;margin:2px;padding:8px 14px;background:#f8f0ff;border:1px solid #9b59b6;color:#9b59b6;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;">🔍 לוג פעולות</button>
       <button onclick="toggleMonthlyDash()" id="monthlyDashBtn" style="width:auto !important;display:inline-block;margin:2px;padding:8px 14px;background:#eaf4fd;border:1px solid var(--secondary);color:var(--secondary);border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;">📊 דשבורד חודשי</button>
       <button onclick="toggleApprovalPanel()" id="approvalToggleBtn" style="width:auto !important;display:inline-block;margin:2px;padding:8px 14px;background:#fef9e7;border:1px solid #f0c050;color:#856404;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;position:relative;">📋 אישור שיבוצים <span id="approvalBadge" style="display:none;background:#e74c3c;color:white;border-radius:10px;padding:1px 5px;font-size:10px;font-weight:bold;margin-right:3px;"></span></button>
+      <button onclick="openSettings()" style="width:auto !important;display:inline-block;margin:2px;padding:8px 14px;background:#f0f4f8;border:1px solid #ddd;color:#555;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;">⚙️ הגדרות</button>
       <button onclick="openDemoPanel()" id="demoBtnMain" style="width:auto !important;display:inline-block;margin:2px;padding:8px 14px;background:#6c3483;color:white;border:none;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;">🎭 מצב דמו</button>
     </div>
 
@@ -2402,9 +2417,6 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
       <button class="btn-add-row" onclick="addPlannerRow()">+ הוסף מדריך</button>
 
       <button class="btn-generate-all" onclick="generateAllPlanned()">⚡ תכנן אוטומטי</button>
-
-      <button onclick="openSettings()" title="הגדרות" style="padding:8px 13px;background:#f0f4f8;border:1px solid #ccc;border-radius:8px;cursor:pointer;font-size:13px;color:#555;width:auto;margin:0;white-space:nowrap;">🔧 הגדרות</button>
-
       <button onclick="openCopyDayModal()" title="העתקת יום" style="padding:8px 13px;background:#f0f4f8;border:1px solid #ccc;border-radius:8px;cursor:pointer;font-size:13px;color:#555;width:auto;margin:0;white-space:nowrap;">📋 העתק יום</button>
 
       <button onclick="exportPDF()" title="יצוא PDF" style="padding:8px 13px;background:#f0f4f8;border:1px solid #ccc;border-radius:8px;cursor:pointer;font-size:13px;color:#555;width:auto;margin:0;white-space:nowrap;">🖨️ PDF</button>
@@ -2466,19 +2478,6 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
   </div>
 </details>
 
-  <!-- ══ COVERAGE ALERTS BANNER ══════════════════════════ -->
-
-  <div id="coverageAlertsBanner" style="display:none;margin-bottom:14px;background:#fef9e7;border:1.5px solid #f0c050;border-radius:10px;padding:12px 16px;">
-    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
-      <div>
-        <span style="font-weight:bold;font-size:13px;color:#856404;">⚠️ ימים ללא כיסוי שיבוץ — 7 הימים הקרובים:</span>
-        <div id="coverageAlertsList" style="font-size:12px;color:#856404;margin-top:5px;line-height:1.8;"></div>
-      </div>
-      <button onclick="document.getElementById('coverageAlertsBanner').style.display='none'" style="width:auto;padding:3px 8px;background:none;border:1px solid #f0c050;border-radius:5px;color:#856404;cursor:pointer;font-size:12px;white-space:nowrap;">× סגור</button>
-    </div>
-  </div>
-
-  <!-- ══ APPROVAL PANEL ══════════════════════════════════ -->
 
   <div class="schedule-section" id="approvalPanel" style="display:none;margin-bottom:18px;">
 
