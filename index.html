@@ -11947,21 +11947,8 @@ async function renderTasksTab(){
   const prefix=`${yr}-${String(mo+1).padStart(2,'0')}`;
   const daysInMonth=new Date(yr,mo+1,0).getDate();
 
-  // DEBUG: show what's in localStorage
-  const debugKeys=Object.keys(localStorage).filter(k=>k.startsWith('trips_'+prefix)||k.startsWith('taskReports_'+prefix)||k==='v100_sched_all');
-  const schedRaw=localStorage.getItem('v100_sched_all');
-  const schedAll=schedRaw?JSON.parse(schedRaw):{};
-  const schedDates=Object.keys(schedAll).filter(d=>d.startsWith(prefix));
-  const sampleSched=schedDates.length?schedAll[schedDates[0]]:[];
-  
-  taskTab.innerHTML=`<div style="background:#fff3cd;border:1px solid #f0ad4e;border-radius:8px;padding:12px;font-size:12px;direction:ltr;text-align:left;margin-bottom:16px;">
-    <b>DEBUG:</b> prefix=${prefix}, daysInMonth=${daysInMonth}<br>
-    LS keys (trips+reports+sched): ${debugKeys.join(', ')||'NONE'}<br>
-    sched dates for month: ${schedDates.length} (e.g. ${schedDates.slice(0,3).join(', ')})<br>
-    sample sched[0]: ${JSON.stringify(sampleSched&&sampleSched[0]).slice(0,100)}<br>
-    taskDefs: ${taskDefs.map(t=>t.id+':'+t.isTrip).join(', ')}<br>
-    _isDemoMode: ${_isDemoMode()}
-  </div>`;
+
+
 
   // 1. Load trips directly from localStorage for this month
   const monthTrips=[];
@@ -12050,7 +12037,7 @@ async function renderTasksTab(){
       const sv=sd[name]||{days:0,minutes:0};
       const rk=taskId+'__'+name;
       const rpt=rptByTaskInstr[rk]||null;
-      const rptCell=rpt?`<td style="font-size:11px;padding:7px 10px;color:#555;">${rpt.qty?rpt.qty+' יח\'':''} ${rpt.dur?(rpt.dur/60).toFixed(1)+"שע'":''}${rpt.notes.length?'<br><small style="color:#e67e22;">💬'+rpt.notes.join(' | ')+'</small>':''}</td>`:`<td style="color:#ccc;padding:7px 10px;text-align:center;">—</td>`;
+      const _q2=rpt&&rpt.qty?String(rpt.qty)+" יח'":"";const _d2=rpt&&rpt.dur?" / "+(rpt.dur/60).toFixed(1)+" שע'":"";const _n2=rpt&&rpt.notes.length?"<br><small style='color:#e67e22'>💬 "+rpt.notes.join(" | ")+"</small>":"";const rptCell=rpt?'<td style="font-size:11px;padding:7px 10px;"><b style="color:var(--primary)">'+_q2+'</b><span style="color:#888">'+_d2+'</span>'+_n2+'</td>':'<td style="color:#ccc;padding:7px 10px;text-align:center;">—</td>';
       const drCell=tDef.driverFields?`<td style="font-size:11px;padding:7px 10px;color:#8e44ad;">${rpt&&rpt.drivers.length?'👤 '+rpt.drivers.join(', '):'—'}</td>`:'';
       return`<tr style="border-bottom:1px solid #f5f5f5;"><td style="padding:7px 10px;font-weight:bold;">${name}</td><td style="text-align:center;padding:7px 10px;color:#555;">${sv.days}</td><td style="text-align:center;padding:7px 10px;color:#888;">${(sv.minutes/60).toFixed(1)} שע'</td>${rptCell}${drCell}</tr>`;
     }).join('');
@@ -12459,9 +12446,14 @@ async function generateAndActivateDemo(){
     const _nonTripTasks=demoTaskDefs.filter(t=>!t.isTrip).map(t=>t.id);
     // All tasks pool for rotation: ensure trip tasks appear multiple times (60% weight)
     const _allDemoTasks=[];
-    const _tripSlots=Math.max(1,Math.round(instrs.length*0.6/_tripTasks.length||1));
-    _tripTasks.forEach(id=>{for(let j=0;j<_tripSlots;j++)_allDemoTasks.push(id);});
+    // Build rotation pool: trip tasks weighted ~60%, non-trip ~40%
+    if(_tripTasks.length){
+      const _slots=Math.max(1,Math.ceil(instrs.length*0.6/_tripTasks.length));
+      _tripTasks.forEach(id=>{for(let j=0;j<_slots;j++)_allDemoTasks.push(id);});
+    }
     _nonTripTasks.forEach(id=>_allDemoTasks.push(id));
+    // Fallback: if no tasks at all, use a generic trip task
+    if(!_allDemoTasks.length)_allDemoTasks.push('training');
     const _tripTaskIds=new Set(_tripTasks);
     // TASKS_BY_INSTR is computed per-day below using rotation
     const TASKS_BY_INSTR=null; // not used — replaced by per-day rotation
@@ -12506,8 +12498,7 @@ async function generateAndActivateDemo(){
       const _dayIdx=days.indexOf(date);
       fullSched[date]=instrs.map((name,i)=>{
         // Each instructor shifts through the task pool by day
-        const _taskIdx=(_dayIdx+i)%_allDemoTasks.length;
-        const _task=_allDemoTasks[_taskIdx];
+        const _task=_allDemoTasks.length?_allDemoTasks[(_dayIdx+i)%_allDemoTasks.length]:'training';
         return({
         id:'ds_'+date.replace(/-/g,'')+'_'+i,
         name,shift:SHIFTS[Math.floor(_pseudoRand(date+name+_task)*3)],
@@ -12564,7 +12555,10 @@ async function generateAndActivateDemo(){
         if(Object.keys(tripMap).length)monthTrips[date]=tripMap;
 
         const rptMap={};
-        instrs.filter((name,i)=>TASKS_BY_INSTR[i]!=='training').forEach(name=>{
+        instrs.filter(name=>{
+          const _e=fullSched[date]?.find(e=>e.name===name);
+          return _e&&!_tripTaskIds.has(_e.task);
+        }).forEach(name=>{
           if(_pseudoRand(date+name+'rp')>0.28){
             const entry=fullSched[date]?.find(e=>e.name===name);
             if(!entry)return;
@@ -12587,7 +12581,8 @@ async function generateAndActivateDemo(){
         instrs.forEach((name,i)=>{
           const k=name.replace(/[.#$[\]/]/g,'_');
           const conf={};
-          if(TASKS_BY_INSTR[i]==='training')[0,1].forEach(tn=>{if(_pseudoRand(date+name+tn+'c')>0.1)conf[tn]=true;});
+          const _se=fullSched[date]?.find(e=>e.name===name);
+          if(_se&&_tripTaskIds.has(_se.task))[0,1].forEach(tn=>{if(_pseudoRand(date+name+tn+'c')>0.1)conf[tn]=true;});
           stMap[k]={name,status:'returned',tripIdx:1,confirmedTrips:conf};
         });
         monthStatuses[date]=stMap;
