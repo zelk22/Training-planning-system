@@ -837,9 +837,9 @@ body.dark-mode .cal-cell:hover{background:#3a4060;}
 
 body.dark-mode .cal-cell.today{background:#1e3a5a;}
 
-.cal-cell.other-month{opacity:.35;}
+.cal-cell.other-month{opacity:.5;}
 
-.cal-cell.past{opacity:.6;}
+.cal-cell.past{opacity:.85;}
 
 .cal-day-num{font-size:12px;font-weight:bold;color:#555;margin-bottom:3px;}
 
@@ -847,13 +847,13 @@ body.dark-mode .cal-day-num{color:#8ab4d8;}
 
 .cal-cell.today .cal-day-num{color:var(--secondary);}
 
-.cal-entry{font-size:10px;border-radius:3px;padding:2px 5px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:white;font-weight:500;}
+.cal-entry{font-size:11px;border-radius:3px;padding:3px 6px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#1a2533;font-weight:600;}
 
-.cal-entry.status-pending{background:#e67e22;}
+.cal-entry.status-pending{background:#e67e22;color:white;}
 
-.cal-entry.status-approved{background:#27ae60;}
+.cal-entry.status-approved{background:#27ae60;color:white;}
 
-.cal-entry.status-rejected{background:#c0392b;opacity:.7;}
+.cal-entry.status-rejected{background:#c0392b;color:white;opacity:.7;}
 
 .cal-entry.shift-morning{border-right:3px solid #f1c40f;}
 
@@ -6973,7 +6973,7 @@ function renderCalendar(){
       const bdr=SHIFT_BORDERS[shiftKey]||'#ccc';
       const lbl=e.name||'';
       const statusIcon={approved:'✅',pending:'⏳',rejected:'❌'}[e.status||'pending']||'❓';
-      return`<div class="cal-entry status-${e.status||'pending'}" style="background:${col};border-right:3px solid ${bdr};font-size:10px;padding:1px 4px;border-radius:3px;margin:1px 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${statusIcon} ${lbl}</div>`;
+      return`<div class="cal-entry status-${e.status||'pending'}" style="background:${col};border-right:3px solid ${bdr};color:#2c3e50;font-size:10px;padding:1px 4px;border-radius:3px;margin:1px 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${statusIcon} ${lbl}</div>`;
     }).join('');
 
     const moreHtml=filtered.length>3?`<div class="cal-more">+${filtered.length-3} עוד</div>`:'';
@@ -9161,8 +9161,8 @@ function openSettings(){
 // ═══════════════════════════════════════════════════════════
 
 // Shift display helpers (supplement existing SHIFT_LABELS)
-if(!window.SHIFT_COLORS) window.SHIFT_COLORS={morning:'#fef9e7',afternoon:'#eaf4fd',evening:'#f3eafb'};
-if(!window.SHIFT_BORDERS) window.SHIFT_BORDERS={morning:'#f0d080',afternoon:'#a8d1f0',evening:'#c8a8e8'};
+if(!window.SHIFT_COLORS) window.SHIFT_COLORS={morning:'#fde8a0',afternoon:'#aed6f1',evening:'#d7bde2'};
+if(!window.SHIFT_BORDERS) window.SHIFT_BORDERS={morning:'#e6a817',afternoon:'#2980b9',evening:'#8e44ad'};
 const SHIFT_COLORS=window.SHIFT_COLORS;
 const SHIFT_BORDERS=window.SHIFT_BORDERS;
 
