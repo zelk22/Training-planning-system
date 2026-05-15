@@ -3422,39 +3422,30 @@ function parseTrip(t){
 }
 
 async function loadFromStorage(){
-
-  // Try Firebase first
-
-  if(window._fbDb){
-
+  // Demo mode or no Firebase: always use localStorage
+  if(_isDemoMode()||!window._fbDb){
     try{
-
-      const snap=await _fbGet(_fbRef(_db,dbPath()));
-
-      trips=snap.exists()?Object.values(snap.val()).map(parseTrip):[];
-
-      renderLog();renderTimeline();
-      renderCalendar();
-      try{renderInstrTripJournal();}catch(e){}
-
+      const raw=localStorage.getItem('trips_'+currentDate);
+      const parsed=raw?JSON.parse(raw):null;
+      trips=parsed?(Array.isArray(parsed)?parsed:Object.values(parsed)).map(t=>{try{return parseTrip(t);}catch(e){return t;}}):[];
     }catch(e){trips=[];}
-
+    // Load instrStatuses for this date
+    try{
+      const stRaw=localStorage.getItem('instrStatus_'+currentDate);
+      instrStatuses=stRaw?JSON.parse(stRaw):{};
+    }catch(e){instrStatuses={};}
+    renderLog();renderTimeline();renderCalendar();
+    try{renderInstrTripJournal();}catch(e){}
     return;
-
   }
 
-  // localStorage fallback
-
+  // Firebase
   try{
-
-    const raw=localStorage.getItem('trips_'+currentDate);
-
-    trips=raw?JSON.parse(raw).map(parseTrip):[];
-
+    const snap=await _fbGet(_fbRef(_db,dbPath()));
+    trips=snap.exists()?Object.values(snap.val()).map(parseTrip):[];
+    renderLog();renderTimeline();renderCalendar();
+    try{renderInstrTripJournal();}catch(e){}
   }catch(e){trips=[];}
-
-  renderLog();renderTimeline();
-
 }
 
 // Fallback: load trips from localStorage when Firebase is unavailable
