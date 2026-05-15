@@ -2496,7 +2496,6 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
         <span style="font-size:13px;color:#666;">יעילות מסלול — שיעורים לשעת נסיעה, מסלולים מבוצעים לעומת מתוכננים</span>
         <button onclick="renderEfficiencyTab()" style="width:auto;padding:6px 12px;background:#e67e22;color:white;border:none;border-radius:7px;cursor:pointer;font-size:11px;font-weight:bold;">🔄 חשב</button>
       </div>
-</div>
       <div id="efficiencyBody">
         <div style="color:#aaa;font-size:13px;padding:20px;text-align:center;">לחץ "טען נתונים" ואז "חשב" לצפייה</div>
       </div>
@@ -12458,17 +12457,14 @@ async function generateAndActivateDemo(){
     // Assign tasks from actual taskDefs: trip tasks first, then non-trip
     const _tripTasks=demoTaskDefs.filter(t=>t.isTrip).map(t=>t.id);
     const _nonTripTasks=demoTaskDefs.filter(t=>!t.isTrip).map(t=>t.id);
-    const _allDemoTasks=[..._tripTasks,..._nonTripTasks];
-    const TASKS_BY_INSTR=instrs.map((_,i)=>{
-      if(!_allDemoTasks.length)return 'training';
-      // 60% trip tasks, rest distributed among non-trip
-      if(i<Math.ceil(instrs.length*0.6)&&_tripTasks.length)
-        return _tripTasks[i%_tripTasks.length];
-      if(_nonTripTasks.length)
-        return _nonTripTasks[(i-Math.ceil(instrs.length*0.6))%_nonTripTasks.length];
-      return _tripTasks[0]||'training';
-    });
+    // All tasks pool for rotation: ensure trip tasks appear multiple times (60% weight)
+    const _allDemoTasks=[];
+    const _tripSlots=Math.max(1,Math.round(instrs.length*0.6/_tripTasks.length||1));
+    _tripTasks.forEach(id=>{for(let j=0;j<_tripSlots;j++)_allDemoTasks.push(id);});
+    _nonTripTasks.forEach(id=>_allDemoTasks.push(id));
     const _tripTaskIds=new Set(_tripTasks);
+    // TASKS_BY_INSTR is computed per-day below using rotation
+    const TASKS_BY_INSTR=null; // not used — replaced by per-day rotation
     const SHIFTS=['morning','afternoon','evening'];
     const SHIFT_H={morning:{s:'06:00',e:'14:30'},afternoon:{s:'14:00',e:'22:00'},evening:{s:'13:30',e:'22:00'}};
     const STATUSES=['approved','approved','approved','approved','approved','pending','rejected'];
@@ -12506,15 +12502,12 @@ async function generateAndActivateDemo(){
     // Build FULL schedule (all days)
     const fullSched={};
     days.forEach(date=>{
-      // For non-trip instructors: rotate tasks by day so ALL non-trip tasks appear
+      // Rotate ALL instructors through ALL tasks by day
       const _dayIdx=days.indexOf(date);
       fullSched[date]=instrs.map((name,i)=>{
-        let _task=TASKS_BY_INSTR[i];
-        if(!_tripTaskIds.has(_task)&&_nonTripTasks.length>1){
-          // Rotate through all non-trip tasks by day
-          const _nonTripIdx=(i-Math.ceil(instrs.length*0.6)+_dayIdx)%_nonTripTasks.length;
-          _task=_nonTripTasks[Math.abs(_nonTripIdx)];
-        }
+        // Each instructor shifts through the task pool by day
+        const _taskIdx=(_dayIdx+i)%_allDemoTasks.length;
+        const _task=_allDemoTasks[_taskIdx];
         return({
         id:'ds_'+date.replace(/-/g,'')+'_'+i,
         name,shift:SHIFTS[Math.floor(_pseudoRand(date+name+_task)*3)],
@@ -12542,7 +12535,10 @@ async function generateAndActivateDemo(){
 
       monthDays.forEach(date=>{
         const tripMap={};
-        const tripInstrs=instrs.filter((_,i)=>_tripTaskIds.has(TASKS_BY_INSTR[i]));
+        const tripInstrs=instrs.filter(name=>{
+            const entry=fullSched[date]?.find(e=>e.name===name);
+            return entry&&_tripTaskIds.has(entry.task);
+          });
         tripInstrs.forEach((name,ti)=>{
           [0,1].forEach(tn=>{
             const entry=fullSched[date]?.find(e=>e.name===name);
