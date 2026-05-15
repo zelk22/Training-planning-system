@@ -12852,9 +12852,14 @@ function toggleDelayFilter(){
         const reason=dc.getAttribute('data-reason')||'';
         if(reason)dc.innerHTML=dc.innerHTML+'<br><small style="color:#888;">'+reason+'</small>';
       }
-      const hasDelay=dc&&dc.textContent.trim(
+      const hasDelay=dc&&dc.textContent.trim().length>0;
+      if(!hasDelay)row.style.display=_delayFilterActive?'none':'';
+    }
+  });
+}
 
 // ══ SCHEDULE BREAKDOWN BY TASK TYPE ══════════════════════════
+
 function _renderMonthSchedBreakdown(yr,mo){
   const wrap=document.getElementById('monthSchedBreakdown');
   if(!wrap)return;
@@ -12899,7 +12904,11 @@ function _renderMonthSchedBreakdown(yr,mo){
         <th style="padding:8px 10px;font-size:11px;text-align:right;color:#555;border-bottom:2px solid #d9c8f5;">משימה</th>
         <th style="padding:8px 10px;font-size:11px;text-align:center;color:#555;border-bottom:2px solid #d9c8f5;">מדריכים</th>
         <th style="padding:8px 10px;font-size:11px;text-align:center;color:#555;border-bottom:2px solid #d9c8f5;">הקצאות</th>
-        <th style="padding:8px 10px;font-size:11px;text-align:right;color:#555;border-bottom
+        <th style="padding:8px 10px;font-size:11px;text-align:right;color:#555;border-bottom:2px solid #d9c8f5;">מדריכים שהוקצו</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+}
 
 // ══ XLSX EXPORT ══════════════════════════════════════════════
 async function exportDashboardXLSX(){
@@ -12974,20 +12983,6 @@ async function exportDashboardXLSX(){
     XLSX.writeFile(wb,'דשבורד_'+label.replace(/ /g,'_')+'.xlsx');
     showToast('✅ קובץ Excel הורד','success');
   }catch(e){console.error(e);showToast('שגיאה ביצוא: '+e.message,'warning');}
-}
-
-:2px solid #d9c8f5;">מדריכים שהוקצו</th>
-      </tr></thead>
-      <tbody>${rows}</tbody>
-    </table>`;
-}
-
-)!=='';
-      row.style.display=hasDelay?'':'none';
-    } else {
-      row.style.display='';
-    }
-  });
 }
 
 </script>
