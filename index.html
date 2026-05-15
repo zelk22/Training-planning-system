@@ -1140,6 +1140,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
   window.addEventListener('load', initFirebase);
 </script>
   
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 
 <body>
@@ -12903,25 +12904,20 @@ function _renderMonthSchedBreakdown(yr,mo){
 // ══ XLSX EXPORT ══════════════════════════════════════════════
 async function exportDashboardXLSX(){
   showToast('⏳ מכין קובץ Excel...','info');
-  // Load SheetJS via script tag (UMD, not ES module)
-  if(!window.XLSX){
-    await new Promise((resolve,reject)=>{
-      const s=document.createElement('script');
-      s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
-      s.onload=resolve;s.onerror=reject;
-      document.head.appendChild(s);
-    }).catch(()=>{});
-  }
   try{
     const XLSX=window.XLSX;
-    if(!XLSX){showToast('שגיאה: ספריית Excel לא נטענה — בדוק חיבור אינטרנט','warning');return;}
+    if(!XLSX){showToast('שגיאה: ספריית Excel לא נטענה','warning');return;}
     const wb=XLSX.utils.book_new();
     const yr=_monthlyDashDate.getFullYear();
     const mo=_monthlyDashDate.getMonth();
     const label=_monthlyDashDate.toLocaleDateString('he-IL',{month:'long',year:'numeric'});
 
-    // Sheet 1: instructors summary
-    const monthData=_monthHistoryCache||{};
+    // Load data if cache is empty
+    let monthData=_monthHistoryCache||{};
+    if(!Object.keys(monthData).length){
+      showToast('⏳ טוען נתונים...','info');
+      try{monthData=await loadMonthHistory(yr,mo);_monthHistoryCache=monthData;}catch(e){}
+    }
     const byInstr={};
     Object.values(monthData).forEach(day=>(day||[]).forEach(t=>{
       if(!byInstr[t.name])byInstr[t.name]={trips:0,lessons:0,minutes:0,delays:0,routeChanges:0};
