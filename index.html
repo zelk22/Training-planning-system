@@ -11168,6 +11168,7 @@ function renderEfficiencyTab(){
           <div style="width:${eff}%;height:100%;background:${effCol};border-radius:4px;"></div>
         </div>
       </td>
+      <td style="text-align:center;font-size:11px;color:${r.delayPct>20?'#e74c3c':'#888'};">${r.delays} <small>(${r.delayPct}%)</small></td>
       <td style="text-align:center;font-size:11px;color:#555;" title="${r.instructors}">${r.instrCount} <small style="color:#aaa;">(${r.instructors.length>30?r.instructors.slice(0,30)+'...':r.instructors})</small></td>
     </tr>`;
   }).join('');
