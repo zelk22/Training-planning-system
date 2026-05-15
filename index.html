@@ -2361,6 +2361,112 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 
   </details>
 
+  <details id="dayPlannerDetails" class="manual-section">
+  <summary>
+    <span class="manual-summary-arrow">▶</span>
+    📅 תכנון יום הדרכה
+    <span style="font-size:12px;font-weight:400;color:#888;margin-right:6px;">(לחץ להרחבה)</span>
+  </summary>
+  <div class="day-planner-section">
+
+    <!-- Toolbar -->
+
+    <div class="planner-toolbar">
+
+      <h3>📅 תכנון יום הדרכה</h3>
+
+      <!-- Date nav -->
+
+      <div class="date-nav">
+
+        <button onclick="changeDate(-1)" style="touch-action:manipulation;">&#8249;</button>
+
+        <input type="date" id="dateSelector" onchange="onDateChange()">
+
+        <button onclick="changeDate(1)">&#8250;</button>
+
+      </div>
+
+      <!-- Gap -->
+
+      <div class="gap-inline">
+
+        <label style="margin:0;">פער בטיחות:</label>
+
+        <input type="number" id="gapV" value="40" min="0" max="120" step="5" title="דקות פער בין מדריכים באותו מקטע">
+
+        <span>דק'</span>
+
+      </div>
+
+      <button class="btn-add-row" onclick="addPlannerRow()">+ הוסף מדריך</button>
+
+      <button class="btn-generate-all" onclick="generateAllPlanned()">⚡ תכנן אוטומטי</button>
+
+      <button onclick="openSettings()" title="הגדרות" style="padding:8px 13px;background:#f0f4f8;border:1px solid #ccc;border-radius:8px;cursor:pointer;font-size:13px;color:#555;width:auto;margin:0;white-space:nowrap;">🔧 הגדרות</button>
+
+      <button onclick="openCopyDayModal()" title="העתקת יום" style="padding:8px 13px;background:#f0f4f8;border:1px solid #ccc;border-radius:8px;cursor:pointer;font-size:13px;color:#555;width:auto;margin:0;white-space:nowrap;">📋 העתק יום</button>
+
+      <button onclick="exportPDF()" title="יצוא PDF" style="padding:8px 13px;background:#f0f4f8;border:1px solid #ccc;border-radius:8px;cursor:pointer;font-size:13px;color:#555;width:auto;margin:0;white-space:nowrap;">🖨️ PDF</button>
+
+      <button onclick="exportCSV()" title="יצוא Excel" style="padding:8px 13px;background:#f0f4f8;border:1px solid #ccc;border-radius:8px;cursor:pointer;font-size:13px;color:#27ae60;width:auto;margin:0;white-space:nowrap;">📊 Excel</button>
+
+    </div>
+
+    <!-- Instructor Table -->
+
+    <div class="planner-table-wrap">
+
+      <table class="planner-table">
+
+        <thead>
+
+          <tr>
+
+            <th style="width:160px;">שם מדריך</th>
+
+            <th style="width:105px;">תחילת משמרת</th>
+
+            <th style="width:105px;">סיום משמרת<br><span style="font-weight:400;font-size:10px;opacity:.7;">אוטומטי +8.5 ש'</span></th>
+
+            <th style="width:105px;">מיקום התחלה</th>
+
+            <th style="width:105px;">מיקום סיום</th>
+
+            <th style="width:80px;">הפסקה<br><span style="font-weight:400;font-size:10px;opacity:.7;">(דק')</span></th>
+
+            <th style="width:90px;">סטטוס</th>
+
+            <th style="width:90px;">מסלול</th>
+
+            <th style="width:36px;"></th>
+
+          </tr>
+
+        </thead>
+
+        <tbody id="plannerBody">
+
+          <tr><td colspan="8" style="text-align:center;padding:24px;color:#aaa;font-size:13px;">
+
+            לחץ <b>"+ הוסף מדריך"</b> כדי להתחיל בתכנון היום
+
+          </td></tr>
+
+        </tbody>
+
+      </table>
+
+    </div>
+
+    <!-- Preview (hidden until generation) -->
+
+    <div class="planner-preview" id="plannerPreview" style="display:none;"></div>
+
+  </div>
+  </div>
+</details>
+
   <!-- ══ COVERAGE ALERTS BANNER ══════════════════════════ -->
 
   <div id="coverageAlertsBanner" style="display:none;margin-bottom:14px;background:#fef9e7;border:1.5px solid #f0c050;border-radius:10px;padding:12px 16px;">
@@ -2537,103 +2643,6 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 
   ══════════════════════════════════════════════════════ -->
 
-  <div class="day-planner-section">
-
-    <!-- Toolbar -->
-
-    <div class="planner-toolbar">
-
-      <h3>📅 תכנון יום הדרכה</h3>
-
-      <!-- Date nav -->
-
-      <div class="date-nav">
-
-        <button onclick="changeDate(-1)" style="touch-action:manipulation;">&#8249;</button>
-
-        <input type="date" id="dateSelector" onchange="onDateChange()">
-
-        <button onclick="changeDate(1)">&#8250;</button>
-
-      </div>
-
-      <!-- Gap -->
-
-      <div class="gap-inline">
-
-        <label style="margin:0;">פער בטיחות:</label>
-
-        <input type="number" id="gapV" value="40" min="0" max="120" step="5" title="דקות פער בין מדריכים באותו מקטע">
-
-        <span>דק'</span>
-
-      </div>
-
-      <button class="btn-add-row" onclick="addPlannerRow()">+ הוסף מדריך</button>
-
-      <button class="btn-generate-all" onclick="generateAllPlanned()">⚡ תכנן אוטומטי</button>
-
-      <button onclick="openSettings()" title="הגדרות" style="padding:8px 13px;background:#f0f4f8;border:1px solid #ccc;border-radius:8px;cursor:pointer;font-size:13px;color:#555;width:auto;margin:0;white-space:nowrap;">🔧 הגדרות</button>
-
-      <button onclick="openCopyDayModal()" title="העתקת יום" style="padding:8px 13px;background:#f0f4f8;border:1px solid #ccc;border-radius:8px;cursor:pointer;font-size:13px;color:#555;width:auto;margin:0;white-space:nowrap;">📋 העתק יום</button>
-
-      <button onclick="exportPDF()" title="יצוא PDF" style="padding:8px 13px;background:#f0f4f8;border:1px solid #ccc;border-radius:8px;cursor:pointer;font-size:13px;color:#555;width:auto;margin:0;white-space:nowrap;">🖨️ PDF</button>
-
-      <button onclick="exportCSV()" title="יצוא Excel" style="padding:8px 13px;background:#f0f4f8;border:1px solid #ccc;border-radius:8px;cursor:pointer;font-size:13px;color:#27ae60;width:auto;margin:0;white-space:nowrap;">📊 Excel</button>
-
-    </div>
-
-    <!-- Instructor Table -->
-
-    <div class="planner-table-wrap">
-
-      <table class="planner-table">
-
-        <thead>
-
-          <tr>
-
-            <th style="width:160px;">שם מדריך</th>
-
-            <th style="width:105px;">תחילת משמרת</th>
-
-            <th style="width:105px;">סיום משמרת<br><span style="font-weight:400;font-size:10px;opacity:.7;">אוטומטי +8.5 ש'</span></th>
-
-            <th style="width:105px;">מיקום התחלה</th>
-
-            <th style="width:105px;">מיקום סיום</th>
-
-            <th style="width:80px;">הפסקה<br><span style="font-weight:400;font-size:10px;opacity:.7;">(דק')</span></th>
-
-            <th style="width:90px;">סטטוס</th>
-
-            <th style="width:90px;">מסלול</th>
-
-            <th style="width:36px;"></th>
-
-          </tr>
-
-        </thead>
-
-        <tbody id="plannerBody">
-
-          <tr><td colspan="8" style="text-align:center;padding:24px;color:#aaa;font-size:13px;">
-
-            לחץ <b>"+ הוסף מדריך"</b> כדי להתחיל בתכנון היום
-
-          </td></tr>
-
-        </tbody>
-
-      </table>
-
-    </div>
-
-    <!-- Preview (hidden until generation) -->
-
-    <div class="planner-preview" id="plannerPreview" style="display:none;"></div>
-
-  </div>
   
 
   <!-- ── TRIP LOG ──────────────────────────────────── -->
@@ -2922,10 +2931,11 @@ function enterApp(role,name){
     const swBtn=document.getElementById('switchViewBtn');
     if(swBtn)swBtn.style.display='inline-block';
 
-    // Sync status badges only (no trips listener for admin — uses loadFromStorage)
+    // Load trips and sync status
     setTimeout(()=>{
+      try{resubscribeTripsListener();}catch(e){}
       try{
-        if(window._fbDb){
+        if(window._fbDb&&!_isDemoMode()){
           _fbRef(_db,statusPath()).on('value',snap=>{
             instrStatuses=snap.exists()?snap.val():{};
             try{renderLog();}catch(e){}
