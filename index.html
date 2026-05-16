@@ -2075,6 +2075,17 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
         <input type="date" id="daySummaryDatePicker" onchange="setDaySummaryDate(this.value)"
           style="width:auto;padding:4px 8px;border:1px solid #ccc;border-radius:6px;font-size:12px;cursor:pointer;">
       </div>
+
+  <div id="coverageAlertsBanner" style="display:none;margin-bottom:14px;background:#fef9e7;border:1.5px solid #f0c050;border-radius:10px;padding:12px 16px;">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
+      <div>
+        <span style="font-weight:bold;font-size:13px;color:#856404;">⚠️ ימים ללא כיסוי שיבוץ — 7 הימים הקרובים:</span>
+        <div id="coverageAlertsList" style="font-size:12px;color:#856404;margin-top:5px;line-height:1.8;"></div>
+      </div>
+      <button onclick="document.getElementById('coverageAlertsBanner').style.display='none'" style="width:auto;padding:3px 8px;background:none;border:1px solid #f0c050;border-radius:5px;color:#856404;cursor:pointer;font-size:12px;white-space:nowrap;">× סגור</button>
+    </div>
+  </div>
+
       <div id="daySummaryContent"></div>
     </div>
 
@@ -2111,6 +2122,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
       <button onclick="toggleMonthlyDash()" id="monthlyDashBtn" style="width:auto !important;display:inline-block;margin:2px;padding:8px 14px;background:#eaf4fd;border:1px solid var(--secondary);color:var(--secondary);border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;">📊 דשבורד חודשי</button>
       <button onclick="toggleApprovalPanel()" id="approvalToggleBtn" style="width:auto !important;display:inline-block;margin:2px;padding:8px 14px;background:#fef9e7;border:1px solid #f0c050;color:#856404;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;position:relative;">📋 אישור שיבוצים <span id="approvalBadge" style="display:none;background:#e74c3c;color:white;border-radius:10px;padding:1px 5px;font-size:10px;font-weight:bold;margin-right:3px;"></span></button>
       <button onclick="openNotesModal()" style="width:auto !important;display:inline-block;margin:2px;padding:8px 14px;background:#fef08a;border:1px solid #eab308;color:#713f12;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;">📌 פתקים</button>
+      <button onclick="openSettings()" style="width:auto !important;display:inline-block;margin:2px;padding:8px 14px;background:#f0f4f8;border:1px solid #ddd;color:#555;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;">⚙️ הגדרות</button>
       <button onclick="openDemoPanel()" id="demoBtnMain" style="width:auto !important;display:inline-block;margin:2px;padding:8px 14px;background:#6c3483;color:white;border:none;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;">🎭 מצב דמו</button>
     </div>
 
@@ -2364,17 +2376,6 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
   </details>
 
   <!-- ══ COVERAGE ALERTS BANNER ══════════════════════════ -->
-
-  <div id="coverageAlertsBanner" style="display:none;margin-bottom:14px;background:#fef9e7;border:1.5px solid #f0c050;border-radius:10px;padding:12px 16px;">
-    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
-      <div>
-        <span style="font-weight:bold;font-size:13px;color:#856404;">⚠️ ימים ללא כיסוי שיבוץ — 7 הימים הקרובים:</span>
-        <div id="coverageAlertsList" style="font-size:12px;color:#856404;margin-top:5px;line-height:1.8;"></div>
-      </div>
-      <button onclick="document.getElementById('coverageAlertsBanner').style.display='none'" style="width:auto;padding:3px 8px;background:none;border:1px solid #f0c050;border-radius:5px;color:#856404;cursor:pointer;font-size:12px;white-space:nowrap;">× סגור</button>
-    </div>
-  </div>
-
   <!-- ══ APPROVAL PANEL ══════════════════════════════════ -->
 
   <div class="schedule-section" id="approvalPanel" style="display:none;margin-bottom:18px;">
@@ -2548,7 +2549,13 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 
   ══════════════════════════════════════════════════════ -->
 
-  <div class="day-planner-section">
+    <details id="dayPlannerDetails" class="manual-section">
+    <summary>
+      <span class="manual-summary-arrow">▶</span>
+      📅 תכנון יום הדרכה
+      <span style="font-size:12px;font-weight:400;color:#888;margin-right:6px;">(לחץ להרחבה)</span>
+    </summary>
+<div class="day-planner-section">
 
     <!-- Toolbar -->
 
@@ -2645,6 +2652,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
     <div class="planner-preview" id="plannerPreview" style="display:none;"></div>
 
   </div>
+  </details>
   
 
   <!-- ── TRIP LOG ──────────────────────────────────── -->
