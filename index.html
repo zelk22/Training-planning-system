@@ -13044,8 +13044,9 @@ function _getNotesForCell(date,isInstructor){
   }catch(e){return[];}
 }
 function openNotesModal(date){
+  console.log('[Notes] openNotesModal called, date=',date);
   const el=document.getElementById('notesModal');
-  if(!el)return;
+  if(!el){console.error('[Notes] notesModal element NOT FOUND');return;}
   const dateInput=document.getElementById('noteDate');
   if(date)dateInput.value=date;
   else if(currentDate)dateInput.value=currentDate;
