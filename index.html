@@ -1140,6 +1140,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
   window.addEventListener('load', initFirebase);
 </script>
   
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 
 <body>
@@ -2439,6 +2440,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
       <button onclick="switchDashTab('timesheet')" id="tabTime" style="width:auto;padding:8px 16px;background:#f0f4f8;color:#555;border:1px solid #dde;border-bottom:none;border-radius:8px 8px 0 0;cursor:pointer;font-size:12px;font-weight:bold;margin-bottom:-2px;">🕐 גיליון נוכחות</button>
       <button onclick="switchDashTab('compare')" id="tabComp" style="width:auto;padding:8px 16px;background:#f0f4f8;color:#555;border:1px solid #dde;border-bottom:none;border-radius:8px 8px 0 0;cursor:pointer;font-size:12px;font-weight:bold;margin-bottom:-2px;">📈 השוואת תקופות</button>
       <button onclick="switchDashTab('coverage')" id="tabCov" style="width:auto;padding:8px 16px;background:#f0f4f8;color:#555;border:1px solid #dde;border-bottom:none;border-radius:8px 8px 0 0;cursor:pointer;font-size:12px;font-weight:bold;margin-bottom:-2px;">📅 כיסוי שיבוץ</button>
+      <button onclick="switchDashTab('tasks')" id="tabTasks" style="width:auto;padding:8px 16px;background:#f0f4f8;color:#555;border:1px solid #dde;border-bottom:none;border-radius:8px 8px 0 0;cursor:pointer;font-size:12px;font-weight:bold;margin-bottom:-1px;">📋 משימות</button>
       <button onclick="switchDashTab('efficiency')" id="tabEff" style="width:auto;padding:8px 16px;background:#f0f4f8;color:#555;border:1px solid #dde;border-bottom:none;border-radius:8px 8px 0 0;cursor:pointer;font-size:12px;font-weight:bold;margin-bottom:-2px;">⚡ יעילות מסלול</button>
     </div>
 
@@ -2513,6 +2515,8 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <!-- dashTabTasks moved to main view -->
 
   </div>
+
+    <div id="dashTabTasks" style="display:none;margin-top:10px;"></div>
 
   <!-- ══ AUDIT LOG ══════════════════════════════════════ -->
 
@@ -3711,6 +3715,7 @@ function resubscribeTripsListener(){
       const parsed=raw?JSON.parse(raw):null;
       trips=parsed?(Array.isArray(parsed)?parsed:Object.values(parsed)).map(t=>{try{return parseTrip(t);}catch(e){return t;}}):[];
     }catch(e){trips=[];}
+    try{const _sr=localStorage.getItem('instrStatus_'+currentDate);instrStatuses=_sr?JSON.parse(_sr):{};}catch(_e){instrStatuses={};}
     renderLog();renderTimeline();renderCalendar();
     return;
   }
@@ -11515,32 +11520,25 @@ function switchToInstructorView(previewName){
 // ══════════════════════════════════════════════════════════════════════
 // DASHBOARD TAB SWITCHER (restored)
 // ══════════════════════════════════════════════════════════════════════
+let _activeDashTab=null;
 async function switchDashTab(tab){
-  const tabs={
-    segments:'dashTabSegments', timesheet:'dashTabTimesheet',
-    compare:'dashTabCompare', coverage:'dashTabCoverage', efficiency:'dashTabEfficiency'
-  };
-  const btns={
-    segments:'tabSegs', timesheet:'tabTime', compare:'tabComp',
-    coverage:'tabCov', efficiency:'tabEff'
-  };
+  const tabs={segments:'dashTabSegments',timesheet:'dashTabTimesheet',compare:'dashTabCompare',coverage:'dashTabCoverage',efficiency:'dashTabEfficiency',tasks:'dashTabTasks'};
+  const btns={segments:'tabSegs',timesheet:'tabTime',compare:'tabComp',coverage:'tabCov',efficiency:'tabEff',tasks:'tabTasks'};
+  const newTab=(_activeDashTab===tab)?null:tab;
+  _activeDashTab=newTab;
   Object.entries(tabs).forEach(([k,id])=>{
-    const el=document.getElementById(id);
-    const btn=document.getElementById(btns[k]);
-    const active=(k===tab);
+    const el=document.getElementById(id);const btn=document.getElementById(btns[k]);
+    const active=(k===newTab);
     if(el)el.style.display=active?'block':'none';
-    if(btn){
-      btn.style.background=active?'#2980b9':'#f0f4f8';
-      btn.style.color=active?'white':'#555';
-      btn.style.border=active?'none':'1px solid #dde';
-    }
+    if(btn){btn.style.background=active?'#2980b9':'#f0f4f8';btn.style.color=active?'white':'#555';btn.style.border=active?'none':'1px solid #dde';}
   });
-  // Auto-render when switching
-  if(tab==='timesheet')renderTimesheet();
-  if(tab==='segments'&&Object.keys(_monthHistoryCache||{}).length)renderSegmentAnalysis();
-  if(tab==='compare')initCompareSelects();
-  if(tab==='coverage'){initCoverageWeekSelect();await renderCoverageTab();}
-  if(tab==='efficiency')renderEfficiencyTab();
+  if(!newTab)return;
+  if(newTab==='timesheet')renderTimesheet();
+  if(newTab==='segments'&&Object.keys(_monthHistoryCache||{}).length)renderSegmentAnalysis();
+  if(newTab==='compare')initCompareSelects();
+  if(newTab==='coverage'){initCoverageWeekSelect();await renderCoverageTab();}
+  if(newTab==='efficiency')renderEfficiencyTab();
+  if(newTab==='tasks'){await renderTasksTab();}
 }
 // ══════════════════════════════════════════════════════════════════════
 // AUDIT LOG — wire to key actions
@@ -12784,7 +12782,11 @@ function toggleDelayFilter(){
         const reason=dc.getAttribute('data-reason')||'';
         if(reason)dc.innerHTML=dc.innerHTML+'<br><small style="color:#888;">'+reason+'</small>';
       }
-      const hasDelay=dc&&dc.textContent.trim(
+      const hasDelay=dc&&dc.textContent.trim().length>0;
+      if(!hasDelay)row.style.display=_delayFilterActive?'none':'';
+    }
+  });
+}
 
 // ══ SCHEDULE BREAKDOWN BY TASK TYPE ══════════════════════════
 function _renderMonthSchedBreakdown(yr,mo){
@@ -12831,9 +12833,94 @@ function _renderMonthSchedBreakdown(yr,mo){
         <th style="padding:8px 10px;font-size:11px;text-align:right;color:#555;border-bottom:2px solid #d9c8f5;">משימה</th>
         <th style="padding:8px 10px;font-size:11px;text-align:center;color:#555;border-bottom:2px solid #d9c8f5;">מדריכים</th>
         <th style="padding:8px 10px;font-size:11px;text-align:center;color:#555;border-bottom:2px solid #d9c8f5;">הקצאות</th>
-        <th style="padding:8px 10px;font-size:11px;text-align:right;color:#555;border-bottom
+        <th style="padding:8px 10px;font-size:11px;text-align:right;color:#555;border-bottom:2px solid #d9c8f5;">מדריכים שהוקצו</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+}
 
 // ══ XLSX EXPORT ══════════════════════════════════════════════
+
+async function renderTasksTab(){
+  const taskTab=document.getElementById('dashTabTasks');
+  if(!taskTab)return;
+  taskTab.innerHTML='<div style="text-align:center;padding:20px;color:#aaa;font-size:13px;">⏳ טוען...</div>';
+  const yr=_monthlyDashDate.getFullYear();
+  const mo=_monthlyDashDate.getMonth();
+  const prefix=`${yr}-${String(mo+1).padStart(2,'0')}`;
+  const daysInMonth=new Date(yr,mo+1,0).getDate();
+  const monthTrips=[];
+  for(let d=1;d<=daysInMonth;d++){
+    const ds=`${prefix}-${String(d).padStart(2,'0')}`;
+    try{const raw=localStorage.getItem('trips_'+ds);if(raw){const p=JSON.parse(raw);const arr=Array.isArray(p)?p:Object.values(p);monthTrips.push(...arr);}}catch(e){}
+  }
+  if(!monthTrips.length)monthTrips.push(...Object.values(_monthHistoryCache||{}).flat());
+  const taskReports={};
+  for(let d=1;d<=daysInMonth;d++){
+    const ds=`${prefix}-${String(d).padStart(2,'0')}`;
+    try{const raw=localStorage.getItem('taskReports_'+ds);if(raw){const obj=JSON.parse(raw);Object.entries(obj).forEach(([k,v])=>{taskReports[`${ds}__${k}`]=v;});}}catch(e){}
+  }
+  const allSched=JSON.parse(localStorage.getItem('v100_sched_all')||'{}');
+  const schedByTask={};
+  Object.entries(allSched).forEach(([date,entries])=>{
+    if(!date.startsWith(prefix))return;
+    (entries||[]).forEach(e=>{
+      if(!e.task||!e.name)return;
+      const tDef=taskDefs.find(t=>t.id===e.task);
+      if(tDef&&tDef.isTrip)return;
+      if(!schedByTask[e.task])schedByTask[e.task]={};
+      if(!schedByTask[e.task][e.name])schedByTask[e.task][e.name]={days:0,minutes:0};
+      schedByTask[e.task][e.name].days++;
+      try{const sh=e.startTime||'';const en=e.endTime||'';if(sh&&en){const tm=t=>parseInt(t.split(':')[0])*60+parseInt(t.split(':')[1]);schedByTask[e.task][e.name].minutes+=Math.max(0,tm(en)-tm(sh));}}catch(ex){}
+    });
+  });
+  const rptByTaskInstr={};
+  Object.values(taskReports).forEach(r=>{
+    if(!r.taskId||!r.instructorName)return;
+    const key=r.taskId+'__'+r.instructorName;
+    if(!rptByTaskInstr[key])rptByTaskInstr[key]={qty:0,dur:0,notes:[],drivers:[]};
+    const e=rptByTaskInstr[key];
+    e.qty+=(r.quantity||0);e.dur+=(r.duration||0);
+    if(r.notes&&r.notes.trim())e.notes.push(r.notes.trim());
+    if(r.inspectedDrivers)r.inspectedDrivers.split(',').map(d=>d.trim()).filter(Boolean).forEach(d=>{if(!e.drivers.includes(d))e.drivers.push(d);});
+  });
+  let html='';
+  const tripTaskDefs=taskDefs.filter(t=>t.isTrip);
+  if(monthTrips.length){
+    (tripTaskDefs.length?tripTaskDefs:[{id:'trip',label:'קורס מעשי',icon:'🚇'}]).forEach(tDef=>{
+      const byInstr={};
+      monthTrips.forEach(t=>{if(!t||!t.name)return;if(!byInstr[t.name])byInstr[t.name]={trips:0,lessons:0,min:0};byInstr[t.name].trips++;const dur=(t.route||[]).reduce((s,r)=>s+(r.t||0),0);byInstr[t.name].lessons+=dur/45;byInstr[t.name].min+=dur;});
+      const names=Object.keys(byInstr).sort();if(!names.length)return;
+      const tot={trips:names.reduce((s,n)=>s+byInstr[n].trips,0),lessons:names.reduce((s,n)=>s+byInstr[n].lessons,0),hrs:names.reduce((s,n)=>s+byInstr[n].min,0)/60};
+      const rows=names.map(n=>`<tr style="border-bottom:1px solid #f5f5f5;"><td style="padding:7px 10px;font-weight:bold;">${n}</td><td style="text-align:center;font-weight:bold;color:var(--primary);">${byInstr[n].trips}</td><td style="text-align:center;color:var(--secondary);">${byInstr[n].lessons.toFixed(1)}</td><td style="text-align:center;color:#888;">${(byInstr[n].min/60).toFixed(1)} שע'</td></tr>`).join('');
+      html+=`<div style="margin-bottom:20px;"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;"><div style="font-size:15px;font-weight:bold;color:var(--primary);">${tDef.icon||'🚇'} ${tDef.label}</div><div style="display:flex;gap:8px;"><span style="background:#eaf4fb;color:var(--primary);border-radius:20px;padding:2px 10px;font-size:12px;font-weight:bold;">${tot.trips} נסיעות</span><span style="background:#eaffea;color:#27ae60;border-radius:20px;padding:2px 10px;font-size:12px;">${tot.lessons.toFixed(1)} שיעורים</span></div></div><table style="width:100%;border-collapse:collapse;background:white;border-radius:10px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.06);"><thead><tr style="background:#eaf4fb;"><th style="padding:7px 10px;font-size:11px;text-align:right;border-bottom:2px solid #c8e0f5;">מדריך</th><th style="padding:7px 10px;font-size:11px;text-align:center;border-bottom:2px solid #c8e0f5;">נסיעות</th><th style="padding:7px 10px;font-size:11px;text-align:center;border-bottom:2px solid #c8e0f5;">שיעורים</th><th style="padding:7px 10px;font-size:11px;text-align:center;border-bottom:2px solid #c8e0f5;">שעות</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+    });
+  }
+  const nonTripTaskIds=[...new Set([...Object.keys(schedByTask),...Object.values(taskReports).map(r=>r.taskId).filter(Boolean)])];
+  nonTripTaskIds.forEach(taskId=>{
+    const tDef=taskDefs.find(t=>t.id===taskId)||{id:taskId,label:taskId,icon:'📋',driverFields:false,requiresSummary:false,isTrip:false};
+    if(tDef.isTrip)return;
+    const sd=schedByTask[taskId]||{};
+    const instrNames=[...new Set([...Object.keys(sd),...Object.values(taskReports).filter(r=>r.taskId===taskId).map(r=>r.instructorName)])].sort();
+    if(!instrNames.length)return;
+    const totDays=Object.values(sd).reduce((s,v)=>s+v.days,0);
+    const totMins=Object.values(sd).reduce((s,v)=>s+v.minutes,0);
+    const rows=instrNames.map(name=>{
+      const sv=sd[name]||{days:0,minutes:0};
+      const rpt=rptByTaskInstr[taskId+'__'+name]||null;
+      const _q=rpt&&rpt.qty?String(rpt.qty)+" יח'":"";
+      const _d=rpt&&rpt.dur?" / "+(rpt.dur/60).toFixed(1)+" שע'":"";
+      const _n=rpt&&rpt.notes.length?"<br><small style='color:#e67e22'>💬 "+rpt.notes.join(" | ")+"</small>":"";
+      const rptCell=rpt?'<td style="font-size:11px;padding:7px 10px;"><b style="color:var(--primary)">'+_q+'</b><span style="color:#888">'+_d+'</span>'+_n+'</td>':'<td style="color:#ccc;padding:7px 10px;text-align:center;">—</td>';
+      const drCell=tDef.driverFields?`<td style="font-size:11px;padding:7px 10px;color:#8e44ad;">${rpt&&rpt.drivers.length?'👤 '+rpt.drivers.join(', '):'—'}</td>`:'';
+      return`<tr style="border-bottom:1px solid #f5f5f5;"><td style="padding:7px 10px;font-weight:bold;">${name}</td><td style="text-align:center;padding:7px 10px;color:#555;">${sv.days}</td><td style="text-align:center;padding:7px 10px;color:#888;">${(sv.minutes/60).toFixed(1)} שע'</td>${rptCell}${drCell}</tr>`;
+    }).join('');
+    const drHead=tDef.driverFields?'<th style="padding:7px 10px;font-size:11px;border-bottom:2px solid #dde;">נהגים</th>':'';
+    html+=`<div style="margin-bottom:20px;"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;"><div style="font-size:15px;font-weight:bold;color:var(--primary);">${tDef.icon||'📋'} ${tDef.label}</div><div style="display:flex;gap:8px;"><span style="background:#eaf4fb;color:var(--primary);border-radius:20px;padding:2px 10px;font-size:12px;">${totDays} ימים</span><span style="background:#f0f0f0;color:#555;border-radius:20px;padding:2px 10px;font-size:12px;">${(totMins/60).toFixed(1)} שע'</span></div></div><table style="width:100%;border-collapse:collapse;background:white;border-radius:10px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.06);"><thead><tr style="background:#f0f4f8;"><th style="padding:7px 10px;font-size:11px;text-align:right;border-bottom:2px solid #dde;">מדריך</th><th style="padding:7px 10px;font-size:11px;text-align:center;border-bottom:2px solid #dde;">ימים</th><th style="padding:7px 10px;font-size:11px;text-align:center;border-bottom:2px solid #dde;">שעות</th><th style="padding:7px 10px;font-size:11px;border-bottom:2px solid #dde;">דיווח</th>${drHead}</tr></thead><tbody>${rows}</tbody></table></div>`;
+  });
+  taskTab.innerHTML=html||'<div style="color:#aaa;text-align:center;padding:20px;">אין נתוני משימות לחודש זה</div>';
+}
+
 async function exportDashboardXLSX(){
   showToast('⏳ מכין קובץ Excel...','info');
   try{
@@ -12902,23 +12989,7 @@ async function exportDashboardXLSX(){
     XLSX.writeFile(wb,'דשבורד_'+label.replace(/ /g,'_')+'.xlsx');
     showToast('✅ קובץ Excel הורד','success');
   }catch(e){console.error(e);showToast('שגיאה ביצוא: '+e.message,'warning');}
-}
-
-:2px solid #d9c8f5;">מדריכים שהוקצו</th>
-      </tr></thead>
-      <tbody>${rows}</tbody>
-    </table>`;
-}
-
-)!=='';
-      row.style.display=hasDelay?'':'none';
-    } else {
-      row.style.display='';
-    }
-  });
-}
-
-</script>
+}</script>
 
 <!-- ══ TASK REPORT MODAL ══════════════════════════════ -->
 <div id="taskReportModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9000;align-items:center;justify-content:center;">
