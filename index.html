@@ -847,7 +847,7 @@ body.dark-mode .cal-day-num{color:#8ab4d8;}
 
 .cal-cell.today .cal-day-num{color:var(--secondary);}
 
-.cal-entry{font-size:10px;border-radius:3px;padding:2px 5px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:white;font-weight:500;}
+.cal-entry{font-size:11px;border-radius:4px;padding:3px 6px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#fff;font-weight:700;text-shadow:0 1px 2px rgba(0,0,0,.3);}
 
 .cal-entry.status-pending{background:#e67e22;}
 
@@ -6976,7 +6976,7 @@ function renderCalendar(){
         const bdr=SHIFT_BORDERS[sk]||'#ccc';
         const ico={approved:'✅',pending:'⏳',rejected:'❌'}[e.status||'pending']||'❓';
         const top=shiftTopMap[sk]||'4px';
-        return `<div style="position:absolute;top:${top};left:3px;right:3px;z-index:1;"><div class="cal-entry" style="background:${col};border-right:3px solid ${bdr};color:#1a2533;font-size:10px;padding:2px 4px;border-radius:3px;font-weight:600;">${ico} ${e.name||''}</div><div style="font-size:8px;color:#aaa;text-align:center;">${shiftLblMap[sk]||''}</div></div>`;
+        return `<div style="position:absolute;top:${top};left:3px;right:3px;z-index:1;"><div class="cal-entry" style="background:${col};border-right:3px solid ${bdr};font-size:10px;padding:2px 4px;border-radius:3px;font-weight:600;">${ico} ${e.name||''}</div><div style="font-size:8px;color:#aaa;text-align:center;">${shiftLblMap[sk]||''}</div></div>`;
       }).join('');
     } else {
       // Manager: sorted pills with dashed separator between shift groups
@@ -9181,8 +9181,8 @@ function openSettings(){
 // ═══════════════════════════════════════════════════════════
 
 // Shift display helpers (supplement existing SHIFT_LABELS)
-if(!window.SHIFT_COLORS) window.SHIFT_COLORS={morning:'#fef9e7',afternoon:'#eaf4fd',evening:'#f3eafb'};
-if(!window.SHIFT_BORDERS) window.SHIFT_BORDERS={morning:'#f0d080',afternoon:'#a8d1f0',evening:'#c8a8e8'};
+if(!window.SHIFT_COLORS) window.SHIFT_COLORS={morning:'#b8860b',afternoon:'#1a6496',evening:'#6c3483'};
+if(!window.SHIFT_BORDERS) window.SHIFT_BORDERS={morning:'#8b6508',afternoon:'#134f72',evening:'#512e6b'};
 const SHIFT_COLORS=window.SHIFT_COLORS;
 const SHIFT_BORDERS=window.SHIFT_BORDERS;
 
@@ -13026,78 +13026,6 @@ async function exportDashboardXLSX(){
     showToast('✅ קובץ Excel הורד','success');
   }catch(e){console.error(e);showToast('שגיאה ביצוא: '+e.message,'warning');}
 }
-// ══ STICKY NOTES ═══════════════════════════════════════════
-function _getNotesKey(yr,mo){
-  const d=_monthlyDashDate||new Date();
-  const _yr=yr!=null?yr:d.getFullYear();
-  const _mo=mo!=null?mo:d.getMonth();
-  return 'cal_notes_'+_yr+'_'+String(_mo+1).padStart(2,'0');
-}
-function _loadNotes(yr,mo){try{return JSON.parse(localStorage.getItem(_getNotesKey(yr,mo))||'[]');}catch(e){return[];}}
-function _saveNotes(notes,yr,mo){localStorage.setItem(_getNotesKey(yr,mo),JSON.stringify(notes));}
-function _getNotesForCell(date,isInstructor){
-  if(!date)return[];
-  try{
-    const d=new Date(date+'T12:00:00');
-    const allNotes=_loadNotes(d.getFullYear(),d.getMonth());
-    return allNotes.filter(n=>n.date===date&&(n.visibility==='all'||(n.visibility==='admin'&&!isInstructor)));
-  }catch(e){return[];}
-}
-function openNotesModal(date){
-  const el=document.getElementById('notesModal');
-  if(!el)return;
-  const dateInput=document.getElementById('noteDate');
-  if(date)dateInput.value=date;
-  else if(currentDate)dateInput.value=currentDate;
-  document.getElementById('noteText').value='';
-  const r=document.querySelector('input[name="noteVisibility"][value="all"]');
-  if(r)r.checked=true;
-  _renderNotesList();
-  el.style.display='flex';
-  setTimeout(()=>{const t=document.getElementById('noteText');if(t)t.focus();},100);
-}
-function closeNotesModal(){
-  const el=document.getElementById('notesModal');
-  if(el)el.style.display='none';
-}
-function saveNote(){
-  const date=document.getElementById('noteDate').value;
-  const text=(document.getElementById('noteText').value||'').trim();
-  const vis=(document.querySelector('input[name="noteVisibility"]:checked')||{}).value||'all';
-  if(!date||!text){showToast('יש להזין תאריך ותוכן לפתק','warning');return;}
-  const d=new Date(date+'T12:00:00');
-  const notes=_loadNotes(d.getFullYear(),d.getMonth());
-  notes.push({id:Date.now(),date,text,visibility:vis});
-  _saveNotes(notes,d.getFullYear(),d.getMonth());
-  showToast('✅ פתק נשמר','success');
-  document.getElementById('noteText').value='';
-  _renderNotesList();
-  renderCalendar();
-}
-function deleteNote(id){
-  const d=_monthlyDashDate||new Date();
-  const notes=_loadNotes(d.getFullYear(),d.getMonth()).filter(n=>n.id!==id);
-  _saveNotes(notes,d.getFullYear(),d.getMonth());
-  _renderNotesList();
-  renderCalendar();
-}
-function _renderNotesList(){
-  const d=_monthlyDashDate||new Date();
-  const notes=_loadNotes(d.getFullYear(),d.getMonth());
-  const listEl=document.getElementById('notesList');
-  const body=document.getElementById('notesListBody');
-  if(!notes.length){if(listEl)listEl.style.display='none';return;}
-  if(listEl)listEl.style.display='block';
-  if(!body)return;
-  body.innerHTML=notes.map(n=>'<div style="display:flex;align-items:start;gap:8px;padding:6px 0;border-bottom:1px solid #f5f5f5;">'
-    +'<div style="flex:1;"><span style="font-size:11px;color:#888;">'+n.date+'</span> '
-    +(n.visibility==='admin'?'<span style="font-size:10px;background:#e0f2fe;color:#0c4a6e;border-radius:10px;padding:1px 6px;">🔒 מנהל</span>':'<span style="font-size:10px;background:#f0fdf4;color:#166534;border-radius:10px;padding:1px 6px;">🌐 כולם</span>')
-    +'<div style="font-size:12px;color:#333;margin-top:2px;">'+n.text+'</div></div>'
-    +'<button onclick="deleteNote('+n.id+')" style="background:none;border:none;color:#e74c3c;cursor:pointer;font-size:14px;padding:2px;">🗑️</button>'
-    +'</div>').join('');
-}
-
-
 // ══ STICKY NOTES ═══════════════════════════════════════════
 function _getNotesKey(yr,mo){
   const d=_monthlyDashDate||new Date();
