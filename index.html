@@ -11397,36 +11397,10 @@ async function exportPDFReport(){
 
   <scr'+'ipt>setTimeout(()=>window.print(),400);<\/sc'+'ript>
 
-<!-- ══ NOTES MODAL ══════════════════════════════════════════ -->
-<div id="notesModal" style="display:none;" onclick="if(event.target===this)closeNotesModal()">
-  <div id="notesModalBox">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-      <h3 style="margin:0;color:var(--primary);">📌 פתק על הלוח</h3>
-      <button onclick="closeNotesModal()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#aaa;">✕</button>
-    </div>
-    <label style="font-size:13px;font-weight:bold;color:#555;display:block;margin-bottom:4px;">📅 תאריך</label>
-    <input type="date" id="noteDate" style="width:100%;padding:8px 10px;border:1.5px solid #ddd;border-radius:8px;font-size:14px;margin-bottom:12px;box-sizing:border-box;direction:ltr;">
-    <label style="font-size:13px;font-weight:bold;color:#555;display:block;margin-bottom:4px;">📝 תוכן הפתק</label>
-    <textarea id="noteText" rows="3" placeholder="כתוב תזכורת, אירוע, הערה..." style="width:100%;padding:8px 10px;border:1.5px solid #ddd;border-radius:8px;font-size:13px;resize:vertical;box-sizing:border-box;margin-bottom:12px;"></textarea>
-    <label style="font-size:13px;font-weight:bold;color:#555;display:block;margin-bottom:8px;">👁️ נראות</label>
-    <div style="display:flex;gap:10px;margin-bottom:16px;">
-      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;">
-        <input type="radio" name="noteVisibility" value="all" checked> 🌐 כולם (מנהל + מדריכים)
-      </label>
-      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;">
-        <input type="radio" name="noteVisibility" value="admin"> 🔒 מנהל בלבד
-      </label>
-    </div>
-    <div style="display:flex;gap:8px;">
-      <button onclick="saveNote()" style="flex:1;padding:10px;background:var(--primary);color:white;border:none;border-radius:8px;font-size:14px;font-weight:bold;cursor:pointer;">💾 שמור פתק</button>
-      <button onclick="closeNotesModal()" style="padding:10px 16px;background:#f0f4f8;color:#555;border:none;border-radius:8px;font-size:14px;cursor:pointer;">ביטול</button>
-    </div>
-    <div id="notesList" style="margin-top:16px;border-top:1px solid #eee;padding-top:12px;display:none;">
-      <div style="font-size:12px;font-weight:bold;color:#888;margin-bottom:8px;">📋 פתקים קיימים לחודש זה</div>
-      <div id="notesListBody"></div>
-    </div>
-  </div>
-</div>
+
+
+
+
 </body></html>`);
   printWin.document.close();
   showToast('📄 פותח דו"ח להדפסה / שמירה כ-PDF','success');
@@ -13044,9 +13018,8 @@ function _getNotesForCell(date,isInstructor){
   }catch(e){return[];}
 }
 function openNotesModal(date){
-  console.log('[Notes] openNotesModal called, date=',date);
   const el=document.getElementById('notesModal');
-  if(!el){console.error('[Notes] notesModal element NOT FOUND');return;}
+  if(!el)return;
   const dateInput=document.getElementById('noteDate');
   if(date)dateInput.value=date;
   else if(currentDate)dateInput.value=currentDate;
@@ -13163,6 +13136,33 @@ function _renderNotesList(){
   </div>
 </div>
 
+
+<!-- ══ NOTES MODAL ══════════════════════════════════════════ -->
+<div id="notesModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:3000;display:none;align-items:center;justify-content:center;" onclick="if(event.target===this)closeNotesModal()">
+  <div style="background:white;border-radius:14px;padding:24px;width:min(95vw,420px);box-shadow:0 10px 40px rgba(0,0,0,.25);direction:rtl;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <h3 style="margin:0;color:var(--primary);">📌 פתק על הלוח</h3>
+      <button onclick="closeNotesModal()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#aaa;">✕</button>
+    </div>
+    <label style="font-size:13px;font-weight:bold;color:#555;display:block;margin-bottom:4px;">📅 תאריך</label>
+    <input type="date" id="noteDate" style="width:100%;padding:8px 10px;border:1.5px solid #ddd;border-radius:8px;font-size:14px;margin-bottom:12px;box-sizing:border-box;direction:ltr;">
+    <label style="font-size:13px;font-weight:bold;color:#555;display:block;margin-bottom:4px;">📝 תוכן הפתק</label>
+    <textarea id="noteText" rows="3" placeholder="כתוב תזכורת, אירוע, הערה..." style="width:100%;padding:8px 10px;border:1.5px solid #ddd;border-radius:8px;font-size:13px;resize:vertical;box-sizing:border-box;margin-bottom:12px;"></textarea>
+    <label style="font-size:13px;font-weight:bold;color:#555;display:block;margin-bottom:8px;">👁️ נראות</label>
+    <div style="display:flex;gap:16px;margin-bottom:16px;">
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;"><input type="radio" name="noteVisibility" value="all" checked> 🌐 כולם</label>
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;"><input type="radio" name="noteVisibility" value="admin"> 🔒 מנהל בלבד</label>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button onclick="saveNote()" style="flex:1;padding:10px;background:var(--primary);color:white;border:none;border-radius:8px;font-size:14px;font-weight:bold;cursor:pointer;">💾 שמור פתק</button>
+      <button onclick="closeNotesModal()" style="padding:10px 16px;background:#f0f4f8;color:#555;border:none;border-radius:8px;font-size:14px;cursor:pointer;">ביטול</button>
+    </div>
+    <div id="notesList" style="margin-top:16px;border-top:1px solid #eee;padding-top:12px;display:none;">
+      <div style="font-size:12px;font-weight:bold;color:#888;margin-bottom:8px;">📋 פתקים קיימים לחודש זה</div>
+      <div id="notesListBody"></div>
+    </div>
+  </div>
+</div>
 </body>
 
 </html>
