@@ -837,9 +837,9 @@ body.dark-mode .cal-cell:hover{background:#3a4060;}
 
 body.dark-mode .cal-cell.today{background:#1e3a5a;}
 
-.cal-cell.other-month{opacity:.5;}
+.cal-cell.other-month{opacity:.35;}
 
-.cal-cell.past{opacity:.85;}
+.cal-cell.past{opacity:.6;}
 
 .cal-day-num{font-size:12px;font-weight:bold;color:#555;margin-bottom:3px;}
 
@@ -847,13 +847,13 @@ body.dark-mode .cal-day-num{color:#8ab4d8;}
 
 .cal-cell.today .cal-day-num{color:var(--secondary);}
 
-.cal-entry{font-size:11px;border-radius:3px;padding:3px 6px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#1a2533;font-weight:600;}
+.cal-entry{font-size:10px;border-radius:3px;padding:2px 5px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:white;font-weight:500;}
 
-.cal-entry.status-pending{background:#e67e22;color:white;}
+.cal-entry.status-pending{background:#e67e22;}
 
-.cal-entry.status-approved{background:#27ae60;color:white;}
+.cal-entry.status-approved{background:#27ae60;}
 
-.cal-entry.status-rejected{background:#c0392b;color:white;opacity:.7;}
+.cal-entry.status-rejected{background:#c0392b;opacity:.7;}
 
 .cal-entry.shift-morning{border-right:3px solid #f1c40f;}
 
@@ -1140,7 +1140,6 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
   window.addEventListener('load', initFirebase);
 </script>
   
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 
 <body>
@@ -2080,20 +2079,6 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 
   </div>
 
-  <!-- ══ COVERAGE ALERTS BANNER ══════════════════════════ -->
-
-  <div id="coverageAlertsBanner" style="display:none;margin-bottom:14px;background:#fef9e7;border:1.5px solid #f0c050;border-radius:10px;padding:12px 16px;">
-    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
-      <div>
-        <span style="font-weight:bold;font-size:13px;color:#856404;">⚠️ ימים ללא כיסוי שיבוץ — 7 הימים הקרובים:</span>
-        <div id="coverageAlertsList" style="font-size:12px;color:#856404;margin-top:5px;line-height:1.8;"></div>
-      </div>
-      <button onclick="document.getElementById('coverageAlertsBanner').style.display='none'" style="width:auto;padding:3px 8px;background:none;border:1px solid #f0c050;border-radius:5px;color:#856404;cursor:pointer;font-size:12px;white-space:nowrap;">× סגור</button>
-    </div>
-  </div>
-
-  <!-- ══ APPROVAL PANEL ══════════════════════════════════ -->
-
   <!-- ── SCHEDULE ─────────────────────────────────────── -->
 
   <div class="schedule-section" id="scheduleSection">
@@ -2124,7 +2109,6 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
       <button onclick="toggleAuditLog()" id="auditLogBtn" style="width:auto !important;display:inline-block;margin:2px;padding:8px 14px;background:#f8f0ff;border:1px solid #9b59b6;color:#9b59b6;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;">🔍 לוג פעולות</button>
       <button onclick="toggleMonthlyDash()" id="monthlyDashBtn" style="width:auto !important;display:inline-block;margin:2px;padding:8px 14px;background:#eaf4fd;border:1px solid var(--secondary);color:var(--secondary);border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;">📊 דשבורד חודשי</button>
       <button onclick="toggleApprovalPanel()" id="approvalToggleBtn" style="width:auto !important;display:inline-block;margin:2px;padding:8px 14px;background:#fef9e7;border:1px solid #f0c050;color:#856404;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;position:relative;">📋 אישור שיבוצים <span id="approvalBadge" style="display:none;background:#e74c3c;color:white;border-radius:10px;padding:1px 5px;font-size:10px;font-weight:bold;margin-right:3px;"></span></button>
-      <button onclick="openSettings()" style="width:auto !important;display:inline-block;margin:2px;padding:8px 14px;background:#f0f4f8;border:1px solid #ddd;color:#555;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;">⚙️ הגדרות</button>
       <button onclick="openDemoPanel()" id="demoBtnMain" style="width:auto !important;display:inline-block;margin:2px;padding:8px 14px;background:#6c3483;color:white;border:none;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;">🎭 מצב דמו</button>
     </div>
 
@@ -2208,8 +2192,8 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
     </div>
 
   </div>
-</div><!-- /weeklySchedModal assign-overlay -->
 
+</div>
 
 
 
@@ -2377,108 +2361,19 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 
   </details>
 
-  <details id="dayPlannerDetails" class="manual-section">
-  <summary>
-    <span class="manual-summary-arrow">▶</span>
-    📅 תכנון יום הדרכה
-    <span style="font-size:12px;font-weight:400;color:#888;margin-right:6px;">(לחץ להרחבה)</span>
-  </summary>
-  <div class="day-planner-section">
+  <!-- ══ COVERAGE ALERTS BANNER ══════════════════════════ -->
 
-    <!-- Toolbar -->
-
-    <div class="planner-toolbar">
-
-      <h3>📅 תכנון יום הדרכה</h3>
-
-      <!-- Date nav -->
-
-      <div class="date-nav">
-
-        <button onclick="changeDate(-1)" style="touch-action:manipulation;">&#8249;</button>
-
-        <input type="date" id="dateSelector" onchange="onDateChange()">
-
-        <button onclick="changeDate(1)">&#8250;</button>
-
+  <div id="coverageAlertsBanner" style="display:none;margin-bottom:14px;background:#fef9e7;border:1.5px solid #f0c050;border-radius:10px;padding:12px 16px;">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
+      <div>
+        <span style="font-weight:bold;font-size:13px;color:#856404;">⚠️ ימים ללא כיסוי שיבוץ — 7 הימים הקרובים:</span>
+        <div id="coverageAlertsList" style="font-size:12px;color:#856404;margin-top:5px;line-height:1.8;"></div>
       </div>
-
-      <!-- Gap -->
-
-      <div class="gap-inline">
-
-        <label style="margin:0;">פער בטיחות:</label>
-
-        <input type="number" id="gapV" value="40" min="0" max="120" step="5" title="דקות פער בין מדריכים באותו מקטע">
-
-        <span>דק'</span>
-
-      </div>
-
-      <button class="btn-add-row" onclick="addPlannerRow()">+ הוסף מדריך</button>
-
-      <button class="btn-generate-all" onclick="generateAllPlanned()">⚡ תכנן אוטומטי</button>
-      <button onclick="openCopyDayModal()" title="העתקת יום" style="padding:8px 13px;background:#f0f4f8;border:1px solid #ccc;border-radius:8px;cursor:pointer;font-size:13px;color:#555;width:auto;margin:0;white-space:nowrap;">📋 העתק יום</button>
-
-      <button onclick="exportPDF()" title="יצוא PDF" style="padding:8px 13px;background:#f0f4f8;border:1px solid #ccc;border-radius:8px;cursor:pointer;font-size:13px;color:#555;width:auto;margin:0;white-space:nowrap;">🖨️ PDF</button>
-
-      <button onclick="exportCSV()" title="יצוא Excel" style="padding:8px 13px;background:#f0f4f8;border:1px solid #ccc;border-radius:8px;cursor:pointer;font-size:13px;color:#27ae60;width:auto;margin:0;white-space:nowrap;">📊 Excel</button>
-
+      <button onclick="document.getElementById('coverageAlertsBanner').style.display='none'" style="width:auto;padding:3px 8px;background:none;border:1px solid #f0c050;border-radius:5px;color:#856404;cursor:pointer;font-size:12px;white-space:nowrap;">× סגור</button>
     </div>
-
-    <!-- Instructor Table -->
-
-    <div class="planner-table-wrap">
-
-      <table class="planner-table">
-
-        <thead>
-
-          <tr>
-
-            <th style="width:160px;">שם מדריך</th>
-
-            <th style="width:105px;">תחילת משמרת</th>
-
-            <th style="width:105px;">סיום משמרת<br><span style="font-weight:400;font-size:10px;opacity:.7;">אוטומטי +8.5 ש'</span></th>
-
-            <th style="width:105px;">מיקום התחלה</th>
-
-            <th style="width:105px;">מיקום סיום</th>
-
-            <th style="width:80px;">הפסקה<br><span style="font-weight:400;font-size:10px;opacity:.7;">(דק')</span></th>
-
-            <th style="width:90px;">סטטוס</th>
-
-            <th style="width:90px;">מסלול</th>
-
-            <th style="width:36px;"></th>
-
-          </tr>
-
-        </thead>
-
-        <tbody id="plannerBody">
-
-          <tr><td colspan="8" style="text-align:center;padding:24px;color:#aaa;font-size:13px;">
-
-            לחץ <b>"+ הוסף מדריך"</b> כדי להתחיל בתכנון היום
-
-          </td></tr>
-
-        </tbody>
-
-      </table>
-
-    </div>
-
-    <!-- Preview (hidden until generation) -->
-
-    <div class="planner-preview" id="plannerPreview" style="display:none;"></div>
-
   </div>
-</details>
 
+  <!-- ══ APPROVAL PANEL ══════════════════════════════════ -->
 
   <div class="schedule-section" id="approvalPanel" style="display:none;margin-bottom:18px;">
 
@@ -2517,14 +2412,24 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
     <!-- KPI row -->
     <div id="monthlyKPIs" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:16px;"></div>
 
-    <!-- Per-instructor table (hidden - data shown in tasks tab) -->
-    <div style="display:none;">
+    <!-- Per-instructor table -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;margin-top:4px;">
+      <div style="font-size:15px;font-weight:bold;color:var(--primary);">🚇 קורס מעשי</div>
+    </div>
+    <div style="overflow-x:auto;">
       <table class="mgmt-table" id="monthlyInstrTable" style="width:100%;min-width:500px;">
         <thead><tr>
-          <th>מדריך</th><th>נסיעות</th><th>שיעורים</th>
-          <th>שעות נסיעה</th><th>עיכובים</th><th>ממוצע עיכוב (דק')</th><th>ביצוע</th>
+          <th>מדריך</th>
+          <th>נסיעות</th>
+          <th>שיעורים</th>
+          <th>שעות נסיעה</th>
+          <th>עיכובים</th>
+          <th>ממוצע עיכוב (דק')</th>
+          <th>ביצוע</th>
         </tr></thead>
-        <tbody id="monthlyInstrBody"></tbody>
+        <tbody id="monthlyInstrBody">
+          <tr><td colspan="7" style="text-align:center;color:#aaa;padding:20px;">לחץ "טען נתונים" לצפייה</td></tr>
+        </tbody>
       </table>
     </div>
 
@@ -2535,7 +2440,6 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
       <button onclick="switchDashTab('compare')" id="tabComp" style="width:auto;padding:8px 16px;background:#f0f4f8;color:#555;border:1px solid #dde;border-bottom:none;border-radius:8px 8px 0 0;cursor:pointer;font-size:12px;font-weight:bold;margin-bottom:-2px;">📈 השוואת תקופות</button>
       <button onclick="switchDashTab('coverage')" id="tabCov" style="width:auto;padding:8px 16px;background:#f0f4f8;color:#555;border:1px solid #dde;border-bottom:none;border-radius:8px 8px 0 0;cursor:pointer;font-size:12px;font-weight:bold;margin-bottom:-2px;">📅 כיסוי שיבוץ</button>
       <button onclick="switchDashTab('efficiency')" id="tabEff" style="width:auto;padding:8px 16px;background:#f0f4f8;color:#555;border:1px solid #dde;border-bottom:none;border-radius:8px 8px 0 0;cursor:pointer;font-size:12px;font-weight:bold;margin-bottom:-2px;">⚡ יעילות מסלול</button>
-          <button onclick="switchDashTab('tasks')" id="tabTasks" style="width:auto;padding:8px 16px;background:#f0f4f8;color:#555;border:1px solid #dde;border-bottom:none;border-radius:8px 8px 0 0;cursor:pointer;font-size:12px;font-weight:bold;margin-bottom:-1px;">📋 משימות</button>
     </div>
 
     <!-- TAB: Segment Load Analysis -->
@@ -2606,10 +2510,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
       </div>
     </div>
 
-
-    <div id="dashTabTasks" style="display:none;margin-top:10px;"><div style="color:#aaa;font-size:13px;text-align:center;padding:14px;">לחץ "טען נתונים" לצפייה</div>
-
-
+<!-- dashTabTasks moved to main view -->
 
   </div>
 
@@ -2637,13 +2538,108 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
       </table>
     </div>
   </div>
-  </div><!-- /monthlyDashPanel -->
-
 
   <!-- ── DAY PLANNER — PRIMARY
 
   ══════════════════════════════════════════════════════ -->
 
+  <div class="day-planner-section">
+
+    <!-- Toolbar -->
+
+    <div class="planner-toolbar">
+
+      <h3>📅 תכנון יום הדרכה</h3>
+
+      <!-- Date nav -->
+
+      <div class="date-nav">
+
+        <button onclick="changeDate(-1)" style="touch-action:manipulation;">&#8249;</button>
+
+        <input type="date" id="dateSelector" onchange="onDateChange()">
+
+        <button onclick="changeDate(1)">&#8250;</button>
+
+      </div>
+
+      <!-- Gap -->
+
+      <div class="gap-inline">
+
+        <label style="margin:0;">פער בטיחות:</label>
+
+        <input type="number" id="gapV" value="40" min="0" max="120" step="5" title="דקות פער בין מדריכים באותו מקטע">
+
+        <span>דק'</span>
+
+      </div>
+
+      <button class="btn-add-row" onclick="addPlannerRow()">+ הוסף מדריך</button>
+
+      <button class="btn-generate-all" onclick="generateAllPlanned()">⚡ תכנן אוטומטי</button>
+
+      <button onclick="openSettings()" title="הגדרות" style="padding:8px 13px;background:#f0f4f8;border:1px solid #ccc;border-radius:8px;cursor:pointer;font-size:13px;color:#555;width:auto;margin:0;white-space:nowrap;">🔧 הגדרות</button>
+
+      <button onclick="openCopyDayModal()" title="העתקת יום" style="padding:8px 13px;background:#f0f4f8;border:1px solid #ccc;border-radius:8px;cursor:pointer;font-size:13px;color:#555;width:auto;margin:0;white-space:nowrap;">📋 העתק יום</button>
+
+      <button onclick="exportPDF()" title="יצוא PDF" style="padding:8px 13px;background:#f0f4f8;border:1px solid #ccc;border-radius:8px;cursor:pointer;font-size:13px;color:#555;width:auto;margin:0;white-space:nowrap;">🖨️ PDF</button>
+
+      <button onclick="exportCSV()" title="יצוא Excel" style="padding:8px 13px;background:#f0f4f8;border:1px solid #ccc;border-radius:8px;cursor:pointer;font-size:13px;color:#27ae60;width:auto;margin:0;white-space:nowrap;">📊 Excel</button>
+
+    </div>
+
+    <!-- Instructor Table -->
+
+    <div class="planner-table-wrap">
+
+      <table class="planner-table">
+
+        <thead>
+
+          <tr>
+
+            <th style="width:160px;">שם מדריך</th>
+
+            <th style="width:105px;">תחילת משמרת</th>
+
+            <th style="width:105px;">סיום משמרת<br><span style="font-weight:400;font-size:10px;opacity:.7;">אוטומטי +8.5 ש'</span></th>
+
+            <th style="width:105px;">מיקום התחלה</th>
+
+            <th style="width:105px;">מיקום סיום</th>
+
+            <th style="width:80px;">הפסקה<br><span style="font-weight:400;font-size:10px;opacity:.7;">(דק')</span></th>
+
+            <th style="width:90px;">סטטוס</th>
+
+            <th style="width:90px;">מסלול</th>
+
+            <th style="width:36px;"></th>
+
+          </tr>
+
+        </thead>
+
+        <tbody id="plannerBody">
+
+          <tr><td colspan="8" style="text-align:center;padding:24px;color:#aaa;font-size:13px;">
+
+            לחץ <b>"+ הוסף מדריך"</b> כדי להתחיל בתכנון היום
+
+          </td></tr>
+
+        </tbody>
+
+      </table>
+
+    </div>
+
+    <!-- Preview (hidden until generation) -->
+
+    <div class="planner-preview" id="plannerPreview" style="display:none;"></div>
+
+  </div>
   
 
   <!-- ── TRIP LOG ──────────────────────────────────── -->
@@ -2932,11 +2928,10 @@ function enterApp(role,name){
     const swBtn=document.getElementById('switchViewBtn');
     if(swBtn)swBtn.style.display='inline-block';
 
-    // Load trips and sync status
+    // Sync status badges only (no trips listener for admin — uses loadFromStorage)
     setTimeout(()=>{
-      try{resubscribeTripsListener();}catch(e){}
       try{
-        if(window._fbDb&&!_isDemoMode()){
+        if(window._fbDb){
           _fbRef(_db,statusPath()).on('value',snap=>{
             instrStatuses=snap.exists()?snap.val():{};
             try{renderLog();}catch(e){}
@@ -3433,30 +3428,39 @@ function parseTrip(t){
 }
 
 async function loadFromStorage(){
-  // Demo mode or no Firebase: always use localStorage
-  if(_isDemoMode()||!window._fbDb){
+
+  // Try Firebase first
+
+  if(window._fbDb){
+
     try{
-      const raw=localStorage.getItem('trips_'+currentDate);
-      const parsed=raw?JSON.parse(raw):null;
-      trips=parsed?(Array.isArray(parsed)?parsed:Object.values(parsed)).map(t=>{try{return parseTrip(t);}catch(e){return t;}}):[];
+
+      const snap=await _fbGet(_fbRef(_db,dbPath()));
+
+      trips=snap.exists()?Object.values(snap.val()).map(parseTrip):[];
+
+      renderLog();renderTimeline();
+      renderCalendar();
+      try{renderInstrTripJournal();}catch(e){}
+
     }catch(e){trips=[];}
-    // Load instrStatuses for this date
-    try{
-      const stRaw=localStorage.getItem('instrStatus_'+currentDate);
-      instrStatuses=stRaw?JSON.parse(stRaw):{};
-    }catch(e){instrStatuses={};}
-    renderLog();renderTimeline();renderCalendar();
-    try{renderInstrTripJournal();}catch(e){}
+
     return;
+
   }
 
-  // Firebase
+  // localStorage fallback
+
   try{
-    const snap=await _fbGet(_fbRef(_db,dbPath()));
-    trips=snap.exists()?Object.values(snap.val()).map(parseTrip):[];
-    renderLog();renderTimeline();renderCalendar();
-    try{renderInstrTripJournal();}catch(e){}
+
+    const raw=localStorage.getItem('trips_'+currentDate);
+
+    trips=raw?JSON.parse(raw).map(parseTrip):[];
+
   }catch(e){trips=[];}
+
+  renderLog();renderTimeline();
+
 }
 
 // Fallback: load trips from localStorage when Firebase is unavailable
@@ -3679,13 +3683,6 @@ function changeDate(delta){
   resubscribeTripsListener();
 
   hidePlannerPreview();
-  // Refresh instructor view if active
-  try{
-    const iv=document.getElementById('instrView');
-    if(iv&&iv.style.display!=='none'){
-      setTimeout(()=>{try{renderInstrTripJournal();}catch(e){}},100);
-    }
-  }catch(e){}
   // Refresh today tasks after date change
   try{
     loadTaskReportsForDate(currentDate).then(()=>renderTodayTasks()).catch(()=>renderTodayTasks());
@@ -3714,15 +3711,7 @@ function resubscribeTripsListener(){
       const parsed=raw?JSON.parse(raw):null;
       trips=parsed?(Array.isArray(parsed)?parsed:Object.values(parsed)).map(t=>{try{return parseTrip(t);}catch(e){return t;}}):[];
     }catch(e){trips=[];}
-    // Also reload instrStatuses for this date
-    try{
-      const stRaw=localStorage.getItem('instrStatus_'+currentDate);
-      if(stRaw)instrStatuses=JSON.parse(stRaw);
-      else instrStatuses={};
-    }catch(e){instrStatuses={};}
     renderLog();renderTimeline();renderCalendar();
-    // Refresh instructor view if active
-    try{if(document.getElementById('instrView')?.style.display!=='none')renderInstrView();}catch(e){}
     return;
   }
   // Live Firebase subscription
@@ -6961,27 +6950,47 @@ function renderCalendar(){
     const entries=schedData[cell.date]||[];
     const filtered=forInstructor?entries.filter(e=>e.name===currentUserName):entries;
 
-    // Compute all needed vars from cell.date
+    // Sort by shift: morning=0, afternoon=1, evening=2
+    const _so={morning:0,afternoon:1,evening:2};
+    const _sorted=[...filtered].sort((a,b)=>(_so[a.shift||'morning']||0)-(_so[b.shift||'morning']||0));
+
     const cellD=new Date(cell.date+'T12:00:00');
     const _isToday=cell.date===today;
     const _isPast=cell.date<today;
     const _dayNum=cellD.getDate();
 
-    // Build entry pills
-    const _entryHtml=filtered.slice(0,3).map(e=>{
-      const shiftKey=e.shift||'morning';
-      const col=SHIFT_COLORS[shiftKey]||'#eee';
-      const bdr=SHIFT_BORDERS[shiftKey]||'#ccc';
-      const lbl=e.name||'';
-      const statusIcon={approved:'✅',pending:'⏳',rejected:'❌'}[e.status||'pending']||'❓';
-      return`<div class="cal-entry status-${e.status||'pending'}" style="background:${col};border-right:3px solid ${bdr};color:#2c3e50;font-size:10px;padding:1px 4px;border-radius:3px;margin:1px 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${statusIcon} ${lbl}</div>`;
-    }).join('');
+    let _entryHtml='';
+    if(forInstructor&&_sorted.length>=1){
+      // Instructor: position entry vertically by shift
+      const shiftTopMap={morning:'4px',afternoon:'28%',evening:'55%'};
+      const shiftLblMap={morning:'🌅 בוקר',afternoon:'☀️ צהריים',evening:'🌙 ערב'};
+      _entryHtml=_sorted.map(e=>{
+        const sk=e.shift||'morning';
+        const col=SHIFT_COLORS[sk]||'#eee';
+        const bdr=SHIFT_BORDERS[sk]||'#ccc';
+        const ico={approved:'✅',pending:'⏳',rejected:'❌'}[e.status||'pending']||'❓';
+        const top=shiftTopMap[sk]||'4px';
+        return `<div style="position:absolute;top:${top};left:3px;right:3px;z-index:1;"><div class="cal-entry" style="background:${col};border-right:3px solid ${bdr};color:#1a2533;font-size:10px;padding:2px 4px;border-radius:3px;font-weight:600;">${ico} ${e.name||''}</div><div style="font-size:8px;color:#aaa;text-align:center;">${shiftLblMap[sk]||''}</div></div>`;
+      }).join('');
+    } else {
+      // Manager: sorted pills with dashed separator between shift groups
+      let _lastShift=null;
+      _entryHtml=_sorted.slice(0,4).map(e=>{
+        const sk=e.shift||'morning';
+        const col=SHIFT_COLORS[sk]||'#eee';
+        const bdr=SHIFT_BORDERS[sk]||'#ccc';
+        const ico={approved:'✅',pending:'⏳',rejected:'❌'}[e.status||'pending']||'❓';
+        const sep=(_lastShift!==null&&_lastShift!==sk)?'<div style="border-top:1px dashed #dde;margin:2px 0;"></div>':'';
+        _lastShift=sk;
+        return sep+`<div class="cal-entry status-${e.status||'pending'}" style="background:${col};border-right:3px solid ${bdr};color:#1a2533;font-size:10px;padding:1px 4px;border-radius:3px;margin:1px 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${ico} ${e.name||''}</div>`;
+      }).join('');
+    }
 
-    const moreHtml=filtered.length>3?`<div class="cal-more">+${filtered.length-3} עוד</div>`:'';
+    const moreHtml=_sorted.length>4?`<div class="cal-more">+${_sorted.length-4} עוד</div>`:'';
     const cellClass=['cal-cell',cell.otherMonth?'other-month':'',_isPast&&!_isToday?'past':'',_isToday?'today':''].filter(Boolean).join(' ');
+    const posStyle=forInstructor&&_sorted.length>=1?'position:relative;min-height:90px;':'';
     const canClick=!cell.otherMonth;
-
-    return`<div class="${cellClass}" ${canClick?`onclick="openSchedModal('${cell.date}')"`:''}><div class="cal-day-num">${cell.otherMonth?'':_dayNum}</div>${_entryHtml}${moreHtml}</div>`;
+    return`<div class="${cellClass}" style="${posStyle}" ${canClick?`onclick="openSchedModal('${cell.date}')"`:''}><div class="cal-day-num">${cell.otherMonth?'':_dayNum}</div>${_entryHtml}${moreHtml}</div>`;
   }
 
   const managerHtml=cells.map(c=>buildCell(c,false)).join('');
@@ -9162,8 +9171,8 @@ function openSettings(){
 // ═══════════════════════════════════════════════════════════
 
 // Shift display helpers (supplement existing SHIFT_LABELS)
-if(!window.SHIFT_COLORS) window.SHIFT_COLORS={morning:'#fde8a0',afternoon:'#aed6f1',evening:'#d7bde2'};
-if(!window.SHIFT_BORDERS) window.SHIFT_BORDERS={morning:'#e6a817',afternoon:'#2980b9',evening:'#8e44ad'};
+if(!window.SHIFT_COLORS) window.SHIFT_COLORS={morning:'#fef9e7',afternoon:'#eaf4fd',evening:'#f3eafb'};
+if(!window.SHIFT_BORDERS) window.SHIFT_BORDERS={morning:'#f0d080',afternoon:'#a8d1f0',evening:'#c8a8e8'};
 const SHIFT_COLORS=window.SHIFT_COLORS;
 const SHIFT_BORDERS=window.SHIFT_BORDERS;
 
@@ -9309,8 +9318,7 @@ function renderInstrTripJournal(){
   }
 
   const nowM=new Date().getHours()*60+new Date().getMinutes();
-  const today=_localDateStr(new Date());
-  const isToday=(currentDate===today);
+  const today=new Date().toISOString().slice(0,10);
 
   const myKey=currentUserName.replace(/[.#$[\]/]/g,'_');
   const mySt=instrStatuses[myKey]||{status:'idle',tripIdx:-1};
@@ -9327,16 +9335,16 @@ function renderInstrTripJournal(){
     const lessons=(t.route.reduce((s,r)=>s+r.t,0)/45).toFixed(1);
     const delayTag=t.delayMin>0?`<span style="color:var(--warning);font-size:11px;"> (+${t.delayMin} דק')</span>`:'';
     const tripStartMin=timeToMin(t.startStr||'00:00');
-    const isStarted=isToday&&tripStartMin<=nowM;
-    const isEnded=isToday&&endMin<=nowM;
+    const isStarted=currentDate===today&&tripStartMin<=nowM;
+    const isEnded=currentDate===today&&endMin<=nowM;
     const isOnThis=mySt.status==='on-trip'&&mySt.tripIdx===tIdx;
     const isOnOther=mySt.status==='on-trip'&&mySt.tripIdx!==tIdx;
 
     // Status column logic
     const _confSet=mySt.confirmedTrips||{};
     const isReturned=!!_confSet[tIdx]||(mySt.status==='returned'&&mySt.tripIdx===tIdx);
-    const tripStarted=isToday&&tripStartMin<=nowM;
-    const tripPast=isToday&&endMin<nowM;
+    const tripStarted=currentDate===today&&tripStartMin<=nowM;
+    const tripPast=currentDate===today&&endMin<nowM;
     const _stl='width:82px;padding:5px 0;border:none;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;';
 
     let statusBtn='';
@@ -10479,7 +10487,7 @@ async function loadMonthlyDash(){
 
   // Refresh current active tab
   try{
-    const activePanels=['dashTabSegments','dashTabTimesheet','dashTabCompare','dashTabCoverage','dashTabEfficiency','dashTabTasks'];
+    const activePanels=['dashTabSegments','dashTabTimesheet','dashTabCompare','dashTabCoverage','dashTabEfficiency'];
     const activeTab=activePanels.find(id=>{const el=document.getElementById(id);return el&&el.style.display!=='none';});
     if(activeTab){
       const tabKey=activeTab.replace('dashTab','').toLowerCase();
@@ -11186,7 +11194,6 @@ function renderEfficiencyTab(){
           <div style="width:${eff}%;height:100%;background:${effCol};border-radius:4px;"></div>
         </div>
       </td>
-      <td style="text-align:center;font-size:11px;color:${r.delayPct>20?'#e74c3c':'#888'};">${r.delays} <small>(${r.delayPct}%)</small></td>
       <td style="text-align:center;font-size:11px;color:#555;" title="${r.instructors}">${r.instrCount} <small style="color:#aaa;">(${r.instructors.length>30?r.instructors.slice(0,30)+'...':r.instructors})</small></td>
     </tr>`;
   }).join('');
@@ -11266,15 +11273,6 @@ function toggleAuditLog(){
   _approvalPanelOpen=false;_monthlyDashOpen=false;
   panel.style.display=open?'none':'block';
   if(!open){
-    // Reset tabs — all closed when opening dashboard
-    _activeDashTab=null;
-    ['dashTabSegments','dashTabTimesheet','dashTabCompare','dashTabCoverage','dashTabEfficiency','dashTabTasks'].forEach(id=>{
-      const el=document.getElementById(id);if(el)el.style.display='none';
-    });
-    ['tabSegs','tabTime','tabComp','tabCov','tabEff','tabTasks'].forEach(id=>{
-      const btn=document.getElementById(id);
-      if(btn){btn.style.background='#f0f4f8';btn.style.color='#555';btn.style.border='1px solid #dde';}
-    });
     panel.scrollIntoView({behavior:'smooth',block:'start'});
     renderAuditLog();
   }
@@ -11517,44 +11515,32 @@ function switchToInstructorView(previewName){
 // ══════════════════════════════════════════════════════════════════════
 // DASHBOARD TAB SWITCHER (restored)
 // ══════════════════════════════════════════════════════════════════════
-let _activeDashTab=null; // null = all closed
-
 async function switchDashTab(tab){
   const tabs={
     segments:'dashTabSegments', timesheet:'dashTabTimesheet',
-    compare:'dashTabCompare', coverage:'dashTabCoverage', efficiency:'dashTabEfficiency',
-    tasks:'dashTabTasks'
+    compare:'dashTabCompare', coverage:'dashTabCoverage', efficiency:'dashTabEfficiency'
   };
   const btns={
     segments:'tabSegs', timesheet:'tabTime', compare:'tabComp',
-    coverage:'tabCov', efficiency:'tabEff', tasks:'tabTasks'
+    coverage:'tabCov', efficiency:'tabEff'
   };
-
-  // Toggle: same tab clicked = close it
-  const newTab=(_activeDashTab===tab)?null:tab;
-  _activeDashTab=newTab;
-
   Object.entries(tabs).forEach(([k,id])=>{
     const el=document.getElementById(id);
     const btn=document.getElementById(btns[k]);
-    const active=(k===newTab);
+    const active=(k===tab);
     if(el)el.style.display=active?'block':'none';
     if(btn){
       btn.style.background=active?'#2980b9':'#f0f4f8';
       btn.style.color=active?'white':'#555';
       btn.style.border=active?'none':'1px solid #dde';
-      btn.style.borderBottom=active?'none':'1px solid #dde';
     }
   });
-
-  // Render only when opening (not closing)
-  if(!newTab)return;
-  if(newTab==='timesheet')renderTimesheet();
-  if(newTab==='segments'&&Object.keys(_monthHistoryCache||{}).length)renderSegmentAnalysis();
-  if(newTab==='compare')initCompareSelects();
-  if(newTab==='coverage'){initCoverageWeekSelect();await renderCoverageTab();}
-  if(newTab==='efficiency')renderEfficiencyTab();
-  if(newTab==='tasks'){await renderTasksTab();}
+  // Auto-render when switching
+  if(tab==='timesheet')renderTimesheet();
+  if(tab==='segments'&&Object.keys(_monthHistoryCache||{}).length)renderSegmentAnalysis();
+  if(tab==='compare')initCompareSelects();
+  if(tab==='coverage'){initCoverageWeekSelect();await renderCoverageTab();}
+  if(tab==='efficiency')renderEfficiencyTab();
 }
 // ══════════════════════════════════════════════════════════════════════
 // AUDIT LOG — wire to key actions
@@ -11917,24 +11903,16 @@ async function enhanceMonthlyDashWithTasks(){
   const yr=_monthlyDashDate.getFullYear();
   const mo=_monthlyDashDate.getMonth();
   const taskReports=await loadMonthTaskReports(yr,mo);
-  if(Object.keys(taskReports).length>0) console.log('[Tasks] sample:', JSON.stringify(Object.values(taskReports)[0]).slice(0,100));
 
   // Aggregate per instructor per task type
   const instrTaskStats={}; // name → taskId → {quantity:0, duration:0, count:0}
   Object.values(taskReports).forEach(r=>{
     if(!instrTaskStats[r.instructorName])instrTaskStats[r.instructorName]={};
     const ts=instrTaskStats[r.instructorName];
-    if(!ts[r.taskId])ts[r.taskId]={count:0,quantity:0,duration:0,taskLabel:r.taskLabel||r.taskId,notes:[],drivers:[]};
-    const tEntry=ts[r.taskId];
-    tEntry.count++;
-    if(r.quantity)tEntry.quantity+=r.quantity;
-    if(r.duration)tEntry.duration+=r.duration;
-    if(r.notes&&r.notes.trim())tEntry.notes.push(r.notes.trim());
-    if(r.inspectedDrivers&&r.inspectedDrivers.trim()){
-      r.inspectedDrivers.split(',').map(d=>d.trim()).filter(Boolean).forEach(d=>{
-        if(!tEntry.drivers.includes(d))tEntry.drivers.push(d);
-      });
-    }
+    if(!ts[r.taskId])ts[r.taskId]={count:0,quantity:0,duration:0,taskLabel:r.taskLabel||r.taskId};
+    ts[r.taskId].count++;
+    if(r.quantity)ts[r.taskId].quantity+=r.quantity;
+    if(r.duration)ts[r.taskId].duration+=r.duration;
   });
 
   // Update instructor table - add task columns
@@ -11972,119 +11950,91 @@ async function enhanceMonthlyDashWithTasks(){
 
   // Cache and render tasks tab
   _monthTaskStatsCache=instrTaskStats;
-  renderTasksTab();
+  renderTasksTab(instrTaskStats); // renders inline in main view
 }
 
-async function renderTasksTab(){
-  const taskTab=document.getElementById('dashTabTasks');
+function renderTasksTab(instrTaskStats){
+  let taskTab=document.getElementById('dashTabTasks');
   if(!taskTab)return;
-  taskTab.innerHTML='<div style="text-align:center;padding:20px;color:#aaa;font-size:13px;">⏳ טוען...</div>';
 
-  const yr=_monthlyDashDate.getFullYear();
-  const mo=_monthlyDashDate.getMonth();
-  const prefix=`${yr}-${String(mo+1).padStart(2,'0')}`;
-  const daysInMonth=new Date(yr,mo+1,0).getDate();
+  const allNames=Object.keys(instrTaskStats).sort();
+  // Get ALL task IDs from taskDefs (not just ones with data)
+  const allTaskIds=taskDefs.filter(t=>!t.isTrip&&t.requiresSummary).map(t=>t.id);
+  const allTaskIdsWithData=[...new Set([...allTaskIds,...Object.values(instrTaskStats).flatMap(ts=>Object.keys(ts))])];
 
-
-
-
-  // 1. Load trips directly from localStorage for this month
-  const monthTrips=[];
-  for(let d=1;d<=daysInMonth;d++){
-    const ds=`${prefix}-${String(d).padStart(2,'0')}`;
-    try{
-      const raw=localStorage.getItem('trips_'+ds);
-      if(raw){const p=JSON.parse(raw);const arr=Array.isArray(p)?p:Object.values(p);monthTrips.push(...arr);}
-    }catch(e){}
-  }
-  if(!monthTrips.length)monthTrips.push(...Object.values(_monthHistoryCache||{}).flat());
-
-  // 2. Load task reports directly from localStorage
-  const taskReports={};
-  for(let d=1;d<=daysInMonth;d++){
-    const ds=`${prefix}-${String(d).padStart(2,'0')}`;
-    try{
-      const raw=localStorage.getItem('taskReports_'+ds);
-      if(raw){const obj=JSON.parse(raw);Object.entries(obj).forEach(([k,v])=>{taskReports[`${ds}__${k}`]=v;});}
-    }catch(e){}
+  if(!allNames.length){
+    taskTab.innerHTML='<div style="color:#aaa;text-align:center;padding:20px;font-size:13px;">אין נתוני משימות לחודש זה — לחץ "טען נתונים"</div>';
+    return;
   }
 
-  // 3. Load schedule from localStorage
-  const allSched=JSON.parse(localStorage.getItem('v100_sched_all')||'{}');
-  const schedByTask={};
-  Object.entries(allSched).forEach(([date,entries])=>{
-    if(!date.startsWith(prefix))return;
-    (entries||[]).forEach(e=>{
-      if(!e.task||!e.name)return;
-      const tDef=taskDefs.find(t=>t.id===e.task);
-      if(tDef&&tDef.isTrip)return;
-      if(!schedByTask[e.task])schedByTask[e.task]={};
-      if(!schedByTask[e.task][e.name])schedByTask[e.task][e.name]={days:0,minutes:0};
-      schedByTask[e.task][e.name].days++;
-      try{
-        const sh=e.startTime||'';const en=e.endTime||'';
-        if(sh&&en){const tm=t=>parseInt(t.split(':')[0])*60+parseInt(t.split(':')[1]);schedByTask[e.task][e.name].minutes+=Math.max(0,tm(en)-tm(sh));}
-      }catch(ex){}
+  // Build a section per task type
+  const sections=allTaskIdsWithData.map(taskId=>{
+    const tDef=taskDefs.find(t=>t.id===taskId)||{id:taskId,label:taskId,icon:'📋',driverFields:false};
+    
+    // Collect all reports for this task across all instructors
+    let totalQty=0,totalDur=0,totalCount=0;
+    const allNotes=[];
+    const instrRows=[];
+    
+    allNames.forEach(name=>{
+      const t=(instrTaskStats[name]||{})[taskId];
+      if(!t)return;
+      totalQty+=t.quantity||0;
+      totalDur+=t.duration||0;
+      totalCount+=t.count||0;
+      if(t.notes&&t.notes.length)t.notes.forEach(n=>{if(n.trim())allNotes.push({instr:name,note:n});});
+
+      // Per-instructor row
+      const driversList=t.drivers&&t.drivers.length
+        ?'<div style="font-size:10px;color:#8e44ad;margin-top:2px;">👤 '+t.drivers.join(', ')+'</div>':'';
+      const noteBadge=t.notes&&t.notes.length
+        ?'<span title="'+t.notes.join(' | ')+'" style="font-size:10px;color:#e67e22;cursor:help;margin-right:4px;">💬'+t.notes.length+'</span>':'';
+      instrRows.push(`<tr style="border-bottom:1px solid #f5f5f5;">
+        <td style="padding:7px 10px;font-weight:bold;font-size:13px;">${name}</td>
+        <td style="padding:7px 10px;text-align:center;font-weight:bold;color:var(--primary);">${t.quantity||'—'}</td>
+        <td style="padding:7px 10px;text-align:center;color:#888;">${t.duration?Math.round(t.duration)+' דק\'':'—'}</td>
+        <td style="padding:7px 10px;font-size:11px;">${noteBadge}${driversList}</td>
+      </tr>`);
     });
-  });
 
-  // Aggregate task reports by task+instructor
-  const rptByTaskInstr={};
-  Object.values(taskReports).forEach(r=>{
-    if(!r.taskId||!r.instructorName)return;
-    const key=r.taskId+'__'+r.instructorName;
-    if(!rptByTaskInstr[key])rptByTaskInstr[key]={qty:0,dur:0,notes:[],drivers:[]};
-    const e=rptByTaskInstr[key];
-    e.qty+=(r.quantity||0);e.dur+=(r.duration||0);
-    if(r.notes&&r.notes.trim())e.notes.push(r.notes.trim());
-    if(r.inspectedDrivers)r.inspectedDrivers.split(',').map(d=>d.trim()).filter(Boolean).forEach(d=>{if(!e.drivers.includes(d))e.drivers.push(d);});
-  });
+    if(!instrRows.length)return'';
 
-  // ── TRIP SECTION ────────────────────────────────────────────
-  let html='';
-  const tripTaskDefs=taskDefs.filter(t=>t.isTrip);
-  if(monthTrips.length){
-    (tripTaskDefs.length?tripTaskDefs:[{id:'trip',label:'קורס מעשי',icon:'🚇'}]).forEach(tDef=>{
-      const byInstr={};
-      monthTrips.forEach(t=>{
-        if(!t||!t.name)return;
-        if(!byInstr[t.name])byInstr[t.name]={trips:0,lessons:0,min:0};
-        byInstr[t.name].trips++;
-        const dur=(t.route||[]).reduce((s,r)=>s+(r.t||0),0);
-        byInstr[t.name].lessons+=dur/45;byInstr[t.name].min+=dur;
-      });
-      const names=Object.keys(byInstr).sort();
-      if(!names.length)return;
-      const tot={trips:names.reduce((s,n)=>s+byInstr[n].trips,0),lessons:names.reduce((s,n)=>s+byInstr[n].lessons,0),hrs:names.reduce((s,n)=>s+byInstr[n].min,0)/60};
-      const rows=names.map(n=>`<tr style="border-bottom:1px solid #f5f5f5;"><td style="padding:7px 10px;font-weight:bold;">${n}</td><td style="text-align:center;font-weight:bold;color:var(--primary);">${byInstr[n].trips}</td><td style="text-align:center;color:var(--secondary);">${byInstr[n].lessons.toFixed(1)}</td><td style="text-align:center;color:#888;">${(byInstr[n].min/60).toFixed(1)} שע'</td></tr>`).join('');
-      html+=`<div style="margin-bottom:20px;"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;"><div style="font-size:15px;font-weight:bold;color:var(--primary);">${tDef.icon||'🚇'} ${tDef.label}</div><div style="display:flex;gap:8px;"><span style="background:#eaf4fb;color:var(--primary);border-radius:20px;padding:2px 10px;font-size:12px;font-weight:bold;">${tot.trips} נסיעות</span><span style="background:#eaffea;color:#27ae60;border-radius:20px;padding:2px 10px;font-size:12px;">${tot.lessons.toFixed(1)} שיעורים</span><span style="background:#f0f0f0;color:#555;border-radius:20px;padding:2px 10px;font-size:12px;">${tot.hrs.toFixed(1)} שע'</span></div></div><table style="width:100%;border-collapse:collapse;background:white;border-radius:10px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.06);"><thead><tr style="background:#eaf4fb;"><th style="padding:7px 10px;font-size:11px;text-align:right;border-bottom:2px solid #c8e0f5;">מדריך</th><th style="padding:7px 10px;font-size:11px;text-align:center;border-bottom:2px solid #c8e0f5;">נסיעות</th><th style="padding:7px 10px;font-size:11px;text-align:center;border-bottom:2px solid #c8e0f5;">שיעורים</th><th style="padding:7px 10px;font-size:11px;text-align:center;border-bottom:2px solid #c8e0f5;">שעות</th></tr></thead><tbody>${rows}</tbody></table></div>`;
-    });
-  }
+    const hrs=(totalDur/60).toFixed(1);
+    const notesHtml=allNotes.length
+      ?`<div style="margin-top:10px;border-top:1px solid #eee;padding-top:10px;">
+          <div style="font-size:11px;font-weight:bold;color:#888;margin-bottom:6px;">💬 הערות החודש</div>
+          ${allNotes.map(n=>`<div style="background:#fff8f0;border-radius:6px;padding:6px 10px;margin-bottom:4px;font-size:12px;border-right:3px solid #f39c12;">
+            <b>${n.instr}:</b> ${n.note}
+          </div>`).join('')}
+        </div>`:'';
 
-  // ── NON-TRIP SECTIONS ───────────────────────────────────────
-  const nonTripTaskIds=[...new Set([...Object.keys(schedByTask),...Object.values(taskReports).map(r=>r.taskId).filter(Boolean)])];
-  nonTripTaskIds.forEach(taskId=>{
-    const tDef=taskDefs.find(t=>t.id===taskId)||{id:taskId,label:taskId,icon:'📋',driverFields:false,requiresSummary:false,isTrip:false};
-    if(tDef.isTrip)return;
-    const sd=schedByTask[taskId]||{};
-    const instrNames=[...new Set([...Object.keys(sd),...Object.values(taskReports).filter(r=>r.taskId===taskId).map(r=>r.instructorName)])].sort();
-    if(!instrNames.length)return;
-    const totDays=Object.values(sd).reduce((s,v)=>s+v.days,0);
-    const totMins=Object.values(sd).reduce((s,v)=>s+v.minutes,0);
-    const rows=instrNames.map(name=>{
-      const sv=sd[name]||{days:0,minutes:0};
-      const rk=taskId+'__'+name;
-      const rpt=rptByTaskInstr[rk]||null;
-      const _q2=rpt&&rpt.qty?String(rpt.qty)+" יח'":"";const _d2=rpt&&rpt.dur?" / "+(rpt.dur/60).toFixed(1)+" שע'":"";const _n2=rpt&&rpt.notes.length?"<br><small style='color:#e67e22'>💬 "+rpt.notes.join(" | ")+"</small>":"";const rptCell=rpt?'<td style="font-size:11px;padding:7px 10px;"><b style="color:var(--primary)">'+_q2+'</b><span style="color:#888">'+_d2+'</span>'+_n2+'</td>':'<td style="color:#ccc;padding:7px 10px;text-align:center;">—</td>';
-      const drCell=tDef.driverFields?`<td style="font-size:11px;padding:7px 10px;color:#8e44ad;">${rpt&&rpt.drivers.length?'👤 '+rpt.drivers.join(', '):'—'}</td>`:'';
-      return`<tr style="border-bottom:1px solid #f5f5f5;"><td style="padding:7px 10px;font-weight:bold;">${name}</td><td style="text-align:center;padding:7px 10px;color:#555;">${sv.days}</td><td style="text-align:center;padding:7px 10px;color:#888;">${(sv.minutes/60).toFixed(1)} שע'</td>${rptCell}${drCell}</tr>`;
-    }).join('');
-    const drHead=tDef.driverFields?'<th style="padding:7px 10px;font-size:11px;border-bottom:2px solid #dde;">נהגים</th>':'';
-    const rptHead=tDef.requiresSummary?'<th style="padding:7px 10px;font-size:11px;border-bottom:2px solid #dde;">דיווח</th>':'<th></th>';
-    html+=`<div style="margin-bottom:20px;"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;"><div style="font-size:15px;font-weight:bold;color:var(--primary);">${tDef.icon||'📋'} ${tDef.label}</div><div style="display:flex;gap:8px;"><span style="background:#eaf4fb;color:var(--primary);border-radius:20px;padding:2px 10px;font-size:12px;">${totDays} ימים</span><span style="background:#f0f0f0;color:#555;border-radius:20px;padding:2px 10px;font-size:12px;">${(totMins/60).toFixed(1)} שע'</span></div></div><table style="width:100%;border-collapse:collapse;background:white;border-radius:10px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.06);"><thead><tr style="background:#f0f4f8;"><th style="padding:7px 10px;font-size:11px;text-align:right;border-bottom:2px solid #dde;">מדריך</th><th style="padding:7px 10px;font-size:11px;text-align:center;border-bottom:2px solid #dde;">ימים</th><th style="padding:7px 10px;font-size:11px;text-align:center;border-bottom:2px solid #dde;">שעות</th>${rptHead}${drHead}</tr></thead><tbody>${rows}</tbody></table></div>`;
-  });
+    const driversHeader=tDef.driverFields?`<th style="padding:7px 10px;font-size:11px;text-align:right;color:#555;border-bottom:2px solid #dde;">נהגים / הערות</th>`:'<th></th>';
+    const qtyLabel=tDef.summaryFields&&tDef.summaryFields[0]?tDef.summaryFields[0].label:'כמות';
+    const durLabel=tDef.summaryFields&&tDef.summaryFields[1]?tDef.summaryFields[1].label:'משך';
 
-  taskTab.innerHTML=html||'<div style="color:#aaa;text-align:center;padding:20px;">אין נתוני משימות לחודש זה</div>';
+    return`<div style="margin-bottom:20px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:6px;">
+        <div style="font-size:15px;font-weight:bold;color:var(--primary);">${tDef.icon||'📋'} ${tDef.label}</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          <span style="background:#eaf4fb;color:var(--primary);border-radius:20px;padding:3px 12px;font-size:12px;font-weight:bold;">${totalQty} ${qtyLabel}</span>
+          <span style="background:#f0f0f0;color:#555;border-radius:20px;padding:3px 12px;font-size:12px;">${hrs} שעות</span>
+          ${allNotes.length?`<span style="background:#fff3e0;color:#e67e22;border-radius:20px;padding:3px 12px;font-size:12px;">💬 ${allNotes.length} הערות</span>`:''}
+        </div>
+      </div>
+      <table style="width:100%;border-collapse:collapse;background:white;border-radius:10px;overflow:hidden;box-shadow:0 1px 6px rgba(0,0,0,.06);">
+        <thead><tr style="background:#f0f4f8;">
+          <th style="padding:7px 10px;font-size:11px;text-align:right;color:#555;border-bottom:2px solid #dde;">מדריך</th>
+          <th style="padding:7px 10px;font-size:11px;text-align:center;color:#555;border-bottom:2px solid #dde;">${qtyLabel}</th>
+          <th style="padding:7px 10px;font-size:11px;text-align:center;color:#555;border-bottom:2px solid #dde;">${durLabel}</th>
+          ${driversHeader}
+        </tr></thead>
+        <tbody>${instrRows.join('')}</tbody>
+      </table>
+      ${notesHtml}
+    </div>`;
+  }).filter(Boolean).join('');
+
+  taskTab.innerHTML=sections||'<div style="color:#aaa;text-align:center;padding:20px;">אין נתוני משימות</div>';
 }
 
 // Register tasks tab in switchDashTab
@@ -12471,30 +12421,24 @@ async function generateAndActivateDemo(){
     }
 
     // Use actual taskDefs from settings (not hardcoded)
-    // Use system taskDefs; fallback to common defaults if settings empty
     const demoTaskDefs=taskDefs.length>0?[...taskDefs]:[
-      {id:'training',icon:'🚇',label:'קורס מעשי',color:'#2980b9',isTrip:true,requiresSummary:false,summaryFields:[],driverFields:false,message:''},
-      {id:'bakara',icon:'🔍',label:'מתקנות, בקרות ופיק',color:'#8e44ad',isTrip:false,requiresSummary:true,driverFields:true,summaryFields:[{type:'quantity',label:'מספר בקרות'},{type:'duration',label:'זמן (דקות)'}],message:''},
-      {id:'driving',icon:'🚌',label:'נהיגה בקו',color:'#27ae60',isTrip:false,requiresSummary:true,driverFields:false,summaryFields:[{type:'quantity',label:'מספר נסיעות'},{type:'duration',label:'זמן (דקות)'}],message:''},
-      {id:'greenline',icon:'🌿',label:'קו ירוק',color:'#2ecc71',isTrip:false,requiresSummary:false,driverFields:false,summaryFields:[],message:''},
+      {id:'training',icon:'🚇',label:'קורס מעשי',color:'#2980b9',isTrip:true,requiresSummary:false,summaryFields:[],message:''},
     ];
 
     // Assign tasks from actual taskDefs: trip tasks first, then non-trip
     const _tripTasks=demoTaskDefs.filter(t=>t.isTrip).map(t=>t.id);
     const _nonTripTasks=demoTaskDefs.filter(t=>!t.isTrip).map(t=>t.id);
-    // All tasks pool for rotation: ensure trip tasks appear multiple times (60% weight)
-    const _allDemoTasks=[];
-    // Build rotation pool: trip tasks weighted ~60%, non-trip ~40%
-    if(_tripTasks.length){
-      const _slots=Math.max(1,Math.ceil(instrs.length*0.6/_tripTasks.length));
-      _tripTasks.forEach(id=>{for(let j=0;j<_slots;j++)_allDemoTasks.push(id);});
-    }
-    _nonTripTasks.forEach(id=>_allDemoTasks.push(id));
-    // Fallback: if no tasks at all, use a generic trip task
-    if(!_allDemoTasks.length)_allDemoTasks.push('training');
+    const _allDemoTasks=[..._tripTasks,..._nonTripTasks];
+    const TASKS_BY_INSTR=instrs.map((_,i)=>{
+      if(!_allDemoTasks.length)return 'training';
+      // 60% trip tasks, rest distributed among non-trip
+      if(i<Math.ceil(instrs.length*0.6)&&_tripTasks.length)
+        return _tripTasks[i%_tripTasks.length];
+      if(_nonTripTasks.length)
+        return _nonTripTasks[(i-Math.ceil(instrs.length*0.6))%_nonTripTasks.length];
+      return _tripTasks[0]||'training';
+    });
     const _tripTaskIds=new Set(_tripTasks);
-    // TASKS_BY_INSTR is computed per-day below using rotation
-    const TASKS_BY_INSTR=null; // not used — replaced by per-day rotation
     const SHIFTS=['morning','afternoon','evening'];
     const SHIFT_H={morning:{s:'06:00',e:'14:30'},afternoon:{s:'14:00',e:'22:00'},evening:{s:'13:30',e:'22:00'}};
     const STATUSES=['approved','approved','approved','approved','approved','pending','rejected'];
@@ -12532,21 +12476,16 @@ async function generateAndActivateDemo(){
     // Build FULL schedule (all days)
     const fullSched={};
     days.forEach(date=>{
-      // Rotate ALL instructors through ALL tasks by day
-      const _dayIdx=days.indexOf(date);
-      fullSched[date]=instrs.map((name,i)=>{
-        // Each instructor shifts through the task pool by day
-        const _task=_allDemoTasks.length?_allDemoTasks[(_dayIdx+i)%_allDemoTasks.length]:'training';
-        return({
+      fullSched[date]=instrs.map((name,i)=>({
         id:'ds_'+date.replace(/-/g,'')+'_'+i,
-        name,shift:SHIFTS[Math.floor(_pseudoRand(date+name+_task)*3)],
-        task:_task,
-        startTime:SHIFT_H[SHIFTS[Math.floor(_pseudoRand(date+name+_task)*3)]].s,
-        endTime:SHIFT_H[SHIFTS[Math.floor(_pseudoRand(date+name+_task)*3)]].e,
+        name,shift:SHIFTS[Math.floor(_pseudoRand(date+name)*3)],
+        task:TASKS_BY_INSTR[i],
+        startTime:SHIFT_H[SHIFTS[Math.floor(_pseudoRand(date+name)*3)]].s,
+        endTime:SHIFT_H[SHIFTS[Math.floor(_pseudoRand(date+name)*3)]].e,
         status:STATUSES[Math.floor(_pseudoRand(date+name+'st')*STATUSES.length)],
         note:_pseudoRand(date+name+'n')>0.7?DEMO_NOTES[Math.floor(_pseudoRand(date+name+'nt')*DEMO_NOTES.length)]:'',
         createdAt:Date.now(),submittedBy:name
-      });});
+      }));
     });
 
     let totalTrips=0,totalDelays=0,totalReports=0;
@@ -12564,10 +12503,7 @@ async function generateAndActivateDemo(){
 
       monthDays.forEach(date=>{
         const tripMap={};
-        const tripInstrs=instrs.filter(name=>{
-            const entry=fullSched[date]?.find(e=>e.name===name);
-            return entry&&_tripTaskIds.has(entry.task);
-          });
+        const tripInstrs=instrs.filter((_,i)=>_tripTaskIds.has(TASKS_BY_INSTR[i]));
         tripInstrs.forEach((name,ti)=>{
           [0,1].forEach(tn=>{
             const entry=fullSched[date]?.find(e=>e.name===name);
@@ -12593,10 +12529,7 @@ async function generateAndActivateDemo(){
         if(Object.keys(tripMap).length)monthTrips[date]=tripMap;
 
         const rptMap={};
-        instrs.filter(name=>{
-          const _e=fullSched[date]?.find(e=>e.name===name);
-          return _e&&!_tripTaskIds.has(_e.task);
-        }).forEach(name=>{
+        instrs.filter((name,i)=>TASKS_BY_INSTR[i]!=='training').forEach(name=>{
           if(_pseudoRand(date+name+'rp')>0.28){
             const entry=fullSched[date]?.find(e=>e.name===name);
             if(!entry)return;
@@ -12619,8 +12552,7 @@ async function generateAndActivateDemo(){
         instrs.forEach((name,i)=>{
           const k=name.replace(/[.#$[\]/]/g,'_');
           const conf={};
-          const _se=fullSched[date]?.find(e=>e.name===name);
-          if(_se&&_tripTaskIds.has(_se.task))[0,1].forEach(tn=>{if(_pseudoRand(date+name+tn+'c')>0.1)conf[tn]=true;});
+          if(TASKS_BY_INSTR[i]==='training')[0,1].forEach(tn=>{if(_pseudoRand(date+name+tn+'c')>0.1)conf[tn]=true;});
           stMap[k]={name,status:'returned',tripIdx:1,confirmedTrips:conf};
         });
         monthStatuses[date]=stMap;
@@ -12852,14 +12784,9 @@ function toggleDelayFilter(){
         const reason=dc.getAttribute('data-reason')||'';
         if(reason)dc.innerHTML=dc.innerHTML+'<br><small style="color:#888;">'+reason+'</small>';
       }
-      const hasDelay=dc&&dc.textContent.trim().length>0;
-      if(!hasDelay)row.style.display=_delayFilterActive?'none':'';
-    }
-  });
-}
+      const hasDelay=dc&&dc.textContent.trim(
 
 // ══ SCHEDULE BREAKDOWN BY TASK TYPE ══════════════════════════
-
 function _renderMonthSchedBreakdown(yr,mo){
   const wrap=document.getElementById('monthSchedBreakdown');
   if(!wrap)return;
@@ -12904,29 +12831,21 @@ function _renderMonthSchedBreakdown(yr,mo){
         <th style="padding:8px 10px;font-size:11px;text-align:right;color:#555;border-bottom:2px solid #d9c8f5;">משימה</th>
         <th style="padding:8px 10px;font-size:11px;text-align:center;color:#555;border-bottom:2px solid #d9c8f5;">מדריכים</th>
         <th style="padding:8px 10px;font-size:11px;text-align:center;color:#555;border-bottom:2px solid #d9c8f5;">הקצאות</th>
-        <th style="padding:8px 10px;font-size:11px;text-align:right;color:#555;border-bottom:2px solid #d9c8f5;">מדריכים שהוקצו</th>
-      </tr></thead>
-      <tbody>${rows}</tbody>
-    </table>`;
-}
+        <th style="padding:8px 10px;font-size:11px;text-align:right;color:#555;border-bottom
 
 // ══ XLSX EXPORT ══════════════════════════════════════════════
 async function exportDashboardXLSX(){
   showToast('⏳ מכין קובץ Excel...','info');
   try{
-    const XLSX=window.XLSX;
+    const XLSX=await import('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js').catch(()=>window.XLSX);
     if(!XLSX){showToast('שגיאה: ספריית Excel לא נטענה','warning');return;}
     const wb=XLSX.utils.book_new();
     const yr=_monthlyDashDate.getFullYear();
     const mo=_monthlyDashDate.getMonth();
     const label=_monthlyDashDate.toLocaleDateString('he-IL',{month:'long',year:'numeric'});
 
-    // Load data if cache is empty
-    let monthData=_monthHistoryCache||{};
-    if(!Object.keys(monthData).length){
-      showToast('⏳ טוען נתונים...','info');
-      try{monthData=await loadMonthHistory(yr,mo);_monthHistoryCache=monthData;}catch(e){}
-    }
+    // Sheet 1: instructors summary
+    const monthData=_monthHistoryCache||{};
     const byInstr={};
     Object.values(monthData).forEach(day=>(day||[]).forEach(t=>{
       if(!byInstr[t.name])byInstr[t.name]={trips:0,lessons:0,minutes:0,delays:0,routeChanges:0};
@@ -12983,6 +12902,20 @@ async function exportDashboardXLSX(){
     XLSX.writeFile(wb,'דשבורד_'+label.replace(/ /g,'_')+'.xlsx');
     showToast('✅ קובץ Excel הורד','success');
   }catch(e){console.error(e);showToast('שגיאה ביצוא: '+e.message,'warning');}
+}
+
+:2px solid #d9c8f5;">מדריכים שהוקצו</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+}
+
+)!=='';
+      row.style.display=hasDelay?'':'none';
+    } else {
+      row.style.display='';
+    }
+  });
 }
 
 </script>
