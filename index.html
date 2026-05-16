@@ -2110,6 +2110,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
       <button onclick="toggleAuditLog()" id="auditLogBtn" style="width:auto !important;display:inline-block;margin:2px;padding:8px 14px;background:#f8f0ff;border:1px solid #9b59b6;color:#9b59b6;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;">🔍 לוג פעולות</button>
       <button onclick="toggleMonthlyDash()" id="monthlyDashBtn" style="width:auto !important;display:inline-block;margin:2px;padding:8px 14px;background:#eaf4fd;border:1px solid var(--secondary);color:var(--secondary);border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;">📊 דשבורד חודשי</button>
       <button onclick="toggleApprovalPanel()" id="approvalToggleBtn" style="width:auto !important;display:inline-block;margin:2px;padding:8px 14px;background:#fef9e7;border:1px solid #f0c050;color:#856404;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;position:relative;">📋 אישור שיבוצים <span id="approvalBadge" style="display:none;background:#e74c3c;color:white;border-radius:10px;padding:1px 5px;font-size:10px;font-weight:bold;margin-right:3px;"></span></button>
+      <button onclick="openNotesModal()" style="width:auto !important;display:inline-block;margin:2px;padding:8px 14px;background:#fef08a;border:1px solid #eab308;color:#713f12;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;">📌 פתקים</button>
       <button onclick="openDemoPanel()" id="demoBtnMain" style="width:auto !important;display:inline-block;margin:2px;padding:8px 14px;background:#6c3483;color:white;border:none;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;">🎭 מצב דמו</button>
     </div>
 
@@ -6987,15 +6988,19 @@ function renderCalendar(){
         const ico={approved:'✅',pending:'⏳',rejected:'❌'}[e.status||'pending']||'❓';
         const sep=(_lastShift!==null&&_lastShift!==sk)?'<div style="border-top:1px dashed #dde;margin:2px 0;"></div>':'';
         _lastShift=sk;
-        return sep+`<div class="cal-entry status-${e.status||'pending'}" style="background:${col};border-right:3px solid ${bdr};color:#1a2533;font-size:10px;padding:1px 4px;border-radius:3px;margin:1px 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${ico} ${e.name||''}</div>`;
+        return sep+`<div class="cal-entry status-${e.status||'pending'}" style="background:${col};border-right:3px solid ${bdr};font-size:10px;padding:2px 5px;border-radius:4px;margin:1px 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${ico} ${e.name||''}</div>`;
       }).join('');
     }
 
     const moreHtml=_sorted.length>4?`<div class="cal-more">+${_sorted.length-4} עוד</div>`:'';
+    // Sticky notes for this cell
+    const cellNotes=cell.otherMonth?[]:_getNotesForCell(cell.date,forInstructor);
+    const notesHtml=cellNotes.map(n=>`<div class="cal-note${n.visibility==='admin'?' admin-only':''}" onclick="event.stopPropagation();openNotesModal('${n.date}')" title="${n.text}"><span class="cal-note-pin">📌</span> ${n.text}</div>`).join('');
     const cellClass=['cal-cell',cell.otherMonth?'other-month':'',_isPast&&!_isToday?'past':'',_isToday?'today':''].filter(Boolean).join(' ');
-    const posStyle=forInstructor&&_sorted.length>=1?'position:relative;min-height:90px;':'';
+    const hasNotes=cellNotes.length>0;
+    const posStyle=(forInstructor&&_sorted.length>=1)||hasNotes?'position:relative;min-height:90px;':'';
     const canClick=!cell.otherMonth;
-    return`<div class="${cellClass}" style="${posStyle}" ${canClick?`onclick="openSchedModal('${cell.date}')"`:''}><div class="cal-day-num">${cell.otherMonth?'':_dayNum}</div>${_entryHtml}${moreHtml}</div>`;
+    return`<div class="${cellClass}" style="${posStyle}" ${canClick?`onclick="openSchedModal('${cell.date}')"`:''}><div class="cal-day-num">${cell.otherMonth?'':_dayNum}</div>${_entryHtml}${moreHtml}${notesHtml}</div>`;
   }
 
   const managerHtml=cells.map(c=>buildCell(c,false)).join('');
@@ -11391,6 +11396,37 @@ async function exportPDFReport(){
   <div class="footer">מסמך זה הופק אוטומטית ממערכת ניהול ההדרכה. לא מהווה מסמך רשמי אלא עזר לניהול פנימי.</div>
 
   <scr'+'ipt>setTimeout(()=>window.print(),400);<\/sc'+'ript>
+
+<!-- ══ NOTES MODAL ══════════════════════════════════════════ -->
+<div id="notesModal" style="display:none;" onclick="if(event.target===this)closeNotesModal()">
+  <div id="notesModalBox">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <h3 style="margin:0;color:var(--primary);">📌 פתק על הלוח</h3>
+      <button onclick="closeNotesModal()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#aaa;">✕</button>
+    </div>
+    <label style="font-size:13px;font-weight:bold;color:#555;display:block;margin-bottom:4px;">📅 תאריך</label>
+    <input type="date" id="noteDate" style="width:100%;padding:8px 10px;border:1.5px solid #ddd;border-radius:8px;font-size:14px;margin-bottom:12px;box-sizing:border-box;direction:ltr;">
+    <label style="font-size:13px;font-weight:bold;color:#555;display:block;margin-bottom:4px;">📝 תוכן הפתק</label>
+    <textarea id="noteText" rows="3" placeholder="כתוב תזכורת, אירוע, הערה..." style="width:100%;padding:8px 10px;border:1.5px solid #ddd;border-radius:8px;font-size:13px;resize:vertical;box-sizing:border-box;margin-bottom:12px;"></textarea>
+    <label style="font-size:13px;font-weight:bold;color:#555;display:block;margin-bottom:8px;">👁️ נראות</label>
+    <div style="display:flex;gap:10px;margin-bottom:16px;">
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;">
+        <input type="radio" name="noteVisibility" value="all" checked> 🌐 כולם (מנהל + מדריכים)
+      </label>
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;">
+        <input type="radio" name="noteVisibility" value="admin"> 🔒 מנהל בלבד
+      </label>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button onclick="saveNote()" style="flex:1;padding:10px;background:var(--primary);color:white;border:none;border-radius:8px;font-size:14px;font-weight:bold;cursor:pointer;">💾 שמור פתק</button>
+      <button onclick="closeNotesModal()" style="padding:10px 16px;background:#f0f4f8;color:#555;border:none;border-radius:8px;font-size:14px;cursor:pointer;">ביטול</button>
+    </div>
+    <div id="notesList" style="margin-top:16px;border-top:1px solid #eee;padding-top:12px;display:none;">
+      <div style="font-size:12px;font-weight:bold;color:#888;margin-bottom:8px;">📋 פתקים קיימים לחודש זה</div>
+      <div id="notesListBody"></div>
+    </div>
+  </div>
+</div>
 </body></html>`);
   printWin.document.close();
   showToast('📄 פותח דו"ח להדפסה / שמירה כ-PDF','success');
