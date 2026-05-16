@@ -837,9 +837,9 @@ body.dark-mode .cal-cell:hover{background:#3a4060;}
 
 body.dark-mode .cal-cell.today{background:#1e3a5a;}
 
-.cal-cell.other-month{opacity:.35;}
+.cal-cell.other-month{opacity:.5;}
 
-.cal-cell.past{opacity:.6;}
+.cal-cell.past{opacity:.85;}
 
 .cal-day-num{font-size:12px;font-weight:bold;color:#555;margin-bottom:3px;}
 
@@ -847,7 +847,7 @@ body.dark-mode .cal-day-num{color:#8ab4d8;}
 
 .cal-cell.today .cal-day-num{color:var(--secondary);}
 
-.cal-entry{font-size:11px;border-radius:4px;padding:3px 6px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#fff;font-weight:700;text-shadow:0 1px 2px rgba(0,0,0,.3);}
+.cal-entry{font-size:11px;border-radius:3px;padding:3px 6px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#1a2533;font-weight:700;}
 
 .cal-entry.status-pending{background:#e67e22;}
 
@@ -6988,14 +6988,19 @@ function renderCalendar(){
         const ico={approved:'✅',pending:'⏳',rejected:'❌'}[e.status||'pending']||'❓';
         const sep=(_lastShift!==null&&_lastShift!==sk)?'<div style="border-top:1px dashed #dde;margin:2px 0;"></div>':'';
         _lastShift=sk;
-        return sep+`<div class="cal-entry status-${e.status||'pending'}" style="background:${col};border-right:3px solid ${bdr};font-size:10px;padding:2px 5px;border-radius:4px;margin:1px 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${ico} ${e.name||''}</div>`;
+        return sep+`<div class="cal-entry status-${e.status||'pending'}" style="background:${col};border-right:3px solid ${bdr};padding:2px 5px;margin:1px 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${ico} ${e.name||''}</div>`;
       }).join('');
     }
 
     const moreHtml=_sorted.length>4?`<div class="cal-more">+${_sorted.length-4} עוד</div>`:'';
     // Sticky notes for this cell
     const cellNotes=cell.otherMonth?[]:_getNotesForCell(cell.date,forInstructor);
-    const notesHtml=cellNotes.map(n=>`<div class="cal-note${n.visibility==='admin'?' admin-only':''}" onclick="event.stopPropagation();openNotesModal('${n.date}')" title="${n.text}"><span class="cal-note-pin">📌</span> ${n.text}</div>`).join('');
+    const _noteColors={'#fef08a':['#713f12','#ca8a04'],'#fce7f3':['#831843','#db2777'],'#dcfce7':['#14532d','#16a34a'],'#dbeafe':['#1e3a8a','#2563eb'],'#ffedd5':['#7c2d12','#ea580c'],'#f3e8ff':['#581c87','#9333ea']};
+    const notesHtml=cellNotes.map(n=>{
+      const bg=n.color||'#fef08a';
+      const [tc,bc]=_noteColors[bg]||['#444','#888'];
+      return`<div class="cal-note" style="background:${bg};border-left:3px solid ${bc};color:${tc};box-shadow:2px 3px 8px rgba(0,0,0,.22),inset 3px 0 0 rgba(0,0,0,.1);" onclick="event.stopPropagation();openNotesModal('${n.date}')" title="${n.text}"><span class="cal-note-text">${n.text}</span></div>`;
+    }).join('');
     const cellClass=['cal-cell',cell.otherMonth?'other-month':'',_isPast&&!_isToday?'past':'',_isToday?'today':''].filter(Boolean).join(' ');
     const hasNotes=cellNotes.length>0;
     const posStyle=(forInstructor&&_sorted.length>=1)||hasNotes?'position:relative;min-height:90px;':'';
@@ -9181,8 +9186,8 @@ function openSettings(){
 // ═══════════════════════════════════════════════════════════
 
 // Shift display helpers (supplement existing SHIFT_LABELS)
-if(!window.SHIFT_COLORS) window.SHIFT_COLORS={morning:'#b8860b',afternoon:'#1a6496',evening:'#6c3483'};
-if(!window.SHIFT_BORDERS) window.SHIFT_BORDERS={morning:'#8b6508',afternoon:'#134f72',evening:'#512e6b'};
+if(!window.SHIFT_COLORS) window.SHIFT_COLORS={morning:'#fde8a0',afternoon:'#aed6f1',evening:'#d7bde2'};
+if(!window.SHIFT_BORDERS) window.SHIFT_BORDERS={morning:'#e6a817',afternoon:'#2980b9',evening:'#8e44ad'};
 const SHIFT_COLORS=window.SHIFT_COLORS;
 const SHIFT_BORDERS=window.SHIFT_BORDERS;
 
@@ -13038,10 +13043,11 @@ function saveNote(){
   const date=document.getElementById('noteDate').value;
   const text=(document.getElementById('noteText').value||'').trim();
   const vis=(document.querySelector('input[name="noteVisibility"]:checked')||{}).value||'all';
+  const color=(document.querySelector('input[name="noteColor"]:checked')||{}).value||'#fef08a';
   if(!date||!text){showToast('יש להזין תאריך ותוכן לפתק','warning');return;}
   const d=new Date(date+'T12:00:00');
   const notes=_loadNotes(d.getFullYear(),d.getMonth());
-  notes.push({id:Date.now(),date,text,visibility:vis});
+  notes.push({id:Date.now(),date,text,visibility:vis,color});
   _saveNotes(notes,d.getFullYear(),d.getMonth());
   showToast('✅ פתק נשמר','success');
   document.getElementById('noteText').value='';
@@ -13063,12 +13069,16 @@ function _renderNotesList(){
   if(!notes.length){if(listEl)listEl.style.display='none';return;}
   if(listEl)listEl.style.display='block';
   if(!body)return;
-  body.innerHTML=notes.map(n=>'<div style="display:flex;align-items:start;gap:8px;padding:6px 0;border-bottom:1px solid #f5f5f5;">'
-    +'<div style="flex:1;"><span style="font-size:11px;color:#888;">'+n.date+'</span> '
-    +(n.visibility==='admin'?'<span style="font-size:10px;background:#e0f2fe;color:#0c4a6e;border-radius:10px;padding:1px 6px;">🔒 מנהל</span>':'<span style="font-size:10px;background:#f0fdf4;color:#166534;border-radius:10px;padding:1px 6px;">🌐 כולם</span>')
-    +'<div style="font-size:12px;color:#333;margin-top:2px;">'+n.text+'</div></div>'
-    +'<button onclick="deleteNote('+n.id+')" style="background:none;border:none;color:#e74c3c;cursor:pointer;font-size:14px;padding:2px;">🗑️</button>'
-    +'</div>').join('');
+  body.innerHTML=notes.map(n=>{
+    const bg=n.color||'#fef08a';
+    const dot='<span style="display:inline-block;width:12px;height:12px;background:'+bg+';border-radius:2px;margin-left:4px;vertical-align:middle;border:1px solid rgba(0,0,0,.15);"></span>';
+    return '<div style="display:flex;align-items:start;gap:8px;padding:6px 0;border-bottom:1px solid #f5f5f5;">'
+      +'<div style="flex:1;">'+dot+'<span style="font-size:11px;color:#888;">'+n.date+'</span> '
+      +(n.visibility==='admin'?'<span style="font-size:10px;background:#e0f2fe;color:#0c4a6e;border-radius:10px;padding:1px 6px;">🔒</span>':'<span style="font-size:10px;background:#f0fdf4;color:#166534;border-radius:10px;padding:1px 6px;">🌐</span>')
+      +'<div style="font-size:12px;color:#333;margin-top:2px;">'+n.text+'</div></div>'
+      +'<button onclick="deleteNote('+n.id+')" style="background:none;border:none;color:#e74c3c;cursor:pointer;font-size:14px;padding:2px;">🗑️</button>'
+      +'</div>';
+  }).join('');
 }
 </script>
 
@@ -13148,6 +13158,15 @@ function _renderNotesList(){
     <input type="date" id="noteDate" style="width:100%;padding:8px 10px;border:1.5px solid #ddd;border-radius:8px;font-size:14px;margin-bottom:12px;box-sizing:border-box;direction:ltr;">
     <label style="font-size:13px;font-weight:bold;color:#555;display:block;margin-bottom:4px;">📝 תוכן הפתק</label>
     <textarea id="noteText" rows="3" placeholder="כתוב תזכורת, אירוע, הערה..." style="width:100%;padding:8px 10px;border:1.5px solid #ddd;border-radius:8px;font-size:13px;resize:vertical;box-sizing:border-box;margin-bottom:12px;"></textarea>
+    <label style="font-size:13px;font-weight:bold;color:#555;display:block;margin-bottom:8px;">🎨 צבע פתק</label>
+    <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;">
+      <label title="צהוב" style="cursor:pointer;"><input type="radio" name="noteColor" value="#fef08a" checked style="display:none;"><span class="note-color-swatch" style="background:#fef08a;border-left:4px solid #ca8a04;box-shadow:2px 2px 5px rgba(0,0,0,.2);display:inline-block;width:28px;height:28px;border-radius:3px;transition:.15s;"></span></label>
+      <label title="ורוד" style="cursor:pointer;"><input type="radio" name="noteColor" value="#fce7f3" style="display:none;"><span class="note-color-swatch" style="background:#fce7f3;border-left:4px solid #db2777;box-shadow:2px 2px 5px rgba(0,0,0,.2);display:inline-block;width:28px;height:28px;border-radius:3px;transition:.15s;"></span></label>
+      <label title="ירוק" style="cursor:pointer;"><input type="radio" name="noteColor" value="#dcfce7" style="display:none;"><span class="note-color-swatch" style="background:#dcfce7;border-left:4px solid #16a34a;box-shadow:2px 2px 5px rgba(0,0,0,.2);display:inline-block;width:28px;height:28px;border-radius:3px;transition:.15s;"></span></label>
+      <label title="כחול" style="cursor:pointer;"><input type="radio" name="noteColor" value="#dbeafe" style="display:none;"><span class="note-color-swatch" style="background:#dbeafe;border-left:4px solid #2563eb;box-shadow:2px 2px 5px rgba(0,0,0,.2);display:inline-block;width:28px;height:28px;border-radius:3px;transition:.15s;"></span></label>
+      <label title="כתום" style="cursor:pointer;"><input type="radio" name="noteColor" value="#ffedd5" style="display:none;"><span class="note-color-swatch" style="background:#ffedd5;border-left:4px solid #ea580c;box-shadow:2px 2px 5px rgba(0,0,0,.2);display:inline-block;width:28px;height:28px;border-radius:3px;transition:.15s;"></span></label>
+      <label title="סגול" style="cursor:pointer;"><input type="radio" name="noteColor" value="#f3e8ff" style="display:none;"><span class="note-color-swatch" style="background:#f3e8ff;border-left:4px solid #9333ea;box-shadow:2px 2px 5px rgba(0,0,0,.2);display:inline-block;width:28px;height:28px;border-radius:3px;transition:.15s;"></span></label>
+    </div>
     <label style="font-size:13px;font-weight:bold;color:#555;display:block;margin-bottom:8px;">👁️ נראות</label>
     <div style="display:flex;gap:16px;margin-bottom:16px;">
       <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;"><input type="radio" name="noteVisibility" value="all" checked> 🌐 כולם</label>
