@@ -2438,11 +2438,11 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 
     <!-- ══ SUB-TABS for additional analytics ══ -->
     <div style="display:flex;gap:6px;margin:16px 0 12px;border-bottom:2px solid #e8eef6;padding-bottom:0;">
+      <button onclick="switchDashTab('tasks')" id="tabTasks" style="width:auto;padding:8px 16px;background:#f0f4f8;color:#555;border:1px solid #dde;border-bottom:none;border-radius:8px 8px 0 0;cursor:pointer;font-size:12px;font-weight:bold;margin-bottom:-1px;">📋 משימות</button>
       <button onclick="switchDashTab('segments')" id="tabSegs" style="width:auto;padding:8px 16px;background:#2980b9;color:white;border:none;border-radius:8px 8px 0 0;cursor:pointer;font-size:12px;font-weight:bold;margin-bottom:-2px;">📊 עומס מקטעים</button>
       <button onclick="switchDashTab('timesheet')" id="tabTime" style="width:auto;padding:8px 16px;background:#f0f4f8;color:#555;border:1px solid #dde;border-bottom:none;border-radius:8px 8px 0 0;cursor:pointer;font-size:12px;font-weight:bold;margin-bottom:-2px;">🕐 גיליון נוכחות</button>
       <button onclick="switchDashTab('compare')" id="tabComp" style="width:auto;padding:8px 16px;background:#f0f4f8;color:#555;border:1px solid #dde;border-bottom:none;border-radius:8px 8px 0 0;cursor:pointer;font-size:12px;font-weight:bold;margin-bottom:-2px;">📈 השוואת תקופות</button>
       <button onclick="switchDashTab('coverage')" id="tabCov" style="width:auto;padding:8px 16px;background:#f0f4f8;color:#555;border:1px solid #dde;border-bottom:none;border-radius:8px 8px 0 0;cursor:pointer;font-size:12px;font-weight:bold;margin-bottom:-2px;">📅 כיסוי שיבוץ</button>
-      <button onclick="switchDashTab('tasks')" id="tabTasks" style="width:auto;padding:8px 16px;background:#f0f4f8;color:#555;border:1px solid #dde;border-bottom:none;border-radius:8px 8px 0 0;cursor:pointer;font-size:12px;font-weight:bold;margin-bottom:-1px;">📋 משימות</button>
       <button onclick="switchDashTab('efficiency')" id="tabEff" style="width:auto;padding:8px 16px;background:#f0f4f8;color:#555;border:1px solid #dde;border-bottom:none;border-radius:8px 8px 0 0;cursor:pointer;font-size:12px;font-weight:bold;margin-bottom:-2px;">⚡ יעילות מסלול</button>
     </div>
 
@@ -2560,8 +2560,6 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
     <!-- Toolbar -->
 
     <div class="planner-toolbar">
-
-      <h3>📅 תכנון יום הדרכה</h3>
 
       <!-- Date nav -->
 
@@ -3214,12 +3212,27 @@ function startInstrSync(){
 }
 
 async function setMyStatus(status,tripIdx){
-  if(!window._fbDb||!currentUserName)return;
+  if(!currentUserName)return;
   const nowM=new Date().getHours()*60+new Date().getMinutes();
   const key=currentUserName.replace(/[.#$[\]/]/g,'_');
-  try{await _fbSet(_fbRef(_db,statusPath()+'/'+key),
-    {name:currentUserName,status,time:toHHMM(nowM),tripIdx:tripIdx??-1});}
-  catch(e){console.warn('setMyStatus:',e);}
+  const statusObj={name:currentUserName,status,time:toHHMM(nowM),tripIdx:tripIdx??-1};
+  // Update local instrStatuses immediately
+  if(!instrStatuses)instrStatuses={};
+  instrStatuses[key]=statusObj;
+  if(_isDemoMode()||!window._fbDb){
+    // Save to localStorage
+    try{
+      const dateKey='instrStatus_'+currentDate;
+      const existing=JSON.parse(localStorage.getItem(dateKey)||'{}');
+      existing[key]=statusObj;
+      localStorage.setItem(dateKey,JSON.stringify(existing));
+    }catch(e){}
+    renderLog();
+    try{renderInstrTripJournal();}catch(e){}
+    return;
+  }
+  // Firebase
+  try{_fbSet(_fbRef(_db,statusPath()+'/'+key),statusObj);}catch(e){console.warn('setMyStatus:',e);}
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -3441,39 +3454,25 @@ function parseTrip(t){
 }
 
 async function loadFromStorage(){
-
-  // Try Firebase first
-
-  if(window._fbDb){
-
+  // Demo mode or no Firebase: always use localStorage
+  if(_isDemoMode()||!window._fbDb){
     try{
-
-      const snap=await _fbGet(_fbRef(_db,dbPath()));
-
-      trips=snap.exists()?Object.values(snap.val()).map(parseTrip):[];
-
-      renderLog();renderTimeline();
-      renderCalendar();
-      try{renderInstrTripJournal();}catch(e){}
-
+      const raw=localStorage.getItem('trips_'+currentDate);
+      const parsed=raw?JSON.parse(raw):null;
+      trips=parsed?(Array.isArray(parsed)?parsed:Object.values(parsed)).map(t=>{try{return parseTrip(t);}catch(e){return t;}}):[];
     }catch(e){trips=[];}
-
+    try{const _sr=localStorage.getItem('instrStatus_'+currentDate);instrStatuses=_sr?JSON.parse(_sr):{};}catch(e){instrStatuses={};}
+    renderLog();renderTimeline();renderCalendar();
+    try{renderInstrTripJournal();}catch(e){}
     return;
-
   }
-
-  // localStorage fallback
-
+  // Firebase (real mode)
   try{
-
-    const raw=localStorage.getItem('trips_'+currentDate);
-
-    trips=raw?JSON.parse(raw).map(parseTrip):[];
-
+    const snap=await _fbGet(_fbRef(_db,dbPath()));
+    trips=snap.exists()?Object.values(snap.val()).map(parseTrip):[];
+    renderLog();renderTimeline();renderCalendar();
+    try{renderInstrTripJournal();}catch(e){}
   }catch(e){trips=[];}
-
-  renderLog();renderTimeline();
-
 }
 
 // Fallback: load trips from localStorage when Firebase is unavailable
@@ -12130,19 +12129,26 @@ async function _mgrConfirmTrip(tripId,instrName){
   const tripIdx=myTrips.findIndex(t=>t.id===tripId);
   if(tripIdx<0){showToast('נסיעה לא נמצאה','warning');return;}
   const key=instrName.replace(/[.#$[\]/]/g,'_');
-  if(!instrStatuses[key])instrStatuses[key]={name:instrName,status:'idle',confirmedTrips:{}};
-  instrStatuses[key].status='returned';
-  instrStatuses[key].tripIdx=tripIdx;
-  if(!instrStatuses[key].confirmedTrips)instrStatuses[key].confirmedTrips={};
-  instrStatuses[key].confirmedTrips[tripIdx]=true;
-  const entry=instrStatuses[key];
-  if(window._fbDb){
-    try{await _fbSet(_fbRef(_db,statusPath()+'/'+key),entry);}catch(e){}
+  const statusObj={name:instrName,status:'returned',tripIdx,time:toHHMM(new Date().getHours()*60+new Date().getMinutes()),confirmedTrips:{[tripIdx]:true}};
+  if(!instrStatuses)instrStatuses={};
+  instrStatuses[key]=statusObj;
+  if(_isDemoMode()||!window._fbDb){
+    try{
+      const dateKey='instrStatus_'+currentDate;
+      const existing=JSON.parse(localStorage.getItem(dateKey)||'{}');
+      existing[key]=statusObj;
+      localStorage.setItem(dateKey,JSON.stringify(existing));
+    }catch(e){}
+    showToast('✅ נסיעה אושרה','success');
+    renderLog();
+    return;
   }
-  showToast('✅ נסיעה אושרה עבור '+instrName,'success');
-  renderLog();
+  try{
+    const statusPath_mgr=dbPath().replace('trips/','status/');
+    _fbSet(_fbRef(_db,statusPath_mgr+'/'+key),statusObj);
+    showToast('✅ נסיעה אושרה','success');
+  }catch(e){showToast('שגיאה','warning');}
 }
-
 
 
 // ══════════════════════════════════════════════════════
