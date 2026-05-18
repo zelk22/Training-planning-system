@@ -2124,6 +2124,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
       <button onclick="openNotesModal()" style="width:auto !important;display:inline-block;margin:2px;padding:8px 14px;background:#fef08a;border:1px solid #eab308;color:#713f12;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;">📌 פתקים</button>
       <button onclick="openSettings()" style="width:auto !important;display:inline-block;margin:2px;padding:8px 14px;background:#f0f4f8;border:1px solid #ddd;color:#555;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;">⚙️ הגדרות</button>
       <button onclick="openDemoPanel()" id="demoBtnMain" style="width:auto !important;display:inline-block;margin:2px;padding:8px 14px;background:#6c3483;color:white;border:none;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;">🎭 מצב דמו</button>
+      <button onclick="showTraineeModule()" style="width:auto !important;display:inline-block;margin:2px;padding:10px 20px;background:#6c3483;color:white;border:none;border-radius:8px;cursor:pointer;font-size:12px;font-weight:bold;">👨‍🎓 ניהול חניכים &amp; משוב</button>
     </div>
 
     <!-- Demo mode banner (shown when demo is active) -->
@@ -13196,6 +13197,30 @@ function _renderNotesList(){
     </div>
   </div>
 </div>
+
+<div id="trainee-app" style="display:none; padding:20px;"></div>
+
+<script src="modules/trainee-system/trainee-system.js"></script>
+<script>
+function showTraineeModule() {
+    const mv = document.getElementById('managerView');
+    const iv = document.getElementById('instrView');
+    if (mv) mv.style.display = 'none';
+    if (iv) { iv.style.display = 'none'; iv.classList.remove('show'); }
+
+    document.querySelectorAll('.day-planner-section, .manual-section, .dashboard-section, .schedule-section').forEach(el => {
+        if (el) el.style.display = 'none';
+    });
+
+    const app = document.getElementById('trainee-app');
+    app.style.display = 'block';
+
+    if (!window.traineeInitialized) {
+        TraineeSystem.init('trainee-app');
+        window.traineeInitialized = true;
+    }
+}
+</script>
 </body>
 
 </html>
