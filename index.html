@@ -2572,17 +2572,6 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
   </div>
 
 
-  <!-- ══ TRAINEE SYSTEM PANEL ══════════════════════════ -->
-
-  <div id="traineeSystemPanel" style="display:none;margin-bottom:18px;">
-    <div style="background:white;border-radius:12px;border:1px solid #dce3ec;padding:16px 18px;box-shadow:0 4px 18px rgba(0,0,0,0.07);">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-        <h4 style="margin:0;color:#1a5276;font-size:16px;">🎓 מערכת הכשרת חניכים</h4>
-        <button onclick="openTraineePanel()" style="width:auto;padding:5px 12px;background:#f0f4f8;border:1px solid #ccc;border-radius:6px;cursor:pointer;font-size:12px;color:#555;">✕ סגור</button>
-      </div>
-      <div id="traineeSystemContainer"></div>
-    </div>
-  </div>
 
   <!-- ── DAY PLANNER — PRIMARY
 
@@ -2768,6 +2757,18 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
   </div>
 
   </div><!-- /managerView -->
+<!-- ══ TRAINEE SYSTEM PANEL ══════════════════════════ -->
+
+  <div id="traineeSystemPanel" style="display:none;margin-bottom:18px;">
+    <div style="background:white;border-radius:12px;border:1px solid #dce3ec;padding:16px 18px;box-shadow:0 4px 18px rgba(0,0,0,0.07);">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <h4 style="margin:0;color:#1a5276;font-size:16px;">🎓 מערכת הכשרת חניכים</h4>
+        <button onclick="openTraineePanel()" style="width:auto;padding:5px 12px;background:#f0f4f8;border:1px solid #ccc;border-radius:6px;cursor:pointer;font-size:12px;color:#555;">✕ סגור</button>
+      </div>
+      <div id="traineeSystemContainer"></div>
+    </div>
+  </div>
+
 
 </div><!-- /container -->
 
@@ -14580,6 +14581,12 @@ const TraineeSystem = {
             rv.classList.add('active-view');
             rv.style.display = 'block';
         }
+        // Hide export buttons for instructors (reports are manager-only)
+        const isInstructor = (typeof currentRole !== 'undefined') && currentRole === 'instructor';
+        ['export-excel','export-csv'].forEach(act => {
+            const btn = this.container.querySelector(`[data-action="${act}"]`);
+            if (btn) btn.style.display = isInstructor ? 'none' : '';
+        });
         // Scroll the outer trainee panel into view
         const outerPanel = document.getElementById('traineeSystemPanel');
         if (outerPanel) setTimeout(() => outerPanel.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
