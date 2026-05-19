@@ -13243,7 +13243,13 @@ function loadTraineeScript() {
         s.src = getTraineeAssetUrl('trainee-system.js');
         s.dataset.traineeSystem = '1';
         s.onload = function () { resolve(); };
-        s.onerror = function () { reject(new Error('טעינת סקריפט המודול נכשלה: ' + s.src)); };
+        s.onerror = function () {
+            reject(new Error(
+                'הקובץ לא נמצא ב-GitHub (404): ' + s.src +
+                '\n\nהעלה ל-repo את התיקייה: modules/trainee-system/\n' +
+                '(trainee-system.js + trainee-system.html)'
+            ));
+        };
         document.head.appendChild(s);
     });
 }
@@ -13303,7 +13309,9 @@ window.showTraineeModule = async function () {
         app.innerHTML = '<div style="color:red;padding:40px;text-align:center;direction:rtl;">' +
             '<h3>שגיאה בטעינת מודול חניכים</h3>' +
             '<p>' + (err.message || String(err)) + '</p>' +
-            '<p style="font-size:12px;color:#888;">' + (isCodePenHost() ? 'ב-CodePen: Settings → JS → הדבק trainee-system.js + Firebase' : 'ודא ש-modules/trainee-system/ קיים ב-GitHub') + '</p>' +
+            '<p style="font-size:12px;color:#888;white-space:pre-line;">' + (isCodePenHost()
+                ? 'ב-CodePen: Settings → JS → הדבק trainee-system.js + Firebase'
+                : 'ב-GitHub חסרה התיקייה modules/trainee-system/\nהעלה: trainee-system.js + trainee-system.html\nל-repo: zelk22/Training-planning-system') + '</p>' +
             '<button type="button" onclick="showTraineeModule()" style="padding:12px 24px;margin-top:15px;background:#6c3483;color:white;border:none;border-radius:8px;cursor:pointer;">נסה שוב</button>' +
             '</div>';
     }
