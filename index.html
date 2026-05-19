@@ -12987,11 +12987,12 @@ function _reloadAppWithDemoData(){
       if(_adminPreviewMode && _instrNames.length){
         window._adminPreviewIndex=0;
         switchToInstructorView(_instrNames[0]);
-      }else if(currentRole==='instructor'){
-        renderInstrTripJournal();
       }
+      // Always reload trips for current date so trip journal shows correctly
+      resubscribeTripsListener();
+      setTimeout(()=>{ try{renderInstrTripJournal();}catch(e){} },120);
     }catch(e){}
-  },350);
+  },400);
 }
 
 
@@ -13392,11 +13393,6 @@ const TraineeSystem = {
         this.buildCourseTicks();
         this.$('main-view').classList.add('active-view');
         this._initialized = true;
-        // Hide reports button for instructors
-        if (typeof currentRole !== 'undefined' && currentRole === 'instructor') {
-            const rBtn = this.container.querySelector('[data-action="show-reports"]');
-            if (rBtn) rBtn.style.display = 'none';
-        }
         this.$('trainee-list').innerHTML = `
             <div style="grid-column:1/-1; text-align:center; padding:60px 0; color:#a0aec0;">
                 <div style="width:44px;height:44px;border:4px solid #e2e8f0;border-top-color:#3498db;
@@ -14971,6 +14967,14 @@ function openTraineePanel() {
       document.getElementById('traineeSystemContainer').innerHTML =
         '<div style="padding:20px;color:#888;text-align:center;font-size:13px;">⏳ ממתין לטעינת Firebase...</div>';
       window.addEventListener('firebaseReady', doInit, { once: true });
+    }
+  }
+  // Update reports button visibility based on current role (role may change after init)
+  if (typeof TraineeSystem !== 'undefined' && _traineeInitialized) {
+    const rBtn = document.querySelector('#traineeSystemContainer [data-action="show-reports"]');
+    if (rBtn) {
+      const isInstr = (typeof currentRole !== 'undefined') && currentRole === 'instructor';
+      rBtn.style.display = isInstr ? 'none' : '';
     }
   }
   // Scroll into view when opening
