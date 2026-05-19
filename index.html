@@ -12724,6 +12724,10 @@ async function generateAndActivateDemo(){
       `✅ <b>דמו נוצר בהצלחה</b><br>${days.length} ימי עבודה | ${totalTrips} נסיעות | ${totalDelays} עיכובים (${Math.round(totalDelays/totalTrips*100)}%) | ${totalReports} דיווחי משימות`;
     document.getElementById('demoExitBtn').style.display='block';
     document.getElementById('demoGenerateBtn').style.display='none';
+    // ── Generate trainee demo data ──
+    _generateTraineeDemoData(startMonth, instrs);
+    setP(98,'מייצר נתוני חניכים...');await new Promise(r=>setTimeout(r,40));
+
     _reloadAppWithDemoData();
     _updateDemoBanner(true);
     showToast('🎭 מצב דמו פעיל!','success');
@@ -12734,6 +12738,134 @@ async function generateAndActivateDemo(){
   }
 }
 
+
+function _generateTraineeDemoData(startYYYYMM, instrNames) {
+  // Deterministic seeded pseudo-random (same as V100)
+  const _rnd = (seed) => {
+    let h = 0; for (let i = 0; i < seed.length; i++) { h = Math.imul(31, h) + seed.charCodeAt(i) | 0; }
+    h ^= h >>> 16; h = Math.imul(h, 0x45d9f3b); h ^= h >>> 16;
+    return (h >>> 0) / 0xffffffff;
+  };
+
+  const [sy, sm] = startYYYYMM.split('-').map(Number);
+  const startDate = new Date(sy, sm - 1, 1);
+  const today = new Date();
+
+  // Build list of working days
+  const workDays = [];
+  for (let d = new Date(startDate); d <= today; d.setDate(d.getDate() + 1)) {
+    if (d.getDay() !== 6) workDays.push(new Date(d).toISOString().slice(0, 10));
+  }
+
+  const instructors = instrNames && instrNames.length >= 3
+    ? instrNames.slice(0, 5)
+    : ['אלון מזרחי','רונן לוי','יעל ברק','מיכל שמיר','דוד כהן'];
+
+  // 6 trainees with different profiles
+  const PROFILES = [
+    { name:'דן לוי',       progress:0.70, quality:'good',     startOffset:0.05 },
+    { name:'מיה כהן',      progress:0.45, quality:'improving',startOffset:0.20 },
+    { name:'עומר אברהמי',  progress:0.93, quality:'excellent',startOffset:0.00 },
+    { name:'שירה גולן',    progress:0.18, quality:'poor',     startOffset:0.65 },
+    { name:'ניב בן-דוד',   progress:0.58, quality:'good',     startOffset:0.12 },
+    { name:'תמר שפירא',    progress:0.08, quality:'new',      startOffset:0.80 },
+  ];
+
+  const LESSON_SETS = {
+    קורס:   [[1,2],[2,3],[3,4],[4,5],[5,6],[6,7],[7,8],[8,9],[9,10],[10,11],[11,12],[12,13],[13,14],[15,16],[17,18],[19,20],[21,22],[23,24],[25,26],[27,28],[29,30],[31,32],[33,34],[35,36],[37,38],[39,40],[41,42],[43,44],[45,46],[47,48],[49,50]],
+    חניכה:  [[1,2,3],[4,5,6],[7,8,9],[10,11,12],[13,14,15],[16,17,18],[19,20,21],[22,23,24],[25,26,27],[28,29,30],[31,32,33],[34,35,36],[37,38,39],[40,41,42],[43,44,45],[46,47,48]],
+  };
+
+  const score = (base, noise, seed) => Math.min(10, Math.max(1, Math.round((base + ((_rnd(seed) - 0.5) * noise)) * 10) / 10));
+
+  const trainees = PROFILES.map((profile, pi) => {
+    const tid = 1000000 + pi * 100000;
+    const traineeStart = workDays[Math.floor(profile.startOffset * workDays.length)] || workDays[0];
+    const availDays = workDays.filter(d => d >= traineeStart);
+
+    // How many lessons to generate based on progress
+    const totalLessons = Math.max(2, Math.round(profile.progress * 50));
+    // Pick working days spaced apart (every 4-10 days on average)
+    const lessonDays = [];
+    let dayIdx = 0;
+    for (let i = 0; i < totalLessons && dayIdx < availDays.length; i++) {
+      lessonDays.push(availDays[dayIdx]);
+      dayIdx += Math.max(3, Math.round(3 + _rnd(profile.name + i) * 8));
+    }
+
+    const lessons = [];
+    let courseIdx = 0;
+    let chinuchIdx = 0;
+
+    lessonDays.forEach((date, li) => {
+      // Determine lesson type: 70% קורס, 20% חניכה, 10% שעות נוספות
+      const typeRoll = _rnd(profile.name + date + 'type');
+      let mission;
+      if (typeRoll < 0.70) mission = 'קורס';
+      else if (typeRoll < 0.90) mission = 'חניכה';
+      else mission = 'שעות נוספות';
+
+      // Progress factor (0→1 over time): scores start lower, improve
+      const progFactor = Math.min(1, li / Math.max(1, lessonDays.length - 1));
+
+      // Base score per quality profile
+      const bases = {
+        excellent: [8.8, 9.0, 8.7, 9.1, 9.2],
+        good:      [7.5, 7.8, 7.2, 8.0, 7.9],
+        improving: [5.5 + progFactor * 2.5, 5.8 + progFactor * 2.2, 5.2 + progFactor * 2.8, 6.0 + progFactor * 2.0, 5.9 + progFactor * 2.3],
+        poor:      [5.0, 4.8, 5.2, 5.5, 4.5],
+        new:       [6.0, 6.5, 5.8, 6.2, 6.8],
+      }[profile.quality] || [7, 7, 7, 7, 7];
+
+      const ins = instructors[Math.floor(_rnd(profile.name + date + 'ins') * instructors.length)];
+
+      let lessonNums = [];
+      let extraDesc = '';
+      if (mission === 'קורס') {
+        lessonNums = LESSON_SETS.קורס[Math.min(courseIdx, LESSON_SETS.קורס.length - 1)];
+        courseIdx++;
+      } else if (mission === 'חניכה') {
+        lessonNums = LESSON_SETS.חניכה[Math.min(chinuchIdx, LESSON_SETS.חניכה.length - 1)];
+        chinuchIdx++;
+      } else {
+        const extras = ['תרגול תמרונים','עבודה עם מורה מוסמך','בדיקת מכשירים','תרגיל בטיחות','נהיגה עצמאית מלווה'];
+        extraDesc = extras[Math.floor(_rnd(profile.name + date + 'ex') * extras.length)];
+      }
+
+      const notePool = ['ביצוע טוב','שיפור ניכר מהפגישה הקודמת','נדרש תרגול נוסף בנהלים','מגלה עניין ומוטיבציה גבוהה','קשיים בריכוז בחלק הסופי','עבודה מסודרת ואחראית','','',''];
+      const note = _rnd(profile.name + date + 'note') > 0.55
+        ? notePool[Math.floor(_rnd(profile.name + date + 'np') * notePool.length)]
+        : '';
+
+      lessons.push({
+        date,
+        mission,
+        lessonNums,
+        extraDesc,
+        ins,
+        s1: score(bases[0], 1.8, profile.name + date + 's1'),
+        s2: score(bases[1], 1.8, profile.name + date + 's2'),
+        s3: score(bases[2], 2.0, profile.name + date + 's3'),
+        s4: score(bases[3], 1.6, profile.name + date + 's4'),
+        s5: score(bases[4], 1.4, profile.name + date + 's5'),
+        notes: note,
+        signed: _rnd(profile.name + date + 'sig') > 0.3,
+      });
+    });
+
+    return { id: tid, name: profile.name, lessons };
+  });
+
+  localStorage.setItem('demo_trainee_data', JSON.stringify(trainees));
+  console.log('✅ Trainee demo data generated:', trainees.length, 'trainees,', trainees.reduce((s,t)=>s+t.lessons.length,0), 'lessons');
+
+  // If TraineeSystem is already open, reload it
+  if (typeof TraineeSystem !== 'undefined' && TraineeSystem._initialized) {
+    TraineeSystem._demoMode = true;
+    TraineeSystem.trainees = trainees;
+    try { TraineeSystem.renderList(); } catch(e) {}
+  }
+}
 
 function exitDemoMode(){
   if(!confirm('לצאת ממצב דמו ולשחזר את הנתונים האמיתיים?'))return;
@@ -12754,6 +12886,13 @@ function exitDemoMode(){
   });
   localStorage.removeItem('demo_months');
   localStorage.removeItem('demo_active');
+  localStorage.removeItem('demo_trainee_data');
+  // Reload TraineeSystem if it was initialized
+  if (typeof TraineeSystem !== 'undefined' && TraineeSystem._initialized) {
+    TraineeSystem._demoMode = false;
+    TraineeSystem.trainees = [];
+    try { TraineeSystem.loadData(); } catch(e) {}
+  }
   _updateDemoBanner(false);
   // DON'T close panel — allow re-activation without refresh
   // Reload real data
@@ -13235,12 +13374,13 @@ const TraineeSystem = {
         this.buildRoadmap();
         this.buildCourseTicks();
         this.$('main-view').classList.add('active-view');
+        this._initialized = true;
         this.$('trainee-list').innerHTML = `
             <div style="grid-column:1/-1; text-align:center; padding:60px 0; color:#a0aec0;">
                 <div style="width:44px;height:44px;border:4px solid #e2e8f0;border-top-color:#3498db;
                             border-radius:50%;animation:trainee-spin 0.8s linear infinite;margin:0 auto 16px;">
                 </div>
-                <div style="font-size:1em;">מתחבר למסד הנתונים...</div>
+                <div style="font-size:1em;">${localStorage.getItem('demo_active')==='1'?'טוען נתוני דמו...':'מתחבר למסד הנתונים...'}</div>
             </div>`;
         this.loadData();
     },
@@ -13735,6 +13875,22 @@ const TraineeSystem = {
     },
 
     loadData() {
+        // Demo mode: load from localStorage instead of Firebase
+        if (localStorage.getItem('demo_active') === '1') {
+            this._demoMode = true;
+            try {
+                const raw = localStorage.getItem('demo_trainee_data');
+                if (raw) {
+                    this.trainees = JSON.parse(raw);
+                    this.renderList();
+                    this.renderInsTags();
+                    const instrRaw = localStorage.getItem('v100_instructors');
+                    if (instrRaw) { this.instructors = JSON.parse(instrRaw); this.renderInsTags(); this.updateInsDropdown(); }
+                    return;
+                }
+            } catch(e) { console.warn('Demo trainee parse error:', e); }
+        }
+        this._demoMode = false;
         Promise.all([
             this.traineesRef.once('value'),
             this.instructorsRef.once('value')
@@ -13770,6 +13926,10 @@ const TraineeSystem = {
     },
 
     persist() {
+        if (this._demoMode) {
+            localStorage.setItem('demo_trainee_data', JSON.stringify(this.trainees));
+            return;
+        }
         const tData = {};
         this.trainees.forEach(t => { tData[t.id] = t; });
         this.traineesRef.set(tData);
