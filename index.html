@@ -2148,7 +2148,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
       <button onclick="openNotesModal()" style="width:auto !important;display:inline-block;margin:2px;padding:8px 14px;background:#fef08a;border:1px solid #eab308;color:#713f12;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;">📌 פתקים</button>
       <button onclick="openSettings()" style="width:auto !important;display:inline-block;margin:2px;padding:8px 14px;background:#f0f4f8;border:1px solid #ddd;color:#555;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;">⚙️ הגדרות</button>
       <button onclick="openDemoPanel()" id="demoBtnMain" style="width:auto !important;display:inline-block;margin:2px;padding:8px 14px;background:#6c3483;color:white;border:none;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;">🎭 מצב דמו</button>
-      <button onclick="openTraineePanel()" id="traineePanelBtn" style="width:auto !important;display:inline-block;margin:2px;padding:8px 14px;background:#1a5276;border:1.5px solid #2980b9;color:white;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;">🎓 חניכים</button>
+      <button onclick="openTraineePanel()" id="traineePanelBtn" style="width:auto !important;display:inline-block;margin:2px;padding:8px 14px;background:#1a5276;border:1.5px solid #2980b9;color:white;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;">🎓 ניהול חניכים &amp; משוב</button>
     </div>
 
     <!-- Demo mode banner (shown when demo is active) -->
@@ -13583,7 +13583,7 @@ const TraineeSystem = {
         </div>
     </div>
 
-    <div id="reports-view" class="view" style="display:none;">
+    <div id="reports-view" class="view">
         <div class="detail-top" style="flex-wrap:wrap;gap:10px;">
             <button class="btn btn-ghost" data-action="show-main-from-reports">\u2190 \u05d7\u05d6\u05e8\u05d4 \u05dc\u05e8\u05e9\u05d9\u05de\u05d4</button>
             <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
@@ -14411,7 +14411,13 @@ const TraineeSystem = {
         this.$('main-view').classList.remove('active-view');
         this.$('detail-view')?.classList.remove('active-view');
         const rv = this.$('reports-view');
-        if (rv) rv.classList.add('active-view');
+        if (rv) {
+            rv.classList.add('active-view');
+            rv.style.display = 'block';
+        }
+        // Scroll the outer trainee panel into view
+        const outerPanel = document.getElementById('traineeSystemPanel');
+        if (outerPanel) setTimeout(() => outerPanel.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
         this._activeRptTab = 'comparison';
         // Default date range: last 6 months
         const to = new Date();
@@ -14424,8 +14430,10 @@ const TraineeSystem = {
 
     showMainViewFromReports() {
         const rv = this.$('reports-view');
-        if (rv) rv.classList.remove('active-view');
+        if (rv) { rv.classList.remove('active-view'); rv.style.display = ''; }
         this.$('main-view').classList.add('active-view');
+        const outerPanel = document.getElementById('traineeSystemPanel');
+        if (outerPanel) setTimeout(() => outerPanel.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
     },
 
     getRptRange() {
@@ -14767,14 +14775,16 @@ function openTraineePanel() {
       }
     };
     if (window._firebaseOK) {
-      // Firebase already ready — init immediately
       doInit();
     } else {
-      // Wait for firebaseReady event (deferred scripts still loading)
       document.getElementById('traineeSystemContainer').innerHTML =
         '<div style="padding:20px;color:#888;text-align:center;font-size:13px;">⏳ ממתין לטעינת Firebase...</div>';
       window.addEventListener('firebaseReady', doInit, { once: true });
     }
+  }
+  // Scroll into view when opening
+  if (panel.style.display !== 'none') {
+    setTimeout(() => panel.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
   }
 }
 </script>
