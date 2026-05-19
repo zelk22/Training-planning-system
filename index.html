@@ -12981,6 +12981,17 @@ function _reloadAppWithDemoData(){
   try{renderLog();}catch(e){}
   try{renderDashboard();}catch(e){}
   try{renderInstrTripJournal();}catch(e){}
+  // Re-init instructor preview after demo data settles
+  setTimeout(()=>{
+    try{
+      if(_adminPreviewMode && _instrNames.length){
+        window._adminPreviewIndex=0;
+        switchToInstructorView(_instrNames[0]);
+      }else if(currentRole==='instructor'){
+        renderInstrTripJournal();
+      }
+    }catch(e){}
+  },350);
 }
 
 
@@ -13381,6 +13392,11 @@ const TraineeSystem = {
         this.buildCourseTicks();
         this.$('main-view').classList.add('active-view');
         this._initialized = true;
+        // Hide reports button for instructors
+        if (typeof currentRole !== 'undefined' && currentRole === 'instructor') {
+            const rBtn = this.container.querySelector('[data-action="show-reports"]');
+            if (rBtn) rBtn.style.display = 'none';
+        }
         this.$('trainee-list').innerHTML = `
             <div style="grid-column:1/-1; text-align:center; padding:60px 0; color:#a0aec0;">
                 <div style="width:44px;height:44px;border:4px solid #e2e8f0;border-top-color:#3498db;
