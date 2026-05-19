@@ -2380,13 +2380,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 
           <div class="forecast-box" id="forecast"><i>בחר מסלול...</i></div>
 
-          <div style="margin:8px 0 4px;direction:rtl;">
-    <label style="display:block;font-size:12px;font-weight:bold;color:#2980b9;margin-bottom:5px;">🎓 חניך מתלווה (אופציונלי)</label>
-    <select id="traineeOnTripSel" style="width:100%;padding:9px 10px;border:1.5px solid #ddd;border-radius:8px;font-size:14px;direction:rtl;background:white;color:#1a2a3a;">
-        <option value="">— ללא חניך —</option>
-    </select>
-</div>
-<button id="saveB" class="btn-save" onclick="saveTrip()" style="margin-top:8px;">✅ אשר ושמור נסיעה</button>
+          <button id="saveB" class="btn-save" onclick="saveTrip()" style="margin-top:8px;">✅ אשר ושמור נסיעה</button>
 
           <button onclick="saveRouteAsFavorite()" title="שמור מסלול זה ברשימת המועדפים" style="margin-top:6px;width:100%;padding:10px;background:#f0e6ff;color:#7d3c98;border:2px solid #c39bd3;border-radius:9px;font-size:13px;font-weight:bold;cursor:pointer;">⭐ שמור מסלול</button>
 
@@ -4027,11 +4021,7 @@ function _doSaveTrip(){
 
   const route=[...curRoute];
 
-  const traineeSelEl = document.getElementById('traineeOnTripSel');
-  const traineeOnTrip = traineeSelEl ? traineeSelEl.value : '';
-  const traineeName = traineeSelEl ? (traineeSelEl.options[traineeSelEl.selectedIndex]?.text || '') : '';
-  const newTrip={id:Date.now(),name,route,timeline:buildTimeline(startStr,route),startStr,delayMin:0,
-    ...(traineeOnTrip ? {traineeId:traineeOnTrip, traineeName} : {})};
+  const newTrip={id:Date.now(),name,route,timeline:buildTimeline(startStr,route),startStr,delayMin:0};
 
   trips.push(newTrip);
 
@@ -4042,6 +4032,75 @@ function _doSaveTrip(){
 
   autoCreateScheduleEntryFromTrip(newTrip);
 
+}
+
+function openTripTraineesModal(tripId) {
+  const trip = trips.find(t => String(t.id) === String(tripId));
+  if (!trip) { showToast('נסיעה לא נמצאה', 'warning'); return; }
+
+  const trainees = (typeof TraineeSystem !== 'undefined' && TraineeSystem.trainees)
+    ? TraineeSystem.trainees : [];
+
+  if (!trainees.length) {
+    showToast('אין חניכים במערכת — פתח תחילה את מערכת חניכים', 'info');
+    return;
+  }
+
+  const current = new Set(trip.traineeIds || []);
+
+  const overlay = document.createElement('div');
+  overlay.id = 'traineesTripModal';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:9999;display:flex;align-items:center;justify-content:center;';
+
+  const rows = trainees.map(t => {
+    const checked = current.has(t.id) ? 'checked' : '';
+    const doneLessons = new Set();
+    (t.lessons || []).forEach(l => {
+      if (l.mission === 'קורס') (l.lessonNums || []).forEach(n => doneLessons.add(n));
+    });
+    const phase = doneLessons.size < 10 ? 'טכני' : doneLessons.size < 30 ? 'תפעולי' : 'מסחרי';
+    return `<label style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:8px;cursor:pointer;transition:background 0.15s;" onmouseover="this.style.background='#f0f7ff'" onmouseout="this.style.background='transparent'">
+      <input type="checkbox" data-trainee-id="${t.id}" data-trainee-name="${t.name.replace(/"/g,'&quot;')}" ${checked} style="width:18px;height:18px;cursor:pointer;accent-color:#3498db;">
+      <span style="flex:1;font-weight:600;color:#1a2a3a;">${t.name}</span>
+      <span style="font-size:0.8em;background:#e8f4fd;color:#2980b9;padding:2px 8px;border-radius:10px;">${phase} · שיעור ${doneLessons.size}/50</span>
+    </label>`;
+  }).join('');
+
+  overlay.innerHTML = `
+    <div style="background:white;border-radius:16px;padding:28px 32px;max-width:440px;width:92%;box-shadow:0 20px 60px rgba(0,0,0,0.25);direction:rtl;max-height:80vh;display:flex;flex-direction:column;">
+      <h3 style="margin:0 0 6px;color:#1a2a3a;font-size:1.2em;">🎓 צרף חניכים לנסיעה</h3>
+      <p style="margin:0 0 16px;color:#718096;font-size:0.88em;">מדריך: <b>${trip.name}</b> · ${trip.startStr||''} · ${(trip.route||[]).map(s=>s.id).join('→')}</p>
+      <div style="overflow-y:auto;flex:1;border:1px solid #e2e8f0;border-radius:10px;padding:4px 0;">${rows}</div>
+      <div id="sel-trainee-summary" style="font-size:0.82em;color:#718096;margin-top:10px;min-height:18px;"></div>
+      <div style="display:flex;gap:10px;margin-top:16px;justify-content:flex-end;">
+        <button id="tm-cancel" style="padding:10px 22px;background:#f0f4f8;border:1px solid #ddd;border-radius:8px;cursor:pointer;font-weight:600;">ביטול</button>
+        <button id="tm-save"   style="padding:10px 22px;background:#3498db;color:white;border:none;border-radius:8px;cursor:pointer;font-weight:700;">💾 שמור</button>
+      </div>
+    </div>`;
+
+  document.body.appendChild(overlay);
+
+  const updateSummary = () => {
+    const sel = [...overlay.querySelectorAll('input[type=checkbox]:checked')].map(cb => cb.dataset.traineeName);
+    const sumEl = overlay.querySelector('#sel-trainee-summary');
+    if (sumEl) sumEl.textContent = sel.length ? 'נבחרו: ' + sel.join(', ') : 'לא נבחרו חניכים';
+  };
+  overlay.querySelectorAll('input[type=checkbox]').forEach(cb => cb.addEventListener('change', updateSummary));
+  updateSummary();
+
+  overlay.querySelector('#tm-cancel').onclick = () => document.body.removeChild(overlay);
+  overlay.onclick = e => { if (e.target === overlay) document.body.removeChild(overlay); };
+
+  overlay.querySelector('#tm-save').onclick = () => {
+    const checked = [...overlay.querySelectorAll('input[type=checkbox]:checked')];
+    trip.traineeIds   = checked.map(cb => parseInt(cb.dataset.traineeId));
+    trip.traineeNames = checked.map(cb => cb.dataset.traineeName);
+    saveToStorage();
+    renderLog();
+    document.body.removeChild(overlay);
+    const n = checked.length;
+    showToast(n ? `✅ ${n} חניכ${n===1?'':'ים'} שובצ${n===1?'':'ו'} לנסיעה` : 'החניכים הוסרו מהנסיעה', 'success');
+  };
 }
 
 function saveTrip(){
@@ -9442,6 +9501,7 @@ function renderInstrTripJournal(){
         <button class="btn-sm edit" onclick="openTripEditModal('${t.id}')" title="ערוך מסלול">✏️</button>
         ${isStarted?`<button class="btn-sm delay" onclick="openDelayModal('${t.id}')" title="הוסף עיכוב" style="background:#fff3cd;border:1px solid #f0ad4e;color:#856404;">⏱️</button>`:''}
         <button class="btn-sm del" onclick="delTrip('${t.id}')" title="מחק נסיעה">🗑️</button>
+        <button onclick="openTripTraineesModal('${t.id}')" title="צרף חניכים לנסיעה" style="width:auto;padding:3px 7px;background:${(t.traineeIds&&t.traineeIds.length)?'#e8f4fd':'#f8f9fa'};border:1px solid ${(t.traineeIds&&t.traineeIds.length)?'#3498db':'#ddd'};border-radius:5px;cursor:pointer;font-size:13px;">🎓${(t.traineeIds&&t.traineeIds.length)?'<span style="color:#2980b9;font-weight:700;font-size:10px;margin-right:2px;"> '+t.traineeIds.length+'</span>':''}</button>
       </td>
     </tr>`;
   }).join('');
@@ -13358,6 +13418,7 @@ const TraineeSystem = {
             <h1 class="header-title">ניהול הכשרת נהגים</h1>
             <div style="display:flex; gap:10px; flex-wrap:wrap;">
                 <button class="btn btn-ghost" data-action="toggle-panel" data-panel="ins-panel">⚙️ מדריכים</button>
+                <button class="btn btn-ghost" data-action="show-reports" style="border:1.5px solid #3498db;color:#3498db;">📊 דוחות וייצוא</button>
                 <button class="btn btn-blue"  data-action="toggle-panel" data-panel="add-panel">+ חניך חדש</button>
             </div>
         </header>
@@ -14680,22 +14741,6 @@ const TraineeSystem = {
 };
 
 
-// ── Populate V100 trainee dropdown from TraineeSystem ──
-function refreshTripTraineeDropdown() {
-    const sel = document.getElementById('traineeOnTripSel');
-    if (!sel) return;
-    const cur = sel.value;
-    sel.innerHTML = '<option value="">— ללא חניך —</option>';
-    const trainees = (typeof TraineeSystem !== 'undefined') ? TraineeSystem.trainees : [];
-    trainees.forEach(t => {
-        const opt = document.createElement('option');
-        opt.value = t.id;
-        opt.textContent = t.name;
-        if (String(t.id) === String(cur)) opt.selected = true;
-        sel.appendChild(opt);
-    });
-}
-
 // ── Trainee panel toggle ──
 let _traineeInitialized = false;
 
@@ -14714,7 +14759,6 @@ function openTraineePanel() {
     const doInit = () => {
       try {
         TraineeSystem.init('traineeSystemContainer');
-        setTimeout(refreshTripTraineeDropdown, 1200);
       } catch(e) {
         console.error('TraineeSystem init error:', e);
         document.getElementById('traineeSystemContainer').innerHTML =
