@@ -2071,7 +2071,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 
       <h4>📊 דשבורד יומי <span id="dashDateLbl" style="font-weight:400;font-size:13px;color:#888;"></span></h4>
 
-      <button onclick="renderDashboard()" style="background:none;border:1px solid #ddd;border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;color:#888;width:auto;margin:0;">↻ רענן</button>
+
 
     </div>
 
@@ -13261,27 +13261,23 @@ function _initTraineeIfNeeded() {
   if (rBtn) rBtn.style.display = (typeof currentRole !== 'undefined' && currentRole === 'instructor') ? 'none' : '';
   if (window._traineeInitialized) return;
   window._traineeInitialized = true;
-  const doInit = () => {
-    try {
-      if (typeof TraineeSystem !== 'undefined') {
-        TraineeSystem.init('traineeSystemContainer');
-        setTimeout(() => {
-          const rb = document.querySelector('#traineeSystemContainer [data-action="show-reports"]');
-          if (rb) rb.style.display = (typeof currentRole !== 'undefined' && currentRole === 'instructor') ? 'none' : '';
-        }, 100);
-      }
-    } catch(e) {
-      console.error('TraineeSystem init error:', e);
+  try {
+    if (typeof TraineeSystem !== 'undefined') {
+      TraineeSystem.init('traineeSystemContainer');
+      setTimeout(() => {
+        const rb = document.querySelector('#traineeSystemContainer [data-action="show-reports"]');
+        if (rb) rb.style.display = (typeof currentRole !== 'undefined' && currentRole === 'instructor') ? 'none' : '';
+      }, 100);
+    } else {
       const cont = document.getElementById('traineeSystemContainer');
-      if (cont) cont.innerHTML = '<div style="padding:20px;color:#e74c3c;text-align:center;">\u274c ' + e.message + '</div>';
+      if (cont) cont.innerHTML = '<div style="padding:20px;color:#888;text-align:center;">⏳ ממתין לטעינת מערכת...</div>';
       window._traineeInitialized = false;
     }
-  };
-  if (window._firebaseOK) { doInit(); }
-  else {
+  } catch(e) {
+    console.error('TraineeSystem init error:', e);
     const cont = document.getElementById('traineeSystemContainer');
-    if (cont) cont.innerHTML = '<div style="padding:20px;color:#888;text-align:center;">\u23f3 \u05de\u05de\u05ea\u05d9\u05df \u05dc\u05d8\u05e2\u05d9\u05e0\u05ea Firebase...</div>';
-    window.addEventListener('firebaseReady', doInit, { once: true });
+    if (cont) cont.innerHTML = '<div style="padding:20px;color:#e74c3c;text-align:center;">❌ ' + e.message + '</div>';
+    window._traineeInitialized = false;
   }
 }
 
