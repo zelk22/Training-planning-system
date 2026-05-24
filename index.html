@@ -2098,6 +2098,11 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
           style="width:auto;padding:4px 8px;border:1px solid #ccc;border-radius:6px;font-size:12px;cursor:pointer;">
       </div>
 
+      <div id="daySummaryContent"></div>
+    </div>
+
+  </div>
+
   <div id="coverageAlertsBanner" style="display:none;margin-bottom:14px;background:#fef9e7;border:1.5px solid #f0c050;border-radius:10px;padding:12px 16px;">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
       <div>
@@ -2106,11 +2111,6 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
       </div>
       <button onclick="document.getElementById('coverageAlertsBanner').style.display='none'" style="width:auto;padding:3px 8px;background:none;border:1px solid #f0c050;border-radius:5px;color:#856404;cursor:pointer;font-size:12px;white-space:nowrap;">× סגור</button>
     </div>
-  </div>
-
-      <div id="daySummaryContent"></div>
-    </div>
-
   </div>
 
   <!-- ── SCHEDULE ─────────────────────────────────────── -->
@@ -2237,7 +2237,6 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
         <button onclick="changeMonthlyDash(-1)" style="width:auto;background:#f0f4f8;border:1px solid #ccc;border-radius:6px;padding:5px 10px;cursor:pointer;font-size:15px;">‹</button>
         <span id="monthlyDashLabel" style="font-weight:bold;color:var(--primary);font-size:14px;white-space:nowrap;"></span>
         <button onclick="changeMonthlyDash(1)" style="width:auto;background:#f0f4f8;border:1px solid #ccc;border-radius:6px;padding:5px 10px;cursor:pointer;font-size:15px;">›</button>
-        <button onclick="loadMonthlyDash()" style="width:auto;padding:7px 12px;background:#2980b9;color:white;border:none;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;">🔄 טען נתונים</button>
         <div style="position:relative;display:inline-block;" id="reportsDropdownWrapper">
           <button onclick="toggleReportsDropdown()" style="width:auto;padding:7px 14px;background:#6c3483;color:white;border:none;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;">📊 דוחות ▾</button>
           <div id="reportsDropdown" style="display:none;position:absolute;top:110%;right:0;background:white;border:1.5px solid #ddd;border-radius:10px;box-shadow:0 6px 20px rgba(0,0,0,0.12);z-index:1000;min-width:195px;padding:6px 0;">
@@ -4432,10 +4431,15 @@ function renderLog(){
 
   if(trips.length===0){b.innerHTML='<tr><td colspan="8" style="color:#aaa;padding:18px;text-align:center;">אין נסיעות רשומות</td></tr>';renderTimeline();return;}
 
-  // Sort (manager only)
+  // Sort chronologically by trip start time
+  const _sortByStart=(arr)=>arr.sort((a,b)=>{
+    const aM=(a.timeline&&a.timeline[0])?a.timeline[0].start:999;
+    const bM=(b.timeline&&b.timeline[0])?b.timeline[0].start:999;
+    return aM-bM;
+  });
   let _renderTrips=currentRole==='instructor'
-    ?[...trips].filter(t=>t.name===currentUserName)
-    :[...trips];
+    ?_sortByStart([...trips].filter(t=>t.name===currentUserName))
+    :_sortByStart([...trips]);
   // For instructor: pre-compute myTrips for status button index
   const _myTripsForBtn=trips.filter(t=>t.name===currentUserName)
     .sort((a,b)=>(a.timeline[0]?.startMin||0)-(b.timeline[0]?.startMin||0));
@@ -9372,7 +9376,11 @@ function renderInstrTripJournal(){
   }
 
   // Filter trips for this instructor
-  const myTrips=trips.filter(t=>t.name===currentUserName);
+  const myTrips=trips.filter(t=>t.name===currentUserName).sort((a,b)=>{
+    const aM=(a.timeline&&a.timeline[0])?a.timeline[0].start:999;
+    const bM=(b.timeline&&b.timeline[0])?b.timeline[0].start:999;
+    return aM-bM;
+  });
 
   if(!myTrips.length){
     tbody.innerHTML=`<tr><td colspan="7" style="text-align:center;color:#aaa;padding:18px;">אין נסיעות ביום זה</td></tr>`;
@@ -12787,7 +12795,8 @@ function exitDemoMode(){
   const _ts=document.getElementById('traineeSection');if(_ts)_ts.removeAttribute('open');
   _traineeInitialized=false;
   if(typeof TraineeSystem!=='undefined'&&TraineeSystem._initialized){TraineeSystem._demoMode=false;TraineeSystem.trainees=[];try{TraineeSystem.loadData();}catch(e){}}
-  // Reload schedule/task defs from real data
+  // Reload schedule/task defs from real data + clear stale schedData
+  try{schedData={};}catch(e){}
   try{lsLoadSched();}catch(e){}
   try{normalizeTaskDefs();}catch(e){}
   // Re-render everything immediately with empty trips
