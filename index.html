@@ -3148,8 +3148,14 @@ window.TraineeSystem = {
             messagingSenderId: "608824054092",
             appId:             "1:608824054092:web:dedb20d936f223aa00ffe9"
         };
-        firebase.initializeApp(firebaseConfig);
-        this.db             = firebase.database();
+        // Use named app to avoid conflict with V100's DEFAULT Firebase app
+        let _traineeApp;
+        try {
+            _traineeApp = firebase.app('trainee');
+        } catch(e) {
+            _traineeApp = firebase.initializeApp(firebaseConfig, 'trainee');
+        }
+        this.db             = _traineeApp.database();
         this.traineesRef    = this.db.ref('trainees_v20');
         this.instructorsRef = this.db.ref('instructors_v20');
     },
