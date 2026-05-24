@@ -4433,8 +4433,8 @@ function renderLog(){
 
   // Sort chronologically by trip start time
   const _sortByStart=(arr)=>arr.sort((a,b)=>{
-    const aM=(a.timeline&&a.timeline[0])?a.timeline[0].start:999;
-    const bM=(b.timeline&&b.timeline[0])?b.timeline[0].start:999;
+    const aM=(a.timeline&&a.timeline[0])?(a.timeline[0].startMin??a.timeline[0].start??999):999;
+    const bM=(b.timeline&&b.timeline[0])?(b.timeline[0].startMin??b.timeline[0].start??999):999;
     return aM-bM;
   });
   let _renderTrips=currentRole==='instructor'
@@ -9377,8 +9377,8 @@ function renderInstrTripJournal(){
 
   // Filter trips for this instructor
   const myTrips=trips.filter(t=>t.name===currentUserName).sort((a,b)=>{
-    const aM=(a.timeline&&a.timeline[0])?a.timeline[0].start:999;
-    const bM=(b.timeline&&b.timeline[0])?b.timeline[0].start:999;
+    const aM=(a.timeline&&a.timeline[0])?(a.timeline[0].startMin??a.timeline[0].start??999):999;
+    const bM=(b.timeline&&b.timeline[0])?(b.timeline[0].startMin??b.timeline[0].start??999):999;
     return aM-bM;
   });
 
@@ -12803,6 +12803,9 @@ function exitDemoMode(){
   try{renderLog();}catch(e){}
   try{renderCalendar();}catch(e){}
   try{renderDashboard();}catch(e){}
+  // Reconnect schedule sync + delayed re-render
+  try{if(typeof startSchedSync==='function')startSchedSync();}catch(e){}
+  setTimeout(()=>{try{renderCalendar();}catch(e){}},200);
   try{renderInstrTripJournal();}catch(e){}
   // Then connect to Firebase (async)
   try{resubscribeTripsListener();}catch(e){}
@@ -13248,6 +13251,61 @@ function _renderNotesList(){
       +'</div>';
   }).join('');
 }
+
+// ══ TraineeSection Initialization ══════════════════════════
+window._traineeInitialized = false;
+
+function _initTraineeIfNeeded() {
+  // Update reports button visibility based on role
+  const rBtn = document.querySelector('#traineeSystemContainer [data-action="show-reports"]');
+  if (rBtn) rBtn.style.display = (typeof currentRole !== 'undefined' && currentRole === 'instructor') ? 'none' : '';
+  if (window._traineeInitialized) return;
+  window._traineeInitialized = true;
+  const doInit = () => {
+    try {
+      if (typeof TraineeSystem !== 'undefined') {
+        TraineeSystem.init('traineeSystemContainer');
+        setTimeout(() => {
+          const rb = document.querySelector('#traineeSystemContainer [data-action="show-reports"]');
+          if (rb) rb.style.display = (typeof currentRole !== 'undefined' && currentRole === 'instructor') ? 'none' : '';
+        }, 100);
+      }
+    } catch(e) {
+      console.error('TraineeSystem init error:', e);
+      const cont = document.getElementById('traineeSystemContainer');
+      if (cont) cont.innerHTML = '<div style="padding:20px;color:#e74c3c;text-align:center;">\u274c ' + e.message + '</div>';
+      window._traineeInitialized = false;
+    }
+  };
+  if (window._firebaseOK) { doInit(); }
+  else {
+    const cont = document.getElementById('traineeSystemContainer');
+    if (cont) cont.innerHTML = '<div style="padding:20px;color:#888;text-align:center;">\u23f3 \u05de\u05de\u05ea\u05d9\u05df \u05dc\u05d8\u05e2\u05d9\u05e0\u05ea Firebase...</div>';
+    window.addEventListener('firebaseReady', doInit, { once: true });
+  }
+}
+
+function openTraineePanel() { /* no-op: replaced by details toggle */ }
+
+// Wire up traineeSection toggle on DOMContentLoaded
+document.addEventListener('DOMContentLoaded', () => {
+  const ts = document.getElementById('traineeSection');
+  if (ts) {
+    ts.addEventListener('toggle', () => {
+      if (ts.open) {
+        _initTraineeIfNeeded();
+        setTimeout(() => ts.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
+      }
+    });
+  }
+  // Place traineeSection in manager view initially
+  setTimeout(() => {
+    if (typeof currentRole === 'undefined' || currentRole !== 'instructor') {
+      if (typeof moveTraineeSectionToManager === 'function') moveTraineeSectionToManager();
+    }
+  }, 150);
+});
+
 </script>
 
 <!-- ══ TASK REPORT MODAL ══════════════════════════════ -->
