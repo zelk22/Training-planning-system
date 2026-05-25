@@ -1,3 +1,4 @@
+
 <!-- Route change reason prompt (shown dynamically) -->
           <div id="routeReasonBox" style="display:none;background:#fff8e1;border:1.5px solid #f0ad4e;border-radius:8px;padding:12px;margin-top:10px;width:100%;">
             <div style="font-size:13px;font-weight:bold;color:#856404;margin-bottom:8px;">⚠️ המסלול שונה — הזן סיבה:</div>
@@ -2972,6 +2973,7 @@ window.TraineeSystem = {
             <div style="display:flex; gap:10px; flex-wrap:wrap;">
                 <button class="btn btn-ghost" data-action="toggle-panel" data-panel="ins-panel">⚙️ מדריכים</button>
                 <button class="btn btn-blue"  data-action="toggle-panel" data-panel="add-panel">+ חניך חדש</button>
+            <button class="btn" data-action="show-reports" style="background:#6c3483;color:white;border:none;border-radius:8px;padding:8px 14px;cursor:pointer;font-size:13px;font-weight:bold;">📊 דוחות</button>
             </div>
         </header>
 
@@ -3170,6 +3172,7 @@ window.TraineeSystem = {
             if (action === 'toggle-panel')  this.togglePanel(el.dataset.panel);
             if (action === 'confirm-add-trainee') this.confirmAddTrainee();
             if (action === 'add-instructor') this.addInstructor();
+            if (action === 'show-reports')   this.showReports();
             if (action === 'show-main')    this.showMainView();
             if (action === 'print')        window.print();
             if (action === 'toggle-log')   this.$('log-body').classList.toggle('open');
@@ -5310,6 +5313,54 @@ function _showRouteChangeBox(onConfirm){_pendingSaveCallback=onConfirm;const box
 function _confirmRouteChange(){const reason=(document.getElementById('routeChangeReason')?.value||'').trim();if(!reason){showToast('נא הזן סיבה','warning');return;}const box=document.getElementById('routeChangeBox');if(box)box.style.display='none';if(_pendingSaveCallback)_pendingSaveCallback(reason);_pendingSaveCallback=null;window._originalRouteHash=undefined;}
 function _cancelRouteChange(){const box=document.getElementById('routeChangeBox');if(box)box.style.display='none';_pendingSaveCallback=null;showToast('שינוי המסלול בוטל','info');}
 
+// ══ Trainee Assignment ══════════════════════════════════
+let _traineeAssignTripId = null;
+
+function openTraineeAssign(tripId) {
+  _traineeAssignTripId = tripId;
+  const trip = trips.find(t=>String(t.id)===String(tripId));
+  if (!trip) return;
+  const modal = document.getElementById('traineeAssignModal');
+  const list  = document.getElementById('traineeAssignList');
+  if (!modal || !list) return;
+
+  const assigned = trip.assignedTrainees || [];
+  const trainees = (typeof TraineeSystem!=='undefined' && TraineeSystem.trainees) ? TraineeSystem.trainees : [];
+
+  if (!trainees.length) {
+    list.innerHTML = '<div style="color:#888;text-align:center;padding:20px;">אין חניכים במערכת. פתח תחילה את אזור החניכים.</div>';
+  } else {
+    list.innerHTML = trainees.map(tr => `
+      <label style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1.5px solid ${assigned.includes(String(tr.id))?'#8e44ad':'#eee'};border-radius:9px;cursor:pointer;background:${assigned.includes(String(tr.id))?'#f9f0ff':'white'};">
+        <input type="checkbox" value="${tr.id}" ${assigned.includes(String(tr.id))?'checked':''} style="width:16px;height:16px;accent-color:#8e44ad;">
+        <span style="font-weight:600;">${tr.name}</span>
+        <span style="color:#888;font-size:12px;margin-right:auto;">${(tr.lessons||[]).length} שיעורים</span>
+      </label>`).join('');
+  }
+
+  modal.style.display = 'flex';
+}
+
+function closeTraineeAssign() {
+  const modal = document.getElementById('traineeAssignModal');
+  if (modal) modal.style.display = 'none';
+  _traineeAssignTripId = null;
+}
+
+function saveTraineeAssign() {
+  if (!_traineeAssignTripId) return;
+  const checkboxes = document.querySelectorAll('#traineeAssignList input[type=checkbox]:checked');
+  const selected = [...checkboxes].map(cb => String(cb.value));
+  const idx = trips.findIndex(t=>String(t.id)===String(_traineeAssignTripId));
+  if (idx >= 0) {
+    trips[idx].assignedTrainees = selected;
+    saveToStorage();
+    renderLog();
+    showToast('✅ החניכים שויכו לנסיעה','success');
+  }
+  closeTraineeAssign();
+}
+
 function cancelEdit(){
 
   editingTripId=null;
@@ -5710,7 +5761,9 @@ function renderLog(){
 
           <button class="btn-sm delay" onclick="openDelayModal('${t.id}')" title="הוסף עיכוב">⏱️</button>
 
-          <button class="btn-sm del" onclick="delTrip('${t.id}')" title="מחק נסיעה">🗑️</button></td>
+          <button class="btn-sm del" onclick="delTrip('${t.id}')" title="מחק נסיעה">🗑️</button>
+
+          <button class="btn-sm" onclick="openTraineeAssign('${t.id}')" title="שייך חניכים לנסיעה" style="background:#8e44ad;color:white;border-color:#8e44ad;">🎓</button></td>
 
     </tr>`;
 
@@ -13899,7 +13952,14 @@ async function generateAndActivateDemo(){
     document.getElementById('demoGenerateBtn').style.display='none';
     _reloadAppWithDemoData();
     _updateDemoBanner(true);
-    showToast('🎭 מצב דמו פעיל!','success');
+    setTimeout(()=>{try{if(typeof _generateTraineeDemoData==='function'&&typeof TraineeSystem!=='undefined'&&window._traineeInitialized){_generateTraineeDemoData();}}catch(e){}},400);
+    const _tCount = (typeof TraineeSystem!=='undefined'&&TraineeSystem.trainees)?TraineeSystem.trainees.length:15;
+    showToast('🎭 מצב דמו פעיל! נוצרו נסיעות, שיבוצים ו-'+_tCount+' חניכים להדגמה.','success');
+    // Show trainee demo summary notification
+    setTimeout(()=>{
+      const _tCount=15;const _lCount=79;
+      showToast('🎓 נטענו '+_tCount+' חניכים לדוגמה | '+_lCount+' שיעורים מתועדים | טסטים: שיעור 10, 30, 50','info',5000);
+    },800);
   }catch(err){
     showToast('שגיאה ביצירת דמו: '+err.message,'warning');console.error('Demo error:',err);
   }finally{
@@ -14401,6 +14461,133 @@ function _renderNotesList(){
 // ══ TraineeSection Initialization ══════════════════════════
 window._traineeInitialized = false;
 
+window._traineeInitialized = false;
+
+// ══ TraineeSystem Demo Data ═══════════════════════════════════
+function _generateTraineeDemoData() {
+  if (typeof TraineeSystem === 'undefined' || typeof TraineeSystem.renderList !== 'function') return;
+  const _ins = ['אחמד עבדלאל','איאד סולימן','דודו היילו','לואי שהין'];
+  const _d = (da) => { const dt=new Date(); dt.setDate(dt.getDate()-da); return dt.toISOString().slice(0,10); };
+
+  // Note: lessonsDone = count of unique course lesson numbers completed so far
+  const _note = (lessonsDone, base) => {
+    const next = [10,30,50].find(m => m > lessonsDone);
+    const prev = [50,30,10].find(m => m <= lessonsDone);
+    if (next && next - lessonsDone <= 3) return (base?base+' ':'')+`⚠️ קרוב לטסט ${next} — נדרשת הכנה ממוקדת.`;
+    if (prev && lessonsDone - prev <= 2) return (base?base+' ':'')+`✅ עבר טסט ${prev} בהצלחה.`;
+    return base;
+  };
+  const _l = (da,mission,nums,ins,s1,s2,s3,s4,s5,notes,extra='') =>
+    ({date:_d(da),mission,lessonNums:nums,extraDesc:extra,ins,s1,s2,s3,s4,s5,notes});
+  // Helper: generate sequential lesson nums from start
+  const _seq = (from, to) => Array.from({length:to-from+1},(_,i)=>from+i);
+
+  TraineeSystem.trainees = [
+
+    // ══ קרוב לשיעור 50 (כמעט סיום) ══
+    {id:1013,name:'אשרף עלי',lessons:[          // 47 שיעורים קורס + שטח → מוכן לסיום
+      _l(200,'קורס',_seq(1,8),  _ins[3], 9,9,8,9,9, _note(8,'כניסה מצוינת.')),
+      _l(185,'קורס',_seq(9,10), _ins[3], 9,9,9,9,9, _note(10,'עבר טסט 10 בהצלחה.')),
+      _l(170,'קורס',_seq(11,18),_ins[1], 9,9,9,9,10,_note(18,'יציב לאורך כל השלב.')),
+      _l(155,'קורס',_seq(19,25),_ins[1], 10,9,9,10,10,_note(25,'מצוין.')),
+      _l(140,'קורס',_seq(26,30),_ins[2], 10,10,9,10,10,_note(30,'טסט 30 — ביצועים גבוהים.')),
+      _l(120,'קורס',_seq(31,38),_ins[2], 10,10,10,10,10,_note(38,'שלב מסחרי — מעולה.')),
+      _l(100,'קורס',_seq(39,45),_ins[0], 10,10,10,10,10,_note(45,'')),
+      _l(80, 'קורס',_seq(46,47),_ins[0], 10,10,10,10,10,_note(47,'⚠️ קרוב לטסט 50 — נדרשת הכנה ממוקדת.')),
+      _l(60, 'שטח', [],        _ins[0], 10,10,10,10,10,_note(47,'שטח מקביל — שולט לחלוטין.')),
+      _l(40, 'שטח', [],        _ins[1], 10,10,10,10,10,_note(47,''))]},
+
+    {id:1012,name:'תאמר זעבי',lessons:[         // 42 שיעורים — מתקדם מאוד
+      _l(190,'קורס',_seq(1,6),  _ins[2], 8,8,7,8,8, _note(6,'כניסה תקינה.')),
+      _l(175,'קורס',_seq(7,10), _ins[2], 8,8,8,8,9, _note(10,'טסט 10 עבר.')),
+      _l(160,'קורס',_seq(11,20),_ins[3], 9,8,8,9,9, _note(20,'שלב שני — יציב.')),
+      _l(140,'קורס',_seq(21,30),_ins[3], 9,9,8,9,9, _note(30,'טסט 30 — ביצועים טובים.')),
+      _l(115,'קורס',_seq(31,40),_ins[0], 9,9,9,9,10,_note(40,'שלב מסחרי — מוכן.')),
+      _l(90, 'קורס',_seq(41,42),_ins[0], 9,9,9,10,10,_note(42,'מתקרב לסיום.')),
+      _l(70, 'שטח', [],        _ins[1], 9,9,9,9,10,_note(42,'שטח — עצמאי ובטוח.')),
+      _l(50, 'שטח', [],        _ins[1], 10,9,9,10,10,_note(42,'ביצועים גבוהים מאוד.'))]},
+
+    // ══ קרוב לשיעור 30 (שלב ביניים מתקדם) ══
+    {id:1010,name:'נדב ברגר',lessons:[          // 28 שיעורים — ממש לפני טסט 30
+      _l(150,'קורס',_seq(1,5),  _ins[1], 7,7,7,7,8, _note(5,'כניסה חלקה.')),
+      _l(135,'קורס',_seq(6,10), _ins[1], 8,8,7,8,8, _note(10,'טסט 10 — מצוין.')),
+      _l(115,'קורס',_seq(11,18),_ins[2], 8,8,8,8,9, _note(18,'שלב שני — יציב.')),
+      _l(95, 'קורס',_seq(19,25),_ins[2], 8,8,8,9,9, _note(25,'מתקדם.')),
+      _l(75, 'קורס',_seq(26,28),_ins[0], 8,9,8,9,9, _note(28,'⚠️ קרוב לטסט 30 — נדרשת הכנה.'))]},
+
+    {id:1006,name:"ראמי ח'ורי",lessons:[        // 32 שיעורים — פסק טסט 30, פער תפעולי
+      _l(160,'קורס',_seq(1,5),  _ins[1], 9,9,5,9,8, _note(5,'ידע תיאורטי גבוה — פער תפעולי מהיום הראשון.')),
+      _l(145,'קורס',_seq(6,10), _ins[1], 9,9,5,9,8, _note(10,'טסט 10 — עבר בקושי בגלל הסטיק.')),
+      _l(125,'קורס',_seq(11,20),_ins[2], 9,9,6,9,8, _note(20,'שיפור קל בסטיק. הפער קטן.')),
+      _l(105,'קורס',_seq(21,30),_ins[2], 9,9,7,9,9, _note(30,'טסט 30 — ביצועים מספקים, סטיק עדיין פחות.')),
+      _l(85, 'קורס',_seq(31,32),_ins[0], 9,9,8,9,9, _note(32,'שיפור. הפער כמעט נסגר.'))]},
+
+    {id:1011,name:'ירין אבני',lessons:[         // 29 שיעורים — טוב, לפני טסט 30
+      _l(145,'קורס',_seq(1,8),  _ins[0], 8,7,7,8,8, _note(8,'התחלה טובה.')),
+      _l(125,'קורס',_seq(9,10), _ins[0], 8,8,7,8,8, _note(10,'טסט 10 — עבר בהצלחה.')),
+      _l(105,'קורס',_seq(11,20),_ins[3], 8,8,8,8,9, _note(20,'יציב ועקבי.')),
+      _l(85, 'קורס',_seq(21,29),_ins[1], 9,8,8,9,9, _note(29,'⚠️ קרוב לטסט 30.'))]},
+
+    // ══ קרוב לשיעור 10 (שלב התחלתי-טכני) ══
+    {id:1005,name:"ח'אלד עמר",lessons:[         // 9 שיעורים — ממש לפני טסט 10
+      _l(60,'קורס',_seq(1,4),   _ins[3], 7,6,4,7,7, _note(4,'ציון סטיק נמוך — נדרשת תשומת לב.')),
+      _l(45,'קורס',_seq(5,7),   _ins[3], 7,7,5,7,7, _note(7,'הסטיק עדיין קשה.')),
+      _l(30,'קורס',_seq(8,9),   _ins[0], 7,7,5,7,7, _note(9,'⚠️ קרוב לטסט 10 — נדרש תרגול מוגבר בסטיק.'))]},
+
+    {id:1003,name:'סמי אבו-גנם',lessons:[      // 10 שיעורים — עבר טסט 10
+      _l(70,'קורס',_seq(1,5),   _ins[2], 9,8,8,9,9, _note(5,'כישרון טבעי.')),
+      _l(55,'קורס',_seq(6,10),  _ins[2], 9,9,9,9,10,_note(10,'✅ עבר טסט 10 מצוין. מוכן לשלב הבא.'))]},
+
+    {id:1001,name:'מוחמד חמדאן',lessons:[      // 7 שיעורים — חלש, סטיק קריטי
+      _l(40,'קורס',_seq(1,3),   _ins[0], 6,5,4,5,6, _note(3,'קשיים משמעותיים — סטיק נמוך מאוד.')),
+      _l(25,'קורס',_seq(4,6),   _ins[0], 6,5,4,5,6, _note(6,'אין שיפור בסטיק. נדרש תרגול אינטנסיבי.')),
+      _l(10,'קורס',_seq(7,7),   _ins[1], 6,5,5,6,6, _note(7,'⚠️ קרוב לטסט 10 — לא בטוח שיעבור.'))]},
+
+    {id:1002,name:'רועי כהן',lessons:[          // 3 שיעורים — חדש
+      _l(15,'קורס',_seq(1,3),   _ins[1], 7,6,6,7,8, _note(3,'שיעור ראשון — קליטה מהירה.'))]},
+
+    // ══ שלב ביניים (11-29) ══
+    {id:1004,name:'אורי לוי',lessons:[          // 22 שיעורים — בינוני, שלב שני
+      _l(120,'קורס',_seq(1,5),  _ins[0], 6,6,6,6,7, _note(5,'התחלה ממוצעת.')),
+      _l(100,'קורס',_seq(6,10), _ins[0], 7,6,6,7,7, _note(10,'טסט 10 — עבר.')),
+      _l(80, 'קורס',_seq(11,18),_ins[1], 7,7,6,7,7, _note(18,'שלב שני — יציב.')),
+      _l(60, 'קורס',_seq(19,22),_ins[1], 7,7,7,7,8, _note(22,'מתקדם לאט.'))]},
+
+    {id:1007,name:'עמית שרון',lessons:[         // 18 שיעורים — טוב
+      _l(100,'קורס',_seq(1,5),  _ins[0], 7,6,6,7,7, _note(5,'עקבי.')),
+      _l(80, 'קורס',_seq(6,10), _ins[0], 7,7,7,7,8, _note(10,'טסט 10 — ביצועים טובים.')),
+      _l(60, 'קורס',_seq(11,18),_ins[3], 8,7,7,8,8, _note(18,'שלב שני — יציב ומוכן.'))  ]},
+
+    {id:1008,name:'גל מזרחי',lessons:[          // 14 שיעורים — בינוני-חלש
+      _l(90, 'קורס',_seq(1,5),  _ins[2], 6,5,5,6,7, _note(5,'ביצועים מתחת לממוצע.')),
+      _l(70, 'קורס',_seq(6,10), _ins[2], 6,6,5,6,7, _note(10,'עבר טסט 10 בקושי.')),
+      _l(50, 'קורס',_seq(11,14),_ins[1], 6,6,6,6,7, _note(14,'שלב שני — ממשיך להתקשות.'))]},
+
+    {id:1009,name:'ריאד עמאר',lessons:[         // 16 שיעורים — חלש, בעיית משמעת
+      _l(100,'קורס',_seq(1,5),  _ins[3], 5,5,5,5,5, _note(5,'קשיים בסיסיים בכל הפרמטרים.')),
+      _l(80, 'קורס',_seq(6,10), _ins[3], 5,5,5,4,5, _note(10,'טסט 10 — נכשל. יצטרך לחזור.')),
+      _l(60, 'קורס',_seq(6,10), _ins[0], 6,5,5,5,5, _note(10,'שיעורי חזרה לטסט 10.')),
+      _l(40, 'קורס',_seq(11,16),_ins[0], 6,6,5,5,5, _note(16,'עבר לאחר חזרה. משמעת נמוכה.'))]},
+
+    {id:1014,name:'תום פרידמן',lessons:[        // 20 שיעורים — טוב
+      _l(110,'קורס',_seq(1,5),  _ins[1], 7,7,7,7,7, _note(5,'')),
+      _l(90, 'קורס',_seq(6,10), _ins[1], 8,7,7,8,8, _note(10,'טסט 10 — עבר.')),
+      _l(70, 'קורס',_seq(11,18),_ins[0], 8,8,7,8,8, _note(18,'')),
+      _l(50, 'קורס',_seq(19,20),_ins[0], 8,8,8,8,8, _note(20,''))]},
+
+    {id:1015,name:'שיר גולן',lessons:[          // 13 שיעורים — ממוצע
+      _l(75, 'קורס',_seq(1,5),  _ins[0], 6,6,6,6,7, _note(5,'ממוצע עם פוטנציאל.')),
+      _l(55, 'קורס',_seq(6,10), _ins[0], 7,6,6,7,7, _note(10,'עבר טסט 10.')),
+      _l(35, 'קורס',_seq(11,13),_ins[2], 7,7,6,7,7, _note(13,'שלב שני — מתחיל.'))  ]},
+  ];
+
+  TraineeSystem.instructors = [..._ins];
+  // Sort: most lessons (total lesson entries) first = most experienced
+  TraineeSystem.trainees.sort((a,b) => (b.lessons||[]).length - (a.lessons||[]).length);
+  TraineeSystem.renderList();
+  TraineeSystem.renderInsTags();
+}
+
 function _initTraineeIfNeeded() {
   // Update reports button visibility based on role
   const rBtn = document.querySelector('#traineeSystemContainer [data-action="show-reports"]');
@@ -14409,7 +14596,33 @@ function _initTraineeIfNeeded() {
   window._traineeInitialized = true;
   try {
     if (typeof TraineeSystem !== 'undefined') {
+      // If in demo mode: patch loadData BEFORE init() so Firebase doesn't overwrite
+      if (_isDemoMode()) {
+        TraineeSystem._origPersist   = TraineeSystem._origPersist   || TraineeSystem.persist;
+        TraineeSystem._origLoadData  = TraineeSystem._origLoadData  || TraineeSystem.loadData;
+        TraineeSystem.persist = function() {
+          if(localStorage.getItem('demo_active')==='1'){
+            localStorage.setItem('demo_trainee_data',JSON.stringify({trainees:this.trainees,instructors:this.instructors}));
+          } else { this._origPersist(); }
+        };
+        TraineeSystem.loadData = function() {
+          if(localStorage.getItem('demo_active')==='1'){
+            const saved = localStorage.getItem('demo_trainee_data');
+            if (saved) {
+              try { const d=JSON.parse(saved); this.trainees=d.trainees||[]; this.instructors=d.instructors||[]; } catch(e){}
+            } else {
+              _generateTraineeDemoData(); return; // generateTraineeDemoData calls renderList itself
+            }
+            this.renderList();
+            this.renderInsTags();
+          } else { this._origLoadData(); }
+        };
+      }
       TraineeSystem.init('traineeSystemContainer');
+      // After init, generate demo data if not already loaded from localStorage
+      if(_isDemoMode() && !localStorage.getItem('demo_trainee_data')){
+        setTimeout(()=>{try{_generateTraineeDemoData();}catch(e){}},50);
+      }
       setTimeout(() => {
         const rb = document.querySelector('#traineeSystemContainer [data-action="show-reports"]');
         if (rb) rb.style.display = (typeof currentRole !== 'undefined' && currentRole === 'instructor') ? 'none' : '';
@@ -14449,6 +14662,21 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 </script>
+
+<!-- ══ TRAINEE ASSIGN MODAL ════════════════════════════════ -->
+<div id="traineeAssignModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9000;align-items:center;justify-content:center;">
+  <div style="background:white;border-radius:16px;padding:24px;width:min(420px,95vw);max-height:80vh;overflow-y:auto;direction:rtl;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <h3 style="margin:0;font-size:16px;">🎓 שיוך חניכים לנסיעה</h3>
+      <button onclick="closeTraineeAssign()" style="background:none;border:none;font-size:20px;cursor:pointer;">✕</button>
+    </div>
+    <div id="traineeAssignList" style="display:flex;flex-direction:column;gap:8px;margin-bottom:18px;"></div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;">
+      <button onclick="saveTraineeAssign()" style="padding:10px 22px;background:#8e44ad;color:white;border:none;border-radius:8px;cursor:pointer;font-weight:bold;">שמור</button>
+      <button onclick="closeTraineeAssign()" style="padding:10px 18px;background:#f5f5f5;border:1px solid #ddd;border-radius:8px;cursor:pointer;">ביטול</button>
+    </div>
+  </div>
+</div>
 
 <!-- ══ TASK REPORT MODAL ══════════════════════════════ -->
 <div id="taskReportModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9000;align-items:center;justify-content:center;">
