@@ -3027,10 +3027,9 @@ window.TraineeSystem = {
         <header>
             <h1 class="header-title">ניהול הכשרת נהגים</h1>
             <div style="display:flex; gap:10px; flex-wrap:wrap;">
-                <button class="btn btn-ghost" data-action="toggle-panel" data-panel="ins-panel">⚙️ מדריכים</button>
+                <button id="ts-settings-btn" class="btn btn-ghost" data-action="open-ts-settings" style="display:none;width:auto !important;padding:8px 14px;">⚙️ הגדרות</button>
                 <button class="btn btn-blue"  data-action="toggle-panel" data-panel="add-panel">+ חניך חדש</button>
             <button class="btn" data-action="show-reports" style="background:#6c3483;color:white;border:none;border-radius:8px;padding:8px 14px;cursor:pointer;font-size:13px;font-weight:bold;">📊 דוחות</button>
-            <button id="ts-settings-btn" class="btn btn-ghost" data-action="open-ts-settings" style="display:none;width:auto !important;padding:8px 14px;">⚙️ הגדרות</button>
             </div>
         </header>
 
@@ -3157,9 +3156,9 @@ window.TraineeSystem = {
                 <div class="fg">
                     <label>סוג משימה</label>
                     <select id="in-mission">
-                        <option value="קורס">קורס</option>
+                        <option value="קורס מעשי">קורס מעשי</option>
                         <option value="חניכה">חניכה</option>
-                        <option value="שעות נוספות">שעות נוספות / כשירות</option>
+                        <option value="כשירות מעשית/ שעות נוספות">כשירות מעשית/ שעות נוספות</option>
                     </select>
                 </div>
                 <div class="fg"><label>מדריך / חונך</label><select id="in-ins"></select></div>
@@ -3210,6 +3209,7 @@ window.TraineeSystem = {
       <button class="ts-stab" data-ts-tab="alerts">🔔 ספי התרעות</button>
       <button class="ts-stab" data-ts-tab="load">⚖️ הגבלות עומס</button>
       <button class="ts-stab" data-ts-tab="sig">✍️ חתימה</button>
+      <button class="ts-stab" data-ts-tab="instructors">👨‍🏫 מדריכים</button>
     </div>
     <!-- Tab: Skills -->
     <div class="ts-spanel active" id="ts-panel-skills">
@@ -3219,7 +3219,7 @@ window.TraineeSystem = {
     </div>
     <!-- Tab: Mission types -->
     <div class="ts-spanel" id="ts-panel-missions">
-      <p style="font-size:12px;color:#888;margin:0 0 12px;">משימות חדשות ללא ספירת שיעורים. <strong>קורס</strong> נעול.</p>
+      <p style="font-size:12px;color:#888;margin:0 0 12px;">סוגי המשימות במערכת — כולם נעולים. ניתן להוסיף סוגים נוספים חופשיים.</p>
       <div id="ts-missions-list"></div>
       <button class="ts-add-btn" data-action="ts-add-mission">+ הוסף סוג משימה</button>
     </div>
@@ -3257,6 +3257,15 @@ window.TraineeSystem = {
         </label>
       </div>
       <p style="font-size:12px;color:#888;margin:12px 0 0;">כאשר מכובה — שדה החתימה לא יוצג בטופס המשוב.</p>
+    </div>
+    <!-- Tab: Instructors -->
+    <div class="ts-spanel" id="ts-panel-instructors">
+      <p style="font-size:12px;color:#888;margin:0 0 14px;">הוסף או הסר מדריכים / חונכים מהמערכת.</p>
+      <div style="display:flex;gap:8px;margin-bottom:12px;">
+        <input type="text" id="ts-ins-input" placeholder="שם המדריך / חונך..." style="flex:1;padding:9px 12px;border:1.5px solid #ddd;border-radius:8px;font-size:13px;direction:rtl;font-family:inherit;">
+        <button data-action="ts-add-instructor" style="padding:9px 16px;background:#1a2a3a;color:white;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:bold;width:auto !important;">הוסף</button>
+      </div>
+      <div id="ts-ins-tags" style="display:flex;flex-wrap:wrap;gap:8px;"></div>
     </div>
     <div class="ts-settings-footer">
       <span class="ts-saved-msg" id="ts-saved-msg">✓ נשמר!</span>
@@ -3303,6 +3312,7 @@ window.TraineeSystem = {
             if (action === 'ts-add-skill')       this.addSkillRow();
             if (action === 'ts-add-mission')     this.addMissionRow();
             if (action === 'ts-add-alert')       this.addAlertRow();
+            if (action === 'ts-add-instructor')  this.addInstructorFromSettings();
             if (action === 'show-main')    this.showMainView();
             if (action === 'print')        window.print();
             if (action === 'toggle-log')   this.$('log-body').classList.toggle('open');
@@ -3665,6 +3675,7 @@ window.TraineeSystem = {
 
     openTrainee(id) {
         this.currentId = id;
+        this.updateInMissionSelect();
         this.$('main-view').classList.remove('active-view');
         this.$('detail-view').classList.add('active-view');
         this.$('log-body').classList.remove('open');
@@ -3754,7 +3765,9 @@ window.TraineeSystem = {
         const chips     = this.$('lesson-chips');
         const extraWrap = this.$('extra-wrap');
         chips.innerHTML = '';
-        if (mission === 'שעות נוספות') {
+        const _mType = (this.settings && this.settings.missionTypes || []).find(m => m.name === mission);
+        const _isNoChips = _mType ? _mType.id === 'mt2' : (mission === 'שעות נוספות' || mission.includes('כשירות'));
+        if (_isNoChips) {
             chips.style.display = 'none';
             extraWrap.style.display = 'block';
             return;
@@ -3763,7 +3776,7 @@ window.TraineeSystem = {
         extraWrap.style.display = 'none';
 
         const t      = this.trainees.find(x => x.id === this.currentId);
-        const isFree = mission === 'חניכה';
+        const isFree = _mType ? _mType.id === 'mt1' : mission === 'חניכה';
 
         const locked = new Set();
         (t.lessons || []).forEach(l => {
@@ -3904,9 +3917,14 @@ window.TraineeSystem = {
         const avg = t => { const ls=t.lessons||[]; if(!ls.length)return 0; return ((ls.reduce((s,l)=>s+(l.s1+l.s2+l.s3+l.s4+l.s5),0)/(ls.length*50))*100).toFixed(0); };
         const rows = [...this.trainees].sort((a,b)=>(b.lessons||[]).length-(a.lessons||[]).length).map(t => {
             const ls=t.lessons||[]; const maxL=new Set(ls.flatMap(l=>l.mission==='קורס'?(l.lessonNums||[]):[]).filter(n=>n)).size;
-            return '<tr><td style="padding:8px 10px;border-bottom:1px solid #eee;">' + t.name + '</td><td style="padding:8px 10px;border-bottom:1px solid #eee;text-align:center;">' + ls.length + '</td><td style="padding:8px 10px;border-bottom:1px solid #eee;text-align:center;">' + maxL + '/50</td><td style="padding:8px 10px;border-bottom:1px solid #eee;text-align:center;font-weight:bold;color:' + (avg(t)<65?'#e74c3c':avg(t)<82?'#e67e22':'#27ae60') + '">' + avg(t) + '%</td><td style="padding:8px 10px;border-bottom:1px solid #eee;text-align:center;">' + (ls.length?ls[ls.length-1].ins:'-') + '</td></tr>';
+            return `<tr><td style="padding:8px 10px;border-bottom:1px solid #eee;">${t.name}</td><td style="padding:8px 10px;border-bottom:1px solid #eee;text-align:center;">${ls.length}</td><td style="padding:8px 10px;border-bottom:1px solid #eee;text-align:center;">${maxL}/50</td><td style="padding:8px 10px;border-bottom:1px solid #eee;text-align:center;font-weight:bold;color:${avg(t)<65?'#e74c3c':avg(t)<82?'#e67e22':'#27ae60'}">${avg(t)}%</td><td style="padding:8px 10px;border-bottom:1px solid #eee;text-align:center;">${ls.length?ls[ls.length-1].ins:'-'}</td></tr>`;
         }).join('');
-        document.body.insertAdjacentHTML('beforeend', '<div style="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center;" onclick="if(event.target===this)this.remove()"><div style="background:white;border-radius:16px;padding:24px;width:min(700px,95vw);max-height:85vh;overflow-y:auto;direction:rtl;"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;"><h3 style="margin:0;">📊 דוח מצב חניכים — ' + total + ' חניכים</h3><button onclick="this.closest('[onclick]').remove()" style="background:none;border:none;font-size:20px;cursor:pointer;">✕</button></div><table style="width:100%;border-collapse:collapse;font-size:13px;"><thead><tr style="background:#f0f4ff;"><th style="padding:10px;text-align:right;">שם</th><th style="padding:10px;text-align:center;">שיעורים</th><th style="padding:10px;text-align:center;">התקדמות</th><th style="padding:10px;text-align:center;">ממוצע</th><th style="padding:10px;text-align:center;">מדריך אחרון</th></tr></thead><tbody>' + rows + '</tbody></table></div></div>');
+        const overlay = document.createElement('div');
+        overlay.id = 'ts-rep-overlay';
+        overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center;';
+        overlay.addEventListener('click', e => { if(e.target===overlay) overlay.remove(); });
+        overlay.innerHTML = `<div style="background:white;border-radius:16px;padding:24px;width:min(700px,95vw);max-height:85vh;overflow-y:auto;direction:rtl;"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;"><h3 style="margin:0;">📊 דוח מצב חניכים — ${total} חניכים</h3><button onclick="this.closest('#ts-rep-overlay').remove()" style="background:none;border:none;font-size:20px;cursor:pointer;">✕</button></div><table style="width:100%;border-collapse:collapse;font-size:13px;"><thead><tr style="background:#f0f4ff;"><th style="padding:10px;text-align:right;">שם</th><th style="padding:10px;text-align:center;">שיעורים</th><th style="padding:10px;text-align:center;">התקדמות</th><th style="padding:10px;text-align:center;">ממוצע</th><th style="padding:10px;text-align:center;">מדריך אחרון</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
+        document.body.appendChild(overlay);
     },
 
     resetForm() {
@@ -4089,10 +4107,9 @@ window.TraineeSystem = {
                 {id:'s5', name:'משמעת'}
             ],
             missionTypes: [
-                {id:'course', name:'קורס', locked:true},
-                {id:'mt1', name:'ליווי'},
-                {id:'mt2', name:'בדיקה'},
-                {id:'mt3', name:'שטח'}
+                {id:'course', name:'קורס מעשי',                     locked:true},
+                {id:'mt1',   name:'חניכה',                           locked:true},
+                {id:'mt2',   name:'כשירות מעשית/ שעות נוספות', locked:true}
             ],
             alertThresholds: [],
             loadLimits: [
@@ -4415,7 +4432,9 @@ window.TraineeSystem = {
         const sel = this.$('in-mission');
         if (!sel) return;
         const cur = sel.value;
-        sel.innerHTML = (this.settings.missionTypes || []).map(m =>
+        const missions = this.settings.missionTypes || [];
+        if (!missions.length) return;
+        sel.innerHTML = missions.map(m =>
             `<option value="${m.name}" ${m.name===cur?'selected':''}>${m.name}</option>`
         ).join('');
         this.updateChips();
@@ -4426,6 +4445,54 @@ window.TraineeSystem = {
         if (!this.settings) return null;
         const limits = [...(this.settings.loadLimits || [])].sort((a,b) => b.minAvg - a.minAvg);
         return limits.find(l => avgScore >= l.minAvg) || limits[limits.length-1] || null;
+    },
+
+    // ── Instructors tab ──────────────────────────────
+    _renderTab_instructors() {
+        const tagsEl = this.$('ts-ins-tags');
+        const input  = this.$('ts-ins-input');
+        if (!tagsEl) return;
+        tagsEl.innerHTML = (this.instructors || []).map(ins => `
+            <span style="background:#1a2a3a;color:white;border-radius:20px;padding:6px 12px;font-size:13px;display:inline-flex;align-items:center;gap:8px;">
+                ${ins}
+                <button data-ts-del-ins="${ins}" style="background:none;border:none;color:#aaa;cursor:pointer;font-size:14px;padding:0;width:auto !important;line-height:1;" title="הסר">×</button>
+            </span>`).join('');
+        tagsEl.querySelectorAll('[data-ts-del-ins]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const name = btn.dataset.tsDelIns;
+                if (confirm('להסיר את ' + name + '?')) {
+                    this.instructors = this.instructors.filter(i => i !== name);
+                    this.persist();
+                    this._renderTab_instructors();
+                    this.renderInsTags();
+                }
+            });
+        });
+        if (input) {
+            // Remove old listener and add fresh one
+            const newInput = input.cloneNode(true);
+            input.parentNode.replaceChild(newInput, input);
+            newInput.addEventListener('keydown', e => {
+                if (e.key === 'Enter') this.addInstructorFromSettings();
+            });
+        }
+    },
+
+    addInstructorFromSettings() {
+        const input = this.$('ts-ins-input');
+        if (!input) return;
+        const name = input.value.trim();
+        if (!name) return;
+        if (this.instructors.includes(name)) {
+            if (typeof showToast === 'function') showToast('המדריך כבר קיים', 'warning');
+            return;
+        }
+        this.instructors.push(name);
+        this.persist();
+        input.value = '';
+        this._renderTab_instructors();
+        this.renderInsTags();
+        if (typeof showToast === 'function') showToast('✅ נוסף: ' + name, 'success');
     },
 
     // Public: get alert thresholds matching a skill and score
