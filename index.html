@@ -1,13 +1,4 @@
-
-<!-- Route change reason prompt (shown dynamically) -->
-          <div id="routeReasonBox" style="display:none;background:#fff8e1;border:1.5px solid #f0ad4e;border-radius:8px;padding:12px;margin-top:10px;width:100%;">
-            <div style="font-size:13px;font-weight:bold;color:#856404;margin-bottom:8px;">⚠️ המסלול שונה — הזן סיבה:</div>
-            <input id="routeReasonInput" type="text" placeholder="לדוגמה: עיכוב בכביש 6, תקלה בתחנה..." style="width:100%;padding:8px;border:1.5px solid #f0ad4e;border-radius:6px;font-size:13px;margin-bottom:8px;">
-            <div style="display:flex;gap:8px;">
-              <button onclick="_confirmSaveTripEdit()" style="width:auto;flex:1;padding:9px;background:#27ae60;color:white;border:none;border-radius:7px;cursor:pointer;font-weight:bold;">✅ שמור עם סיבה</button>
-              <button onclick="_cancelRouteReason()" style="width:auto;padding:9px 14px;background:#f5f5f5;color:#555;border:1px solid #ccc;border-radius:7px;cursor:pointer;">ביטול</button>
-            </div>
-          </div><!DOCTYPE html>
+<!DOCTYPE html>
 
 <html lang="he" dir="rtl">
 
@@ -1891,18 +1882,17 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 
       </div>
 
-      <div style="margin:16px 0 8px;padding:16px 18px;background:#fdf8f0;border:1.5px solid #f0ad4e;border-radius:10px;">
-        <div style="font-size:12px;font-weight:bold;color:#856404;margin-bottom:14px;text-transform:uppercase;letter-spacing:0.5px;">⚠️ פעולות ניהול מתקדמות</div>
-        <div style="display:flex;gap:10px;flex-wrap:wrap;">
-          <button onclick="closeSettings();setTimeout(()=>toggleAuditLog(),100);" style="width:auto !important;padding:9px 16px;background:#f8f0ff;border:1.5px solid #9b59b6;color:#9b59b6;border-radius:8px;cursor:pointer;font-size:13px;font-weight:bold;">🔍 לוג פעולות</button>
-          <button onclick="if(currentRole!=='admin'){showToast('⛔ מנהל בלבד','warning');return;}closeSettings();setTimeout(()=>openRangeResetModal('trips'),100);" style="width:auto !important;padding:9px 16px;background:#fff3cd;border:1.5px solid #f0ad4e;color:#856404;border-radius:8px;cursor:pointer;font-size:13px;font-weight:bold;">🗑️ אפס נסיעות</button>
-          <button onclick="if(currentRole!=='admin'){showToast('⛔ מנהל בלבד','warning');return;}closeSettings();setTimeout(()=>openRangeResetModal('all'),100);" style="width:auto !important;padding:9px 16px;background:#fdf2f2;border:1.5px solid #e74c3c;color:#e74c3c;border-radius:8px;cursor:pointer;font-size:13px;font-weight:bold;">⚠️ איפוס כללי</button>
-        </div>
-      </div>
-
       <button class="btn-reset-settings" onclick="resetSettingsToDefault()">↺ אפס לברירת מחדל</button>
 
       <button class="btn-cancel-settings" onclick="closeSettings()">ביטול</button>
+    <div style="margin-top:22px;padding:14px;background:#fff3f3;border:1.5px solid #e74c3c;border-radius:10px;">
+      <div style="font-weight:bold;color:#c0392b;margin-bottom:10px;">⚠️ פעולות ניהול מתקדמות</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button onclick="if(confirm('אפס נסיעות?')){trips=[];saveToStorage();renderLog();renderDashboard();showToast('נמחקו','info');}" style="padding:7px 12px;background:#e74c3c;color:white;border:none;border-radius:7px;cursor:pointer;font-size:12px;">🗑️ אפס נסיעות</button>
+        <button onclick="if(confirm('איפוס כללי?')){localStorage.clear();location.reload();}" style="padding:7px 12px;background:#c0392b;color:white;border:none;border-radius:7px;cursor:pointer;font-size:12px;">⚠️ איפוס כללי</button>
+        <button onclick="showActionLog()" style="padding:7px 12px;background:#7f8c8d;color:white;border:none;border-radius:7px;cursor:pointer;font-size:12px;">🔍 לוג פעולות</button>
+      </div>
+    </div>
 
       <button class="btn-save-settings" onclick="saveSettings()">✅ שמור הגדרות</button>
 
@@ -1920,9 +1910,9 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 
   <div class="header">
 
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
       <h2 style="margin:0;">🚇 מערכת תכנון הדרכה <span class="version-badge">V100</span></h2>
-      <button onclick="reloadApp()" id="globalReloadBtn" title="רענן את כל הנתונים" style="width:auto !important;padding:5px 16px;background:#f0f4f8;border:1px solid #ccc;border-radius:8px;cursor:pointer;font-size:13px;color:#555;font-weight:600;display:none;">🔄 רענן</button>
+      <button onclick="reloadApp()" id="globalReloadBtn" title="רענן" style="width:auto !important;padding:6px 14px;background:#f0f4ff;border:1.5px solid #3498db;border-radius:8px;cursor:pointer;font-size:13px;color:#2c3e50;font-weight:600;display:none;">🔄 רענן</button>
     </div>
 
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
@@ -1988,9 +1978,6 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
     </div>
 
     <div id="nextTripCard"></div>
-
-    <!-- Placeholder for traineeSection —  above manual entry for instructor -->
-    <div id="traineeSectionInstrPlaceholder" style="margin-bottom:14px;"></div>
 
     <!-- Placeholder for manualSection — moved here dynamically for instructor -->
     <div id="manualSectionPlaceholder"></div>
@@ -2072,8 +2059,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 
       <h4>📊 דשבורד יומי <span id="dashDateLbl" style="font-weight:400;font-size:13px;color:#888;"></span></h4>
 
-
-
+      
     </div>
 
     <div class="kpi-grid" id="kpiGrid"><div style="color:#aaa;font-size:13px;">אין נסיעות להיום</div></div>
@@ -2098,6 +2084,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
         <input type="date" id="daySummaryDatePicker" onchange="setDaySummaryDate(this.value)"
           style="width:auto;padding:4px 8px;border:1px solid #ccc;border-radius:6px;font-size:12px;cursor:pointer;">
       </div>
+
 
       <div id="daySummaryContent"></div>
     </div>
@@ -2138,7 +2125,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
     <div class="sched-action-row" style="text-align:center;margin-bottom:10px;">
       <button onclick="openWeeklySchedModal()" style="width:auto !important;display:inline-block;margin:2px;padding:8px 14px;background:#2980b9;color:white;border:none;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;">📅 שיבוץ שבועי</button>
       <button onclick="autoGenerateTripsFromSchedule()" style="width:auto !important;display:inline-block;margin:2px;padding:8px 14px;background:#27ae60;color:white;border:none;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;">⚡ תכנן נסיעות</button>
-                        <button onclick="toggleMonthlyDash()" id="monthlyDashBtn" style="width:auto !important;display:inline-block;margin:2px;padding:8px 14px;background:#eaf4fd;border:1px solid var(--secondary);color:var(--secondary);border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;">📊 דשבורד חודשי</button>
+      <button onclick="toggleMonthlyDash()" id="monthlyDashBtn" style="width:auto !important;display:inline-block;margin:2px;padding:8px 14px;background:#eaf4fd;border:1px solid var(--secondary);color:var(--secondary);border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;">📊 דשבורד חודשי</button>
       <button onclick="toggleApprovalPanel()" id="approvalToggleBtn" style="width:auto !important;display:inline-block;margin:2px;padding:8px 14px;background:#fef9e7;border:1px solid #f0c050;color:#856404;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;position:relative;">📋 אישור שיבוצים <span id="approvalBadge" style="display:none;background:#e74c3c;color:white;border-radius:10px;padding:1px 5px;font-size:10px;font-weight:bold;margin-right:3px;"></span></button>
       <button onclick="openNotesModal()" style="width:auto !important;display:inline-block;margin:2px;padding:8px 14px;background:#fef08a;border:1px solid #eab308;color:#713f12;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;">📌 פתקים</button>
       <button onclick="openSettings()" style="width:auto !important;display:inline-block;margin:2px;padding:8px 14px;background:#f0f4f8;border:1px solid #ddd;color:#555;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;">⚙️ הגדרות</button>
@@ -2228,6 +2215,11 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 
 </div>
 
+
+
+  <!-- ══ MANUAL ROUTE ENTRY ══════════════════════════════ -->
+
+
   <!-- ══ MONTHLY DASHBOARD ══════════════════════════════ -->
 
   <div class="schedule-section" id="monthlyDashPanel" style="display:none;margin-bottom:18px;">
@@ -2238,7 +2230,8 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
         <button onclick="changeMonthlyDash(-1)" style="width:auto;background:#f0f4f8;border:1px solid #ccc;border-radius:6px;padding:5px 10px;cursor:pointer;font-size:15px;">‹</button>
         <span id="monthlyDashLabel" style="font-weight:bold;color:var(--primary);font-size:14px;white-space:nowrap;"></span>
         <button onclick="changeMonthlyDash(1)" style="width:auto;background:#f0f4f8;border:1px solid #ccc;border-radius:6px;padding:5px 10px;cursor:pointer;font-size:15px;">›</button>
-        <div style="position:relative;display:inline-block;" id="reportsDropdownWrapper">
+        <button onclick="loadMonthlyDash()" style="width:auto;padding:7px 12px;background:#2980b9;color:white;border:none;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;">🔄 טען נתונים</button>
+                <div style="position:relative;display:inline-block;" id="reportsDropdownWrapper">
           <button onclick="toggleReportsDropdown()" style="width:auto;padding:7px 14px;background:#6c3483;color:white;border:none;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;">📊 דוחות ▾</button>
           <div id="reportsDropdown" style="display:none;position:absolute;top:110%;right:0;background:white;border:1.5px solid #ddd;border-radius:10px;box-shadow:0 6px 20px rgba(0,0,0,0.12);z-index:1000;min-width:195px;padding:6px 0;">
             <button onclick="exportMonthlyReport();toggleReportsDropdown()" style="width:100%;padding:10px 16px;background:none;border:none;text-align:right;cursor:pointer;font-size:13px;color:#2c3e50;font-weight:600;" onmouseover="this.style.background='#f5f5f5'" onmouseout="this.style.background='none'">📥 ייצא נסיעות CSV</button>
@@ -2348,13 +2341,19 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 
     <div id="dashTabTasks" style="display:none;margin-top:10px;"></div>
 
+  <!-- ══ TRAINEE SECTION CARD ════════════════════════════ -->
+  <details id="traineeSection" class="manual-section" style="margin-bottom:14px;">
+    <summary onclick="_initTraineeIfNeeded()">
+      <span class="manual-summary-arrow">▶</span>
+      🎓 ניהול חניכים &amp; משוב
+      <span style="font-size:12px;font-weight:400;color:#888;margin-right:6px;">(לחץ להרחבה)</span>
+    </summary>
+    <div class="manual-inner" style="padding:12px 0 0 0;">
+      <div id="traineeSystemContainer"><div style="padding:30px;text-align:center;color:#888;font-size:14px;">⏳ לחץ כאן לטעינת מערכת החניכים...</div></div>
+    </div>
+  </details>
 
-
-
-    <!-- Placeholder for traineeSection (above manual entry) -->
-  <div id="traineeSectionMgrPlaceholder" style="margin-bottom:14px;"></div>
-
-<!-- ══ MANUAL ROUTE ENTRY ══════════════════════════════ -->
+  <div id="traineeSectionMgrPlaceholder"></div>
 
   <details class="manual-section" id="manualSection">
 
@@ -2509,8 +2508,6 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
           <button id="editSaveOverrideB" class="btn-save-override" onclick="saveEditedTripForce()" style="display:none;margin-top:4px;background:var(--warning);">⚠️ שמור עריכה בכל זאת</button>
 
           <button onclick="resetS()" class="btn-cancel-sm">נקה בחירה</button>
-
-          <!-- Route change reason box -->
           <div id="routeChangeBox" style="display:none;margin-top:10px;padding:12px 14px;background:#fef9e7;border:1.5px solid #f0ad4e;border-radius:9px;">
             <div style="font-size:12px;font-weight:bold;color:#856404;margin-bottom:8px;">⚠️ זוהה שינוי מסלול — נא הזן סיבה:</div>
             <input id="routeChangeReason" type="text" placeholder="סיבה לשינוי מסלול..." style="width:100%;padding:8px 10px;border:1.5px solid #f0ad4e;border-radius:7px;font-size:13px;direction:rtl;margin-bottom:8px;">
@@ -2759,8 +2756,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 
 </div><!-- /container -->
 
-
-<!-- ══ TRAINEE SYSTEM MODULE ══════════════════════════════ -->
+<!-- ══ TRAINEE SYSTEM ══════════════════════════════ -->
 <script>
 /* =========================================================
    TraineeSystem — מודול Vanilla JS מבודד
@@ -2778,6 +2774,8 @@ window.TraineeSystem = {
     db: null,
     traineesRef: null,
     instructorsRef: null,
+    settingsRef: null,
+    settings: null,
 
     init(containerId) {
         const container = document.getElementById(containerId);
@@ -2796,6 +2794,7 @@ window.TraineeSystem = {
                 </div>
                 <div style="font-size:1em;">מתחבר למסד הנתונים...</div>
             </div>`;
+        this.loadSettings().then(() => { this.applySkillLabels(); this.applySigVisibility(); });
         this.loadData();
     },
 
@@ -2929,6 +2928,63 @@ window.TraineeSystem = {
     .trainee-module .skill-stepper input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
     .trainee-module .skill-stepper input:focus { outline: none; border-color: var(--rail-blue); background: white; }
 
+    /* ── TraineeSystem Settings Modal ── */
+    .ts-settings-overlay { position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9500;display:none;align-items:center;justify-content:center; }
+    .ts-settings-overlay.open { display:flex; }
+    .ts-settings-box { background:white;border-radius:18px;width:min(700px,96vw);max-height:88vh;overflow:hidden;display:flex;flex-direction:column;direction:rtl; }
+    .ts-settings-head { display:flex;justify-content:space-between;align-items:center;padding:18px 22px;border-bottom:2px solid #eef2f8; }
+    .ts-settings-head h3 { margin:0;font-size:17px;color:#1a2a3a; }
+    .ts-settings-close { background:none;border:none;font-size:22px;cursor:pointer;color:#888;width:auto !important;padding:4px 8px; }
+    .ts-settings-close:hover { color:#e74c3c; }
+    .ts-stabs { display:flex;gap:6px;padding:14px 22px 0;border-bottom:2px solid #eef2f8;flex-wrap:wrap; }
+    .ts-stab { padding:8px 14px;border:none;background:none;cursor:pointer;font-size:13px;font-weight:600;color:#888;border-bottom:3px solid transparent;margin-bottom:-2px;border-radius:0;width:auto !important; }
+    .ts-stab.active { color:#3498db;border-bottom-color:#3498db; }
+    .ts-stab:hover:not(.active) { color:#555;background:#f8faff; }
+    .ts-spanel { display:none;padding:20px 22px;overflow-y:auto;flex:1; }
+    .ts-spanel.active { display:block; }
+    .ts-settings-footer { padding:14px 22px;border-top:2px solid #eef2f8;display:flex;justify-content:flex-end;gap:10px; }
+    .ts-settings-footer button { padding:9px 20px;border-radius:9px;font-size:13px;font-weight:bold;cursor:pointer;border:none;width:auto !important; }
+    .ts-btn-save { background:#3498db;color:white; }
+    .ts-btn-save:hover { background:#2980b9; }
+    .ts-btn-cancel { background:#f0f4f8;color:#555;border:1px solid #ddd !important; }
+    /* Skills tab */
+    .ts-skill-row { display:flex;align-items:center;gap:10px;padding:9px 12px;background:#f8faff;border:1px solid #e0e8f5;border-radius:9px;margin-bottom:6px;cursor:grab; }
+    .ts-skill-row:active { cursor:grabbing;background:#e8f0ff; }
+    .ts-skill-row.drag-over { border-color:#3498db;background:#dff0fa; }
+    .ts-drag-handle { color:#bbb;font-size:16px;cursor:grab;flex-shrink:0; }
+    .ts-skill-name-input { flex:1;padding:7px 10px;border:1.5px solid #ddd;border-radius:7px;font-size:13px;font-family:inherit;direction:rtl; }
+    .ts-skill-name-input:focus { outline:none;border-color:#3498db; }
+    .ts-skill-del { background:none;border:none;color:#e74c3c;cursor:pointer;font-size:16px;padding:2px 6px;width:auto !important; }
+    .ts-add-btn { display:flex;align-items:center;justify-content:center;gap:6px;width:100%;padding:10px;border:2px dashed #3498db;background:#f0f8ff;color:#3498db;border-radius:9px;cursor:pointer;font-size:13px;font-weight:bold;margin-top:8px; }
+    .ts-add-btn:hover { background:#e0f2ff; }
+    /* Mission types tab */
+    .ts-mission-row { display:flex;align-items:center;gap:10px;padding:9px 12px;background:#f8faff;border:1px solid #e0e8f5;border-radius:9px;margin-bottom:6px; }
+    .ts-mission-locked { color:#888;font-size:11px;background:#f0f0f0;padding:2px 7px;border-radius:10px;flex-shrink:0; }
+    /* Alert thresholds tab */
+    .ts-alert-row { display:grid;grid-template-columns:1fr 70px 90px 90px 1fr auto;gap:6px;align-items:center;padding:8px 10px;background:#f8faff;border:1px solid #e0e8f5;border-radius:9px;margin-bottom:6px; }
+    .ts-alert-row select,.ts-alert-row input[type=number] { padding:6px 8px;border:1.5px solid #ddd;border-radius:7px;font-size:12px;font-family:inherit;direction:rtl; }
+    .ts-alert-row input[type=text] { padding:6px 8px;border:1.5px solid #ddd;border-radius:7px;font-size:12px;font-family:inherit;direction:rtl;width:100%; }
+    .ts-sev-btn { padding:4px 8px;border:1.5px solid #ddd;border-radius:6px;cursor:pointer;font-size:13px;background:white;width:auto !important; }
+    .ts-sev-btn.active { border-color:#3498db;background:#e0f2ff; }
+    /* Load limits tab */
+    .ts-load-row { display:grid;grid-template-columns:1fr 90px 90px;gap:10px;align-items:center;padding:9px 12px;background:#f8faff;border:1px solid #e0e8f5;border-radius:9px;margin-bottom:6px; }
+    .ts-load-row input { padding:7px 10px;border:1.5px solid #ddd;border-radius:7px;font-size:13px;font-family:inherit;text-align:center;direction:rtl; }
+    .ts-load-row input:focus { outline:none;border-color:#3498db; }
+    .ts-col-header { display:grid;grid-template-columns:1fr 90px 90px;gap:10px;padding:0 12px;margin-bottom:4px; }
+    .ts-col-header span { font-size:11px;font-weight:bold;color:#888;text-align:center; }
+    .ts-col-header span:first-child { text-align:right; }
+    /* Signature tab */
+    .ts-toggle-row { display:flex;align-items:center;justify-content:space-between;padding:14px 16px;background:#f8faff;border:1px solid #e0e8f5;border-radius:12px; }
+    .ts-toggle-label { font-size:14px;color:#1a2a3a;font-weight:600; }
+    .ts-toggle-switch { position:relative;display:inline-block;width:52px;height:28px; }
+    .ts-toggle-switch input { opacity:0;width:0;height:0; }
+    .ts-toggle-slider { position:absolute;cursor:pointer;inset:0;background:#ccc;border-radius:34px;transition:.3s; }
+    .ts-toggle-slider:before { position:absolute;content:"";height:22px;width:22px;right:3px;bottom:3px;background:white;border-radius:50%;transition:.3s; }
+    .ts-toggle-switch input:checked + .ts-toggle-slider { background:#3498db; }
+    .ts-toggle-switch input:checked + .ts-toggle-slider:before { transform:translateX(-24px); }
+    .ts-saved-msg { font-size:12px;color:#27ae60;font-weight:bold;opacity:0;transition:opacity .4s; }
+    .ts-saved-msg.show { opacity:1; }
+
     .trainee-module #sig-canvas { border: 2px dashed #cbd5e0; background: #fff; cursor: crosshair; touch-action: none; width: 100%; height: 140px; border-radius: 12px; display: block; }
     .trainee-module .sig-wrap { background: white; padding: 22px; border-radius: 14px; margin-top: 28px; text-align: center; }
     .trainee-module .sig-wrap label { color: var(--rail-dark); font-weight: bold; display: block; margin-bottom: 12px; }
@@ -2974,8 +3030,11 @@ window.TraineeSystem = {
                 <button class="btn btn-ghost" data-action="toggle-panel" data-panel="ins-panel">⚙️ מדריכים</button>
                 <button class="btn btn-blue"  data-action="toggle-panel" data-panel="add-panel">+ חניך חדש</button>
             <button class="btn" data-action="show-reports" style="background:#6c3483;color:white;border:none;border-radius:8px;padding:8px 14px;cursor:pointer;font-size:13px;font-weight:bold;">📊 דוחות</button>
+            <button id="ts-settings-btn" class="btn btn-ghost" data-action="open-ts-settings" style="display:none;width:auto !important;padding:8px 14px;">⚙️ הגדרות</button>
             </div>
         </header>
+
+        <div id="overload-alerts"></div>
 
         <div id="add-panel" style="display:none" class="panel">
             <h4>➕ הוספת חניך חדש</h4>
@@ -3113,11 +3172,11 @@ window.TraineeSystem = {
             </div>
 
             <div class="skill-grid">
-                <div class="skill-box"><label>מערכות רכבת</label><div class="skill-stepper"><button type="button" data-skill="s1" data-delta="-1">−</button><input type="number" id="s1" min="1" max="10" placeholder="—"><button type="button" data-skill="s1" data-delta="1">+</button></div></div>
-                <div class="skill-box" id="s2-box"><label id="s2-label">מבנה דיפו</label><div class="skill-stepper"><button type="button" data-skill="s2" data-delta="-1">−</button><input type="number" id="s2" min="1" max="10" placeholder="—"><button type="button" data-skill="s2" data-delta="1">+</button></div></div>
-                <div class="skill-box"><label>תפעול סטיק</label><div class="skill-stepper"><button type="button" data-skill="s3" data-delta="-1">−</button><input type="number" id="s3" min="1" max="10" placeholder="—"><button type="button" data-skill="s3" data-delta="1">+</button></div></div>
-                <div class="skill-box"><label>נהלים</label><div class="skill-stepper"><button type="button" data-skill="s4" data-delta="-1">−</button><input type="number" id="s4" min="1" max="10" placeholder="—"><button type="button" data-skill="s4" data-delta="1">+</button></div></div>
-                <div class="skill-box"><label>משמעת</label><div class="skill-stepper"><button type="button" data-skill="s5" data-delta="-1">−</button><input type="number" id="s5" min="1" max="10" placeholder="—"><button type="button" data-skill="s5" data-delta="1">+</button></div></div>
+                <div class="skill-box"><label id="skill-label-s1">מערכות רכבת</label><div class="skill-stepper"><button type="button" data-skill="s1" data-delta="-1">−</button><input type="number" id="s1" min="1" max="10" placeholder="—"><button type="button" data-skill="s1" data-delta="1">+</button></div></div>
+                <div class="skill-box" id="s2-box"><label id="skill-label-s2">מבנה דיפו</label><div class="skill-stepper"><button type="button" data-skill="s2" data-delta="-1">−</button><input type="number" id="s2" min="1" max="10" placeholder="—"><button type="button" data-skill="s2" data-delta="1">+</button></div></div>
+                <div class="skill-box"><label id="skill-label-s3">תפעול סטיק</label><div class="skill-stepper"><button type="button" data-skill="s3" data-delta="-1">−</button><input type="number" id="s3" min="1" max="10" placeholder="—"><button type="button" data-skill="s3" data-delta="1">+</button></div></div>
+                <div class="skill-box"><label id="skill-label-s4">נהלים</label><div class="skill-stepper"><button type="button" data-skill="s4" data-delta="-1">−</button><input type="number" id="s4" min="1" max="10" placeholder="—"><button type="button" data-skill="s4" data-delta="1">+</button></div></div>
+                <div class="skill-box"><label id="skill-label-s5">משמעת</label><div class="skill-stepper"><button type="button" data-skill="s5" data-delta="-1">−</button><input type="number" id="s5" min="1" max="10" placeholder="—"><button type="button" data-skill="s5" data-delta="1">+</button></div></div>
             </div>
             <div id="s2-hint" style="font-size:0.78em;color:#b0c4d4;margin-top:8px;text-align:center;"></div>
 
@@ -3127,7 +3186,7 @@ window.TraineeSystem = {
                     style="width:100%; padding:14px; border-radius:10px; border:2px solid #4a6278; background:#f8fafc; color:#1a2a3a; font-family:inherit; font-size:0.95em; resize:vertical;"></textarea>
             </div>
 
-            <div class="sig-wrap">
+            <div class="sig-wrap" id="ts-sig-wrap">
                 <label>חתימת המדריך / חונך לאישור:</label>
                 <canvas id="sig-canvas"></canvas>
                 <button class="sig-clear" data-action="clear-sig">✖ נקה חתימה</button>
@@ -3137,6 +3196,76 @@ window.TraineeSystem = {
         </div>
     </div>
 </div>
+
+<!-- ── TraineeSystem Settings Modal ─────────────────── -->
+<div id="ts-settings-overlay" class="ts-settings-overlay">
+  <div class="ts-settings-box">
+    <div class="ts-settings-head">
+      <h3>⚙️ הגדרות מערכת חניכים ומשוב</h3>
+      <button class="ts-settings-close" data-action="close-ts-settings">×</button>
+    </div>
+    <div class="ts-stabs">
+      <button class="ts-stab active" data-ts-tab="skills">🎯 מיומניות</button>
+      <button class="ts-stab" data-ts-tab="missions">📋 סוגי משימות</button>
+      <button class="ts-stab" data-ts-tab="alerts">🔔 ספי התרעות</button>
+      <button class="ts-stab" data-ts-tab="load">⚖️ הגבלות עומס</button>
+      <button class="ts-stab" data-ts-tab="sig">✍️ חתימה</button>
+    </div>
+    <!-- Tab: Skills -->
+    <div class="ts-spanel active" id="ts-panel-skills">
+      <p style="font-size:12px;color:#888;margin:0 0 12px;">גרור לשינוי סדר. שינוי שם לא פוגע בנתונים קיימים (מיפוי לפי מיקום).</p>
+      <div id="ts-skills-list"></div>
+      <button class="ts-add-btn" data-action="ts-add-skill">+ הוסף מיומנות</button>
+    </div>
+    <!-- Tab: Mission types -->
+    <div class="ts-spanel" id="ts-panel-missions">
+      <p style="font-size:12px;color:#888;margin:0 0 12px;">משימות חדשות ללא ספירת שיעורים. <strong>קורס</strong> נעול.</p>
+      <div id="ts-missions-list"></div>
+      <button class="ts-add-btn" data-action="ts-add-mission">+ הוסף סוג משימה</button>
+    </div>
+    <!-- Tab: Alert thresholds -->
+    <div class="ts-spanel" id="ts-panel-alerts">
+      <p style="font-size:12px;color:#888;margin:0 0 10px;">כללי התרעה על ביצועי חניך לפי מיומנות.</p>
+      <div style="display:grid;grid-template-columns:1fr 70px 90px 90px 1fr auto;gap:6px;padding:0 10px;margin-bottom:4px;">
+        <span style="font-size:11px;font-weight:bold;color:#888;">מיומנות</span>
+        <span style="font-size:11px;font-weight:bold;color:#888;text-align:center;">סף %</span>
+        <span style="font-size:11px;font-weight:bold;color:#888;text-align:center;">כיוון</span>
+        <span style="font-size:11px;font-weight:bold;color:#888;text-align:center;">חומרה</span>
+        <span style="font-size:11px;font-weight:bold;color:#888;">טקסט</span>
+        <span></span>
+      </div>
+      <div id="ts-alerts-list"></div>
+      <button class="ts-add-btn" data-action="ts-add-alert">+ הוסף כלל</button>
+    </div>
+    <!-- Tab: Load limits -->
+    <div class="ts-spanel" id="ts-panel-load">
+      <p style="font-size:12px;color:#888;margin:0 0 10px;">4 רמות קבועות — ממוצע מינימלי ומקסימום שיעורים ליום.</p>
+      <div class="ts-col-header">
+        <span>שם רמה</span>
+        <span>ממוצע מינ %</span>
+        <span>מקס שיעורים/יום</span>
+      </div>
+      <div id="ts-load-list"></div>
+    </div>
+    <!-- Tab: Signature -->
+    <div class="ts-spanel" id="ts-panel-sig">
+      <div class="ts-toggle-row">
+        <span class="ts-toggle-label">חתימת מדריך נדרשת בטפסי משוב</span>
+        <label class="ts-toggle-switch">
+          <input type="checkbox" id="ts-sig-required" checked>
+          <span class="ts-toggle-slider"></span>
+        </label>
+      </div>
+      <p style="font-size:12px;color:#888;margin:12px 0 0;">כאשר מכובה — שדה החתימה לא יוצג בטופס המשוב.</p>
+    </div>
+    <div class="ts-settings-footer">
+      <span class="ts-saved-msg" id="ts-saved-msg">✓ נשמר!</span>
+      <button class="ts-settings-footer button ts-btn-cancel" data-action="close-ts-settings" style="padding:9px 20px;border-radius:9px;font-size:13px;font-weight:bold;cursor:pointer;border:1px solid #ddd;background:#f0f4f8;color:#555;width:auto !important;">ביטול</button>
+      <button class="ts-settings-footer button ts-btn-save" data-action="save-ts-settings" style="padding:9px 20px;border-radius:9px;font-size:13px;font-weight:bold;cursor:pointer;border:none;background:#3498db;color:white;width:auto !important;">💾 שמור הגדרות</button>
+    </div>
+  </div>
+</div>
+
 </div>`;
     },
 
@@ -3150,16 +3279,11 @@ window.TraineeSystem = {
             messagingSenderId: "608824054092",
             appId:             "1:608824054092:web:dedb20d936f223aa00ffe9"
         };
-        // Use named app to avoid conflict with V100's DEFAULT Firebase app
-        let _traineeApp;
-        try {
-            _traineeApp = firebase.app('trainee');
-        } catch(e) {
-            _traineeApp = firebase.initializeApp(firebaseConfig, 'trainee');
-        }
-        this.db             = _traineeApp.database();
+        let _tApp;try{_tApp=firebase.app('trainee');}catch(e){_tApp=firebase.initializeApp(firebaseConfig,'trainee');}
+        this.db=_tApp.database();
         this.traineesRef    = this.db.ref('trainees_v20');
         this.instructorsRef = this.db.ref('instructors_v20');
+        this.settingsRef    = this.db.ref('settings_v20');
     },
 
     bindEvents() {
@@ -3173,11 +3297,22 @@ window.TraineeSystem = {
             if (action === 'confirm-add-trainee') this.confirmAddTrainee();
             if (action === 'add-instructor') this.addInstructor();
             if (action === 'show-reports')   this.showReports();
+            if (action === 'open-ts-settings') this.openSettings();
+            if (action === 'close-ts-settings') this.closeSettings();
+            if (action === 'save-ts-settings')  this.saveSettings();
+            if (action === 'ts-add-skill')       this.addSkillRow();
+            if (action === 'ts-add-mission')     this.addMissionRow();
+            if (action === 'ts-add-alert')       this.addAlertRow();
             if (action === 'show-main')    this.showMainView();
             if (action === 'print')        window.print();
             if (action === 'toggle-log')   this.$('log-body').classList.toggle('open');
             if (action === 'clear-sig')    this.clearSig();
             if (action === 'save-lesson')  this.saveLesson();
+        });
+
+        c.addEventListener('click', (e) => {
+            const tabBtn = e.target.closest('[data-ts-tab]');
+            if (tabBtn && c.contains(tabBtn)) { this.switchSettingsTab(tabBtn.dataset.tsTab); return; }
         });
 
         c.addEventListener('click', (e) => {
@@ -3719,6 +3854,20 @@ window.TraineeSystem = {
             notes: this.$('in-notes').value
         });
         this.persist();
+        if (mission === 'קורס') {
+            const savedLesson = t.lessons[t.lessons.length - 1];
+            const lessonCount = (savedLesson.lessonNums || []).length;
+            if (lessonCount > 0) {
+                const allLs = t.lessons || [];
+                const totalSum = allLs.reduce((s,l) => s+(l.s1+l.s2+l.s3+l.s4+l.s5), 0);
+                const avgPct   = allLs.length ? (totalSum / (allLs.length * 50)) * 100 : 0;
+                const maxAllowed = avgPct > 90 ? 5 : avgPct > 80 ? 4 : avgPct > 70 ? 3 : 1;
+                const level      = avgPct > 90 ? 'חזק' : avgPct > 80 ? 'בינוני' : avgPct > 70 ? 'חלש' : 'חלש מאוד';
+                if (lessonCount > maxAllowed) {
+                    this._fireOverloadAlert(t, lessonCount, maxAllowed, level, savedLesson.date);
+                }
+            }
+        }
         this.resetForm();
         this.renderDetail();
         this.showToast('✅ המשוב נשמר בהצלחה!');
@@ -3736,6 +3885,28 @@ window.TraineeSystem = {
             this.persist();
             this.renderDetail();
         });
+    },
+
+    _fireOverloadAlert(trainee, actual, max, level, date) {
+        const alertsEl = this.$('overload-alerts');
+        if (alertsEl) {
+            alertsEl.style.cssText = 'display:flex;flex-direction:column;gap:8px;margin:10px 14px 0;';
+            const item = document.createElement('div');
+            item.style.cssText = 'background:#fff3cd;border:1.5px solid #f0ad4e;border-radius:9px;padding:12px 14px;display:flex;align-items:center;gap:10px;font-size:13px;';
+            item.innerHTML = '<span>⚠️</span><div style="flex:1;direction:rtl;"><strong>' + trainee.name + '</strong> — עומס ביום ' + date + '<br><span style="color:#856404;">' + actual + ' שיעורים | מותר לרמת <em>' + level + '</em>: עד ' + max + '</span></div><button onclick="this.parentElement.remove()" style="background:none;border:none;cursor:pointer;font-size:16px;">✕</button>';
+            alertsEl.appendChild(item);
+        }
+        if (typeof window._v100TraineeOverload === 'function') window._v100TraineeOverload(trainee.name, actual, max, level, date);
+    },
+
+    showReports() {
+        const total = this.trainees.length;
+        const avg = t => { const ls=t.lessons||[]; if(!ls.length)return 0; return ((ls.reduce((s,l)=>s+(l.s1+l.s2+l.s3+l.s4+l.s5),0)/(ls.length*50))*100).toFixed(0); };
+        const rows = [...this.trainees].sort((a,b)=>(b.lessons||[]).length-(a.lessons||[]).length).map(t => {
+            const ls=t.lessons||[]; const maxL=new Set(ls.flatMap(l=>l.mission==='קורס'?(l.lessonNums||[]):[]).filter(n=>n)).size;
+            return '<tr><td style="padding:8px 10px;border-bottom:1px solid #eee;">' + t.name + '</td><td style="padding:8px 10px;border-bottom:1px solid #eee;text-align:center;">' + ls.length + '</td><td style="padding:8px 10px;border-bottom:1px solid #eee;text-align:center;">' + maxL + '/50</td><td style="padding:8px 10px;border-bottom:1px solid #eee;text-align:center;font-weight:bold;color:' + (avg(t)<65?'#e74c3c':avg(t)<82?'#e67e22':'#27ae60') + '">' + avg(t) + '%</td><td style="padding:8px 10px;border-bottom:1px solid #eee;text-align:center;">' + (ls.length?ls[ls.length-1].ins:'-') + '</td></tr>';
+        }).join('');
+        document.body.insertAdjacentHTML('beforeend', '<div style="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center;" onclick="if(event.target===this)this.remove()"><div style="background:white;border-radius:16px;padding:24px;width:min(700px,95vw);max-height:85vh;overflow-y:auto;direction:rtl;"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;"><h3 style="margin:0;">📊 דוח מצב חניכים — ' + total + ' חניכים</h3><button onclick="this.closest('[onclick]').remove()" style="background:none;border:none;font-size:20px;cursor:pointer;">✕</button></div><table style="width:100%;border-collapse:collapse;font-size:13px;"><thead><tr style="background:#f0f4ff;"><th style="padding:10px;text-align:right;">שם</th><th style="padding:10px;text-align:center;">שיעורים</th><th style="padding:10px;text-align:center;">התקדמות</th><th style="padding:10px;text-align:center;">ממוצע</th><th style="padding:10px;text-align:center;">מדריך אחרון</th></tr></thead><tbody>' + rows + '</tbody></table></div></div>');
     },
 
     resetForm() {
@@ -3902,6 +4073,368 @@ window.TraineeSystem = {
                 <span style="color:#4a5568; font-size:0.88em; line-height:1.5;">${msg}</span>
             </div>
         </div>`;
+    },
+
+    // ══════════════════════════════════════════════════
+    // SETTINGS — load / save / open / close / render
+    // ══════════════════════════════════════════════════
+
+    _defaultSettings() {
+        return {
+            skills: [
+                {id:'s1', name:'מערכות רכבת'},
+                {id:'s2', name:'מבנה דיפו'},
+                {id:'s3', name:'תפעול סטיק'},
+                {id:'s4', name:'נהלים'},
+                {id:'s5', name:'משמעת'}
+            ],
+            missionTypes: [
+                {id:'course', name:'קורס', locked:true},
+                {id:'mt1', name:'ליווי'},
+                {id:'mt2', name:'בדיקה'},
+                {id:'mt3', name:'שטח'}
+            ],
+            alertThresholds: [],
+            loadLimits: [
+                {level:1, name:'חלש מאוד', minAvg:0,  maxLessonsPerDay:1},
+                {level:2, name:'חלש',      minAvg:55, maxLessonsPerDay:3},
+                {level:3, name:'בינוני',   minAvg:70, maxLessonsPerDay:4},
+                {level:4, name:'טוב',      minAvg:82, maxLessonsPerDay:5}
+            ],
+            requireSignature: true
+        };
+    },
+
+    async loadSettings() {
+        const defaults = this._defaultSettings();
+        let loaded = false;
+
+        // Demo mode: localStorage only
+        if (typeof _isDemoMode === 'function' && _isDemoMode()) {
+            try {
+                const raw = localStorage.getItem('trainee_settings');
+                if (raw) { this.settings = {...defaults, ...JSON.parse(raw)}; loaded = true; }
+            } catch(e) {}
+            if (!loaded) this.settings = defaults;
+            return;
+        }
+
+        // Firebase first
+        if (this.settingsRef) {
+            try {
+                const snap = await this.settingsRef.once('value');
+                if (snap.exists()) {
+                    this.settings = {...defaults, ...snap.val()};
+                    // Merge arrays carefully
+                    if (snap.val().skills)         this.settings.skills = snap.val().skills;
+                    if (snap.val().missionTypes)   this.settings.missionTypes = snap.val().missionTypes;
+                    if (snap.val().alertThresholds) this.settings.alertThresholds = snap.val().alertThresholds;
+                    if (snap.val().loadLimits)      this.settings.loadLimits = snap.val().loadLimits;
+                    loaded = true;
+                }
+            } catch(e) { console.warn('TraineeSettings Firebase load:', e); }
+        }
+
+        // localStorage fallback
+        if (!loaded) {
+            try {
+                const raw = localStorage.getItem('trainee_settings');
+                if (raw) { this.settings = {...defaults, ...JSON.parse(raw)}; loaded = true; }
+            } catch(e) {}
+        }
+
+        if (!loaded) this.settings = defaults;
+    },
+
+    async saveSettings() {
+        if (!this.settings) this.settings = this._defaultSettings();
+
+        // Collect from UI
+        this._collectSettingsFromUI();
+
+        const data = JSON.parse(JSON.stringify(this.settings));
+
+        // localStorage always
+        try { localStorage.setItem('trainee_settings', JSON.stringify(data)); } catch(e) {}
+
+        // Firebase if not demo
+        if (this.settingsRef && !(typeof _isDemoMode === 'function' && _isDemoMode())) {
+            try { await this.settingsRef.set(data); } catch(e) { console.warn('TraineeSettings save:', e); }
+        }
+
+        // Show saved indicator
+        const msg = this.$('ts-saved-msg');
+        if (msg) { msg.classList.add('show'); setTimeout(() => msg.classList.remove('show'), 2500); }
+
+        // Apply changes live
+        this.applySkillLabels();
+        this.applySigVisibility();
+        this.updateInMissionSelect();
+
+        if (typeof showToast === 'function') showToast('✅ הגדרות נשמרו', 'success');
+    },
+
+    _collectSettingsFromUI() {
+        if (!this.container) return;
+
+        // Skills
+        const skillRows = this.container.querySelectorAll('[data-ts-skill-idx]');
+        if (skillRows.length) {
+            this.settings.skills = Array.from(skillRows).map((row, i) => ({
+                id: 's' + (i + 1),
+                name: row.querySelector('.ts-skill-name-input')?.value.trim() || ('מיומנות ' + (i+1))
+            }));
+        }
+
+        // Mission types
+        const missionRows = this.container.querySelectorAll('[data-ts-mission-idx]');
+        if (missionRows.length) {
+            this.settings.missionTypes = Array.from(missionRows).map(row => ({
+                id:     row.dataset.tsMissionId,
+                name:   row.querySelector('.ts-mission-name-input')?.value.trim() || '',
+                locked: row.dataset.tsMissionLocked === 'true'
+            })).filter(m => m.name);
+        }
+
+        // Alert thresholds
+        const alertRows = this.container.querySelectorAll('[data-ts-alert-idx]');
+        this.settings.alertThresholds = Array.from(alertRows).map(row => ({
+            id:        row.dataset.tsAlertId || ('at_' + Date.now() + Math.random()),
+            skillId:   row.querySelector('.ts-alert-skill')?.value || 's1',
+            threshold: parseInt(row.querySelector('.ts-alert-thresh')?.value || '70', 10),
+            direction: row.querySelector('.ts-alert-dir')?.value || 'below',
+            severity:  row.querySelector('.ts-alert-sev')?.value || 'warning',
+            message:   row.querySelector('.ts-alert-msg')?.value.trim() || ''
+        }));
+
+        // Load limits
+        const loadRows = this.container.querySelectorAll('[data-ts-load-level]');
+        if (loadRows.length) {
+            this.settings.loadLimits = Array.from(loadRows).map(row => ({
+                level:           parseInt(row.dataset.tsLoadLevel, 10),
+                name:            row.querySelector('.ts-load-name')?.value.trim() || '',
+                minAvg:          parseInt(row.querySelector('.ts-load-min')?.value || '0', 10),
+                maxLessonsPerDay:parseInt(row.querySelector('.ts-load-max')?.value || '1', 10)
+            }));
+        }
+
+        // Signature
+        const sigChk = this.$('ts-sig-required');
+        if (sigChk) this.settings.requireSignature = sigChk.checked;
+    },
+
+    openSettings() {
+        if (!this.settings) this.settings = this._defaultSettings();
+        const overlay = this.$('ts-settings-overlay');
+        if (!overlay) return;
+        overlay.classList.add('open');
+        this.switchSettingsTab('skills');
+    },
+
+    closeSettings() {
+        const overlay = this.$('ts-settings-overlay');
+        if (overlay) overlay.classList.remove('open');
+    },
+
+    switchSettingsTab(tab) {
+        if (!this.container) return;
+        this.container.querySelectorAll('.ts-stab').forEach(b => b.classList.toggle('active', b.dataset.tsTab === tab));
+        this.container.querySelectorAll('.ts-spanel').forEach(p => p.classList.remove('active'));
+        const panel = this.$('ts-panel-' + tab);
+        if (panel) { panel.classList.add('active'); this['_renderTab_' + tab]?.(); }
+    },
+
+    _renderTab_skills() {
+        const list = this.$('ts-skills-list');
+        if (!list || !this.settings) return;
+        const skills = this.settings.skills || [];
+        list.innerHTML = skills.map((sk, i) => `
+            <div class="ts-skill-row" data-ts-skill-idx="${i}" draggable="true">
+                <span class="ts-drag-handle">☰</span>
+                <input class="ts-skill-name-input" type="text" value="${sk.name}" placeholder="שם מיומנות">
+                <button class="ts-skill-del" data-ts-del-skill="${i}" title="מחק">🗑</button>
+            </div>`).join('');
+        this._bindSkillDrag(list);
+        list.querySelectorAll('[data-ts-del-skill]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const idx = parseInt(btn.dataset.tsDelSkill, 10);
+                if (confirm('למחוק מיומנות זו?')) {
+                    this.settings.skills.splice(idx, 1);
+                    this._renderTab_skills();
+                }
+            });
+        });
+    },
+
+    addSkillRow() {
+        if (!this.settings) this.settings = this._defaultSettings();
+        this.settings.skills.push({id:'s'+(this.settings.skills.length+1), name:''});
+        this._renderTab_skills();
+        const inputs = this.container.querySelectorAll('.ts-skill-name-input');
+        if (inputs.length) inputs[inputs.length-1].focus();
+    },
+
+    _bindSkillDrag(list) {
+        let dragging = null;
+        list.querySelectorAll('.ts-skill-row').forEach(row => {
+            row.addEventListener('dragstart', () => { dragging = row; row.style.opacity = '0.4'; });
+            row.addEventListener('dragend',   () => { row.style.opacity = ''; dragging = null; list.querySelectorAll('.ts-skill-row').forEach(r => r.classList.remove('drag-over')); });
+            row.addEventListener('dragover',  e => { e.preventDefault(); if (dragging && dragging !== row) row.classList.add('drag-over'); });
+            row.addEventListener('dragleave', () => row.classList.remove('drag-over'));
+            row.addEventListener('drop', e => {
+                e.preventDefault();
+                row.classList.remove('drag-over');
+                if (!dragging || dragging === row) return;
+                const rows = [...list.querySelectorAll('.ts-skill-row')];
+                const fromIdx = rows.indexOf(dragging);
+                const toIdx   = rows.indexOf(row);
+                const moved = this.settings.skills.splice(fromIdx, 1)[0];
+                this.settings.skills.splice(toIdx, 0, moved);
+                this._renderTab_skills();
+            });
+        });
+    },
+
+    _renderTab_missions() {
+        const list = this.$('ts-missions-list');
+        if (!list || !this.settings) return;
+        const missions = this.settings.missionTypes || [];
+        list.innerHTML = missions.map((m, i) => {
+            if (m.locked) {
+                return `<div class="ts-mission-row" data-ts-mission-idx="${i}" data-ts-mission-id="${m.id}" data-ts-mission-locked="true">
+                    <span class="ts-mission-locked">🔒 נעול</span>
+                    <input class="ts-mission-name-input" type="text" value="${m.name}" disabled style="flex:1;padding:7px 10px;border:1.5px solid #eee;border-radius:7px;font-size:13px;background:#f5f5f5;direction:rtl;">
+                </div>`;
+            }
+            return `<div class="ts-mission-row" data-ts-mission-idx="${i}" data-ts-mission-id="${m.id}" data-ts-mission-locked="false">
+                <input class="ts-mission-name-input" type="text" value="${m.name}" placeholder="שם סוג משימה" style="flex:1;padding:7px 10px;border:1.5px solid #ddd;border-radius:7px;font-size:13px;font-family:inherit;direction:rtl;">
+                <button data-ts-del-mission="${i}" style="background:none;border:none;color:#e74c3c;cursor:pointer;font-size:16px;padding:2px 6px;width:auto !important;">🗑</button>
+            </div>`;
+        }).join('');
+        list.querySelectorAll('[data-ts-del-mission]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const idx = parseInt(btn.dataset.tsDelMission, 10);
+                if (confirm('למחוק סוג משימה זה?')) {
+                    this.settings.missionTypes.splice(idx, 1);
+                    this._renderTab_missions();
+                }
+            });
+        });
+    },
+
+    addMissionRow() {
+        if (!this.settings) this.settings = this._defaultSettings();
+        this.settings.missionTypes.push({id:'mt_'+Date.now(), name:'', locked:false});
+        this._renderTab_missions();
+        const inputs = this.container.querySelectorAll('.ts-mission-name-input:not([disabled])');
+        if (inputs.length) inputs[inputs.length-1].focus();
+    },
+
+    _renderTab_alerts() {
+        const list = this.$('ts-alerts-list');
+        if (!list || !this.settings) return;
+        const alerts = this.settings.alertThresholds || [];
+        const skillOpts = (this.settings.skills || []).map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+        const sevOpts = [
+            {v:'critical', l:'🔴'},
+            {v:'warning',  l:'🟠'},
+            {v:'ok',       l:'🟢'},
+            {v:'info',     l:'💡'}
+        ];
+        list.innerHTML = alerts.map((a, i) => `
+            <div class="ts-alert-row" data-ts-alert-idx="${i}" data-ts-alert-id="${a.id||''}">
+                <select class="ts-alert-skill">${skillOpts.replace('value="'+a.skillId+'"', 'value="'+a.skillId+'" selected')}</select>
+                <input class="ts-alert-thresh" type="number" min="1" max="100" value="${a.threshold||70}" style="text-align:center;">
+                <select class="ts-alert-dir">
+                    <option value="below" ${a.direction==='below'?'selected':''}>מתחת</option>
+                    <option value="above" ${a.direction==='above'?'selected':''}>מעל</option>
+                </select>
+                <select class="ts-alert-sev">
+                    ${sevOpts.map(s=>`<option value="${s.v}" ${a.severity===s.v?'selected':''}>${s.l} ${s.v==='critical'?'קריטי':s.v==='warning'?'אזהרה':s.v==='ok'?'תקין':'מידע'}</option>`).join('')}
+                </select>
+                <input class="ts-alert-msg" type="text" value="${a.message||''}" placeholder="טקסט התרעה...">
+                <button data-ts-del-alert="${i}" style="background:none;border:none;color:#e74c3c;cursor:pointer;font-size:16px;padding:2px 6px;width:auto !important;">🗑</button>
+            </div>`).join('') || '<div style="color:#aaa;text-align:center;padding:16px;font-size:13px;">אין כללי התרעה — לחץ "+ הוסף כלל"</div>';
+        list.querySelectorAll('[data-ts-del-alert]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const idx = parseInt(btn.dataset.tsDelAlert, 10);
+                this.settings.alertThresholds.splice(idx, 1);
+                this._renderTab_alerts();
+            });
+        });
+    },
+
+    addAlertRow() {
+        if (!this.settings) this.settings = this._defaultSettings();
+        const skills = this.settings.skills || [];
+        this.settings.alertThresholds.push({
+            id: 'at_'+Date.now(),
+            skillId: skills[0]?.id || 's1',
+            threshold: 70, direction: 'below', severity: 'warning', message: ''
+        });
+        this._renderTab_alerts();
+    },
+
+    _renderTab_load() {
+        const list = this.$('ts-load-list');
+        if (!list || !this.settings) return;
+        const limits = this.settings.loadLimits || [];
+        list.innerHTML = limits.map(ll => `
+            <div class="ts-load-row" data-ts-load-level="${ll.level}">
+                <input class="ts-load-name" type="text" value="${ll.name}" placeholder="שם רמה">
+                <input class="ts-load-min" type="number" min="0" max="100" value="${ll.minAvg}" placeholder="0">
+                <input class="ts-load-max" type="number" min="1" max="20" value="${ll.maxLessonsPerDay}" placeholder="1">
+            </div>`).join('');
+    },
+
+    _renderTab_sig() {
+        const chk = this.$('ts-sig-required');
+        if (chk && this.settings) chk.checked = this.settings.requireSignature !== false;
+    },
+
+    // Apply skill labels to the feedback form
+    applySkillLabels() {
+        if (!this.settings || !this.container) return;
+        const skills = this.settings.skills || [];
+        skills.forEach((sk, i) => {
+            const lbl = this.$('skill-label-s' + (i+1));
+            if (lbl) lbl.textContent = sk.name;
+        });
+    },
+
+    // Show/hide signature section based on setting
+    applySigVisibility() {
+        if (!this.settings || !this.container) return;
+        const wrap = this.$('ts-sig-wrap');
+        if (wrap) wrap.style.display = this.settings.requireSignature !== false ? '' : 'none';
+    },
+
+    // Update mission select in feedback form
+    updateInMissionSelect() {
+        if (!this.settings || !this.container) return;
+        const sel = this.$('in-mission');
+        if (!sel) return;
+        const cur = sel.value;
+        sel.innerHTML = (this.settings.missionTypes || []).map(m =>
+            `<option value="${m.name}" ${m.name===cur?'selected':''}>${m.name}</option>`
+        ).join('');
+        this.updateChips();
+    },
+
+    // Public: get load limit for a trainee by avg score
+    getLoadLimit(avgScore) {
+        if (!this.settings) return null;
+        const limits = [...(this.settings.loadLimits || [])].sort((a,b) => b.minAvg - a.minAvg);
+        return limits.find(l => avgScore >= l.minAvg) || limits[limits.length-1] || null;
+    },
+
+    // Public: get alert thresholds matching a skill and score
+    checkAlerts(skillId, score) {
+        if (!this.settings) return [];
+        return (this.settings.alertThresholds || []).filter(a =>
+            a.skillId === skillId &&
+            (a.direction === 'below' ? score < a.threshold : score > a.threshold)
+        );
     }
 };
 
@@ -4007,6 +4540,7 @@ function selRole(role){
   document.getElementById('ls1').style.display=role?'none':'block';
 
   if(role==='admin'){
+    setTimeout(_placeTraineeSectionInManager,80);
 
     setTimeout(()=>{
 
@@ -4079,7 +4613,7 @@ function doInstrLogin(){
 function enterApp(role,name){
 
   currentRole=role; currentUserName=name;
-  const _grb=document.getElementById('globalReloadBtn');if(_grb)_grb.style.display='inline-block';
+  const _grb=document.getElementById('globalReloadBtn');if(_grb)_grb.style.display='block';
 
   document.getElementById('loginOverlay').classList.add('hidden');
 
@@ -4096,6 +4630,7 @@ function enterApp(role,name){
     setTimeout(()=>moveManualSectionToInstr(),50);
   } else {
     setTimeout(()=>moveManualSectionToManager(),50);
+    setTimeout(()=>_placeTraineeSectionInManager(),80);
   }
 
   if(role==='admin'){
@@ -4103,7 +4638,6 @@ function enterApp(role,name){
     const mv=document.getElementById('managerView');
 
     if(mv)mv.style.display='block';
-    setTimeout(_placeTraineeSectionInManager, 80);
 
     document.getElementById('instrView').classList.remove('show');
 
@@ -4133,15 +4667,12 @@ function enterApp(role,name){
     document.getElementById('instrView').classList.add('show');
 
     const mv=document.getElementById('managerView');
+
     if(mv)mv.style.display='none';
 
-    // Show instructor's personal schedule section
     const iss=document.getElementById('instrScheduleSection');
+
     if(iss){iss.style.display='block';iss.style.visibility='visible';}
-    // Explicitly hide manager-only elements
-    ['scheduleSection','dashboardSection','monthlyDashPanel','approvalPanel','dayPlannerDetails','coverageAlertsBanner'].forEach(id=>{
-      const el=document.getElementById(id);if(el)el.style.display='none';
-    });
 
     startInstrSync();
 
@@ -4174,9 +4705,9 @@ function enterApp(role,name){
 }
 
 function doLogout(){
+  const _grbl=document.getElementById('globalReloadBtn');if(_grbl)_grbl.style.display='none';
 
   currentRole=null; currentUserName=null;
-  const _grb2=document.getElementById('globalReloadBtn');if(_grb2)_grb2.style.display='none';
 
   document.getElementById('loginOverlay').classList.remove('hidden');
 
@@ -4354,6 +4885,10 @@ let instrStatuses={};
 let _instrSyncOff=null;
 
 function startInstrSync(){
+  if(_isDemoMode()||!window._fbDb){
+    try{renderInstrTripJournal();}catch(e){}
+    return;
+  }
 
   if(_instrSyncOff){_instrSyncOff();_instrSyncOff=null;}
 
@@ -4367,21 +4902,27 @@ function startInstrSync(){
 
   });
 
-  let unsubTrips=null;
-  if(_isDemoMode()||!window._fbDb){
-    resubscribeTripsListener();
-    setTimeout(()=>{try{renderInstrTripJournal();}catch(e){}},80);
-  } else {
-    unsubTrips=_fbRef(_db,dbPath()).on('value',snap=>{
-      trips=snap.exists()?Object.values(snap.val()).map(parseTrip):[];
-      try{renderTimeline();}catch(e){}
-      if(currentRole==='instructor'){try{renderInstrTripJournal();}catch(e){};try{renderInstrView();}catch(e){}}
-      else{try{renderLog();}catch(e){}}
-    });
-  }
+  const unsubTrips=_fbRef(_db,dbPath()).on('value',snap=>{
+
+    trips=snap.exists()?Object.values(snap.val()).map(parseTrip):[];
+
+    // Render based on current role
+    try{renderTimeline();}catch(e){}
+    if(currentRole==='instructor'){
+      try{renderInstrTripJournal();}catch(e){}
+      try{renderInstrView();}catch(e){}
+    } else {
+      try{renderLog();}catch(e){}
+    }
+
+  });
+
   _instrSyncOff=()=>{
+
     _fbRef(_db,statusPath()).off('value',unsubStatus);
-    if(unsubTrips)_fbRef(_db,dbPath()).off('value',unsubTrips);
+
+    _fbRef(_db,dbPath()).off('value',unsubTrips);
+
   };
 
 }
@@ -5287,13 +5828,14 @@ function saveEditedTripForce(){
 }
 
 function _doSaveEditedTrip(routeReason){
+
   const name=document.getElementById('tID').value.trim()||'מדריך';
+
   const startStr=document.getElementById('tS').value;
+
   const route=[...curRoute];
-  if(editingTripId&&window._originalRouteHash!==undefined){
-    const newHash=_routeHash(route);
-    if(newHash!==window._originalRouteHash&&routeReason===undefined){_showRouteChangeBox(r=>_doSaveEditedTrip(r));return;}
-  }
+
+  if(editingTripId&&window._originalRouteHash!==undefined){const newHash=_routeHash(route);if(newHash!==window._originalRouteHash&&routeReason===undefined){_showRouteChangeBox(r=>_doSaveEditedTrip(r));return;}}
   const isVariant=!!(routeReason);
   trips=trips.map(t=>t.id===editingTripId?{...t,name,route,timeline:buildTimeline(startStr,route),startStr,delayMin:0,routeVariant:isVariant?1:0,routeReason:routeReason||''}:t);
 
@@ -5306,16 +5848,13 @@ function _doSaveEditedTrip(routeReason){
 
 }
 
-// ── Route change detection helpers ──
 const _routeHash=route=>(route||[]).map(r=>(r.id||r.seg||'')+':'+(r.n||1)).join(',');
 let _pendingSaveCallback=null;
 function _showRouteChangeBox(onConfirm){_pendingSaveCallback=onConfirm;const box=document.getElementById('routeChangeBox');const inp=document.getElementById('routeChangeReason');if(box){box.style.display='block';if(inp){inp.value='';setTimeout(()=>inp.focus(),50);}}}
 function _confirmRouteChange(){const reason=(document.getElementById('routeChangeReason')?.value||'').trim();if(!reason){showToast('נא הזן סיבה','warning');return;}const box=document.getElementById('routeChangeBox');if(box)box.style.display='none';if(_pendingSaveCallback)_pendingSaveCallback(reason);_pendingSaveCallback=null;window._originalRouteHash=undefined;}
 function _cancelRouteChange(){const box=document.getElementById('routeChangeBox');if(box)box.style.display='none';_pendingSaveCallback=null;showToast('שינוי המסלול בוטל','info');}
 
-// ══ Trainee Assignment ══════════════════════════════════
 let _traineeAssignTripId = null;
-
 function openTraineeAssign(tripId) {
   _traineeAssignTripId = tripId;
   const trip = trips.find(t=>String(t.id)===String(tripId));
@@ -5323,41 +5862,21 @@ function openTraineeAssign(tripId) {
   const modal = document.getElementById('traineeAssignModal');
   const list  = document.getElementById('traineeAssignList');
   if (!modal || !list) return;
-
   const assigned = trip.assignedTrainees || [];
   const trainees = (typeof TraineeSystem!=='undefined' && TraineeSystem.trainees) ? TraineeSystem.trainees : [];
-
   if (!trainees.length) {
-    list.innerHTML = '<div style="color:#888;text-align:center;padding:20px;">אין חניכים במערכת. פתח תחילה את אזור החניכים.</div>';
+    list.innerHTML = '<div style="color:#888;text-align:center;padding:20px;">פתח תחילה את אזור החניכים.</div>';
   } else {
-    list.innerHTML = trainees.map(tr => `
-      <label style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1.5px solid ${assigned.includes(String(tr.id))?'#8e44ad':'#eee'};border-radius:9px;cursor:pointer;background:${assigned.includes(String(tr.id))?'#f9f0ff':'white'};">
-        <input type="checkbox" value="${tr.id}" ${assigned.includes(String(tr.id))?'checked':''} style="width:16px;height:16px;accent-color:#8e44ad;">
-        <span style="font-weight:600;">${tr.name}</span>
-        <span style="color:#888;font-size:12px;margin-right:auto;">${(tr.lessons||[]).length} שיעורים</span>
-      </label>`).join('');
+    list.innerHTML = trainees.map(tr => '<label style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1.5px solid ' + (assigned.includes(String(tr.id))?'#8e44ad':'#eee') + ';border-radius:9px;cursor:pointer;"><input type="checkbox" value="' + tr.id + '" ' + (assigned.includes(String(tr.id))?'checked':'') + ' style="width:16px;height:16px;accent-color:#8e44ad;"><span style="font-weight:600;">' + tr.name + '</span><span style="color:#888;font-size:12px;margin-right:auto;">' + (tr.lessons||[]).length + ' שיעורים</span></label>').join('');
   }
-
   modal.style.display = 'flex';
 }
-
-function closeTraineeAssign() {
-  const modal = document.getElementById('traineeAssignModal');
-  if (modal) modal.style.display = 'none';
-  _traineeAssignTripId = null;
-}
-
+function closeTraineeAssign() { const m=document.getElementById('traineeAssignModal');if(m)m.style.display='none';_traineeAssignTripId=null; }
 function saveTraineeAssign() {
   if (!_traineeAssignTripId) return;
-  const checkboxes = document.querySelectorAll('#traineeAssignList input[type=checkbox]:checked');
-  const selected = [...checkboxes].map(cb => String(cb.value));
+  const selected = [...document.querySelectorAll('#traineeAssignList input:checked')].map(cb=>String(cb.value));
   const idx = trips.findIndex(t=>String(t.id)===String(_traineeAssignTripId));
-  if (idx >= 0) {
-    trips[idx].assignedTrainees = selected;
-    saveToStorage();
-    renderLog();
-    showToast('✅ החניכים שויכו לנסיעה','success');
-  }
+  if (idx>=0){trips[idx].assignedTrainees=selected;saveToStorage();renderLog();showToast('✅ החניכים שויכו','success');}
   closeTraineeAssign();
 }
 
@@ -5628,7 +6147,7 @@ function renderLog(){
 
   if(trips.length===0){b.innerHTML='<tr><td colspan="8" style="color:#aaa;padding:18px;text-align:center;">אין נסיעות רשומות</td></tr>';renderTimeline();return;}
 
-  // Sort chronologically by trip start time
+  // Sort (manager only)
   const _sortByStart=(arr)=>arr.sort((a,b)=>{
     const aM=(a.timeline&&a.timeline[0])?(a.timeline[0].startMin??a.timeline[0].start??999):999;
     const bM=(b.timeline&&b.timeline[0])?(b.timeline[0].startMin??b.timeline[0].start??999):999;
@@ -5701,21 +6220,18 @@ function renderLog(){
     const _mgrTripPast=currentDate===_localDateStr(new Date())&&_endMin2<_nowM2;
 
     let _mgr_statusBadge='';
-    const _mgrTripActive=_mgrTripStarted&&!_mgrTripPast;
-    const _effectiveReturned=(_instrSt.status==='returned'&&_isThisTrip)&&(currentDate!==_localDateStr(new Date())||_endMin2<=_nowM2);
-    if(_effectiveReturned){
-      // Case 4: completed and trip has actually ended
+    if(_instrSt.status==='returned'&&_isThisTrip){
+      // Case 4: completed
       _mgr_statusBadge='<span style="font-size:12px;color:#27ae60;font-weight:bold;">✓ בוצע</span>';
     } else if(_instrSt.status==='on-trip'&&_isThisTrip){
       // Case 2: on this trip
       _mgr_statusBadge='<span style="font-size:12px;color:#e74c3c;font-weight:bold;">🚇 בנסיעה</span>';
-    } else if(_mgrTripPast&&!_effectiveReturned){
+    } else if(_mgrTripPast&&!(_instrSt.status==='returned'&&_isThisTrip)){
       // Case 3: past and THIS trip not confirmed yet
       _mgr_statusBadge='<button onclick="_mgrConfirmTrip(\''+t.id+'\',\''+t.name+'\')" style="'+_mgrStl+'background:#e74c3c;color:white;">⚠️ אשר נסיעה</button>';
-    } else if(_mgrTripActive){
-      _mgr_statusBadge='<span style="font-size:11px;color:#e67e22;font-weight:bold;">⏳ בתהליך</span>';
-    } else if(!_mgrTripStarted){
-      _mgr_statusBadge='<span style="font-size:11px;color:#2980b9;font-weight:600;">ממתין</span>';
+    } else if(_mgrTripStarted&&!_isThisTrip){
+      // Case 2: time arrived, awaiting instructor action
+      _mgr_statusBadge='<span style="font-size:11px;color:#888;">ממתין...</span>';
     }
     const isPast=currentDate===_localDateStr(new Date())&&(t.timeline?.length?(t.timeline[t.timeline.length-1]?.endMin||0)<_nowMin:false);
 
@@ -5762,8 +6278,7 @@ function renderLog(){
           <button class="btn-sm delay" onclick="openDelayModal('${t.id}')" title="הוסף עיכוב">⏱️</button>
 
           <button class="btn-sm del" onclick="delTrip('${t.id}')" title="מחק נסיעה">🗑️</button>
-
-          <button class="btn-sm" onclick="openTraineeAssign('${t.id}')" title="שייך חניכים לנסיעה" style="background:#8e44ad;color:white;border-color:#8e44ad;">🎓</button></td>
+          <button class="btn-sm" onclick="openTraineeAssign('${t.id}')" title="שייך חניכים" style="background:#8e44ad;color:white;border-color:#8e44ad;">🎓</button></td>
 
     </tr>`;
 
@@ -10614,10 +11129,9 @@ function renderInstrTripJournal(){
     const isReturned=!!_confSet[tIdx]||(mySt.status==='returned'&&mySt.tripIdx===tIdx);
     const tripStarted=currentDate===today&&tripStartMin<=nowM;
     const tripPast=currentDate===today&&endMin<nowM;
+    const effectiveIsReturned=isReturned&&(currentDate!==today||endMin<=nowM);
     const _stl='width:82px;padding:5px 0;border:none;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;';
 
-    const effectiveIsReturned=isReturned&&(currentDate!==today||endMin<=nowM);
-    const tripActive=tripStarted&&!tripPast;
     let statusBtn='';
     if(effectiveIsReturned){
       statusBtn='<span style="font-size:12px;color:#27ae60;font-weight:bold;">✓ בוצע</span>';
@@ -10625,12 +11139,10 @@ function renderInstrTripJournal(){
       statusBtn='<button onclick="_doChazarti('+tIdx+')" style="'+_stl+'background:#e74c3c;color:white;">🏁 חזרתי</button>';
     } else if(tripPast&&!isOnOther){
       statusBtn='<button onclick="_confirmTripRetro('+tIdx+')" style="'+_stl+'background:#e74c3c;color:white;font-size:11px;">⚠️ אשר נסיעה</button>';
-    } else if(tripActive&&!isOnOther){
-      statusBtn='<span style="font-size:12px;color:#e67e22;font-weight:bold;">⏳ בתהליך</span>';
+    } else if(tripStarted&&!isOnOther){
+      statusBtn='<button onclick="_trySetOnTrip('+tIdx+')" style="'+_stl+'background:#27ae60;color:white;">✅ יצאתי</button>';
     } else if(isOnOther){
       statusBtn='<span style="font-size:10px;color:#aaa;text-align:center;display:block;">בנסיעה<br>אחרת</span>';
-    } else {
-      statusBtn='<span style="font-size:11px;color:#2980b9;font-weight:600;">ממתין</span>';
     }
 
     return`<tr id="instr-row-${t.id}">
@@ -10752,19 +11264,10 @@ function applyTripEditFromManual(){
   const startStr=document.getElementById('tS')?.value;
   if(!startStr){showToast('יש להזין שעת יציאה','warning');return;}
 
-  if(window._originalRouteHash!==undefined){
-    const newHash=_routeHash(curRoute);
-    if(newHash!==window._originalRouteHash){
-      _showRouteChangeBox(reason=>{
-        trip.route=JSON.parse(JSON.stringify(curRoute));trip.startStr=startStr;trip.timeline=buildTimeline(startStr,curRoute);trip.routeVariant=1;trip.routeReason=reason;
-        window._originalRouteHash=undefined;_editingTripInModal=null;editingTripId=null;_editingForInstructor=null;
-        const _ms=document.getElementById('manualSection');if(_ms)_ms.removeAttribute('data-editing-for');
-        const saveB=document.getElementById('saveB');if(saveB){saveB.textContent='✅ אשר ושמור נסיעה';saveB.style.background='';saveB.onclick=null;}
-        saveToStorage();renderLog();resetS();hideManualForInstr();showToast('✅ הנסיעה עודכנה עם סיבת שינוי מסלול','success');
-      });return;
-    }
-  }
-  trip.route=JSON.parse(JSON.stringify(curRoute));trip.startStr=startStr;trip.timeline=buildTimeline(startStr,curRoute);trip.routeVariant=0;trip.routeReason='';
+  trip.route=JSON.parse(JSON.stringify(curRoute));
+  trip.startStr=startStr;
+  trip.timeline=buildTimeline(startStr,curRoute);
+
   _editingTripInModal=null;
   editingTripId=null;
   _editingForInstructor=null;
@@ -10789,7 +11292,6 @@ function applyTripEditFromManual(){
 function closeTripEditModal(){
   document.getElementById('tripEditModal').classList.remove('open');
   _editingTripInModal=null;
-  window._originalRouteHash=undefined;
   _editingForInstructor=null;
   try{const _ms=document.getElementById('manualSection');if(_ms){_ms.removeAttribute('data-editing-for');_ms.removeAttribute('open');}}catch(e){}
   _modalEditRoute=[];
@@ -10879,49 +11381,15 @@ function saveTripEdit(){
   if(!newStart){showToast('יש להזין שעת יציאה','warning');return;}
   if(!_modalEditRoute.length){showToast('המסלול ריק — הוסף לפחות מקטע אחד','warning');return;}
 
-  // Route change detection
-  const newHash=_routeHash(_modalEditRoute);
-  const isRouteVariant=window._originalRouteHash && newHash!==window._originalRouteHash;
-
-  if(isRouteVariant){
-    // Show inline reason prompt instead of saving immediately
-    const box=document.getElementById('routeReasonBox');
-    if(box){box.style.display='block';const inp=document.getElementById('routeReasonInput');if(inp)inp.focus();}
-    return;
-  }
-  _applyTripEditSave(trip,newStart,false,'');
-}
-
-function _confirmSaveTripEdit(){
-  if(!_editingTripInModal)return;
-  const trip=trips.find(t=>String(t.id)===String(_editingTripInModal));
-  if(!trip)return;
-  const newStart=document.getElementById('tripEditStartTime')?.value||trip.startStr;
-  const reason=(document.getElementById('routeReasonInput')?.value||'').trim();
-  if(!reason){showToast('יש להזין סיבה לשינוי המסלול','warning');return;}
-  _applyTripEditSave(trip,newStart,true,reason);
-}
-
-function _cancelRouteReason(){
-  const box=document.getElementById('routeReasonBox');
-  if(box)box.style.display='none';
-  window._originalRouteHash=undefined;
-}
-
-function _applyTripEditSave(trip,newStart,isVariant,reason){
   trip.route=JSON.parse(JSON.stringify(_modalEditRoute));
   trip.startStr=newStart;
+  // Rebuild timeline
   trip.timeline=buildTimeline(newStart,trip.route);
-  trip.routeVariant=isVariant?1:0;
-  trip.routeReason=reason||'';
-  window._originalRouteHash=undefined;
+
   saveToStorage();
   renderLog();
   closeTripEditModal();
-  if(isVariant)
-    showToast('✅ נסיעה עודכנה עם שינוי מסלול: '+reason,'success');
-  else
-    showToast('✅ הנסיעה עודכנה בהצלחה','success');
+  showToast('✅ הנסיעה עודכנה בהצלחה','success');
 }
 
 function deleteTripFromEdit(){
@@ -10960,6 +11428,9 @@ document.addEventListener('click',function(e){
 
 // ── reloadApp: refresh data without logout ───────────────
 async function reloadApp(){
+  try{renderDashboard();}catch(e){}
+  try{const mdp=document.getElementById('monthlyDashPanel');if(mdp&&mdp.style.display!=='none'&&typeof loadMonthlyDash==='function')loadMonthlyDash();}catch(e){}
+  try{renderCalendar();}catch(e){}
   showToast('🔄 מרענן נתונים...','info');
   try{
     trips=[];
@@ -10970,11 +11441,6 @@ async function reloadApp(){
     if(typeof startSchedSync==='function') startSchedSync();
     if(currentRole==='instructor'&&typeof startInstrSync==='function') startInstrSync();
     renderCalendar();
-    renderDashboard();
-    const mdp=document.getElementById('monthlyDashPanel');
-    if(mdp&&mdp.style.display!=='none'&&typeof _activeDashTab!=='undefined'&&_activeDashTab){
-      try{switchDashTab(_activeDashTab);}catch(e2){}
-    }
     showToast('✅ הנתונים עודכנו','success');
   }catch(e){
     showToast('⚠️ שגיאה בריענון: '+e.message,'warning');
@@ -11312,6 +11778,9 @@ let _manualSectionOriginalParent=null;
 let _manualSectionOriginalNext=null;
 
 function moveManualSectionToInstr(){
+  const ts=document.getElementById('traineeSection');const tph=document.getElementById('traineeSectionInstrPlaceholder');
+  if(ts&&tph){ts.style.display='';tph.parentElement.insertBefore(ts,tph.nextSibling);}
+
   const ms=document.getElementById('manualSection');
   const placeholder=document.getElementById('manualSectionPlaceholder');
   if(!ms||!placeholder)return;
@@ -11322,18 +11791,14 @@ function moveManualSectionToInstr(){
   }
   // Move the actual element to the placeholder
   placeholder.appendChild(ms);
-  const ts=document.getElementById('traineeSection');const tph=document.getElementById('traineeSectionInstrPlaceholder');
-  if(ts&&tph){ts.style.display='';tph.parentElement.insertBefore(ts,tph.nextSibling);}
 }
 
 function _placeTraineeSectionInManager(){
   const ts=document.getElementById('traineeSection');
   const tph=document.getElementById('traineeSectionMgrPlaceholder');
-  if(ts&&tph){ts.removeAttribute('open');_traineeInitialized=false;ts.style.display='';tph.parentElement.insertBefore(ts,tph.nextSibling);}
+  if(ts&&tph){window._traineeInitialized=false;ts.style.display='';tph.parentElement.insertBefore(ts,tph.nextSibling);}
 }
-
 function moveManualSectionToManager(){
-  _placeTraineeSectionInManager();
   const ms=document.getElementById('manualSection');
   if(!ms||!_manualSectionOriginalParent)return;
   // Restore to original location
@@ -11342,8 +11807,9 @@ function moveManualSectionToManager(){
   } else {
     _manualSectionOriginalParent.appendChild(ms);
   }
-  const ts=document.getElementById('traineeSection');const tph=document.getElementById('traineeSectionMgrPlaceholder');
-  if(ts&&tph){ts.removeAttribute('open');_traineeInitialized=false;ts.style.display='';tph.parentElement.insertBefore(ts,tph.nextSibling);}
+  const ts2=document.getElementById('traineeSection');
+  const tph2=document.getElementById('traineeSectionMgrPlaceholder');
+  if(ts2&&tph2){ts2.style.display='';tph2.parentElement.insertBefore(ts2,tph2.nextSibling);}
 }
 
 
@@ -11821,7 +12287,7 @@ async function loadMonthlyDash(){
 
   // Refresh current active tab
   try{
-    const activePanels=['dashTabTimesheet','dashTabCompare','dashTabCoverage','dashTabEfficiency'];
+    const activePanels=['dashTabSegments','dashTabTimesheet','dashTabCompare','dashTabCoverage','dashTabEfficiency'];
     const activeTab=activePanels.find(id=>{const el=document.getElementById(id);return el&&el.style.display!=='none';});
     if(activeTab){
       const tabKey=activeTab.replace('dashTab','').toLowerCase();
@@ -11835,7 +12301,7 @@ async function loadMonthlyDash(){
 // FEATURE 5: Export Monthly Report (CSV)
 // ══════════════════════════════════════════════════════════════════════
 
-function toggleReportsDropdown(){
+async function toggleReportsDropdown(){
   const dd=document.getElementById('reportsDropdown');
   if(dd)dd.style.display=dd.style.display==='none'?'block':'none';
 }
@@ -11918,7 +12384,7 @@ async function exportScheduleReport(){
 // _monthHistoryCache is populated by loadMonthlyDash
 let _monthHistoryCache={};
 window._clearMonthCache=()=>{_monthHistoryCache={};};
-window._resetMonthlyDash=()=>{_monthlyDashDate=new Date();_monthHistoryCache={}; };
+window._resetMonthlyDash=()=>{if(typeof _monthlyDashDate!=='undefined')_monthlyDashDate=new Date();_monthHistoryCache={};};
 
 // cache loaded inline in loadMonthlyDash
 
@@ -12482,14 +12948,13 @@ function renderEfficiencyTab(){
       if(!t.timeline||!t.timeline.length)continue;
       const routeKey=(t.route||[]).filter(r=>r.id!=='TURN'&&r.id!=='TURN_ORA').map(r=>r.id).join('→');
       if(!routeKey)continue;
-      if(!routeStats[routeKey])routeStats[routeKey]={count:0,totalLessons:0,totalMin:0,delays:0,routeChanges:0,instructors:new Set()};
+      if(!routeStats[routeKey])routeStats[routeKey]={count:0,totalLessons:0,totalMin:0,delays:0,instructors:new Set()};
       const s=routeStats[routeKey];
       s.count++;
       const dur=(t.route||[]).reduce((a,r)=>a+(r.t||0),0);
       s.totalMin+=dur;
       s.totalLessons+=dur/45;
       if(t.delayMin>0)s.delays++;
-      if(t.routeVariant>0)s.routeChanges++;
       if(t.name)s.instructors.add(t.name);
     }
   }
@@ -12502,8 +12967,6 @@ function renderEfficiencyTab(){
       lessonsPerHour:(s.totalLessons/s.count)/(s.totalMin/s.count/60),
       delays:s.delays,
       delayPct:Math.round(s.delays/s.count*100),
-      routeChanges:s.routeChanges,
-      routeChangePct:Math.round(s.routeChanges/s.count*100),
       instrCount:s.instructors.size,
       instructors:[...s.instructors].join(', ')
     }))
@@ -12542,13 +13005,6 @@ function renderEfficiencyTab(){
           <div style="width:${eff}%;height:100%;background:${effCol};border-radius:4px;"></div>
         </div>
       </td>
-      <td style="text-align:center;">
-        ${r.delayPct>0?`<span style="color:#e74c3c;font-weight:bold;">${r.delayPct}%</span>`:`<span style="color:#27ae60;">0%</span>`}
-        <small style="color:#aaa;display:block;">${r.delays}/${r.count}</small>
-      </td>
-      <td style="text-align:center;">
-        ${r.routeChanges>0?`<span style="color:#e67e22;font-weight:bold;">${r.routeChangePct}%</span><small style="color:#aaa;display:block;">${r.routeChanges}/${r.count}</small>`:'<span style="color:#27ae60;font-size:11px;">✓ אחיד</span>'}
-      </td>
       <td style="text-align:center;font-size:11px;color:#555;" title="${r.instructors}">${r.instrCount} <small style="color:#aaa;">(${r.instructors.length>30?r.instructors.slice(0,30)+'...':r.instructors})</small></td>
     </tr>`;
   }).join('');
@@ -12564,7 +13020,6 @@ function renderEfficiencyTab(){
           <th style="text-align:center;">משך ממוצע</th>
           <th style="text-align:center;">שיעורים/שעה</th>
           <th style="text-align:center;">עיכובים</th>
-          <th style="text-align:center;">שינויי מסלול</th>
           <th style="text-align:center;">מדריכים</th>
         </tr></thead>
         <tbody>${rows}</tbody>
@@ -12878,8 +13333,8 @@ function switchToInstructorView(previewName){
 // ══════════════════════════════════════════════════════════════════════
 let _activeDashTab=null;
 async function switchDashTab(tab){
-  const tabs={timesheet:'dashTabTimesheet',compare:'dashTabCompare',coverage:'dashTabCoverage',efficiency:'dashTabEfficiency',tasks:'dashTabTasks'};
-  const btns={timesheet:'tabTime',compare:'tabComp',coverage:'tabCov',efficiency:'tabEff',tasks:'tabTasks'};
+  const tabs={segments:'dashTabSegments',timesheet:'dashTabTimesheet',compare:'dashTabCompare',coverage:'dashTabCoverage',efficiency:'dashTabEfficiency',tasks:'dashTabTasks'};
+  const btns={segments:'tabSegs',timesheet:'tabTime',compare:'tabComp',coverage:'tabCov',efficiency:'tabEff',tasks:'tabTasks'};
   const newTab=(_activeDashTab===tab)?null:tab;
   _activeDashTab=newTab;
   Object.entries(tabs).forEach(([k,id])=>{
@@ -12890,7 +13345,7 @@ async function switchDashTab(tab){
   });
   if(!newTab)return;
   if(newTab==='timesheet')renderTimesheet();
-  if(newTab==='segments'&&Object.keys(_monthHistoryCache||{}).length)
+  if(newTab==='segments'&&Object.keys(_monthHistoryCache||{}).length)renderSegmentAnalysis();
   if(newTab==='compare')initCompareSelects();
   if(newTab==='coverage'){initCoverageWeekSelect();await renderCoverageTab();}
   if(newTab==='efficiency')renderEfficiencyTab();
@@ -13952,14 +14407,9 @@ async function generateAndActivateDemo(){
     document.getElementById('demoGenerateBtn').style.display='none';
     _reloadAppWithDemoData();
     _updateDemoBanner(true);
-    setTimeout(()=>{try{if(typeof _generateTraineeDemoData==='function'&&typeof TraineeSystem!=='undefined'&&window._traineeInitialized){_generateTraineeDemoData();}}catch(e){}},400);
-    const _tCount = (typeof TraineeSystem!=='undefined'&&TraineeSystem.trainees)?TraineeSystem.trainees.length:15;
-    showToast('🎭 מצב דמו פעיל! נוצרו נסיעות, שיבוצים ו-'+_tCount+' חניכים להדגמה.','success');
-    // Show trainee demo summary notification
-    setTimeout(()=>{
-      const _tCount=15;const _lCount=79;
-      showToast('🎓 נטענו '+_tCount+' חניכים לדוגמה | '+_lCount+' שיעורים מתועדים | טסטים: שיעור 10, 30, 50','info',5000);
-    },800);
+    const _tCount=(typeof TraineeSystem!=='undefined'&&TraineeSystem.trainees)?TraineeSystem.trainees.length:15;
+    setTimeout(()=>{try{if(typeof _generateTraineeDemoData==='function'&&typeof TraineeSystem!=='undefined'&&window._traineeInitialized)_generateTraineeDemoData();}catch(e){}},400);
+    showToast('🎭 מצב דמו פעיל! נוצרו נסיעות, שיבוצים ו-'+_tCount+' חניכים.','success');
   }catch(err){
     showToast('שגיאה ביצירת דמו: '+err.message,'warning');console.error('Demo error:',err);
   }finally{
@@ -13988,37 +14438,24 @@ function exitDemoMode(){
   localStorage.removeItem('demo_months');
   localStorage.removeItem('demo_active');
   localStorage.removeItem('demo_trainee_data');
-  // Purge ALL per-day keys left by demo
   const _dayPfx=['trips_','taskReports_','instrStatus_'];
   Object.keys(localStorage).forEach(k=>{if(_dayPfx.some(p=>k.startsWith(p)))localStorage.removeItem(k);});
   _updateDemoBanner(false);
-  trips=[];
-  // Nuclear clear: wipe all in-memory caches
-  try{if(window._clearMonthCache)window._clearMonthCache();else{_monthHistoryCache={}; }}catch(e){}
-  try{if(window._resetMonthlyDash)window._resetMonthlyDash();}catch(e){}
-  try{if(window._coverageCache)window._coverageCache={};}catch(e){}
-  // Close and reset trainee card
-  const _ts=document.getElementById('traineeSection');if(_ts)_ts.removeAttribute('open');
-  _traineeInitialized=false;
-  if(typeof TraineeSystem!=='undefined'&&TraineeSystem._initialized){TraineeSystem._demoMode=false;TraineeSystem.trainees=[];try{TraineeSystem.loadData();}catch(e){}}
-  // Reload schedule/task defs from real data + clear stale schedData
+  // DON'T close panel — allow re-activation without refresh
+  // Reload real data
   try{schedData={};}catch(e){}
+  try{if(window._clearMonthCache)window._clearMonthCache();}catch(e){}
+  try{if(window._resetMonthlyDash)window._resetMonthlyDash();}catch(e){}
   try{lsLoadSched();}catch(e){}
   try{normalizeTaskDefs();}catch(e){}
-  // Re-render everything immediately with empty trips
-  try{renderLog();}catch(e){}
+  const _exitToday=_localDateStr(new Date());
+  try{const raw=localStorage.getItem('trips_'+_exitToday);trips=raw?Object.values(JSON.parse(raw)).map(parseTrip):[];}catch(e){trips=[];}
   try{renderCalendar();}catch(e){}
-  try{renderDashboard();}catch(e){}
-  // Reconnect schedule sync + delayed re-render
+  try{renderLog();}catch(e){}
+  try{renderInstrTripJournal();}catch(e){}
   try{if(typeof startSchedSync==='function')startSchedSync();}catch(e){}
   setTimeout(()=>{try{renderCalendar();}catch(e){}},200);
-  try{renderInstrTripJournal();}catch(e){}
-  // Then connect to Firebase (async)
-  try{resubscribeTripsListener();}catch(e){}
-  // Re-render monthly dashboard after tick
-  setTimeout(()=>{
-    try{const m=document.getElementById('monthlyDashPanel');if(m&&m.style.display!=='none'&&typeof loadMonthlyDash==='function')loadMonthlyDash();}catch(e){}
-  },350);
+  try{renderDashboard();}catch(e){}
   // Update panel buttons
   const _genBtn=document.getElementById('demoGenerateBtn');
   const _exitBtn=document.getElementById('demoExitBtn');
@@ -14458,18 +14895,11 @@ function _renderNotesList(){
   }).join('');
 }
 
-// ══ TraineeSection Initialization ══════════════════════════
-window._traineeInitialized = false;
-
-window._traineeInitialized = false;
-
 // ══ TraineeSystem Demo Data ═══════════════════════════════════
 function _generateTraineeDemoData() {
   if (typeof TraineeSystem === 'undefined' || typeof TraineeSystem.renderList !== 'function') return;
   const _ins = ['אחמד עבדלאל','איאד סולימן','דודו היילו','לואי שהין'];
   const _d = (da) => { const dt=new Date(); dt.setDate(dt.getDate()-da); return dt.toISOString().slice(0,10); };
-
-  // Note: lessonsDone = count of unique course lesson numbers completed so far
   const _note = (lessonsDone, base) => {
     const next = [10,30,50].find(m => m > lessonsDone);
     const prev = [50,30,10].find(m => m <= lessonsDone);
@@ -14477,172 +14907,109 @@ function _generateTraineeDemoData() {
     if (prev && lessonsDone - prev <= 2) return (base?base+' ':'')+`✅ עבר טסט ${prev} בהצלחה.`;
     return base;
   };
-  const _l = (da,mission,nums,ins,s1,s2,s3,s4,s5,notes,extra='') =>
-    ({date:_d(da),mission,lessonNums:nums,extraDesc:extra,ins,s1,s2,s3,s4,s5,notes});
-  // Helper: generate sequential lesson nums from start
+  const _l = (da,mission,nums,ins,s1,s2,s3,s4,s5,notes,extra='') => ({date:_d(da),mission,lessonNums:nums,extraDesc:extra,ins,s1,s2,s3,s4,s5,notes});
   const _seq = (from, to) => Array.from({length:to-from+1},(_,i)=>from+i);
-
   TraineeSystem.trainees = [
-
-    // ══ קרוב לשיעור 50 (כמעט סיום) ══
-    {id:1013,name:'אשרף עלי',lessons:[          // 47 שיעורים קורס + שטח → מוכן לסיום
-      _l(200,'קורס',_seq(1,8),  _ins[3], 9,9,8,9,9, _note(8,'כניסה מצוינת.')),
-      _l(185,'קורס',_seq(9,10), _ins[3], 9,9,9,9,9, _note(10,'עבר טסט 10 בהצלחה.')),
-      _l(170,'קורס',_seq(11,18),_ins[1], 9,9,9,9,10,_note(18,'יציב לאורך כל השלב.')),
-      _l(155,'קורס',_seq(19,25),_ins[1], 10,9,9,10,10,_note(25,'מצוין.')),
-      _l(140,'קורס',_seq(26,30),_ins[2], 10,10,9,10,10,_note(30,'טסט 30 — ביצועים גבוהים.')),
-      _l(120,'קורס',_seq(31,38),_ins[2], 10,10,10,10,10,_note(38,'שלב מסחרי — מעולה.')),
-      _l(100,'קורס',_seq(39,45),_ins[0], 10,10,10,10,10,_note(45,'')),
-      _l(80, 'קורס',_seq(46,47),_ins[0], 10,10,10,10,10,_note(47,'⚠️ קרוב לטסט 50 — נדרשת הכנה ממוקדת.')),
-      _l(60, 'שטח', [],        _ins[0], 10,10,10,10,10,_note(47,'שטח מקביל — שולט לחלוטין.')),
-      _l(40, 'שטח', [],        _ins[1], 10,10,10,10,10,_note(47,''))]},
-
-    {id:1012,name:'תאמר זעבי',lessons:[         // 42 שיעורים — מתקדם מאוד
-      _l(190,'קורס',_seq(1,6),  _ins[2], 8,8,7,8,8, _note(6,'כניסה תקינה.')),
-      _l(175,'קורס',_seq(7,10), _ins[2], 8,8,8,8,9, _note(10,'טסט 10 עבר.')),
-      _l(160,'קורס',_seq(11,20),_ins[3], 9,8,8,9,9, _note(20,'שלב שני — יציב.')),
-      _l(140,'קורס',_seq(21,30),_ins[3], 9,9,8,9,9, _note(30,'טסט 30 — ביצועים טובים.')),
-      _l(115,'קורס',_seq(31,40),_ins[0], 9,9,9,9,10,_note(40,'שלב מסחרי — מוכן.')),
-      _l(90, 'קורס',_seq(41,42),_ins[0], 9,9,9,10,10,_note(42,'מתקרב לסיום.')),
-      _l(70, 'שטח', [],        _ins[1], 9,9,9,9,10,_note(42,'שטח — עצמאי ובטוח.')),
-      _l(50, 'שטח', [],        _ins[1], 10,9,9,10,10,_note(42,'ביצועים גבוהים מאוד.'))]},
-
-    // ══ קרוב לשיעור 30 (שלב ביניים מתקדם) ══
-    {id:1010,name:'נדב ברגר',lessons:[          // 28 שיעורים — ממש לפני טסט 30
-      _l(150,'קורס',_seq(1,5),  _ins[1], 7,7,7,7,8, _note(5,'כניסה חלקה.')),
-      _l(135,'קורס',_seq(6,10), _ins[1], 8,8,7,8,8, _note(10,'טסט 10 — מצוין.')),
-      _l(115,'קורס',_seq(11,18),_ins[2], 8,8,8,8,9, _note(18,'שלב שני — יציב.')),
-      _l(95, 'קורס',_seq(19,25),_ins[2], 8,8,8,9,9, _note(25,'מתקדם.')),
-      _l(75, 'קורס',_seq(26,28),_ins[0], 8,9,8,9,9, _note(28,'⚠️ קרוב לטסט 30 — נדרשת הכנה.'))]},
-
-    {id:1006,name:"ראמי ח'ורי",lessons:[        // 32 שיעורים — פסק טסט 30, פער תפעולי
-      _l(160,'קורס',_seq(1,5),  _ins[1], 9,9,5,9,8, _note(5,'ידע תיאורטי גבוה — פער תפעולי מהיום הראשון.')),
-      _l(145,'קורס',_seq(6,10), _ins[1], 9,9,5,9,8, _note(10,'טסט 10 — עבר בקושי בגלל הסטיק.')),
-      _l(125,'קורס',_seq(11,20),_ins[2], 9,9,6,9,8, _note(20,'שיפור קל בסטיק. הפער קטן.')),
-      _l(105,'קורס',_seq(21,30),_ins[2], 9,9,7,9,9, _note(30,'טסט 30 — ביצועים מספקים, סטיק עדיין פחות.')),
-      _l(85, 'קורס',_seq(31,32),_ins[0], 9,9,8,9,9, _note(32,'שיפור. הפער כמעט נסגר.'))]},
-
-    {id:1011,name:'ירין אבני',lessons:[         // 29 שיעורים — טוב, לפני טסט 30
-      _l(145,'קורס',_seq(1,8),  _ins[0], 8,7,7,8,8, _note(8,'התחלה טובה.')),
-      _l(125,'קורס',_seq(9,10), _ins[0], 8,8,7,8,8, _note(10,'טסט 10 — עבר בהצלחה.')),
-      _l(105,'קורס',_seq(11,20),_ins[3], 8,8,8,8,9, _note(20,'יציב ועקבי.')),
-      _l(85, 'קורס',_seq(21,29),_ins[1], 9,8,8,9,9, _note(29,'⚠️ קרוב לטסט 30.'))]},
-
-    // ══ קרוב לשיעור 10 (שלב התחלתי-טכני) ══
-    {id:1005,name:"ח'אלד עמר",lessons:[         // 9 שיעורים — ממש לפני טסט 10
-      _l(60,'קורס',_seq(1,4),   _ins[3], 7,6,4,7,7, _note(4,'ציון סטיק נמוך — נדרשת תשומת לב.')),
-      _l(45,'קורס',_seq(5,7),   _ins[3], 7,7,5,7,7, _note(7,'הסטיק עדיין קשה.')),
-      _l(30,'קורס',_seq(8,9),   _ins[0], 7,7,5,7,7, _note(9,'⚠️ קרוב לטסט 10 — נדרש תרגול מוגבר בסטיק.'))]},
-
-    {id:1003,name:'סמי אבו-גנם',lessons:[      // 10 שיעורים — עבר טסט 10
-      _l(70,'קורס',_seq(1,5),   _ins[2], 9,8,8,9,9, _note(5,'כישרון טבעי.')),
-      _l(55,'קורס',_seq(6,10),  _ins[2], 9,9,9,9,10,_note(10,'✅ עבר טסט 10 מצוין. מוכן לשלב הבא.'))]},
-
-    {id:1001,name:'מוחמד חמדאן',lessons:[      // 7 שיעורים — חלש, סטיק קריטי
-      _l(40,'קורס',_seq(1,3),   _ins[0], 6,5,4,5,6, _note(3,'קשיים משמעותיים — סטיק נמוך מאוד.')),
-      _l(25,'קורס',_seq(4,6),   _ins[0], 6,5,4,5,6, _note(6,'אין שיפור בסטיק. נדרש תרגול אינטנסיבי.')),
-      _l(10,'קורס',_seq(7,7),   _ins[1], 6,5,5,6,6, _note(7,'⚠️ קרוב לטסט 10 — לא בטוח שיעבור.'))]},
-
-    {id:1002,name:'רועי כהן',lessons:[          // 3 שיעורים — חדש
-      _l(15,'קורס',_seq(1,3),   _ins[1], 7,6,6,7,8, _note(3,'שיעור ראשון — קליטה מהירה.'))]},
-
-    // ══ שלב ביניים (11-29) ══
-    {id:1004,name:'אורי לוי',lessons:[          // 22 שיעורים — בינוני, שלב שני
-      _l(120,'קורס',_seq(1,5),  _ins[0], 6,6,6,6,7, _note(5,'התחלה ממוצעת.')),
-      _l(100,'קורס',_seq(6,10), _ins[0], 7,6,6,7,7, _note(10,'טסט 10 — עבר.')),
-      _l(80, 'קורס',_seq(11,18),_ins[1], 7,7,6,7,7, _note(18,'שלב שני — יציב.')),
-      _l(60, 'קורס',_seq(19,22),_ins[1], 7,7,7,7,8, _note(22,'מתקדם לאט.'))]},
-
-    {id:1007,name:'עמית שרון',lessons:[         // 18 שיעורים — טוב
-      _l(100,'קורס',_seq(1,5),  _ins[0], 7,6,6,7,7, _note(5,'עקבי.')),
-      _l(80, 'קורס',_seq(6,10), _ins[0], 7,7,7,7,8, _note(10,'טסט 10 — ביצועים טובים.')),
-      _l(60, 'קורס',_seq(11,18),_ins[3], 8,7,7,8,8, _note(18,'שלב שני — יציב ומוכן.'))  ]},
-
-    {id:1008,name:'גל מזרחי',lessons:[          // 14 שיעורים — בינוני-חלש
-      _l(90, 'קורס',_seq(1,5),  _ins[2], 6,5,5,6,7, _note(5,'ביצועים מתחת לממוצע.')),
-      _l(70, 'קורס',_seq(6,10), _ins[2], 6,6,5,6,7, _note(10,'עבר טסט 10 בקושי.')),
-      _l(50, 'קורס',_seq(11,14),_ins[1], 6,6,6,6,7, _note(14,'שלב שני — ממשיך להתקשות.'))]},
-
-    {id:1009,name:'ריאד עמאר',lessons:[         // 16 שיעורים — חלש, בעיית משמעת
-      _l(100,'קורס',_seq(1,5),  _ins[3], 5,5,5,5,5, _note(5,'קשיים בסיסיים בכל הפרמטרים.')),
-      _l(80, 'קורס',_seq(6,10), _ins[3], 5,5,5,4,5, _note(10,'טסט 10 — נכשל. יצטרך לחזור.')),
-      _l(60, 'קורס',_seq(6,10), _ins[0], 6,5,5,5,5, _note(10,'שיעורי חזרה לטסט 10.')),
-      _l(40, 'קורס',_seq(11,16),_ins[0], 6,6,5,5,5, _note(16,'עבר לאחר חזרה. משמעת נמוכה.'))]},
-
-    {id:1014,name:'תום פרידמן',lessons:[        // 20 שיעורים — טוב
-      _l(110,'קורס',_seq(1,5),  _ins[1], 7,7,7,7,7, _note(5,'')),
-      _l(90, 'קורס',_seq(6,10), _ins[1], 8,7,7,8,8, _note(10,'טסט 10 — עבר.')),
-      _l(70, 'קורס',_seq(11,18),_ins[0], 8,8,7,8,8, _note(18,'')),
-      _l(50, 'קורס',_seq(19,20),_ins[0], 8,8,8,8,8, _note(20,''))]},
-
-    {id:1015,name:'שיר גולן',lessons:[          // 13 שיעורים — ממוצע
-      _l(75, 'קורס',_seq(1,5),  _ins[0], 6,6,6,6,7, _note(5,'ממוצע עם פוטנציאל.')),
-      _l(55, 'קורס',_seq(6,10), _ins[0], 7,6,6,7,7, _note(10,'עבר טסט 10.')),
-      _l(35, 'קורס',_seq(11,13),_ins[2], 7,7,6,7,7, _note(13,'שלב שני — מתחיל.'))  ]},
+    {id:1013,name:'אשרף עלי',lessons:[_l(200,'קורס',_seq(1,8),_ins[3],9,9,8,9,9,_note(8,'כניסה מצוינת.')),_l(185,'קורס',_seq(9,10),_ins[3],9,9,9,9,9,_note(10,'')),_l(170,'קורס',_seq(11,18),_ins[1],9,9,9,9,10,_note(18,'יציב.')),_l(155,'קורס',_seq(19,25),_ins[1],10,9,9,10,10,_note(25,'')),_l(140,'קורס',_seq(26,30),_ins[2],10,10,9,10,10,_note(30,'טסט 30.')),_l(120,'קורס',_seq(31,38),_ins[2],10,10,10,10,10,_note(38,'')),_l(100,'קורס',_seq(39,45),_ins[0],10,10,10,10,10,_note(45,'')),_l(80,'קורס',_seq(46,47),_ins[0],10,10,10,10,10,_note(47,'קרוב לסיום.')),_l(60,'שטח',[],_ins[0],10,10,10,10,10,_note(47,'')),_l(40,'שטח',[],_ins[1],10,10,10,10,10,_note(47,''))]},
+    {id:1012,name:'תאמר זעבי',lessons:[_l(190,'קורס',_seq(1,6),_ins[2],8,8,7,8,8,_note(6,'')),_l(175,'קורס',_seq(7,10),_ins[2],8,8,8,8,9,_note(10,'')),_l(160,'קורס',_seq(11,20),_ins[3],9,8,8,9,9,_note(20,'')),_l(140,'קורס',_seq(21,30),_ins[3],9,9,8,9,9,_note(30,'טסט 30.')),_l(115,'קורס',_seq(31,40),_ins[0],9,9,9,9,10,_note(40,'')),_l(90,'קורס',_seq(41,42),_ins[0],9,9,9,10,10,_note(42,'מתקרב לסיום.')),_l(70,'שטח',[],_ins[1],9,9,9,9,10,_note(42,'')),_l(50,'שטח',[],_ins[1],10,9,9,10,10,_note(42,''))]},
+    {id:1010,name:'נדב ברגר',lessons:[_l(150,'קורס',_seq(1,5),_ins[1],7,7,7,7,8,_note(5,'')),_l(135,'קורס',_seq(6,10),_ins[1],8,8,7,8,8,_note(10,'טסט 10.')),_l(115,'קורס',_seq(11,18),_ins[2],8,8,8,8,9,_note(18,'')),_l(95,'קורס',_seq(19,25),_ins[2],8,8,8,9,9,_note(25,'')),_l(75,'קורס',_seq(26,28),_ins[0],8,9,8,9,9,_note(28,'קרוב לטסט 30.'))]},
+    {id:1006,name:"ראמי ח'ורי",lessons:[_l(160,'קורס',_seq(1,5),_ins[1],9,9,5,9,8,_note(5,'פער תפעולי.')),_l(145,'קורס',_seq(6,10),_ins[1],9,9,5,9,8,_note(10,'טסט 10 בקושי.')),_l(125,'קורס',_seq(11,20),_ins[2],9,9,6,9,8,_note(20,'')),_l(105,'קורס',_seq(21,30),_ins[2],9,9,7,9,9,_note(30,'טסט 30 — ביצועים מספקים.')),_l(85,'קורס',_seq(31,32),_ins[0],9,9,8,9,9,_note(32,''))]},
+    {id:1011,name:'ירין אבני',lessons:[_l(145,'קורס',_seq(1,8),_ins[0],8,7,7,8,8,_note(8,'')),_l(125,'קורס',_seq(9,10),_ins[0],8,8,7,8,8,_note(10,'טסט 10.')),_l(105,'קורס',_seq(11,20),_ins[3],8,8,8,8,9,_note(20,'')),_l(85,'קורס',_seq(21,29),_ins[1],9,8,8,9,9,_note(29,'קרוב לטסט 30.'))]},
+    {id:1004,name:'אורי לוי',lessons:[_l(120,'קורס',_seq(1,5),_ins[0],6,6,6,6,7,_note(5,'')),_l(100,'קורס',_seq(6,10),_ins[0],7,6,6,7,7,_note(10,'טסט 10.')),_l(80,'קורס',_seq(11,18),_ins[1],7,7,6,7,7,_note(18,'')),_l(60,'קורס',_seq(19,22),_ins[1],7,7,7,7,8,_note(22,''))]},
+    {id:1007,name:'עמית שרון',lessons:[_l(100,'קורס',_seq(1,5),_ins[0],7,6,6,7,7,_note(5,'')),_l(80,'קורס',_seq(6,10),_ins[0],7,7,7,7,8,_note(10,'טסט 10.')),_l(60,'קורס',_seq(11,18),_ins[3],8,7,7,8,8,_note(18,''))]},
+    {id:1014,name:'תום פרידמן',lessons:[_l(110,'קורס',_seq(1,5),_ins[1],7,7,7,7,7,_note(5,'')),_l(90,'קורס',_seq(6,10),_ins[1],8,7,7,8,8,_note(10,'טסט 10.')),_l(70,'קורס',_seq(11,18),_ins[0],8,8,7,8,8,_note(18,'')),_l(50,'קורס',_seq(19,20),_ins[0],8,8,8,8,8,_note(20,''))]},
+    {id:1015,name:'שיר גולן',lessons:[_l(75,'קורס',_seq(1,5),_ins[0],6,6,6,6,7,_note(5,'')),_l(55,'קורס',_seq(6,10),_ins[0],7,6,6,7,7,_note(10,'טסט 10.')),_l(35,'קורס',_seq(11,13),_ins[2],7,7,6,7,7,_note(13,''))]},
+    {id:1005,name:"ח'אלד עמר",lessons:[_l(60,'קורס',_seq(1,4),_ins[3],7,6,4,7,7,_note(4,'סטיק נמוך.')),_l(45,'קורס',_seq(5,7),_ins[3],7,7,5,7,7,_note(7,'')),_l(30,'קורס',_seq(8,9),_ins[0],7,7,5,7,7,_note(9,'קרוב לטסט 10.'))]},
+    {id:1008,name:'גל מזרחי',lessons:[_l(90,'קורס',_seq(1,5),_ins[2],6,5,5,6,7,_note(5,'')),_l(70,'קורס',_seq(6,10),_ins[2],6,6,5,6,7,_note(10,'עבר בקושי.')),_l(50,'קורס',_seq(11,14),_ins[1],6,6,6,6,7,_note(14,''))]},
+    {id:1003,name:'סמי אבו-גנם',lessons:[_l(20,'קורס',_seq(1,5),_ins[2],9,8,8,9,9,_note(5,'כישרון טבעי.')),_l(13,'קורס',_seq(6,10),_ins[2],9,9,9,9,10,_note(10,'טסט 10 מצוין.')),_l(6,'שטח',[],_ins[2],9,9,9,9,10,_note(10,''),'N1→N2')]},
+    {id:1001,name:'מוחמד חמדאן',lessons:[_l(40,'קורס',_seq(1,3),_ins[0],6,5,4,5,6,_note(3,'סטיק נמוך מאוד.')),_l(25,'קורס',_seq(4,6),_ins[0],6,5,4,5,6,_note(6,'אין שיפור.')),_l(10,'קורס',_seq(7,7),_ins[1],6,5,5,6,6,_note(7,'קרוב לטסט 10.'))]},
+    {id:1009,name:'ריאד עמאר',lessons:[_l(100,'קורס',_seq(1,5),_ins[3],5,5,5,5,5,_note(5,'קשיים בסיסיים.')),_l(80,'קורס',_seq(6,10),_ins[3],5,5,5,4,5,_note(10,'נהלים חלשים.')),_l(60,'קורס',_seq(6,10),_ins[0],6,5,5,5,5,_note(10,'חזרה על טסט 10.')),_l(40,'קורס',_seq(11,16),_ins[0],6,6,5,5,5,_note(16,''))]},
+    {id:1002,name:'רועי כהן',lessons:[_l(15,'קורס',_seq(1,3),_ins[1],7,6,6,7,8,_note(3,'שיעור ראשון.'))]},
   ];
-
   TraineeSystem.instructors = [..._ins];
-  // Sort: most lessons (total lesson entries) first = most experienced
-  TraineeSystem.trainees.sort((a,b) => (b.lessons||[]).length - (a.lessons||[]).length);
+  // Generate demo overload alerts (simulates end-of-day reports)
+  setTimeout(()=>{
+    if(typeof window._v100TraineeOverload==='function'){
+      // מוחמד חמדאן: חלש מאוד (avg~50%), בוצעו 3 שיעורים (מותר: 1)
+      window._v100TraineeOverload('מוחמד חמדאן', 3, 1, 'חלש מאוד', new Date().toISOString().slice(0,10));
+      // ריאד עמאר: חלש מאוד (avg~52%), בוצעו 2 שיעורים (מותר: 1)
+      window._v100TraineeOverload('ריאד עמאר', 2, 1, 'חלש מאוד', new Date().toISOString().slice(0,10));
+      // ח'אלד עמר: חלש (avg~68%), בוצעו 4 שיעורים (מותר: 3)
+      window._v100TraineeOverload("ח'אלד עמר", 4, 3, 'חלש', new Date().toISOString().slice(0,10));
+    }
+  }, 600);
+
+  TraineeSystem.trainees.sort((a,b)=>(b.lessons||[]).length-(a.lessons||[]).length);
   TraineeSystem.renderList();
   TraineeSystem.renderInsTags();
 }
 
+// ══ V100 Trainee Overload Handler ════════════════════════════
+let _traineeOverloadAlerts = [];
+window._v100TraineeOverload = function(name, actual, max, level, date) {
+  if (typeof currentRole === 'undefined') return;
+  if (currentRole === 'instructor') { showToast('⚠️ עומס חניך: ' + name + ' — ' + actual + ' שיעורים ביום ' + date + ' (מותר: ' + max + ')','warning'); return; }
+  _traineeOverloadAlerts.push({name, actual, max, level, date, id: Date.now()});
+  _renderTraineeOverloadBanner();
+};
+function _renderTraineeOverloadBanner() {
+  let banner = document.getElementById('traineeOverloadBanner');
+  if (!banner) {
+    banner = document.createElement('div');
+    banner.id = 'traineeOverloadBanner';
+    banner.style.cssText = 'margin:0 0 12px 0;padding:12px 16px;background:#fff3cd;border:1.5px solid #f0ad4e;border-radius:10px;direction:rtl;display:none;';
+    const ts = document.getElementById('traineeSection');
+    if (ts && ts.parentElement) ts.parentElement.insertBefore(banner, ts);
+  }
+  if (!_traineeOverloadAlerts.length) { banner.style.display='none'; return; }
+  banner.style.display = 'block';
+  banner.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;"><strong style="color:#856404;">⚠️ התרעות עומס חניכים (' + _traineeOverloadAlerts.length + ')</strong><button onclick="_clearTraineeOverloadAlerts()" style="background:none;border:none;cursor:pointer;font-size:12px;color:#888;">× נקה הכל</button></div>' +
+    _traineeOverloadAlerts.map(function(a){return '<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-top:1px solid #f0e68c;"><span>🎓</span><span><strong>' + a.name + '</strong> — ' + a.date + ': <span style="color:#c0392b;">' + a.actual + ' שיעורים</span> | מגבלה לרמת <em>' + a.level + '</em>: עד ' + a.max + '</span><button onclick="_dismissTraineeAlert(' + a.id + ')" style="margin-right:auto;background:none;border:none;cursor:pointer;color:#888;">✕</button></div>';}).join('');
+}
+function _dismissTraineeAlert(id){_traineeOverloadAlerts=_traineeOverloadAlerts.filter(function(a){return a.id!==id;});_renderTraineeOverloadBanner();}
+function _clearTraineeOverloadAlerts(){_traineeOverloadAlerts=[];_renderTraineeOverloadBanner();}
+
+window._traineeInitialized = false;
+
 function _initTraineeIfNeeded() {
-  // Update reports button visibility based on role
   const rBtn = document.querySelector('#traineeSystemContainer [data-action="show-reports"]');
   if (rBtn) rBtn.style.display = (typeof currentRole !== 'undefined' && currentRole === 'instructor') ? 'none' : '';
   if (window._traineeInitialized) return;
   window._traineeInitialized = true;
+  if (_isDemoMode()) {
+    TraineeSystem._origPersist   = TraineeSystem._origPersist   || TraineeSystem.persist;
+    TraineeSystem._origLoadData  = TraineeSystem._origLoadData  || TraineeSystem.loadData;
+    TraineeSystem.persist = function() {
+      if(localStorage.getItem('demo_active')==='1'){localStorage.setItem('demo_trainee_data',JSON.stringify({trainees:this.trainees,instructors:this.instructors}));}
+      else{this._origPersist();}
+    };
+    TraineeSystem.loadData = function() {
+      if(localStorage.getItem('demo_active')==='1'){const saved=localStorage.getItem('demo_trainee_data');if(saved){try{const d=JSON.parse(saved);this.trainees=d.trainees||[];this.instructors=d.instructors||[];}catch(e){}}else{_generateTraineeDemoData();return;}this.renderList();this.renderInsTags();}
+      else{this._origLoadData();}
+    };
+  }
   try {
     if (typeof TraineeSystem !== 'undefined') {
-      // If in demo mode: patch loadData BEFORE init() so Firebase doesn't overwrite
-      if (_isDemoMode()) {
-        TraineeSystem._origPersist   = TraineeSystem._origPersist   || TraineeSystem.persist;
-        TraineeSystem._origLoadData  = TraineeSystem._origLoadData  || TraineeSystem.loadData;
-        TraineeSystem.persist = function() {
-          if(localStorage.getItem('demo_active')==='1'){
-            localStorage.setItem('demo_trainee_data',JSON.stringify({trainees:this.trainees,instructors:this.instructors}));
-          } else { this._origPersist(); }
-        };
-        TraineeSystem.loadData = function() {
-          if(localStorage.getItem('demo_active')==='1'){
-            const saved = localStorage.getItem('demo_trainee_data');
-            if (saved) {
-              try { const d=JSON.parse(saved); this.trainees=d.trainees||[]; this.instructors=d.instructors||[]; } catch(e){}
-            } else {
-              _generateTraineeDemoData(); return; // generateTraineeDemoData calls renderList itself
-            }
-            this.renderList();
-            this.renderInsTags();
-          } else { this._origLoadData(); }
-        };
-      }
       TraineeSystem.init('traineeSystemContainer');
-      // After init, generate demo data if not already loaded from localStorage
-      if(_isDemoMode() && !localStorage.getItem('demo_trainee_data')){
-        setTimeout(()=>{try{_generateTraineeDemoData();}catch(e){}},50);
-      }
+      if(_isDemoMode()&&!localStorage.getItem('demo_trainee_data')){setTimeout(()=>{try{_generateTraineeDemoData();}catch(e){}},50);}
       setTimeout(() => {
         const rb = document.querySelector('#traineeSystemContainer [data-action="show-reports"]');
         if (rb) rb.style.display = (typeof currentRole !== 'undefined' && currentRole === 'instructor') ? 'none' : '';
+        const sbtn = document.querySelector('#traineeSystemContainer #ts-settings-btn');
+        if (sbtn) sbtn.style.display = (typeof currentRole !== 'undefined' && currentRole === 'admin') ? '' : 'none';
       }, 100);
     } else {
-      const cont = document.getElementById('traineeSystemContainer');
-      if (cont) cont.innerHTML = '<div style="padding:20px;color:#888;text-align:center;">⏳ ממתין לטעינת מערכת...</div>';
       window._traineeInitialized = false;
     }
   } catch(e) {
-    console.error('TraineeSystem init error:', e);
     const cont = document.getElementById('traineeSystemContainer');
     if (cont) cont.innerHTML = '<div style="padding:20px;color:#e74c3c;text-align:center;">❌ ' + e.message + '</div>';
     window._traineeInitialized = false;
   }
 }
 
-function openTraineePanel() { /* no-op: replaced by details toggle */ }
+function openTraineePanel() { }
 
-// Wire up traineeSection toggle on DOMContentLoaded
 document.addEventListener('DOMContentLoaded', () => {
   const ts = document.getElementById('traineeSection');
   if (ts) {
@@ -14653,17 +15020,11 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
   }
-  // Place traineeSection in manager view initially
-  setTimeout(() => {
-    if (typeof currentRole === 'undefined' || currentRole !== 'instructor') {
-      if (typeof moveTraineeSectionToManager === 'function') moveTraineeSectionToManager();
-    }
-  }, 150);
 });
 
 </script>
 
-<!-- ══ TRAINEE ASSIGN MODAL ════════════════════════════════ -->
+<!-- ══ TRAINEE ASSIGN MODAL ═══════════════════════════════ -->
 <div id="traineeAssignModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9000;align-items:center;justify-content:center;">
   <div style="background:white;border-radius:16px;padding:24px;width:min(420px,95vw);max-height:80vh;overflow-y:auto;direction:rtl;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
@@ -14677,7 +15038,6 @@ document.addEventListener('DOMContentLoaded', () => {
     </div>
   </div>
 </div>
-
 <!-- ══ TASK REPORT MODAL ══════════════════════════════ -->
 <div id="taskReportModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9000;align-items:center;justify-content:center;">
   <div style="background:white;border-radius:16px;padding:24px;width:min(380px,94vw);direction:rtl;box-shadow:0 8px 40px rgba(0,0,0,.25);max-height:90vh;overflow-y:auto;">
@@ -14778,17 +15138,6 @@ document.addEventListener('DOMContentLoaded', () => {
     </div>
   </div>
 </div>
-<details id="traineeSection" class="manual-section" style="margin-bottom:14px;display:none;">
-  <summary>
-    <span class="manual-summary-arrow">▶</span>
-    🎓 ניהול חניכים &amp; משוב
-    <span style="font-size:12px;font-weight:400;color:#888;margin-right:6px;">(לחץ להרחבה)</span>
-  </summary>
-  <div class="manual-inner" style="padding:12px 0 0 0;">
-    <div id="traineeSystemContainer"></div>
-  </div>
-</details>
-
 </body>
 
 </html>
