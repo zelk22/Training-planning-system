@@ -1885,12 +1885,12 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
       <button class="btn-reset-settings" onclick="resetSettingsToDefault()">↺ אפס לברירת מחדל</button>
 
       <button class="btn-cancel-settings" onclick="closeSettings()">ביטול</button>
-    <div style="margin-top:22px;padding:14px;background:#fff3f3;border:1.5px solid #e74c3c;border-radius:10px;">
+    <div style="margin-top:22px;margin-bottom:14px;padding:14px;background:#fff3f3;border:1.5px solid #e74c3c;border-radius:10px;">
       <div style="font-weight:bold;color:#c0392b;margin-bottom:10px;">⚠️ פעולות ניהול מתקדמות</div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;">
-        <button onclick="if(confirm('אפס נסיעות?')){trips=[];saveToStorage();renderLog();renderDashboard();showToast('נמחקו','info');}" style="padding:7px 12px;background:#e74c3c;color:white;border:none;border-radius:7px;cursor:pointer;font-size:12px;">🗑️ אפס נסיעות</button>
-        <button onclick="if(confirm('איפוס כללי?')){localStorage.clear();location.reload();}" style="padding:7px 12px;background:#c0392b;color:white;border:none;border-radius:7px;cursor:pointer;font-size:12px;">⚠️ איפוס כללי</button>
-        <button onclick="showActionLog()" style="padding:7px 12px;background:#7f8c8d;color:white;border:none;border-radius:7px;cursor:pointer;font-size:12px;">🔍 לוג פעולות</button>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-start;">
+        <button onclick="if(confirm('אפס נסיעות היום?')){_logAction('reset_trips','אפס נסיעות יום');trips=[];saveToStorage();renderLog();renderDashboard();showToast('נמחקו','info');}" style="width:auto !important;padding:7px 14px;background:#e74c3c;color:white;border:none;border-radius:7px;cursor:pointer;font-size:12px;font-weight:600;">🗑️ אפס נסיעות</button>
+        <button onclick="if(confirm('איפוס כללי — ימחק את כל הנתונים המקומיים?')){_logAction('reset_all','איפוס כללי');localStorage.clear();location.reload();}" style="width:auto !important;padding:7px 14px;background:#c0392b;color:white;border:none;border-radius:7px;cursor:pointer;font-size:12px;font-weight:600;">⚠️ איפוס כללי</button>
+        <button onclick="showActionLog()" style="width:auto !important;padding:7px 14px;background:#7f8c8d;color:white;border:none;border-radius:7px;cursor:pointer;font-size:12px;font-weight:600;">🔍 לוג פעולות</button>
       </div>
     </div>
 
@@ -1978,6 +1978,9 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
     </div>
 
     <div id="nextTripCard"></div>
+
+    <!-- Placeholder for traineeSection in instructor view -->
+    <div id="traineeSectionInstrPlaceholder"></div>
 
     <!-- Placeholder for manualSection — moved here dynamically for instructor -->
     <div id="manualSectionPlaceholder"></div>
@@ -2346,6 +2349,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
     <summary onclick="_initTraineeIfNeeded()">
       <span class="manual-summary-arrow">▶</span>
       🎓 ניהול חניכים &amp; משוב
+      <span id="traineeAlertBadge" style="display:none;background:#e74c3c;color:white;font-size:11px;font-weight:bold;padding:2px 8px;border-radius:12px;margin-right:8px;"></span>
       <span style="font-size:12px;font-weight:400;color:#888;margin-right:6px;">(לחץ להרחבה)</span>
     </summary>
     <div class="manual-inner" style="padding:12px 0 0 0;">
@@ -3028,7 +3032,7 @@ window.TraineeSystem = {
             <h1 class="header-title">ניהול הכשרת נהגים</h1>
             <div style="display:flex; gap:10px; flex-wrap:wrap;">
                 <button id="ts-settings-btn" class="btn btn-ghost" data-action="open-ts-settings" style="display:none;width:auto !important;padding:8px 14px;">⚙️ הגדרות</button>
-                <button class="btn btn-blue"  data-action="toggle-panel" data-panel="add-panel">+ חניך חדש</button>
+                <button id="ts-add-trainee-btn" class="btn btn-blue" data-action="toggle-panel" data-panel="add-panel">+ חניך חדש</button>
             <button class="btn" data-action="show-reports" style="background:#6c3483;color:white;border:none;border-radius:8px;padding:8px 14px;cursor:pointer;font-size:13px;font-weight:bold;">📊 דוחות</button>
             </div>
         </header>
@@ -4677,9 +4681,88 @@ function doInstrLogin(){
 
 }
 
+// ══ ACTION LOG ══════════════════════════════════════════════
+const _V100_LOG_KEY = 'v100_action_log';
+const _V100_LOG_MAX = 200; // keep last 200 entries
+
+function _logAction(type, details) {
+  try {
+    const log = JSON.parse(localStorage.getItem(_V100_LOG_KEY) || '[]');
+    log.unshift({
+      ts: new Date().toISOString(),
+      type,
+      details: details || '',
+      user: (typeof currentUserName !== 'undefined' && currentUserName) || '—',
+      role: (typeof currentRole !== 'undefined' && currentRole) || '—'
+    });
+    if (log.length > _V100_LOG_MAX) log.length = _V100_LOG_MAX;
+    localStorage.setItem(_V100_LOG_KEY, JSON.stringify(log));
+  } catch(e) {}
+}
+
+function showActionLog() {
+  let log = [];
+  try { log = JSON.parse(localStorage.getItem(_V100_LOG_KEY) || '[]'); } catch(e) {}
+
+  const typeLabel = {
+    login:       '🔑 כניסה',
+    logout:      '🚪 יציאה',
+    reset_trips: '🗑️ איפוס נסיעות',
+    reset_all:   '⚠️ איפוס כללי',
+    save_trip:   '💾 שמירת נסיעה',
+    del_trip:    '🗑️ מחיקת נסיעה',
+    edit_trip:   '✏️ עריכת נסיעה',
+    save_settings:'⚙️ שמירת הגדרות',
+    demo_on:     '🎭 הפעלת דמו',
+    demo_off:    '🎭 כיבוי דמו',
+  };
+
+  const rows = log.length ? log.map(e => {
+    const d = new Date(e.ts);
+    const dateStr = d.toLocaleDateString('he-IL', {day:'2-digit',month:'2-digit',year:'2-digit'});
+    const timeStr = d.toLocaleTimeString('he-IL', {hour:'2-digit',minute:'2-digit'});
+    const label = typeLabel[e.type] || ('📋 ' + e.type);
+    return `<tr style="border-bottom:1px solid #f0f4f8;">
+      <td style="padding:7px 10px;font-size:12px;color:#888;white-space:nowrap;">${dateStr} ${timeStr}</td>
+      <td style="padding:7px 10px;font-size:12px;">${label}</td>
+      <td style="padding:7px 10px;font-size:12px;font-weight:600;">${e.user}</td>
+      <td style="padding:7px 10px;font-size:12px;color:#555;">${e.details || ''}</td>
+    </tr>`;
+  }).join('') : `<tr><td colspan="4" style="text-align:center;padding:20px;color:#aaa;">אין רשומות בלוג</td></tr>`;
+
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9800;display:flex;align-items:center;justify-content:center;';
+  overlay.innerHTML = `
+    <div style="background:white;border-radius:16px;width:min(720px,96vw);max-height:85vh;overflow:hidden;display:flex;flex-direction:column;direction:rtl;">
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:2px solid #eef2f8;">
+        <h3 style="margin:0;font-size:16px;">🔍 לוג פעולות מערכת</h3>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <button onclick="if(confirm('לנקות את הלוג?')){localStorage.removeItem(_V100_LOG_KEY);this.closest('.log-overlay').remove();showToast('הלוג נוקה','info');}" style="width:auto !important;padding:5px 12px;background:#e74c3c;color:white;border:none;border-radius:7px;cursor:pointer;font-size:12px;">נקה לוג</button>
+          <button onclick="this.closest('.log-overlay').remove()" style="width:auto !important;background:none;border:none;font-size:22px;cursor:pointer;color:#888;">×</button>
+        </div>
+      </div>
+      <div style="overflow-y:auto;flex:1;">
+        <table style="width:100%;border-collapse:collapse;">
+          <thead><tr style="background:#f8faff;position:sticky;top:0;">
+            <th style="padding:8px 10px;text-align:right;font-size:12px;color:#888;font-weight:600;">זמן</th>
+            <th style="padding:8px 10px;text-align:right;font-size:12px;color:#888;font-weight:600;">פעולה</th>
+            <th style="padding:8px 10px;text-align:right;font-size:12px;color:#888;font-weight:600;">משתמש</th>
+            <th style="padding:8px 10px;text-align:right;font-size:12px;color:#888;font-weight:600;">פרטים</th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+      <div style="padding:10px 20px;border-top:1px solid #eef2f8;font-size:11px;color:#aaa;text-align:center;">${log.length} רשומות (שומר עד ${_V100_LOG_MAX})</div>
+    </div>`;
+  overlay.classList.add('log-overlay');
+  overlay.addEventListener('click', e => { if(e.target === overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
+}
+
 function enterApp(role,name){
 
   currentRole=role; currentUserName=name;
+  _logAction('login', role==='admin'?'כניסת מנהל':'כניסת מדריך: '+name);
   const _grb=document.getElementById('globalReloadBtn');if(_grb)_grb.style.display='block';
 
   document.getElementById('loginOverlay').classList.add('hidden');
@@ -4698,6 +4781,7 @@ function enterApp(role,name){
   } else {
     setTimeout(()=>moveManualSectionToManager(),50);
     setTimeout(()=>_placeTraineeSectionInManager(),80);
+  if(_isDemoMode()) setTimeout(_fireDemoTraineeAlerts, 500); // restore badge on login
   }
 
   if(role==='admin'){
@@ -4751,6 +4835,7 @@ function enterApp(role,name){
       try{if(typeof renderInstrTripJournal==='function')renderInstrTripJournal();}catch(e){}
 
       // Load task reports and render today's tasks
+      setTimeout(_updateTraineeBtnVisibility, 300);
       try{
         const _td=_localDateStr(new Date());
         loadTaskReportsForDate(_td).then(()=>renderTodayTasks()).catch(()=>renderTodayTasks());
@@ -6286,19 +6371,33 @@ function renderLog(){
     const _mgrTripStarted=currentDate===_localDateStr(new Date())&&_startMin2<=_nowM2;
     const _mgrTripPast=currentDate===_localDateStr(new Date())&&_endMin2<_nowM2;
 
+    const _isToday = currentDate===_localDateStr(new Date());
+    const _isPastDate = currentDate<_localDateStr(new Date());
+    // Trip is truly done only if end time has passed (prevents future trips showing בוצע)
+    const _tripTrulyEnded = _isPastDate || (_isToday && _endMin2>0 && _endMin2<=_nowM2);
+    // "בנסיעה" only valid for today's live view
+    const _canBeOnTrip = _isToday;
+
     let _mgr_statusBadge='';
-    if(_instrSt.status==='returned'&&_isThisTrip){
-      // Case 4: completed
+    if(_instrSt.status==='returned'&&_isThisTrip&&_tripTrulyEnded){
+      // Completed AND trip time has passed
       _mgr_statusBadge='<span style="font-size:12px;color:#27ae60;font-weight:bold;">✓ בוצע</span>';
-    } else if(_instrSt.status==='on-trip'&&_isThisTrip){
-      // Case 2: on this trip
+    } else if(_instrSt.status==='on-trip'&&_isThisTrip&&_canBeOnTrip&&!_mgrTripPast){
+      // Instructor pressed יצאתי and trip is still running → show live status
       _mgr_statusBadge='<span style="font-size:12px;color:#e74c3c;font-weight:bold;">🚇 בנסיעה</span>';
-    } else if(_mgrTripPast&&!(_instrSt.status==='returned'&&_isThisTrip)){
-      // Case 3: past and THIS trip not confirmed yet
+    } else if(_isToday&&_mgrTripPast&&!(_instrSt.status==='returned'&&_isThisTrip)){
+      // Trip ended without confirmation (includes: on-trip+ended, or never confirmed)
+      // Today: past trip not yet confirmed
       _mgr_statusBadge='<button onclick="_mgrConfirmTrip(\''+t.id+'\',\''+t.name+'\')" style="'+_mgrStl+'background:#e74c3c;color:white;">⚠️ אשר נסיעה</button>';
-    } else if(_mgrTripStarted&&!_isThisTrip){
-      // Case 2: time arrived, awaiting instructor action
+    } else if(_isToday&&_mgrTripStarted&&!_isThisTrip){
+      // Today: trip started, awaiting instructor
       _mgr_statusBadge='<span style="font-size:11px;color:#888;">ממתין...</span>';
+    } else if(_isPastDate&&_isThisTrip){
+      // Past date: confirmed trips show בוצע regardless of instrStatuses currency
+      _mgr_statusBadge='<span style="font-size:12px;color:#27ae60;font-weight:bold;">✓ בוצע</span>';
+    } else if(_isPastDate&&!_isThisTrip){
+      // Past date: unconfirmed trip
+      _mgr_statusBadge='<span style="font-size:11px;color:#aaa;">—</span>';
     }
     const isPast=currentDate===_localDateStr(new Date())&&(t.timeline?.length?(t.timeline[t.timeline.length-1]?.endMin||0)<_nowMin:false);
 
@@ -7990,6 +8089,7 @@ function getInt(id,def){return parseInt(document.getElementById(id)?.value)||def
 function getStr(id,def){return document.getElementById(id)?.value||def;}
 
 async function saveSettings(){
+  _logAction('save_settings','שמירת הגדרות מערכת');
   showToast('🔄 שומר הגדרות...','info');
 
   const p1=document.getElementById('s_pass1').value;
@@ -11224,6 +11324,7 @@ function renderInstrTripJournal(){
         <button class="btn-sm edit" onclick="openTripEditModal('${t.id}')" title="ערוך מסלול">✏️</button>
         ${isStarted?`<button class="btn-sm delay" onclick="openDelayModal('${t.id}')" title="הוסף עיכוב" style="background:#fff3cd;border:1px solid #f0ad4e;color:#856404;">⏱️</button>`:''}
         <button class="btn-sm del" onclick="delTrip('${t.id}')" title="מחק נסיעה">🗑️</button>
+        <button class="btn-sm" onclick="openTraineeAssign('${t.id}')" title="שייך חניכים לנסיעה" style="background:#8e44ad;color:white;border-color:#8e44ad;">🎓</button>
       </td>
     </tr>`;
   }).join('');
@@ -11574,6 +11675,7 @@ function switchBackToAdmin(){
   setTimeout(()=>moveManualSectionToManager(),50);
   try{renderLog();}catch(e){}
   try{renderCalendar();}catch(e){}
+  setTimeout(_updateTraineeBtnVisibility, 200);
   showToast('🔙 חזרת לממשק המנהל','info');
 }
 
@@ -13008,20 +13110,28 @@ function renderEfficiencyTab(){
   }
 
   // Analyze route patterns from history
-  const routeStats={}; // routeKey → {count, totalLessons, totalMin, instructors Set}
+  // routeKey → {count, totalLessons, totalMin, delays, routeChanges, instructors Set, changeReasons[]}
+  const routeStats={};
 
   for(const dayTrips of Object.values(_monthHistoryCache)){
     for(const t of dayTrips){
       if(!t.timeline||!t.timeline.length)continue;
       const routeKey=(t.route||[]).filter(r=>r.id!=='TURN'&&r.id!=='TURN_ORA').map(r=>r.id).join('→');
       if(!routeKey)continue;
-      if(!routeStats[routeKey])routeStats[routeKey]={count:0,totalLessons:0,totalMin:0,delays:0,instructors:new Set()};
+      if(!routeStats[routeKey])routeStats[routeKey]={count:0,totalLessons:0,totalMin:0,delays:0,routeChanges:0,changeReasons:[],instructors:new Set()};
       const s=routeStats[routeKey];
       s.count++;
       const dur=(t.route||[]).reduce((a,r)=>a+(r.t||0),0);
       s.totalMin+=dur;
       s.totalLessons+=dur/45;
       if(t.delayMin>0)s.delays++;
+      // ── Route-change tracking (routeVariant > 0 = was edited mid-execution) ──
+      if(t.routeVariant>0){
+        s.routeChanges++;
+        if(t.routeReason||t.delayNote){
+          s.changeReasons.push((t.routeReason||t.delayNote||'').trim());
+        }
+      }
       if(t.name)s.instructors.add(t.name);
     }
   }
@@ -13034,6 +13144,9 @@ function renderEfficiencyTab(){
       lessonsPerHour:(s.totalLessons/s.count)/(s.totalMin/s.count/60),
       delays:s.delays,
       delayPct:Math.round(s.delays/s.count*100),
+      routeChanges:s.routeChanges,
+      changePct:Math.round(s.routeChanges/s.count*100),
+      changeReasons:[...new Set(s.changeReasons)].slice(0,3),
       instrCount:s.instructors.size,
       instructors:[...s.instructors].join(', ')
     }))
@@ -13053,6 +13166,12 @@ function renderEfficiencyTab(){
     const effCol=eff>=75?'#27ae60':eff>=50?'#f39c12':'#e74c3c';
     const rankBg=['#ffd700','#c0c0c0','#cd7f32'][i]||'transparent';
     const rankCol=['#856404','#555','#7d3c00'][i]||'transparent';
+    // Delays cell
+    const delayCol=r.delayPct>30?'#e74c3c':r.delayPct>10?'#e67e22':'#27ae60';
+    const delayTip=r.delays+' עיכובים מתוך '+r.count+' ביצועים ('+r.delayPct+'%)';
+    // Route-changes cell
+    const rcCol=r.changePct>20?'#c0392b':r.changePct>5?'#e67e22':'#888';
+    const rcTip=r.changeReasons.length?'סיבות: '+r.changeReasons.join(' | '):'';
     return`<tr>
       <td style="text-align:center;">
         ${i<3?`<span style="display:inline-block;width:22px;height:22px;line-height:22px;border-radius:50%;background:${rankBg};color:${rankCol};font-size:11px;font-weight:bold;">${i+1}</span>`:i+1}
@@ -13072,13 +13191,22 @@ function renderEfficiencyTab(){
           <div style="width:${eff}%;height:100%;background:${effCol};border-radius:4px;"></div>
         </div>
       </td>
+      <td style="text-align:center;" title="${delayTip}">
+        <span style="font-weight:bold;color:${delayCol};">${r.delays}</span>
+        <small style="color:#aaa;display:block;font-size:10px;">${r.delayPct}%</small>
+      </td>
+      <td style="text-align:center;" title="${rcTip}">
+        ${r.routeChanges>0
+          ? `<span style="font-weight:bold;color:${rcCol};">${r.routeChanges}</span><small style="color:#aaa;display:block;font-size:10px;">${r.changePct}%</small>`
+          : '<span style="color:#bbb;">—</span>'}
+      </td>
       <td style="text-align:center;font-size:11px;color:#555;" title="${r.instructors}">${r.instrCount} <small style="color:#aaa;">(${r.instructors.length>30?r.instructors.slice(0,30)+'...':r.instructors})</small></td>
     </tr>`;
   }).join('');
 
   body.innerHTML=`
     <div style="overflow-x:auto;">
-      <table class="mgmt-table" style="width:100%;min-width:560px;">
+      <table class="mgmt-table" style="width:100%;min-width:640px;">
         <thead><tr>
           <th style="width:36px;">#</th>
           <th>מסלול</th>
@@ -13087,12 +13215,13 @@ function renderEfficiencyTab(){
           <th style="text-align:center;">משך ממוצע</th>
           <th style="text-align:center;">שיעורים/שעה</th>
           <th style="text-align:center;">עיכובים</th>
+          <th style="text-align:center;">שינויי מסלול</th>
           <th style="text-align:center;">מדריכים</th>
         </tr></thead>
         <tbody>${rows}</tbody>
       </table>
     </div>
-    <div style="font-size:11px;color:#aaa;margin-top:8px;text-align:center;">מוצגים 12 המסלולים הנפוצים ביותר לפי ספירת ביצועים. שיעורים/שעה = מדד יעילות.</div>`;
+    <div style="font-size:11px;color:#aaa;margin-top:8px;text-align:center;">מוצגים 12 המסלולים הנפוצים ביותר. עיכובים = נסיעות עם השהיה. שינויי מסלול = נסיעות שמסלולן שונה בזמן ביצוע.</div>`;
 }
 
 // ══════════════════════════════════════════════════════════════════════
@@ -13373,6 +13502,7 @@ function switchToInstructorView(previewName){
   }catch(e){}
 
   try{if(typeof startInstrSync==='function')startInstrSync();}catch(e){}
+  setTimeout(_updateTraineeBtnVisibility, 200);
   setTimeout(()=>{
     try{renderLog();}catch(e){}
     try{if(typeof renderInstrView==='function')renderInstrView();}catch(e){}
@@ -14059,6 +14189,9 @@ async function renderDaySummary(){
   let dayTrips=[];
   if(dateStr===currentDate){
     dayTrips=[...trips];
+  } else if(_isDemoMode()){
+    // Demo mode: always read from localStorage
+    try{const raw=localStorage.getItem('trips_'+dateStr);if(raw)dayTrips=Object.values(JSON.parse(raw)).map(t=>{try{return parseTrip(t);}catch(e){return t;}});}catch(e){}
   } else if(window._fbDb){
     try{
       const snap=await _fbGet(_fbRef(_db,'trips/'+dateStr));
@@ -14073,6 +14206,9 @@ async function renderDaySummary(){
   let dayStatuses={};
   if(dateStr===currentDate){
     dayStatuses={...instrStatuses};
+  } else if(_isDemoMode()){
+    // Demo mode: always read from localStorage
+    try{const raw=localStorage.getItem('instrStatus_'+dateStr);if(raw)dayStatuses=JSON.parse(raw);}catch(e){}
   } else if(window._fbDb){
     try{
       const snap=await _fbGet(_fbRef(_db,'instrStatus/'+dateStr));
@@ -14431,12 +14567,28 @@ async function generateAndActivateDemo(){
         });
         if(Object.keys(rptMap).length)monthReports[date]=rptMap;
 
+        // ── instrStatus derived from actual trips for consistency ──
         const stMap={};
         instrs.forEach((name,i)=>{
           const k=name.replace(/[.#$[\]/]/g,'_');
-          const conf={};
-          if(TASKS_BY_INSTR[i]==='training')[0,1].forEach(tn=>{if(_pseudoRand(date+name+tn+'c')>0.1)conf[tn]=true;});
-          stMap[k]={name,status:'returned',tripIdx:1,confirmedTrips:conf};
+          if(_tripTaskIds.has(TASKS_BY_INSTR[i])){
+            // Trip instructor: confirm trips that have already ended
+            const myTrips=Object.values(tripMap).filter(t=>t.name===name);
+            const conf={};
+            const _nowMinDemo=new Date().getHours()*60+new Date().getMinutes();
+            const _isTodayDemo=(date===_localDateStr(new Date()));
+            myTrips.forEach((trip,tn)=>{
+              const tripEnd=trip.timeline?.length?trip.timeline[trip.timeline.length-1].endMin||0:0;
+              if(!_isTodayDemo||tripEnd<=_nowMinDemo) conf[tn]=true;
+            });
+            const _lastConfIdx=Object.keys(conf).length?Math.max(...Object.keys(conf).map(Number)):-1;
+            const _lastTrip=_lastConfIdx>=0?myTrips[_lastConfIdx]:null;
+            const _lastEndMin=_lastTrip?(_lastTrip.timeline?.length?_lastTrip.timeline[_lastTrip.timeline.length-1].endMin:0):0;
+            stMap[k]={name,status:_lastConfIdx>=0?'returned':'idle',tripIdx:_lastConfIdx,confirmedTrips:conf,time:_lastEndMin?toHHMM(_lastEndMin):''};
+          } else {
+            // Non-trip: generic returned status
+            stMap[k]={name,status:'returned',tripIdx:-1,confirmedTrips:{}};
+          }
         });
         monthStatuses[date]=stMap;
       });
@@ -14464,6 +14616,8 @@ async function generateAndActivateDemo(){
     _activateDemoData(months);
     localStorage.setItem('demo_active','1');
     localStorage.setItem('demo_months',JSON.stringify(months));
+    _logAction('demo_on','הפעלת מצב דמו');
+    setTimeout(_fireDemoTraineeAlerts, 400); // show badge immediately after activation
 
     setP(100,'✅ הדמו מוכן!');await new Promise(r=>setTimeout(r,300));
 
@@ -14507,7 +14661,37 @@ function exitDemoMode(){
   localStorage.removeItem('demo_trainee_data');
   const _dayPfx=['trips_','taskReports_','instrStatus_'];
   Object.keys(localStorage).forEach(k=>{if(_dayPfx.some(p=>k.startsWith(p)))localStorage.removeItem(k);});
+  _logAction('demo_off','יציאה ממצב דמו');
   _updateDemoBanner(false);
+  // Reset TraineeSystem so it reloads real data on next open
+  window._traineeInitialized = false;
+  if(typeof TraineeSystem !== 'undefined'){
+    // Restore original loadData/persist if patched
+    if(TraineeSystem._origLoadData) { TraineeSystem.loadData = TraineeSystem._origLoadData; TraineeSystem._origLoadData = null; }
+    if(TraineeSystem._origPersist)  { TraineeSystem.persist  = TraineeSystem._origPersist;  TraineeSystem._origPersist  = null; }
+    // Clear demo trainees from memory
+    TraineeSystem.trainees = [];
+    TraineeSystem.instructors = [];
+  }
+  // Clear demo overload alerts
+  _traineeOverloadAlerts = _traineeOverloadAlerts.filter(a=>!a._demo);
+  try{localStorage.setItem('trainee_overload_alerts',JSON.stringify(_traineeOverloadAlerts));}catch(e){}
+  _renderTraineeOverloadBanner();
+  // If section is open, re-init TraineeSystem with real data immediately
+  const _tsSection = document.getElementById('traineeSection');
+  const _tsCont = document.getElementById('traineeSystemContainer');
+  if(_tsSection && _tsSection.open && typeof TraineeSystem !== 'undefined'){
+    // Re-init will call the real loadData (already restored above)
+    try {
+      TraineeSystem.init('traineeSystemContainer');
+      _updateTraineeBtnVisibility();
+    } catch(e) {
+      if(_tsCont) _tsCont.innerHTML = '<div style="padding:30px;text-align:center;color:#888;font-size:14px;">⏳ לחץ כאן לטעינת מערכת החניכים...</div>';
+    }
+  } else if(_tsCont) {
+    // Section closed — just reset placeholder so next open loads fresh
+    _tsCont.innerHTML = '<div style="padding:30px;text-align:center;color:#888;font-size:14px;">⏳ לחץ כאן לטעינת מערכת החניכים...</div>';
+  }
   // DON'T close panel — allow re-activation without refresh
   // Reload real data
   try{schedData={};}catch(e){}
@@ -14538,6 +14722,24 @@ function clearDemoData(){
   localStorage.removeItem('demo_active');
   localStorage.removeItem('demo_days');
   _updateDemoBanner(false);
+  window._traineeInitialized = false;
+  if(typeof TraineeSystem !== 'undefined'){
+    if(TraineeSystem._origLoadData){TraineeSystem.loadData=TraineeSystem._origLoadData;TraineeSystem._origLoadData=null;}
+    if(TraineeSystem._origPersist){TraineeSystem.persist=TraineeSystem._origPersist;TraineeSystem._origPersist=null;}
+    TraineeSystem.trainees=[];TraineeSystem.instructors=[];
+  }
+  _traineeOverloadAlerts=_traineeOverloadAlerts.filter(a=>!a._demo);
+  try{localStorage.setItem('trainee_overload_alerts',JSON.stringify(_traineeOverloadAlerts));}catch(e){}
+  _renderTraineeOverloadBanner();
+  const _tsSection2=document.getElementById('traineeSection');
+  const _tsCont2=document.getElementById('traineeSystemContainer');
+  if(_tsSection2&&_tsSection2.open&&typeof TraineeSystem!=='undefined'){
+    try{TraineeSystem.init('traineeSystemContainer');_updateTraineeBtnVisibility();}catch(e){
+      if(_tsCont2)_tsCont2.innerHTML='<div style="padding:30px;text-align:center;color:#888;font-size:14px;">⏳ לחץ כאן לטעינת מערכת החניכים...</div>';
+    }
+  } else if(_tsCont2){
+    _tsCont2.innerHTML='<div style="padding:30px;text-align:center;color:#888;font-size:14px;">⏳ לחץ כאן לטעינת מערכת החניכים...</div>';
+  }
   showToast('🗑️ נתוני הדמו נמחקו','info');
 }
 
@@ -14562,6 +14764,21 @@ function _pseudoRand(seed){
 
 // On load: restore demo state if was active
 document.addEventListener('DOMContentLoaded',()=>{
+  // Restore overload alerts from previous session and show badge
+  try{
+    const _savedAlerts = localStorage.getItem('trainee_overload_alerts');
+    if(_savedAlerts){
+      const _parsed = JSON.parse(_savedAlerts);
+      if(_parsed.length) {
+        _traineeOverloadAlerts = _parsed;
+        setTimeout(_updateTraineeAlertBadge, 200);
+      }
+    }
+  }catch(e){}
+  // If demo already active and alerts are empty, fire them after login completes
+  if(_isDemoMode() && !_traineeOverloadAlerts.length){
+    setTimeout(_fireDemoTraineeAlerts, 1500);
+  }
   // Just sync the banner — don't auto-activate demo data on load
   // (real data is always loaded on start; demo is opt-in only)
   const isDemo=localStorage.getItem('demo_active')==='1';
@@ -14994,17 +15211,7 @@ function _generateTraineeDemoData() {
     {id:1002,name:'רועי כהן',lessons:[_l(15,'קורס',_seq(1,3),_ins[1],7,6,6,7,8,_note(3,'שיעור ראשון.'))]},
   ];
   TraineeSystem.instructors = [..._ins];
-  // Generate demo overload alerts (simulates end-of-day reports)
-  setTimeout(()=>{
-    if(typeof window._v100TraineeOverload==='function'){
-      // מוחמד חמדאן: חלש מאוד (avg~50%), בוצעו 3 שיעורים (מותר: 1)
-      window._v100TraineeOverload('מוחמד חמדאן', 3, 1, 'חלש מאוד', new Date().toISOString().slice(0,10));
-      // ריאד עמאר: חלש מאוד (avg~52%), בוצעו 2 שיעורים (מותר: 1)
-      window._v100TraineeOverload('ריאד עמאר', 2, 1, 'חלש מאוד', new Date().toISOString().slice(0,10));
-      // ח'אלד עמר: חלש (avg~68%), בוצעו 4 שיעורים (מותר: 3)
-      window._v100TraineeOverload("ח'אלד עמר", 4, 3, 'חלש', new Date().toISOString().slice(0,10));
-    }
-  }, 600);
+  // Demo overload alerts are fired via _fireDemoTraineeAlerts() — called on login/demo-activate
 
   TraineeSystem.trainees.sort((a,b)=>(b.lessons||[]).length-(a.lessons||[]).length);
   TraineeSystem.renderList();
@@ -15012,35 +15219,98 @@ function _generateTraineeDemoData() {
 }
 
 // ══ V100 Trainee Overload Handler ════════════════════════════
+function _updateTraineeAlertBadge(){
+  const badge = document.getElementById('traineeAlertBadge');
+  if(!badge) return;
+  const count = _traineeOverloadAlerts ? _traineeOverloadAlerts.length : 0;
+  if(count > 0){
+    badge.textContent = '⚠️ ' + count + ' התרע' + (count===1?'ה':'ות') + ' עומס';
+    badge.style.display = 'inline-block';
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
+function _fireDemoTraineeAlerts(){
+  // Only for admin in demo mode, and only if not already fired today
+  if(typeof currentRole==='undefined'||currentRole!=='admin') return;
+  if(!_isDemoMode()) return;
+  const _today=new Date().toISOString().slice(0,10);
+  // Avoid duplicates: clear today's demo alerts before re-firing
+  _traineeOverloadAlerts=_traineeOverloadAlerts.filter(a=>a.date!==_today||!a._demo);
+  const _demoAlerts=[
+    {name:'מוחמד חמדאן', actual:3, max:1, level:'חלש מאוד'},
+    {name:'ריאד עמאר',    actual:2, max:1, level:'חלש מאוד'},
+    {name:"ח'אלד עמר",  actual:4, max:3, level:'חלש'},
+  ];
+  // Deduplicate by name
+  const _seen=new Set(_traineeOverloadAlerts.map(a=>a.name+a.date));
+  _demoAlerts.forEach(({name,actual,max,level})=>{
+    const key=name+_today;
+    if(!_seen.has(key)){
+      _traineeOverloadAlerts.push({name,actual,max,level,date:_today,id:Date.now()+Math.random(),_demo:true});
+      _seen.add(key);
+    }
+  });
+  try{localStorage.setItem('trainee_overload_alerts',JSON.stringify(_traineeOverloadAlerts));}catch(e){}
+  _updateTraineeAlertBadge(); // badge only — full banner renders when section is opened
+}
+
 let _traineeOverloadAlerts = [];
 window._v100TraineeOverload = function(name, actual, max, level, date) {
   if (typeof currentRole === 'undefined') return;
   if (currentRole === 'instructor') { showToast('⚠️ עומס חניך: ' + name + ' — ' + actual + ' שיעורים ביום ' + date + ' (מותר: ' + max + ')','warning'); return; }
   _traineeOverloadAlerts.push({name, actual, max, level, date, id: Date.now()});
+  try{localStorage.setItem('trainee_overload_alerts',JSON.stringify(_traineeOverloadAlerts));}catch(e){}
   _renderTraineeOverloadBanner();
 };
 function _renderTraineeOverloadBanner() {
+  _updateTraineeAlertBadge();
   let banner = document.getElementById('traineeOverloadBanner');
   if (!banner) {
     banner = document.createElement('div');
     banner.id = 'traineeOverloadBanner';
     banner.style.cssText = 'margin:0 0 12px 0;padding:12px 16px;background:#fff3cd;border:1.5px solid #f0ad4e;border-radius:10px;direction:rtl;display:none;';
-    const ts = document.getElementById('traineeSection');
-    if (ts && ts.parentElement) ts.parentElement.insertBefore(banner, ts);
+    // Insert inside the details content, before the TraineeSystem container
+    const _tsCont = document.getElementById('traineeSystemContainer');
+    if (_tsCont && _tsCont.parentElement) {
+      _tsCont.parentElement.insertBefore(banner, _tsCont);
+    } else {
+      // fallback: before traineeSection
+      const ts = document.getElementById('traineeSection');
+      if (ts && ts.parentElement) ts.parentElement.insertBefore(banner, ts);
+    }
   }
   if (!_traineeOverloadAlerts.length) { banner.style.display='none'; return; }
   banner.style.display = 'block';
   banner.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;"><strong style="color:#856404;">⚠️ התרעות עומס חניכים (' + _traineeOverloadAlerts.length + ')</strong><button onclick="_clearTraineeOverloadAlerts()" style="background:none;border:none;cursor:pointer;font-size:12px;color:#888;">× נקה הכל</button></div>' +
     _traineeOverloadAlerts.map(function(a){return '<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-top:1px solid #f0e68c;"><span>🎓</span><span><strong>' + a.name + '</strong> — ' + a.date + ': <span style="color:#c0392b;">' + a.actual + ' שיעורים</span> | מגבלה לרמת <em>' + a.level + '</em>: עד ' + a.max + '</span><button onclick="_dismissTraineeAlert(' + a.id + ')" style="margin-right:auto;background:none;border:none;cursor:pointer;color:#888;">✕</button></div>';}).join('');
 }
-function _dismissTraineeAlert(id){_traineeOverloadAlerts=_traineeOverloadAlerts.filter(function(a){return a.id!==id;});_renderTraineeOverloadBanner();}
-function _clearTraineeOverloadAlerts(){_traineeOverloadAlerts=[];_renderTraineeOverloadBanner();}
+function _dismissTraineeAlert(id){_traineeOverloadAlerts=_traineeOverloadAlerts.filter(function(a){return a.id!==id;});try{localStorage.setItem('trainee_overload_alerts',JSON.stringify(_traineeOverloadAlerts));}catch(e){} _renderTraineeOverloadBanner();}
+function _clearTraineeOverloadAlerts(){_traineeOverloadAlerts=[];try{localStorage.removeItem('trainee_overload_alerts');}catch(e){} _renderTraineeOverloadBanner();}
 
 window._traineeInitialized = false;
 
+function _updateTraineeBtnVisibility() {
+  const _isInstr = typeof currentRole !== 'undefined' && currentRole === 'instructor';
+  const _isAdmin = typeof currentRole !== 'undefined' && currentRole === 'admin';
+  const cont = document.getElementById('traineeSystemContainer');
+  if (!cont) return;
+  // Reports button — hide for instructor
+  const rb = cont.querySelector('[data-action="show-reports"]');
+  if (rb) rb.style.display = _isInstr ? 'none' : '';
+  // Settings button — show only for admin
+  const sbtn = cont.querySelector('#ts-settings-btn');
+  if (sbtn) sbtn.style.display = _isAdmin ? '' : 'none';
+  // "הוסף חניך" button — hide for instructor
+  const addBtn = cont.querySelector('[data-panel="add-panel"]');
+  if (addBtn) addBtn.style.display = _isInstr ? 'none' : '';
+}
+
 function _initTraineeIfNeeded() {
-  const rBtn = document.querySelector('#traineeSystemContainer [data-action="show-reports"]');
-  if (rBtn) rBtn.style.display = (typeof currentRole !== 'undefined' && currentRole === 'instructor') ? 'none' : '';
+  // Update button visibility + banner on every call (even if already initialized)
+  _updateTraineeBtnVisibility();
+  setTimeout(_renderTraineeOverloadBanner, 100);
   if (window._traineeInitialized) return;
   window._traineeInitialized = true;
   if (_isDemoMode()) {
@@ -15059,12 +15329,7 @@ function _initTraineeIfNeeded() {
     if (typeof TraineeSystem !== 'undefined') {
       TraineeSystem.init('traineeSystemContainer');
       if(_isDemoMode()&&!localStorage.getItem('demo_trainee_data')){setTimeout(()=>{try{_generateTraineeDemoData();}catch(e){}},50);}
-      setTimeout(() => {
-        const rb = document.querySelector('#traineeSystemContainer [data-action="show-reports"]');
-        if (rb) rb.style.display = (typeof currentRole !== 'undefined' && currentRole === 'instructor') ? 'none' : '';
-        const sbtn = document.querySelector('#traineeSystemContainer #ts-settings-btn');
-        if (sbtn) sbtn.style.display = (typeof currentRole !== 'undefined' && currentRole === 'admin') ? '' : 'none';
-      }, 100);
+      setTimeout(_updateTraineeBtnVisibility, 150);
     } else {
       window._traineeInitialized = false;
     }
