@@ -50,11 +50,11 @@ body{font-family:'Segoe UI',Tahoma,sans-serif;background:var(--bg);margin:0;padd
 
 .gap-inline{display:flex;align-items:center;gap:6px;font-size:13px;color:#444;white-space:nowrap;}
 
-.gap-inline input{width:68px;padding:7px 9px;margin:0;border:1px solid #ccc;border-radius:7px;font-size:13px;text-align:center;}
+.gap-inline input{width:68px;padding:7px 9px;margin:0;border:1px solid #ccc;border-radius:7px;font-size:16px;text-align:center;}
 
 .date-nav{display:flex;align-items:center;gap:5px;}
 
-.date-nav input{padding:7px 9px;border:1px solid #ccc;border-radius:7px;font-size:13px;margin:0;width:130px;}
+.date-nav input{padding:7px 9px;border:1px solid #ccc;border-radius:7px;font-size:16px;margin:0;width:130px;}
 
 .date-nav button{background:none;border:1px solid #ccc;border-radius:6px;padding:5px 10px;cursor:pointer;font-size:15px;width:auto;margin:0;}
 
@@ -78,7 +78,7 @@ body{font-family:'Segoe UI',Tahoma,sans-serif;background:var(--bg);margin:0;padd
 
 .planner-row td:first-child{border-right:4px solid transparent;}
 
-.p-input{width:100%;padding:7px 9px;border:1px solid #ddd;border-radius:7px;font-size:13px;margin:0;background:white;transition:.15s;}
+.p-input{width:100%;padding:7px 9px;border:1px solid #ddd;border-radius:7px;font-size:16px;margin:0;background:white;transition:.15s;}
 
 .p-input:focus{outline:none;border-color:var(--secondary);box-shadow:0 0 0 3px rgba(41,128,185,0.1);}
 
@@ -682,7 +682,17 @@ body.dark-mode .modal-box,body.dark-mode .login-box{background:#242938;border-co
 
 body.dark-mode .controls{background:#1e2335;border-color:#3a4060;}
 
-body.dark-mode input,body.dark-mode select,body.dark-mode button:not(.btn-save):not(.btn-generate-all):not(.login-btn):not(.btn-commit-all):not(.btn-save-settings){background:#2d3348;border-color:#3a4060;color:#e0e6f0;}
+body.dark-mode input,body.dark-mode select,body.dark-mode button:not(.btn-save):not(.btn-generate-all):not(.login-btn):not(.btn-commit-all):not(.btn-save-settings){background:#2d3348 !important;border-color:#3a4060 !important;color:#e0e6f0 !important;}
+  /* Dark mode: explicit modal + schedule table input coverage */
+  body.dark-mode textarea{background:#2d3348 !important;border-color:#3a4060 !important;color:#e0e6f0 !important;}
+  body.dark-mode [style*="background:white"] input,
+  body.dark-mode [style*="background:white"] select,
+  body.dark-mode [style*="background: white"] input,
+  body.dark-mode [style*="background: white"] select
+  {background:#2d3348 !important;color:#e0e6f0 !important;border-color:#3a4060 !important;}
+  body.dark-mode input::placeholder,body.dark-mode textarea::placeholder{color:#7a8ba0 !important;}
+  body.dark-mode input[type="date"],body.dark-mode input[type="time"],body.dark-mode input[type="month"]
+  {background:#2d3348 !important;color:#e0e6f0 !important;border-color:#3a4060 !important;color-scheme:dark;}
 
 body.dark-mode .planner-table th{background:#2d3348;color:#8ab4d8;}
 
@@ -905,6 +915,10 @@ body.dark-mode .sched-assign-table tbody tr:hover td{background:#2a2f45;}
 .sched-assign-name{font-weight:bold;color:var(--primary);padding-right:10px!important;white-space:nowrap;}
 body.dark-mode .sched-assign-name{color:#8ab4d8;}
 .sched-assign-table select,.sched-assign-table input[type=text]{width:100%;padding:6px 8px;border:1.5px solid #ddd;border-radius:7px;font-size:13px;margin:0;direction:rtl;background:white;cursor:pointer;}
+.sched-extra-task-row td{background:#fafbff;border-bottom:none;padding:2px 4px 4px 4px;}
+.sched-add-task-btn{background:none;border:1.5px dashed #3498db;color:#3498db;border-radius:6px;padding:2px 8px;cursor:pointer;font-size:11px;width:auto !important;}
+.sched-add-task-btn:hover{background:#eaf4fd;}
+.sched-del-task-btn{background:none;border:none;color:#e74c3c;cursor:pointer;font-size:13px;padding:0 4px;width:auto !important;}
 body.dark-mode .sched-assign-table select,body.dark-mode .sched-assign-table input[type=text]{background:#2d3348;border-color:#3a4060;color:#e0e6f0;}
 .sched-assign-table select:focus,.sched-assign-table input[type=text]:focus{outline:none;border-color:var(--secondary);box-shadow:0 0 0 2px rgba(41,128,185,0.12);}
 .sched-custom-row td:first-child input{font-weight:bold;}
@@ -1098,6 +1112,29 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 
 #toast{position:fixed;bottom:20px;right:20px;background:var(--success);color:white;padding:14px 22px;border-radius:10px;box-shadow:0 6px 20px rgba(0,0,0,.15);z-index:99999;font-size:14px;font-weight:500;display:none;direction:rtl;max-width:320px;text-align:right;}
 
+
+/* ── Unified Daily Report Modal (global) ── */
+.unified-report-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9600;display:none;align-items:flex-start;justify-content:center;overflow-y:auto;padding:20px 0;}
+.unified-report-overlay.open{display:flex !important;}
+.unified-report-box{background:white;border-radius:18px;width:min(640px,96vw);margin:auto;direction:rtl;overflow:hidden;flex-shrink:0;}
+.unified-report-head{display:flex;justify-content:space-between;align-items:center;padding:18px 22px;background:linear-gradient(135deg,#1a2a3a,#2c3e50);color:white;}
+.unified-report-head h3{margin:0;font-size:17px;}
+.unified-report-close{background:none;border:none;color:rgba(255,255,255,.7);font-size:24px;cursor:pointer;width:auto !important;padding:0 4px;line-height:1;}
+.unified-report-section{padding:20px 22px;border-bottom:2px solid #f0f4f8;}
+.unified-report-section h4{margin:0 0 14px;font-size:14px;color:#1a2a3a;}
+.ur-field{margin-bottom:12px;}
+.ur-field label{display:block;font-size:12px;font-weight:600;color:#555;margin-bottom:5px;}
+.ur-field input,.ur-field textarea,.ur-field select{width:100%;padding:9px 12px;border:1.5px solid #ddd;border-radius:8px;font-size:14px;direction:rtl;font-family:inherit;box-sizing:border-box;}
+.ur-field input:focus,.ur-field textarea:focus{outline:none;border-color:#3498db;}
+.ur-row-2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.ur-trainee-block{background:#f8faff;border:1.5px solid #dde8f5;border-radius:12px;padding:14px;margin-bottom:10px;}
+.ur-trainee-block-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;}
+.ur-remove-feedback{background:none;border:none;color:#e74c3c;font-size:18px;cursor:pointer;width:auto !important;padding:0 4px;}
+.ur-add-feedback-btn{width:100%;padding:10px;border:2px dashed #3498db;background:#f0f8ff;color:#2980b9;border-radius:9px;cursor:pointer;font-size:13px;font-weight:bold;margin-top:4px;}
+.unified-report-footer{padding:14px 22px;display:flex;gap:10px;justify-content:flex-end;}
+.unified-report-footer button{padding:10px 22px;border-radius:9px;font-size:13px;font-weight:bold;cursor:pointer;border:none;width:auto !important;}
+.ur-btn-save{background:#27ae60;color:white;}
+.ur-btn-cancel{background:#f0f4f8;color:#555;border:1px solid #ddd !important;}
 </style>
 
 <!-- Firebase -->
@@ -1217,7 +1254,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 
     <div class="delay-preview" id="delayPreview"></div>
 
-    <div style="margin:8px 0;"><label style="font-size:12px;font-weight:bold;display:block;margin-bottom:4px;">📝 סיבת העיכוב (אופציונלי):</label><textarea id="delayNote" rows="2" placeholder="לדוגמה: תקלה בתחנה, עומס תנועה..." style="width:100%;padding:8px;border:1.5px solid #ddd;border-radius:8px;font-size:13px;resize:vertical;font-family:inherit;box-sizing:border-box;"></textarea></div>
+    <div style="margin:8px 0;"><label style="font-size:12px;font-weight:bold;display:block;margin-bottom:4px;">📝 סיבת העיכוב (אופציונלי):</label><textarea id="delayNote" rows="2" placeholder="לדוגמה: תקלה בתחנה, עומס תנועה..." style="width:100%;padding:8px;border:1.5px solid #ddd;border-radius:8px;font-size:16px;resize:vertical;font-family:inherit;box-sizing:border-box;"></textarea></div>
 
     <div class="modal-row">
 
@@ -1251,7 +1288,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 
       <label style="font-size:12px;font-weight:bold;color:#444;display:block;margin-bottom:4px;">⏰ שעת יציאה:</label>
 
-      <input type="time" id="tripEditStartTime" style="width:100%;padding:10px 12px;border:1.5px solid #ddd;border-radius:8px;font-size:14px;direction:ltr;box-sizing:border-box;">
+      <input type="time" id="tripEditStartTime" style="width:100%;padding:10px 12px;border:1.5px solid #ddd;border-radius:8px;font-size:16px;direction:ltr;box-sizing:border-box;">
 
     </div>
 
@@ -1361,7 +1398,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 
       <label style="font-size:12px;font-weight:bold;color:#555;display:block;margin-bottom:5px;">בחר חודש:</label>
 
-      <input type="month" id="resetMonthInput" style="width:100%;padding:9px 12px;border:1.5px solid #ddd;border-radius:8px;font-size:14px;direction:ltr;">
+      <input type="month" id="resetMonthInput" style="width:100%;padding:9px 12px;border:1.5px solid #ddd;border-radius:8px;font-size:16px;direction:ltr;">
 
     </div>
 
@@ -1375,7 +1412,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 
           <label style="font-size:12px;font-weight:bold;color:#555;display:block;margin-bottom:5px;">מתאריך:</label>
 
-          <input type="date" id="resetFromDate" style="width:100%;padding:9px 12px;border:1.5px solid #ddd;border-radius:8px;font-size:14px;direction:ltr;box-sizing:border-box;">
+          <input type="date" id="resetFromDate" style="width:100%;padding:9px 12px;border:1.5px solid #ddd;border-radius:8px;font-size:16px;direction:ltr;box-sizing:border-box;">
 
         </div>
 
@@ -1383,7 +1420,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 
           <label style="font-size:12px;font-weight:bold;color:#555;display:block;margin-bottom:5px;">עד תאריך:</label>
 
-          <input type="date" id="resetToDate" style="width:100%;padding:9px 12px;border:1.5px solid #ddd;border-radius:8px;font-size:14px;direction:ltr;box-sizing:border-box;">
+          <input type="date" id="resetToDate" style="width:100%;padding:9px 12px;border:1.5px solid #ddd;border-radius:8px;font-size:16px;direction:ltr;box-sizing:border-box;">
 
         </div>
 
@@ -1435,7 +1472,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 
     <label style="font-size:12px;font-weight:bold;display:block;margin-bottom:4px;">תאריך יעד:</label>
 
-    <input type="date" id="copyToDate" style="width:100%;padding:10px;border:1.5px solid #ddd;border-radius:8px;font-size:14px;margin:0 0 12px;">
+    <input type="date" id="copyToDate" style="width:100%;padding:10px;border:1.5px solid #ddd;border-radius:8px;font-size:16px;margin:0 0 12px;">
 
     <div style="font-size:12px;color:var(--warning);background:#fef9e7;padding:8px 10px;border-radius:7px;margin-bottom:14px;">
 
@@ -1677,7 +1714,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 
     <input type="text" id="saveRouteNameInput" placeholder="שם המסלול..." onkeydown="if(event.key==='Enter')confirmSaveRoute()"
 
-      style="width:100%;padding:11px 12px;border:1.5px solid #ddd;border-radius:9px;font-size:14px;direction:rtl;margin-bottom:14px;box-sizing:border-box;">
+      style="width:100%;padding:11px 12px;border:1.5px solid #ddd;border-radius:9px;font-size:16px;direction:rtl;margin-bottom:14px;box-sizing:border-box;">
 
     <div style="display:flex;gap:8px;">
 
@@ -1854,7 +1891,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 
         <div style="display:flex;gap:8px;">
 
-          <input type="text" id="newInstrName" placeholder="שם מדריך חדש" onkeydown="if(event.key==='Enter')addInstructorFromSettings()" style="flex:4;min-width:220px;padding:9px 12px;border:1.5px solid #ddd;border-radius:8px;font-size:14px;margin:0;direction:rtl;">
+          <input type="text" id="newInstrName" placeholder="שם מדריך חדש" onkeydown="if(event.key==='Enter')addInstructorFromSettings()" style="flex:4;min-width:220px;padding:9px 12px;border:1.5px solid #ddd;border-radius:8px;font-size:16px;margin:0;direction:rtl;">
 
           <button onclick="addInstructorFromSettings()" style="padding:9px 14px;background:var(--secondary);color:white;border:none;border-radius:8px;font-size:13px;font-weight:bold;cursor:pointer;margin:0;white-space:nowrap;">+ הוסף</button>
 
@@ -1960,7 +1997,11 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
     <div id="todayTasksCard" style="background:white;border-radius:12px;border:1px solid #dce3ec;padding:14px 16px;margin-bottom:12px;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
         <h3 style="margin:0;font-size:15px;color:var(--primary);">📅 היום</h3>
-        <span id="todayTasksDate" style="font-size:12px;color:#888;"></span>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span id="todayTasksDate" style="font-size:12px;color:#888;"></span>
+          <button onclick="openInstrAddTask()" style="width:auto !important;padding:4px 10px;background:#f0f8ff;border:1.5px solid #3498db;color:#2980b9;border-radius:7px;cursor:pointer;font-size:12px;font-weight:600;">+ משימה</button>
+          <button onclick="openUnifiedReport()" style="width:auto !important;padding:4px 10px;background:#27ae60;color:white;border:none;border-radius:7px;cursor:pointer;font-size:12px;font-weight:600;">📝 סיכום יום</button>
+        </div>
       </div>
       <div id="todayTasksList" style="display:flex;flex-direction:column;gap:8px;">
         <div style="color:#aaa;font-size:13px;text-align:center;padding:10px;">אין משימות מתוכננות להיום</div>
@@ -1968,14 +2009,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
     </div>
 
     <!-- ══ INLINE TASK REPORT ══════════════════════════ -->
-    <div id="inlineTaskReport" style="display:none;background:#fffbf0;border-radius:12px;border:1.5px solid #f0c050;padding:16px;margin-bottom:12px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
-        <h3 id="inlineReportTitle" style="margin:0;font-size:15px;color:var(--primary);">📝 סיכום משימה</h3>
-        <button onclick="closeInlineTaskReport()" style="width:auto;background:none;border:1.5px solid #ccc;border-radius:50%;width:28px;height:28px;cursor:pointer;font-size:16px;color:#666;padding:0;">×</button>
-      </div>
-      <div id="inlineReportFields" style="display:flex;flex-direction:column;gap:12px;margin-bottom:14px;"></div>
-      <button onclick="submitTaskReport()" style="width:100%;padding:11px;background:var(--primary);color:white;border:none;border-radius:9px;cursor:pointer;font-size:14px;font-weight:bold;">✅ שמור דיווח</button>
-    </div>
+<!-- old inlineTaskReport removed -->
 
     <div id="nextTripCard"></div>
 
@@ -2085,7 +2119,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
         <span id="daySummaryDateLbl" style="font-size:13px;font-weight:bold;color:var(--primary);min-width:130px;text-align:center;"></span>
         <button onclick="changeDaySummaryDate(1)" style="width:auto;background:#f0f4f8;border:1px solid #ccc;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:14px;">›</button>
         <input type="date" id="daySummaryDatePicker" onchange="setDaySummaryDate(this.value)"
-          style="width:auto;padding:4px 8px;border:1px solid #ccc;border-radius:6px;font-size:12px;cursor:pointer;">
+          style="width:auto;padding:4px 8px;border:1px solid #ccc;border-radius:6px;font-size:16px;cursor:pointer;">
       </div>
 
 
@@ -2303,9 +2337,9 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
     <div id="dashTabCompare" style="display:none;">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap;">
         <span style="font-size:13px;color:#666;">השוואה בין</span>
-        <select id="compareMonthA" style="width:auto;padding:5px 8px;border:1.5px solid #ddd;border-radius:7px;font-size:12px;"></select>
+        <select id="compareMonthA" style="width:auto;padding:5px 8px;border:1.5px solid #ddd;border-radius:7px;font-size:16px;"></select>
         <span style="font-size:13px;color:#666;">לבין</span>
-        <select id="compareMonthB" style="width:auto;padding:5px 8px;border:1.5px solid #ddd;border-radius:7px;font-size:12px;"></select>
+        <select id="compareMonthB" style="width:auto;padding:5px 8px;border:1.5px solid #ddd;border-radius:7px;font-size:16px;"></select>
         <button onclick="renderComparison()" style="width:auto;padding:6px 14px;background:#8e44ad;color:white;border:none;border-radius:7px;cursor:pointer;font-size:11px;font-weight:bold;">📈 השווה</button>
       </div>
       <div id="compareBody">
@@ -2318,7 +2352,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
         <span style="font-size:13px;color:#666;">אחוז כיסוי שיבוץ לכל מדריך לפי שבוע</span>
         <div style="display:flex;gap:6px;">
-          <select id="coverageWeekSel" style="width:auto;padding:5px 8px;border:1.5px solid #ddd;border-radius:7px;font-size:12px;"></select>
+          <select id="coverageWeekSel" style="width:auto;padding:5px 8px;border:1.5px solid #ddd;border-radius:7px;font-size:16px;"></select>
           <button onclick="renderCoverageTab()" style="width:auto;padding:6px 12px;background:#27ae60;color:white;border:none;border-radius:7px;cursor:pointer;font-size:11px;font-weight:bold;">🔄 חשב</button>
         </div>
       </div>
@@ -2377,7 +2411,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
       <div style="margin-bottom:12px;padding:10px;background:#f0f8ff;border-radius:8px;border:1px solid #c8e0f5;">
         <label style="font-size:12px;font-weight:bold;color:#2980b9;display:block;margin-bottom:6px;">🚇 מסלולים מוגדרים מראש</label>
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-          <select id="predefinedRouteSelect" onchange="if(this.value)applyPredefinedRoute(this.value)" style="flex:1;padding:7px;border:1.5px solid #c8e0f5;border-radius:7px;font-size:13px;">
+          <select id="predefinedRouteSelect" onchange="if(this.value)applyPredefinedRoute(this.value)" style="flex:1;padding:7px;border:1.5px solid #c8e0f5;border-radius:7px;font-size:16px;">
             <option value="">— בחר מסלול מהרשימה —</option>
             <optgroup label="בוקר/צהריים (D3 ▶)">
               <option value="r1">סיבוב הדסה → D3 (4.9 שיעורים)</option>
@@ -2465,7 +2499,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 
           <h3>בחירת מסלול</h3>
 
-          <select id="tID" style="margin:0;width:100%;padding:10px;border:1.5px solid #ddd;border-radius:8px;font-size:14px;direction:rtl;">
+          <select id="tID" style="margin:0;width:100%;padding:10px;border:1.5px solid #ddd;border-radius:8px;font-size:16px;direction:rtl;">
 
             <option value="">— בחר מדריך —</option>
 
@@ -2514,7 +2548,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
           <button onclick="resetS()" class="btn-cancel-sm">נקה בחירה</button>
           <div id="routeChangeBox" style="display:none;margin-top:10px;padding:12px 14px;background:#fef9e7;border:1.5px solid #f0ad4e;border-radius:9px;">
             <div style="font-size:12px;font-weight:bold;color:#856404;margin-bottom:8px;">⚠️ זוהה שינוי מסלול — נא הזן סיבה:</div>
-            <input id="routeChangeReason" type="text" placeholder="סיבה לשינוי מסלול..." style="width:100%;padding:8px 10px;border:1.5px solid #f0ad4e;border-radius:7px;font-size:13px;direction:rtl;margin-bottom:8px;">
+            <input id="routeChangeReason" type="text" placeholder="סיבה לשינוי מסלול..." style="width:100%;padding:8px 10px;border:1.5px solid #f0ad4e;border-radius:7px;font-size:16px;direction:rtl;margin-bottom:8px;">
             <div style="display:flex;gap:8px;">
               <button onclick="_confirmRouteChange()" style="width:auto !important;flex:1;padding:8px;background:#e67e22;color:white;border:none;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;">✅ שמור עם סיבה</button>
               <button onclick="_cancelRouteChange()" style="width:auto !important;padding:8px 14px;background:#f5f5f5;border:1px solid #ccc;border-radius:7px;cursor:pointer;font-size:12px;">ביטול</button>
@@ -2778,6 +2812,9 @@ window.TraineeSystem = {
     db: null,
     traineesRef: null,
     instructorsRef: null,
+    coursesRef: null,
+    courses: [],
+    currentCourseId: null,
     settingsRef: null,
     settings: null,
 
@@ -2799,7 +2836,7 @@ window.TraineeSystem = {
                 <div style="font-size:1em;">מתחבר למסד הנתונים...</div>
             </div>`;
         this.loadSettings().then(() => { this.applySkillLabels(); this.applySigVisibility(); });
-        this.loadData();
+        this.loadCourses().then(() => { this.loadData(); });
     },
 
     $(id) {
@@ -2940,6 +2977,40 @@ window.TraineeSystem = {
     .ts-settings-head h3 { margin:0;font-size:17px;color:#1a2a3a; }
     .ts-settings-close { background:none;border:none;font-size:22px;cursor:pointer;color:#888;width:auto !important;padding:4px 8px; }
     .ts-settings-close:hover { color:#e74c3c; }
+    /* ── Unified Daily Report Modal ── */
+.unified-report-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9600;display:none;align-items:flex-start;justify-content:center;overflow-y:auto;padding:20px 0;}
+.unified-report-overlay.open{display:flex;}
+.unified-report-box{background:white;border-radius:18px;width:min(640px,96vw);margin:auto;direction:rtl;overflow:hidden;flex-shrink:0;}
+.unified-report-head{display:flex;justify-content:space-between;align-items:center;padding:18px 22px;background:linear-gradient(135deg,#1a2a3a,#2c3e50);color:white;}
+.unified-report-head h3{margin:0;font-size:17px;}
+.unified-report-close{background:none;border:none;color:rgba(255,255,255,.7);font-size:24px;cursor:pointer;width:auto !important;padding:0 4px;line-height:1;}
+.unified-report-close:hover{color:white;}
+.unified-report-section{padding:20px 22px;border-bottom:2px solid #f0f4f8;}
+.unified-report-section h4{margin:0 0 14px;font-size:14px;color:#1a2a3a;display:flex;align-items:center;gap:8px;}
+.ur-field{margin-bottom:12px;}
+.ur-field label{display:block;font-size:12px;font-weight:600;color:#555;margin-bottom:5px;}
+.ur-field input,.ur-field textarea,.ur-field select{width:100%;padding:9px 12px;border:1.5px solid #ddd;border-radius:8px;font-size:14px;direction:rtl;font-family:inherit;box-sizing:border-box;}
+.ur-field input:focus,.ur-field textarea:focus{outline:none;border-color:#3498db;}
+.ur-row-2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.ur-num-field{display:flex;align-items:center;gap:8px;}
+.ur-num-field input[type=number]{width:80px;text-align:center;flex-shrink:0;}
+.ur-num-field label{font-size:13px;color:#555;flex:1;}
+.ur-trainee-block{background:#f8faff;border:1.5px solid #dde8f5;border-radius:12px;padding:14px;margin-bottom:10px;position:relative;}
+.ur-trainee-block-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;}
+.ur-remove-feedback{background:none;border:none;color:#e74c3c;font-size:18px;cursor:pointer;width:auto !important;padding:0 4px;}
+.ur-add-feedback-btn{width:100%;padding:10px;border:2px dashed #3498db;background:#f0f8ff;color:#2980b9;border-radius:9px;cursor:pointer;font-size:13px;font-weight:bold;margin-top:4px;}
+.ur-add-feedback-btn:hover{background:#e0f2ff;}
+.unified-report-footer{padding:14px 22px;display:flex;gap:10px;justify-content:flex-end;}
+.unified-report-footer button{padding:10px 22px;border-radius:9px;font-size:13px;font-weight:bold;cursor:pointer;border:none;width:auto !important;}
+.ur-btn-save{background:#27ae60;color:white;}
+.ur-btn-cancel{background:#f0f4f8;color:#555;border:1px solid #ddd !important;}
+
+/* Course selector */
+    .ts-course-selector { display:flex;align-items:center;gap:8px;padding:6px 10px;background:#f0f4f8;border:1.5px solid #dde4f0;border-radius:10px;direction:rtl; }
+    .ts-course-selector select { background:transparent;border:none;font-size:13px;font-weight:600;color:#1a2a3a;cursor:pointer;outline:none;direction:rtl;max-width:200px; }
+    .ts-course-badge { font-size:10px;padding:2px 7px;border-radius:10px;font-weight:bold; }
+    .ts-course-badge.active  { background:#d4edda;color:#155724; }
+    .ts-course-badge.archived{ background:#f0f0f0;color:#888; }
     .ts-stabs { display:flex;gap:6px;padding:14px 22px 0;border-bottom:2px solid #eef2f8;flex-wrap:wrap; }
     .ts-stab { padding:8px 14px;border:none;background:none;cursor:pointer;font-size:13px;font-weight:600;color:#888;border-bottom:3px solid transparent;margin-bottom:-2px;border-radius:0;width:auto !important; }
     .ts-stab.active { color:#3498db;border-bottom-color:#3498db; }
@@ -3029,7 +3100,15 @@ window.TraineeSystem = {
 
     <div id="main-view" class="view">
         <header>
-            <h1 class="header-title">ניהול הכשרת נהגים</h1>
+            <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+              <h1 class="header-title" style="margin:0;">ניהול הכשרת נהגים</h1>
+              <div class="ts-course-selector" id="ts-course-selector-wrap">
+                <span style="font-size:11px;color:#888;white-space:nowrap;">📚 קורס:</span>
+                <select id="ts-course-select" onchange="TraineeSystem.switchCourse(this.value)" style="width:auto !important;">
+                  <option value="">טוען...</option>
+                </select>
+              </div>
+            </div>
             <div style="display:flex; gap:10px; flex-wrap:wrap;">
                 <button id="ts-settings-btn" class="btn btn-ghost" data-action="open-ts-settings" style="display:none;width:auto !important;padding:8px 14px;">⚙️ הגדרות</button>
                 <button id="ts-add-trainee-btn" class="btn btn-blue" data-action="toggle-panel" data-panel="add-panel">+ חניך חדש</button>
@@ -3146,15 +3225,28 @@ window.TraineeSystem = {
             <div id="log-body" class="log-body">
                 <table>
                     <thead>
-                        <tr><th>תאריך</th><th>משימה</th><th>שיעורים</th><th>מדריך</th><th>ר/ק/ס/נ/מ</th><th>הערות</th><th></th></tr>
+                        <tr>
+                          <th>תאריך</th><th>משימה</th><th>שיעורים</th><th>מדריך</th>
+                          <th>ר/ק/ס/נ/מ</th><th>הערות</th>
+                          <th><select id="history-filter" onchange="TraineeSystem.filterHistory(this.value)" style="font-size:10px;padding:2px 4px;border:1px solid #ddd;border-radius:4px;direction:rtl;">
+                            <option value="all">כל הסוגים</option>
+                            <option value="קורס מעשי">קורס מעשי</option>
+                            <option value="חניכה">חניכה</option>
+                            <option value="כשירות מעשית/ שעות נוספות">כשירות</option>
+                          </select></th>
+                        </tr>
                     </thead>
                     <tbody id="history-tbody"></tbody>
                 </table>
             </div>
         </div>
 
+        <details class="form-section-details" style="margin-top:12px;">
+            <summary style="cursor:pointer;padding:14px 16px;background:rgba(255,255,255,0.08);border-radius:12px;font-size:15px;font-weight:bold;color:#f1c40f;list-style:none;display:flex;align-items:center;justify-content:space-between;">
+              <span>✍️ דיווח משוב יומי</span>
+              <span style="font-size:11px;color:rgba(255,255,255,0.5);font-weight:400;">לחץ לפתיחה ▼</span>
+            </summary>
         <div class="form-section">
-            <h3>✍️ דיווח משוב יומי חדש</h3>
             <div class="form-grid-3">
                 <div class="fg"><label>תאריך</label><input type="date" id="in-date"></div>
                 <div class="fg">
@@ -3197,6 +3289,7 @@ window.TraineeSystem = {
 
             <button class="btn btn-success" data-action="save-lesson">💾 שמור משוב במערכת</button>
         </div>
+        </details>
     </div>
 </div>
 
@@ -3214,6 +3307,8 @@ window.TraineeSystem = {
       <button class="ts-stab" data-ts-tab="load">⚖️ הגבלות עומס</button>
       <button class="ts-stab" data-ts-tab="sig">✍️ חתימה</button>
       <button class="ts-stab" data-ts-tab="instructors">👨‍🏫 מדריכים</button>
+      <button class="ts-stab" data-ts-tab="courses">📚 קורסים</button>
+      <button class="ts-stab" data-ts-tab="reportfields">📋 שדות דיווח</button>
     </div>
     <!-- Tab: Skills -->
     <div class="ts-spanel active" id="ts-panel-skills">
@@ -3262,11 +3357,53 @@ window.TraineeSystem = {
       </div>
       <p style="font-size:12px;color:#888;margin:12px 0 0;">כאשר מכובה — שדה החתימה לא יוצג בטופס המשוב.</p>
     </div>
+    <!-- Tab: Courses -->
+    <div class="ts-spanel" id="ts-panel-courses">
+      <p style="font-size:12px;color:#888;margin:0 0 14px;">נהל קורסים ואת סדר העדיפות שלהם. הקורס המוגדר כ"ראשי" יוצג כברירת מחדל ויהיה זמין לשיוך חניכים לנסיעות.</p>
+      <div id="ts-courses-list"></div>
+      <div style="margin-top:14px;padding:14px;background:#f0f8ff;border:1.5px dashed #3498db;border-radius:10px;">
+        <div style="font-size:13px;font-weight:bold;color:#2980b9;margin-bottom:10px;">➕ קורס חדש</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;">
+          <div style="flex:1;min-width:140px;">
+            <label style="font-size:11px;color:#888;display:block;margin-bottom:4px;">שם הקורס</label>
+            <input id="ts-new-course-name" type="text" placeholder="קורס נהגים ב׳..." style="width:100%;padding:8px 10px;border:1.5px solid #ddd;border-radius:7px;font-size:13px;direction:rtl;box-sizing:border-box;">
+          </div>
+          <div style="min-width:120px;">
+            <label style="font-size:11px;color:#888;display:block;margin-bottom:4px;">תאריך התחלה</label>
+            <input id="ts-new-course-date" type="date" style="width:100%;padding:8px 10px;border:1.5px solid #ddd;border-radius:7px;font-size:13px;box-sizing:border-box;">
+          </div>
+          <button data-action="ts-add-course" style="padding:9px 16px;background:#3498db;color:white;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:bold;width:auto !important;white-space:nowrap;">+ צור קורס</button>
+        </div>
+      </div>
+    </div>
+    <!-- Tab: Report Custom Fields -->
+    <div class="ts-spanel" id="ts-panel-reportfields">
+      <p style="font-size:12px;color:#888;margin:0 0 14px;">הוסף שדות מותאמים לטופס סיכום היום. מדריכים יראו שדות אלה בעת מילוי הסיכום היומי.</p>
+      <div id="ur-settings-list"></div>
+      <div style="margin-top:12px;padding:12px 14px;background:#f0f8ff;border:1.5px dashed #3498db;border-radius:10px;">
+        <div style="font-size:13px;font-weight:bold;color:#2980b9;margin-bottom:10px;">+ שדה חדש</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;">
+          <div style="flex:1;min-width:140px;">
+            <label style="font-size:11px;color:#888;display:block;margin-bottom:4px;">שם השדה</label>
+            <input id="ur-new-field-name" type="text" placeholder="למשל: נסיעות תחת פיקוח..." style="width:100%;padding:7px 10px;border:1.5px solid #ddd;border-radius:7px;font-size:13px;direction:rtl;box-sizing:border-box;">
+          </div>
+          <div style="min-width:100px;">
+            <label style="font-size:11px;color:#888;display:block;margin-bottom:4px;">סוג</label>
+            <select id="ur-new-field-type" style="width:100%;padding:7px 10px;border:1.5px solid #ddd;border-radius:7px;font-size:13px;direction:rtl;">
+              <option value="text">טקסט</option>
+              <option value="number">מספר</option>
+              <option value="checkbox">תיבת סימון</option>
+            </select>
+          </div>
+          <button onclick="_urAddCustomField()" style="padding:8px 14px;background:#3498db;color:white;border:none;border-radius:7px;cursor:pointer;font-size:13px;font-weight:bold;width:auto !important;">הוסף</button>
+        </div>
+      </div>
+    </div>
     <!-- Tab: Instructors -->
     <div class="ts-spanel" id="ts-panel-instructors">
       <p style="font-size:12px;color:#888;margin:0 0 14px;">הוסף או הסר מדריכים / חונכים מהמערכת.</p>
       <div style="display:flex;gap:8px;margin-bottom:12px;">
-        <input type="text" id="ts-ins-input" placeholder="שם המדריך / חונך..." style="flex:1;padding:9px 12px;border:1.5px solid #ddd;border-radius:8px;font-size:13px;direction:rtl;font-family:inherit;">
+        <input type="text" id="ts-ins-input" placeholder="שם המדריך / חונך..." style="flex:1;padding:9px 12px;border:1.5px solid #ddd;border-radius:8px;font-size:16px;direction:rtl;font-family:inherit;">
         <button data-action="ts-add-instructor" style="padding:9px 16px;background:#1a2a3a;color:white;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:bold;width:auto !important;">הוסף</button>
       </div>
       <div id="ts-ins-tags" style="display:flex;flex-wrap:wrap;gap:8px;"></div>
@@ -3297,6 +3434,7 @@ window.TraineeSystem = {
         this.traineesRef    = this.db.ref('trainees_v20');
         this.instructorsRef = this.db.ref('instructors_v20');
         this.settingsRef    = this.db.ref('settings_v20');
+        this.coursesRef     = this.db.ref('courses_v20');
     },
 
     bindEvents() {
@@ -3317,6 +3455,7 @@ window.TraineeSystem = {
             if (action === 'ts-add-mission')     this.addMissionRow();
             if (action === 'ts-add-alert')       this.addAlertRow();
             if (action === 'ts-add-instructor')  this.addInstructorFromSettings();
+            if (action === 'ts-add-course')       this.addCourseFromSettings();
             if (action === 'show-main')    this.showMainView();
             if (action === 'print')        window.print();
             if (action === 'toggle-log')   this.$('log-body').classList.toggle('open');
@@ -3405,7 +3544,7 @@ window.TraineeSystem = {
             this.$('trainee-list').innerHTML = `
                 <div style="grid-column:1/-1; text-align:center; padding:60px 0;">
                     <div style="font-size:1.1em; color:#e74c3c; margin-bottom:12px;">❌ שגיאת חיבור</div>
-                    <div style="font-size:0.85em; color:#a0aec0; margin-bottom:16px;">${err.message}</div>
+                    <div style="font-size:0.85em; color:#a0aec0; margin-bottom:16px;">${_esc(err.message)}</div>
                     <button data-action="retry-load"
                         style="padding:10px 24px;background:#3498db;color:white;border:none;
                                border-radius:8px;cursor:pointer;font-size:1em;font-weight:700;">
@@ -3418,13 +3557,32 @@ window.TraineeSystem = {
     },
 
     persist() {
-        const tData = {};
-        this.trainees.forEach(t => { tData[t.id] = t; });
-        this.traineesRef.set(tData);
+        // Update current course trainees before saving
+        const cur = this.courses.find(c => c.id === this.currentCourseId);
+        if (cur) cur.trainees = JSON.parse(JSON.stringify(this.trainees));
 
-        const iData = {};
-        this.instructors.forEach((name, i) => { iData[i] = name; });
-        this.instructorsRef.set(iData);
+        // Save courses to Firebase
+        if (this.coursesRef) {
+            try {
+                const cData = {};
+                this.courses.forEach(c => { cData[c.id] = c; });
+                this.coursesRef.set(cData);
+            } catch(e) { console.warn('persist courses:', e); }
+        }
+        // Also save trainees separately for backward compat
+        try {
+            const tData = {};
+            this.trainees.forEach(t => { tData[t.id] = t; });
+            this.traineesRef.set(tData);
+        } catch(e) {}
+
+        try {
+            const iData = {};
+            this.instructors.forEach((name, i) => { iData[i] = name; });
+            this.instructorsRef.set(iData);
+        } catch(e) {}
+        // localStorage backup
+        try { localStorage.setItem('trainee_courses', JSON.stringify(this.courses)); } catch(e) {}
     },
 
     updateS2Label() {
@@ -3515,7 +3673,11 @@ window.TraineeSystem = {
         const inp  = this.$('new-trainee-name');
         const name = inp.value.trim();
         if (!name) { inp.focus(); return; }
-        this.trainees.push({ id: Date.now(), name, lessons: [] });
+        const newTrainee = { id: Date.now(), name, lessons: [] };
+        this.trainees.push(newTrainee);
+        // Also update the course object directly
+        const cur = this.courses.find(c => c.id === this.currentCourseId);
+        if (cur) cur.trainees = JSON.parse(JSON.stringify(this.trainees));
         this.persist();
         inp.value = '';
         this.$('add-panel').style.display = 'none';
@@ -3572,7 +3734,7 @@ window.TraineeSystem = {
             l.innerHTML += `
             <div class="trainee-card" data-id="${t.id}">
                 <div class="card-top">
-                    <div class="card-name">${t.name}</div>
+                    <div class="card-name">${_esc(t.name)}</div>
                     <div class="card-sub">${phase} • שיעור ${maxL}/50</div>
                     <div class="card-bar"><div class="card-bar-fill" style="width:${pct}%"></div></div>
                 </div>
@@ -3748,20 +3910,10 @@ window.TraineeSystem = {
 
         this.renderAlerts(t, len, maxL, avgs);
 
-        const tbody = this.$('history-tbody');
-        tbody.innerHTML = '';
-        const lessons = t.lessons || [];
-        [...lessons].reverse().forEach((l, revIdx) => {
-            const realIdx = lessons.length - 1 - revIdx;
-            tbody.innerHTML += `<tr>
-                <td>${l.date}</td><td>${l.mission}</td>
-                <td>${l.mission === 'שעות נוספות' ? l.extraDesc : (l.lessonNums || []).join(',')}</td>
-                <td>${l.ins}</td>
-                <td>${[1, 2, 3, 4, 5].map(n => `<span class="score-badge">${l['s' + n]}</span>`).join('')}</td>
-                <td style="text-align:right;color:#555;">${l.notes || ''}</td>
-                <td><button data-delete-lesson="${realIdx}" style="background:none;border:1px solid #e74c3c;color:#e74c3c;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:0.78em;" title="מחק שיעור">🗑️</button></td>
-            </tr>`;
-        });
+        // Reset filter and show all lessons
+        const filterEl = this.$('history-filter');
+        if (filterEl) filterEl.value = 'all';
+        this.filterHistory('all');
     },
 
     updateChips() {
@@ -4272,7 +4424,7 @@ window.TraineeSystem = {
         list.innerHTML = skills.map((sk, i) => `
             <div class="ts-skill-row" data-ts-skill-idx="${i}" draggable="true">
                 <span class="ts-drag-handle">☰</span>
-                <input class="ts-skill-name-input" type="text" value="${sk.name}" placeholder="שם מיומנות">
+                <input class="ts-skill-name-input" type="text" value="${_esc(sk.name)}" placeholder="שם מיומנות">
                 <button class="ts-skill-del" data-ts-del-skill="${i}" title="מחק">🗑</button>
             </div>`).join('');
         this._bindSkillDrag(list);
@@ -4319,19 +4471,42 @@ window.TraineeSystem = {
     _renderTab_missions() {
         const list = this.$('ts-missions-list');
         if (!list || !this.settings) return;
-        const missions = this.settings.missionTypes || [];
+
+        // Ensure 3 required locked types always present
+        const REQUIRED = [
+            {id:'course', name:'קורס מעשי',                      locked:true},
+            {id:'mt1',   name:'חניכה',                            locked:true},
+            {id:'mt2',   name:'כשירות מעשית/ שעות נוספות', locked:true}
+        ];
+        const cur = this.settings.missionTypes || [];
+        REQUIRED.forEach(req => {
+            if (!cur.find(m => m.id === req.id)) cur.unshift({...req});
+        });
+        this.settings.missionTypes = cur;
+
+        const missions = this.settings.missionTypes;
         list.innerHTML = missions.map((m, i) => {
-            if (m.locked) {
-                return `<div class="ts-mission-row" data-ts-mission-idx="${i}" data-ts-mission-id="${m.id}" data-ts-mission-locked="true">
-                    <span class="ts-mission-locked">🔒 נעול</span>
-                    <input class="ts-mission-name-input" type="text" value="${m.name}" disabled style="flex:1;padding:7px 10px;border:1.5px solid #eee;border-radius:7px;font-size:13px;background:#f5f5f5;direction:rtl;">
-                </div>`;
-            }
-            return `<div class="ts-mission-row" data-ts-mission-idx="${i}" data-ts-mission-id="${m.id}" data-ts-mission-locked="false">
-                <input class="ts-mission-name-input" type="text" value="${m.name}" placeholder="שם סוג משימה" style="flex:1;padding:7px 10px;border:1.5px solid #ddd;border-radius:7px;font-size:13px;font-family:inherit;direction:rtl;">
-                <button data-ts-del-mission="${i}" style="background:none;border:none;color:#e74c3c;cursor:pointer;font-size:16px;padding:2px 6px;width:auto !important;">🗑</button>
+            const isLocked = !!m.locked;
+            const lockBtnStyle = `background:none;border:1.5px solid ${isLocked?'#e67e22':'#bbb'};border-radius:6px;cursor:pointer;font-size:13px;padding:2px 7px;width:auto !important;color:${isLocked?'#e67e22':'#888'};`;
+            const nameStyle = isLocked
+                ? 'flex:1;padding:7px 10px;border:1.5px solid #eee;border-radius:7px;font-size:13px;background:#f5f5f5;direction:rtl;'
+                : 'flex:1;padding:7px 10px;border:1.5px solid #ddd;border-radius:7px;font-size:13px;font-family:inherit;direction:rtl;';
+            return `<div class="ts-mission-row" data-ts-mission-idx="${i}" data-ts-mission-id="${m.id}" data-ts-mission-locked="${isLocked}">
+                <button data-ts-toggle-lock="${i}" title="${isLocked?'לחץ לפתיחת נעילה':'לחץ לנעילה'}" style="${lockBtnStyle}">${isLocked?'🔒':'🔓'}</button>
+                <input class="ts-mission-name-input" type="text" value="${m.name}" placeholder="שם סוג משימה" ${isLocked?'disabled':''} style="${nameStyle}">
+                ${!isLocked ? `<button data-ts-del-mission="${i}" style="background:none;border:none;color:#e74c3c;cursor:pointer;font-size:16px;padding:2px 6px;width:auto !important;">🗑</button>` : ''}
             </div>`;
         }).join('');
+        // Bind toggle-lock buttons
+        list.querySelectorAll('[data-ts-toggle-lock]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const idx = parseInt(btn.dataset.tsToggleLock, 10);
+                if (this.settings.missionTypes[idx])
+                    this.settings.missionTypes[idx].locked = !this.settings.missionTypes[idx].locked;
+                this._renderTab_missions();
+            });
+        });
+        // Bind delete buttons (unlocked only)
         list.querySelectorAll('[data-ts-del-mission]').forEach(btn => {
             btn.addEventListener('click', () => {
                 const idx = parseInt(btn.dataset.tsDelMission, 10);
@@ -4402,7 +4577,7 @@ window.TraineeSystem = {
         const limits = this.settings.loadLimits || [];
         list.innerHTML = limits.map(ll => `
             <div class="ts-load-row" data-ts-load-level="${ll.level}">
-                <input class="ts-load-name" type="text" value="${ll.name}" placeholder="שם רמה">
+                <input class="ts-load-name" type="text" value="${_esc(ll.name)}" placeholder="שם רמה">
                 <input class="ts-load-min" type="number" min="0" max="100" value="${ll.minAvg}" placeholder="0">
                 <input class="ts-load-max" type="number" min="1" max="20" value="${ll.maxLessonsPerDay}" placeholder="1">
             </div>`).join('');
@@ -4431,15 +4606,22 @@ window.TraineeSystem = {
     },
 
     // Update mission select in feedback form
+    // Always show 3 locked training phases + any user-added custom types
     updateInMissionSelect() {
-        if (!this.settings || !this.container) return;
+        if (!this.container) return;
         const sel = this.$('in-mission');
         if (!sel) return;
         const cur = sel.value;
-        const missions = this.settings.missionTypes || [];
-        if (!missions.length) return;
-        sel.innerHTML = missions.map(m =>
-            `<option value="${m.name}" ${m.name===cur?'selected':''}>${m.name}</option>`
+        const LOCKED = [
+            {id:'course', name:'קורס מעשי'},
+            {id:'mt1',   name:'חניכה'},
+            {id:'mt2',   name:'כשירות מעשית/ שעות נוספות'}
+        ];
+        const custom = (this.settings?.missionTypes || []).filter(m =>
+            !m.locked && !['course','mt1','mt2'].includes(m.id)
+        );
+        sel.innerHTML = [...LOCKED, ...custom].map(m =>
+            `<option value="${_esc(m.name)}" ${m.name===cur?'selected':''}>${_esc(m.name)}</option>`
         ).join('');
         this.updateChips();
     },
@@ -4452,6 +4634,34 @@ window.TraineeSystem = {
     },
 
     // ── Instructors tab ──────────────────────────────
+    filterHistory(missionFilter) {
+        const t = this.trainees.find(x => x.id === this.currentId);
+        if (!t) return;
+        const tbody = this.$('history-tbody');
+        if (!tbody) return;
+        const lessons = t.lessons || [];
+        const filtered = missionFilter === 'all' ? lessons
+            : lessons.filter(l => l.mission === missionFilter || (missionFilter === 'כשירות מעשית/ שעות נוספות' && l.mission && l.mission.includes('כשירות')));
+        tbody.innerHTML = '';
+        [...filtered].reverse().forEach((l, revIdx) => {
+            const realIdx = lessons.indexOf(l);
+            const mIcon = l.mission === 'קורס מעשי' ? '🎓' : l.mission === 'חניכה' ? '🤝' : '⚙️';
+            tbody.innerHTML += `<tr>
+                <td>${_esc(l.date)}</td>
+                <td><span style="font-size:11px;">${mIcon} ${_esc(l.mission||'')}</span></td>
+                <td>${l.extraDesc ? _esc(l.extraDesc) : (l.lessonNums||[]).join(',')}</td>
+                <td>${_esc(l.ins||'')}</td>
+                <td>${[1,2,3,4,5].map(n=>`<span class="score-badge">${l['s'+n]||'—'}</span>`).join('')}</td>
+                <td style="text-align:right;color:#555;">${_esc(l.notes||'')}</td>
+                <td><button data-delete-lesson="${realIdx}" style="background:none;border:1px solid #e74c3c;color:#e74c3c;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:0.78em;">🗑️</button></td>
+            </tr>`;
+        });
+    },
+
+    _renderTab_reportfields() {
+        _urOpenCustomFieldsSettings();
+    },
+
     _renderTab_instructors() {
         const tagsEl = this.$('ts-ins-tags');
         const input  = this.$('ts-ins-input');
@@ -4499,6 +4709,30 @@ window.TraineeSystem = {
         if (typeof showToast === 'function') showToast('✅ נוסף: ' + name, 'success');
     },
 
+    // Public: inject a lesson from external form (unified daily report)
+    addLessonFromExternal(traineeId, lessonData) {
+        const t = this.trainees.find(x => String(x.id) === String(traineeId));
+        if (!t) { console.warn('addLessonFromExternal: trainee not found', traineeId); return; }
+        if (!t.lessons) t.lessons = [];
+        const lesson = {
+            date:     lessonData.date     || _localDateStr(new Date()),
+            ins:      lessonData.instructor || '',
+            mission:  lessonData.mission   || 'קורס מעשי',
+            note:     lessonData.note      || '',
+            s1: lessonData.s1 || null,
+            s2: lessonData.s2 || null,
+            s3: lessonData.s3 || null,
+            s4: lessonData.s4 || null,
+            s5: lessonData.s5 || null,
+            _fromUnifiedReport: true
+        };
+        // Remove nulls
+        Object.keys(lesson).forEach(k => lesson[k] === null && delete lesson[k]);
+        t.lessons.push(lesson);
+        this.persist();
+        this.renderList(); // refresh if currently shown
+    },
+
     // Public: get alert thresholds matching a skill and score
     checkAlerts(skillId, score) {
         if (!this.settings) return [];
@@ -4506,6 +4740,299 @@ window.TraineeSystem = {
             a.skillId === skillId &&
             (a.direction === 'below' ? score < a.threshold : score > a.threshold)
         );
+    },
+
+    // ══════════════════════════════════════════════════
+    // COURSES — load / save / switch / render
+    // ══════════════════════════════════════════════════
+
+    _makeDefaultCourse(existingTrainees) {
+        return {
+            id: 'course_' + Date.now(),
+            name: 'קורס ראשי',
+            startDate: new Date().toISOString().slice(0, 10),
+            priority: 1,
+            isDefault: true,
+            status: 'active',
+            trainees: JSON.parse(JSON.stringify(existingTrainees || []))
+        };
+    },
+
+    async loadCourses() {
+        let loaded = false;
+        const isDemoMode = typeof _isDemoMode === 'function' && _isDemoMode();
+
+        // Try Firebase first (unless demo)
+        if (this.coursesRef && !isDemoMode) {
+            try {
+                const snap = await this.coursesRef.once('value');
+                if (snap.exists()) {
+                    this.courses = Object.values(snap.val()).map(c => ({
+                        ...c,
+                        trainees: c.trainees ? Object.values(c.trainees) : []
+                    }));
+                    loaded = true;
+                }
+            } catch(e) { console.warn('loadCourses Firebase:', e); }
+        }
+
+        // localStorage fallback
+        if (!loaded) {
+            try {
+                const raw = localStorage.getItem('trainee_courses');
+                if (raw) { this.courses = JSON.parse(raw); loaded = true; }
+            } catch(e) {}
+        }
+
+        // Migration: if no courses but trainees exist → wrap in default course
+        if (!loaded || !this.courses.length) {
+            const existingTrainees = this.trainees || [];
+            this.courses = [this._makeDefaultCourse(existingTrainees)];
+            this._saveCourses();
+        }
+
+        // Ensure exactly one default
+        const hasDefault = this.courses.some(c => c.isDefault);
+        if (!hasDefault && this.courses.length) {
+            // Set highest-priority active course as default
+            const active = this.courses.filter(c => c.status === 'active')
+                .sort((a,b) => (a.priority||99) - (b.priority||99));
+            if (active.length) active[0].isDefault = true;
+        }
+
+        // Set current course = default
+        const def = this.courses.find(c => c.isDefault) || this.courses[0];
+        this.currentCourseId = def ? def.id : null;
+        if (def) this.trainees = def.trainees || [];
+
+        // Sort courses by priority
+        this.courses.sort((a,b) => (a.priority||99) - (b.priority||99));
+
+        this._updateCourseSelector();
+    },
+
+    _saveCourses() {
+        try { localStorage.setItem('trainee_courses', JSON.stringify(this.courses)); } catch(e) {}
+        if (this.coursesRef && !(typeof _isDemoMode === 'function' && _isDemoMode())) {
+            try {
+                const cData = {};
+                this.courses.forEach(c => {
+                    const tData = {};
+                    (c.trainees || []).forEach(t => { tData[t.id] = t; });
+                    cData[c.id] = { ...c, trainees: tData };
+                });
+                this.coursesRef.set(cData);
+            } catch(e) { console.warn('_saveCourses:', e); }
+        }
+    },
+
+    switchCourse(courseId) {
+        if (!courseId) return;
+        const course = this.courses.find(c => c.id === courseId);
+        if (!course) return;
+        this.currentCourseId = courseId;
+        this.trainees = course.trainees || [];
+        this.renderList();
+        this.renderInsTags();
+        this._updateCourseSelector();
+        const isArchived = course.status === 'archived';
+        // Disable add-trainee button for archived courses
+        const addBtn = this.$('ts-add-trainee-btn');
+        if (addBtn) addBtn.style.opacity = isArchived ? '0.4' : '1';
+        if (addBtn) addBtn.style.pointerEvents = isArchived ? 'none' : '';
+        if (isArchived) showToast('📦 מצב ארכיון — הצגה בלבד', 'info');
+    },
+
+    _updateCourseSelector() {
+        const sel = this.$('ts-course-select');
+        if (!sel || !this.courses.length) return;
+        const priorityLabel = {1:'ראשי', 2:'משני', 3:'שלישי'};
+        sel.innerHTML = this.courses.map(c => {
+            const label = c.isDefault ? ` ⭐` : '';
+            const arch  = c.status === 'archived' ? ' 📦' : '';
+            const pLabel = priorityLabel[c.priority] ? ` [${priorityLabel[c.priority]}]` : '';
+            return `<option value="${c.id}" ${c.id === this.currentCourseId ? 'selected' : ''}>
+                ${c.name}${pLabel}${label}${arch}
+            </option>`;
+        }).join('');
+    },
+
+    addCourseFromSettings() {
+        const nameEl = this.$('ts-new-course-name');
+        const dateEl = this.$('ts-new-course-date');
+        if (!nameEl || !dateEl) return;
+        const name = nameEl.value.trim();
+        const startDate = dateEl.value || new Date().toISOString().slice(0,10);
+        if (!name) { showToast('יש להזין שם לקורס', 'warning'); return; }
+
+        // Next priority = max existing + 1
+        const maxPriority = Math.max(0, ...this.courses.map(c => c.priority || 0));
+        const newCourse = {
+            id: 'course_' + Date.now(),
+            name,
+            startDate,
+            priority: maxPriority + 1,
+            isDefault: false,
+            status: 'active',
+            trainees: []
+        };
+        this.courses.push(newCourse);
+        this._saveCourses();
+        nameEl.value = '';
+        dateEl.value = '';
+        this._renderTab_courses();
+        this._updateCourseSelector();
+        showToast('✅ קורס "' + name + '" נוצר', 'success');
+    },
+
+    _renderTab_courses() {
+        const list = this.$('ts-courses-list');
+        if (!list) return;
+        const priorityLabel = {1:'ראשי', 2:'משני', 3:'שלישי', 4:'רביעי'};
+
+        if (!this.courses.length) {
+            list.innerHTML = '<div style="color:#aaa;text-align:center;padding:16px;">אין קורסים</div>';
+            return;
+        }
+
+        list.innerHTML = this.courses.map((course, idx) => {
+            const isDefault = course.isDefault;
+            const isArchived = course.status === 'archived';
+            const pLabel = priorityLabel[course.priority] || `עדיפות ${course.priority}`;
+            const traineeCount = (course.trainees || []).length;
+            const bgColor = isArchived ? '#f8f8f8' : isDefault ? '#f0fff4' : '#f8faff';
+            const borderColor = isDefault ? '#27ae60' : '#e0e8f5';
+
+            return `<div style="background:${bgColor};border:1.5px solid ${borderColor};border-radius:10px;padding:12px 14px;margin-bottom:8px;">
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
+                <div style="flex:1;min-width:120px;">
+                  <input data-ts-course-name="${course.id}" value="${course.name}"
+                    style="font-size:14px;font-weight:bold;color:#1a2a3a;border:none;background:transparent;
+                           border-bottom:1.5px solid ${isDefault?'#27ae60':'#ddd'};padding:2px 4px;width:100%;direction:rtl;"
+                    onchange="TraineeSystem._renameCourse('${course.id}',this.value)">
+                  <div style="font-size:11px;color:#888;margin-top:4px;">
+                    📅 ${course.startDate || '—'} &nbsp;|&nbsp;
+                    👥 ${traineeCount} חניכים
+                    ${isDefault ? ' &nbsp;|&nbsp; <span style="color:#27ae60;font-weight:bold;">⭐ ברירת מחדל</span>' : ''}
+                    ${isArchived ? ' &nbsp;|&nbsp; <span style="color:#888;">📦 ארכיון</span>' : ''}
+                  </div>
+                </div>
+                <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+                  <span style="font-size:11px;background:${isArchived?'#eee':'#e8f4fd'};color:${isArchived?'#888':'#2980b9'};
+                    padding:2px 8px;border-radius:10px;font-weight:600;">${pLabel}</span>
+                  ${!isDefault && !isArchived ? `<button data-ts-set-default="${course.id}"
+                    style="padding:4px 10px;background:#27ae60;color:white;border:none;border-radius:6px;
+                           cursor:pointer;font-size:11px;width:auto !important;">⭐ הגדר ראשי</button>` : ''}
+                  ${!isArchived ? `<button data-ts-move-up="${course.id}"
+                    style="padding:4px 8px;background:#f0f4f8;border:1px solid #ddd;border-radius:6px;
+                           cursor:pointer;font-size:11px;width:auto !important;" title="העלה עדיפות">↑</button>
+                  <button data-ts-archive="${course.id}"
+                    style="padding:4px 10px;background:#e67e22;color:white;border:none;border-radius:6px;
+                           cursor:pointer;font-size:11px;width:auto !important;">📦 ארכב</button>` : ''}
+                  ${isArchived ? `<button data-ts-restore="${course.id}"
+                    style="padding:4px 10px;background:#3498db;color:white;border:none;border-radius:6px;
+                           cursor:pointer;font-size:11px;width:auto !important;">↩ שחזר</button>` : ''}
+                  <button data-ts-delete-course="${course.id}"
+                    style="padding:4px 8px;background:none;border:1px solid #e74c3c;color:#e74c3c;
+                           border-radius:6px;cursor:pointer;font-size:11px;width:auto !important;"
+                    title="מחק קורס">🗑</button>
+                </div>
+              </div>
+            </div>`;
+        }).join('');
+
+        // Bind events
+        list.querySelectorAll('[data-ts-set-default]').forEach(btn => {
+            btn.addEventListener('click', () => this._setDefaultCourse(btn.dataset.tsSetDefault));
+        });
+        list.querySelectorAll('[data-ts-archive]').forEach(btn => {
+            btn.addEventListener('click', () => this._archiveCourse(btn.dataset.tsArchive));
+        });
+        list.querySelectorAll('[data-ts-restore]').forEach(btn => {
+            btn.addEventListener('click', () => this._restoreCourse(btn.dataset.tsRestore));
+        });
+        list.querySelectorAll('[data-ts-delete-course]').forEach(btn => {
+            btn.addEventListener('click', () => this._deleteCourse(btn.dataset.tsDeleteCourse));
+        });
+        list.querySelectorAll('[data-ts-move-up]').forEach(btn => {
+            btn.addEventListener('click', () => this._moveCourseUp(btn.dataset.tsMoveUp));
+        });
+    },
+
+    _renameCourse(courseId, newName) {
+        const course = this.courses.find(c => c.id === courseId);
+        if (course && newName.trim()) {
+            course.name = newName.trim();
+            this._saveCourses();
+            this._updateCourseSelector();
+        }
+    },
+
+    _setDefaultCourse(courseId) {
+        this.courses.forEach(c => { c.isDefault = (c.id === courseId); });
+        // Re-sort so default gets priority 1
+        const def = this.courses.find(c => c.id === courseId);
+        if (def) def.priority = 1;
+        this.courses.filter(c => c.id !== courseId).forEach((c,i) => { if(!c.isDefault) c.priority = i+2; });
+        this.courses.sort((a,b) => (a.priority||99)-(b.priority||99));
+        this._saveCourses();
+        this._renderTab_courses();
+        this._updateCourseSelector();
+        showToast('⭐ קורס "' + def?.name + '" הוגדר כברירת מחדל', 'success');
+    },
+
+    _archiveCourse(courseId) {
+        if (!confirm('להעביר את הקורס לארכיון?')) return;
+        const course = this.courses.find(c => c.id === courseId);
+        if (!course) return;
+        if (course.isDefault) {
+            showToast('לא ניתן לארכב את קורס ברירת המחדל — הגדר קורס אחר תחילה', 'warning');
+            return;
+        }
+        course.status = 'archived';
+        this._saveCourses();
+        this._renderTab_courses();
+        this._updateCourseSelector();
+        showToast('📦 הקורס הועבר לארכיון', 'info');
+    },
+
+    _restoreCourse(courseId) {
+        const course = this.courses.find(c => c.id === courseId);
+        if (course) { course.status = 'active'; this._saveCourses(); this._renderTab_courses(); this._updateCourseSelector(); }
+    },
+
+    _deleteCourse(courseId) {
+        const course = this.courses.find(c => c.id === courseId);
+        if (!course) return;
+        if (course.isDefault) { showToast('לא ניתן למחוק את קורס ברירת המחדל', 'warning'); return; }
+        const count = (course.trainees||[]).length;
+        if (!confirm(`למחוק את הקורס "${course.name}"?${count ? `
+שים לב: ${count} חניכים יימחקו לצמיתות.` : ''}`)) return;
+        this.courses = this.courses.filter(c => c.id !== courseId);
+        if (this.currentCourseId === courseId) {
+            const def = this.courses.find(c=>c.isDefault) || this.courses[0];
+            if (def) this.switchCourse(def.id);
+        }
+        this._saveCourses();
+        this._renderTab_courses();
+        this._updateCourseSelector();
+        showToast('🗑 הקורס נמחק', 'info');
+    },
+
+    _moveCourseUp(courseId) {
+        const idx = this.courses.findIndex(c => c.id === courseId);
+        if (idx <= 0) return;
+        [this.courses[idx-1], this.courses[idx]] = [this.courses[idx], this.courses[idx-1]];
+        this.courses.forEach((c,i) => { c.priority = i+1; });
+        this._saveCourses();
+        this._renderTab_courses();
+        this._updateCourseSelector();
+    },
+
+    // Public: get trainees from default course (for trip assignment)
+    getDefaultCourseTrainees() {
+        const def = this.courses.find(c => c.isDefault) || this.courses[0];
+        return (def ? def.trainees : this.trainees) || [];
     }
 };
 
@@ -4513,6 +5040,8 @@ window.TraineeSystem = {
 
 <script>
 function _localDateStr(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function _esc(s){if(s==null)return '';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+function _toMin(v){if(v==null)return 0;if(typeof v==='number')return v;if(v instanceof Date)return v.getHours()*60+v.getMinutes();const s=String(v);if(/^\d{1,2}:\d{2}$/.test(s)){const[h,m]=s.split(':').map(Number);return h*60+m;}return 0;}
 
 
 
@@ -4520,6 +5049,44 @@ function _localDateStr(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padS
 
 
 
+// ═══════════════════════════════════════════════════════════
+// SCHEMA MIGRATION
+// ═══════════════════════════════════════════════════════════
+const _LS_SCHEMA_VERSION = 3;
+function _migrateLocalStorage(){
+  try{
+    const ver=parseInt(localStorage.getItem('v100_schema_ver')||'0',10);
+    if(ver>=_LS_SCHEMA_VERSION)return;
+    // v0→v1: migrate legacy 'sched' key → 'v100_sched_all'
+    if(ver<1){try{const s=localStorage.getItem('sched');if(s&&!localStorage.getItem('v100_sched_all'))localStorage.setItem('v100_sched_all',s);}catch(e){}}
+    // v1→v2: normalize trips_ arrays → object format
+    if(ver<2){try{Object.keys(localStorage).filter(k=>k.startsWith('trips_')).forEach(k=>{try{const r=localStorage.getItem(k);if(r){const p=JSON.parse(r);if(Array.isArray(p)){const o={};p.forEach((t,i)=>{o[t.id||('t'+i)]=t;});localStorage.setItem(k,JSON.stringify(o));}}}catch(e){}});}catch(e){}}
+    // v2→v3: normalize instrStatus_ to always be objects
+    if(ver<3){try{Object.keys(localStorage).filter(k=>k.startsWith('instrStatus_')).forEach(k=>{try{const r=localStorage.getItem(k);if(r){const p=JSON.parse(r);if(Array.isArray(p)){localStorage.setItem(k,JSON.stringify({}));}}}catch(e){}});}catch(e){}}
+    localStorage.setItem('v100_schema_ver',String(_LS_SCHEMA_VERSION));
+    console.log('[V100] localStorage migrated to schema v'+_LS_SCHEMA_VERSION);
+  }catch(e){console.warn('[V100] migration error:',e);}
+}
+
+// ═══════════════════════════════════════════════════════════
+// EVENT BUS — decoupled render coordination
+// Usage: _bus.emit('trips_changed') triggers all registered renders
+// Register: _bus.on('trips_changed', renderLog)
+// ═══════════════════════════════════════════════════════════
+const _bus={
+  _h:{},
+  on(e,fn){(this._h[e]=this._h[e]||[]).push(fn);},
+  off(e,fn){if(this._h[e])this._h[e]=this._h[e].filter(f=>f!==fn);},
+  emit(e,d){(this._h[e]||[]).forEach(fn=>{try{fn(d);}catch(err){console.warn('[bus]',e,err);}});}
+};
+// ─── Event constants ────────────────────────────────────────
+const EV_TRIPS   ='trips_changed';   // trips array mutated
+const EV_SCHED   ='sched_changed';   // schedData mutated
+const EV_INSTRS  ='instrs_changed';  // _instrNames mutated
+
+// ╔══════════════════════════════════════════════════════════╗
+// ║  MODULE: core-utils  (utils, constants, date helpers)    ║
+// ╚══════════════════════════════════════════════════════════╝
 // ═══════════════════════════════════════════════════════════
 
 // CONSTANTS
@@ -4590,7 +5157,7 @@ function isSouthDeparture(route){
 
 // ═══════════════════════════════════════════════════════════
 
-const ADMIN_PASSWORD='admin1234';
+const ADMIN_PASSWORD_HASH='YWRtaW4xMjM0'; // btoa-encoded admin password
 
 let currentRole=null, currentUserName=null;
 
@@ -4653,9 +5220,9 @@ function backRoles(){
 
 function doAdminLogin(){
 
-  const pwd=window._adminPassword||ADMIN_PASSWORD;
-
-  if(document.getElementById('adminPass').value===pwd){
+  const storedHash=window._adminPasswordHash||ADMIN_PASSWORD_HASH;
+  const enteredHash=btoa(document.getElementById('adminPass').value);
+  if(enteredHash===storedHash){
 
     enterApp('admin','מנהל');
 
@@ -4725,7 +5292,7 @@ function showActionLog() {
     return `<tr style="border-bottom:1px solid #f0f4f8;">
       <td style="padding:7px 10px;font-size:12px;color:#888;white-space:nowrap;">${dateStr} ${timeStr}</td>
       <td style="padding:7px 10px;font-size:12px;">${label}</td>
-      <td style="padding:7px 10px;font-size:12px;font-weight:600;">${e.user}</td>
+      <td style="padding:7px 10px;font-size:12px;font-weight:600;">${_esc(e.user)}</td>
       <td style="padding:7px 10px;font-size:12px;color:#555;">${e.details || ''}</td>
     </tr>`;
   }).join('') : `<tr><td colspan="4" style="text-align:center;padding:20px;color:#aaa;">אין רשומות בלוג</td></tr>`;
@@ -4759,10 +5326,24 @@ function showActionLog() {
   document.body.appendChild(overlay);
 }
 
+
+// ─── Register bus listeners once (called from enterApp) ─────
+function _initBusListeners(){
+  _bus.on(EV_TRIPS,  ()=>{try{renderLog();}catch(e){}});
+  _bus.on(EV_TRIPS,  ()=>{try{renderTimeline();}catch(e){}});
+  _bus.on(EV_TRIPS,  ()=>{try{renderCalendar();}catch(e){}});
+  _bus.on(EV_TRIPS,  ()=>{try{renderDashboard();}catch(e){}});
+  _bus.on(EV_SCHED,  ()=>{try{renderCalendar();}catch(e){}});
+  _bus.on(EV_INSTRS, ()=>{try{populateAllInstrSelects();}catch(e){}});
+}
+
 function enterApp(role,name){
+  _migrateLocalStorage();
+  _initBusListeners();
 
   currentRole=role; currentUserName=name;
   _logAction('login', role==='admin'?'כניסת מנהל':'כניסת מדריך: '+name);
+  setTimeout(_updateTraineeAlertBadge, 100); // refresh badge visibility per role
   const _grb=document.getElementById('globalReloadBtn');if(_grb)_grb.style.display='block';
 
   document.getElementById('loginOverlay').classList.add('hidden');
@@ -4994,7 +5575,7 @@ function openAssignTripsModal(date,entryId){
 
         <div style="font-weight:bold;font-size:15px;color:var(--success);margin-bottom:8px;">✅ נסיעות שובצו</div>
 
-        <div style="font-size:13px;color:#555;"><b>${entry.name}</b> · ${SHIFT_LABELS[entry.shift]||entry.shift} · ${sh.s}–${sh.e}</div>
+        <div style="font-size:13px;color:#555;"><b>${_esc(entry.name)}</b> · ${_esc(SHIFT_LABELS[entry.shift]||entry.shift)} · ${sh.s}–${sh.e}</div>
 
         
 
@@ -5006,7 +5587,7 @@ function openAssignTripsModal(date,entryId){
 
   if(confirmBtn)confirmBtn.style.display='none';
 
-  document.getElementById('assignModalTitle').textContent=entry?`⚡ שיבוץ נסיעות — ${entry.name}`:'⚡ שיבוץ נסיעות';
+  document.getElementById('assignModalTitle').textContent=entry?`⚡ שיבוץ נסיעות — ${entry.name}`:'⚡ שיבוץ נסיעות'; // textContent — safe
 
   if(modal)modal.classList.add('open');
 
@@ -5044,30 +5625,31 @@ function startInstrSync(){
 
   if(_instrSyncOff){_instrSyncOff();_instrSyncOff=null;}
 
-  const unsubStatus=_fbRef(_db,statusPath()).on('value',s=>{
+  let unsubStatus, unsubTrips;
+  try{
+    unsubStatus=_fbRef(_db,statusPath()).on('value',s=>{
+      try{
+        instrStatuses=s.exists()?s.val():{};
+        renderInstrView();
+        try{if(currentRole==='admin')renderLog();}catch(e){}
+      }catch(e){console.warn('instrSync status handler:',e);}
+    });
+  }catch(e){showToast('שגיאת חיבור לסטטוסים — נסה לרענן','warning');console.error('instrSync status listener:',e);}
 
-    instrStatuses=s.exists()?s.val():{};
-
-    renderInstrView();
-    // Also refresh manager log with updated statuses
-    try{if(currentRole==='admin')renderLog();}catch(e){}
-
-  });
-
-  const unsubTrips=_fbRef(_db,dbPath()).on('value',snap=>{
-
-    trips=snap.exists()?Object.values(snap.val()).map(parseTrip):[];
-
-    // Render based on current role
-    try{renderTimeline();}catch(e){}
-    if(currentRole==='instructor'){
-      try{renderInstrTripJournal();}catch(e){}
-      try{renderInstrView();}catch(e){}
-    } else {
-      try{renderLog();}catch(e){}
-    }
-
-  });
+  try{
+    unsubTrips=_fbRef(_db,dbPath()).on('value',snap=>{
+      try{
+        trips=snap.exists()?Object.values(snap.val()).map(parseTrip):[];
+        try{renderTimeline();}catch(e){}
+        if(currentRole==='instructor'){
+          try{renderInstrTripJournal();}catch(e){}
+          try{renderInstrView();}catch(e){}
+        } else {
+          try{renderLog();}catch(e){}
+        }
+      }catch(e){console.warn('instrSync trips handler:',e);}
+    });
+  }catch(e){showToast('שגיאת חיבור לנסיעות — נסה לרענן','warning');console.error('instrSync trips listener:',e);}
 
   _instrSyncOff=()=>{
 
@@ -5321,6 +5903,10 @@ function parseTrip(t){
 
 }
 
+// ╔══════════════════════════════════════════════════════════╗
+// ║  MODULE: core-data  (Firebase, localStorage, trips)      ║
+// ╚══════════════════════════════════════════════════════════╝
+
 async function loadFromStorage(){
   // Demo mode or no Firebase: always use localStorage
   if(_isDemoMode()||!window._fbDb){
@@ -5431,6 +6017,7 @@ async function saveToStorage(){
     if(ind){ind.classList.add('show');setTimeout(()=>ind.classList.remove('show'),2000);}
 
     renderCalendar();
+    _bus.emit(EV_TRIPS);
 
   }catch(e){}
 
@@ -5456,6 +6043,7 @@ async function loadInstructors(){
 
         // Mirror to localStorage so other environments can see them
         try{localStorage.setItem('v100_instructors',JSON.stringify(_instrNames));}catch(e){}
+    _bus.emit(EV_INSTRS);
 
         populateAllInstrSelects();
 
@@ -5517,17 +6105,15 @@ function populateAllInstrSelects(){
 
 
 function startRealtimeSync(){
-
   if(!window._fbDb)return;
-
-  _fbOnValue(_fbRef(_db,dbPath()),snap=>{
-
-    trips=snap.exists()?Object.values(snap.val()).map(parseTrip):[];
-
-    renderLog();renderTimeline();renderCalendar();
-
-  });
-
+  try{
+    _fbOnValue(_fbRef(_db,dbPath()),snap=>{
+      try{
+        trips=snap.exists()?Object.values(snap.val()).map(parseTrip):[];
+        renderLog();renderTimeline();renderCalendar();
+      }catch(e){console.warn('realtimeSync handler:',e);}
+    });
+  }catch(e){showToast('שגיאת סנכרון בזמן אמת','warning');console.error('startRealtimeSync:',e);}
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -5597,10 +6183,14 @@ function resubscribeTripsListener(){
   }
   // Live Firebase subscription
   try{_fbRef(_db,dbPath()).off('value');}catch(e){}
-  _fbRef(_db,dbPath()).on('value',snap=>{
-    trips=snap.exists()?Object.values(snap.val()).map(parseTrip):[];
-    renderLog();renderTimeline();
-  });
+  try{
+    _fbRef(_db,dbPath()).on('value',snap=>{
+      try{
+        trips=snap.exists()?Object.values(snap.val()).map(parseTrip):[];
+        renderLog();renderTimeline();
+      }catch(e){console.warn('tripsListener handler:',e);}
+    });
+  }catch(e){showToast('שגיאה בחיבור לנסיעות — נסה לרענן','warning');console.error('resubscribeTripsListener:',e);}
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -5753,7 +6343,7 @@ function val(){
 
     if(s.id!=='TURN'&&s.id!=='TURN_ORA'){html+=`<div class="forecast-entry"><span>${s.id}</span><b>${toHHMM(ss)}</b></div>`;myTl.push({id:s.id,startMin:ss,endMin:cur});}
 
-    else html+=`<div class="forecast-entry" style="color:var(--danger)"><span>${s.label}</span><b>${toHHMM(ss)}</b></div>`;
+    else html+=`<div class="forecast-entry" style="color:var(--danger)"><span>${_esc(s.label)}</span><b>${toHHMM(ss)}</b></div>`;
 
   });
 
@@ -5771,7 +6361,7 @@ function val(){
 
         _hasConflict=true;
 
-        conflictMsg+=`התנגשות עם <b>${t.name}</b> ב-${curr.id} (פרש ${Math.round(Math.abs(curr.startMin-old.startMin))} דק')<br>`;
+        conflictMsg+=`התנגשות עם <b>${_esc(t.name)}</b> ב-${curr.id} (פרש ${Math.round(Math.abs(curr.startMin-old.startMin))} דק')<br>`;
 
       }
 
@@ -6015,7 +6605,10 @@ function openTraineeAssign(tripId) {
   const list  = document.getElementById('traineeAssignList');
   if (!modal || !list) return;
   const assigned = trip.assignedTrainees || [];
-  const trainees = (typeof TraineeSystem!=='undefined' && TraineeSystem.trainees) ? TraineeSystem.trainees : [];
+  // Use default course trainees for assignment
+  const trainees = (typeof TraineeSystem!=='undefined')
+    ? (TraineeSystem.getDefaultCourseTrainees ? TraineeSystem.getDefaultCourseTrainees() : TraineeSystem.trainees)
+    : [];
   if (!trainees.length) {
     list.innerHTML = '<div style="color:#888;text-align:center;padding:20px;">פתח תחילה את אזור החניכים.</div>';
   } else {
@@ -6248,7 +6841,7 @@ async function renderInstrList(){
 
       `<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:0.5px solid #f0f0f0;">
 
-        <span style="font-size:14px;">${name}</span>
+        <span style="font-size:14px;">${_esc(name)}</span>
 
         <button onclick="removeInstructor('${key}')" style="background:none;border:1px solid #ccc;border-radius:50%;width:24px;height:24px;padding:0;cursor:pointer;font-size:14px;line-height:1;color:#888;display:flex;align-items:center;justify-content:center;margin:0;transition:.15s;"
 
@@ -6292,6 +6885,10 @@ async function removeInstructor(key){
 // RENDER LOG
 
 // ═══════════════════════════════════════════════════════════
+
+// ╔══════════════════════════════════════════════════════════╗
+// ║  MODULE: ui-renders  (log, timeline, calendar, gantt)    ║
+// ╚══════════════════════════════════════════════════════════╝
 
 function renderLog(){
 
@@ -6421,9 +7018,9 @@ function renderLog(){
 
     return`<tr id="row-${t.id}">
 
-      <td data-label="מדריך"><b>${t.name}</b></td>
+      <td data-label="מדריך"><b>${_esc(t.name)}</b></td>
 
-      <td data-label="מסלול"><small title="${routeStr}">${routeStr.length>22?routeStr.slice(0,22)+'…':routeStr}</small></td>
+      <td data-label="מסלול"><small title="${_esc(routeStr)}">${_esc(routeStr.length>22?routeStr.slice(0,22)+'…':routeStr)}</small></td>
 
       <td data-label="יציאה">${t.startStr}${delayTag}</td>
 
@@ -6435,7 +7032,7 @@ function renderLog(){
 
       <td data-label="מיקום">${loc}</td>
 
-      <td id="delayCell_${t.id}" style="display:none;text-align:center;font-size:11px;" data-delay="${t.delayMin||0}" data-reason="${((t.delayNote||t.routeVariant&&t.routeVariant>0?'שינוי מסלול: '+(t.delayNote||''):'')+'').replace(/"/g,'&quot;')}" data-route-change="${t.routeVariant&&t.routeVariant>0?1:0}"></td>
+      <td id="delayCell_${t.id}" style="display:none;text-align:center;font-size:11px;" data-delay="${t.delayMin||0}" data-reason="${_esc(t.delayNote||t.routeVariant&&t.routeVariant>0?'שינוי מסלול: '+(t.delayNote||''):'')}" data-route-change="${t.routeVariant&&t.routeVariant>0?1:0}"></td>
       <td style="text-align:center;padding:4px;">${_mgr_statusBadge}</td>
 
       <td style="white-space:nowrap;">
@@ -6572,7 +7169,7 @@ function renderTimeline(){
 
         const l=((ptr2-minM)/span)*100;const w=(s.t/span)*100;
 
-        turnBlocks.push(`<div style="position:absolute;left:${l}%;width:${Math.max(w,0.8)}%;height:100%;background:#c0392b;opacity:.75;border-radius:3px;z-index:2;" title="${s.label}"></div>`);
+        turnBlocks.push(`<div style="position:absolute;left:${l}%;width:${Math.max(w,0.8)}%;height:100%;background:#c0392b;opacity:.75;border-radius:3px;z-index:2;" title="${_esc(s.label)}"></div>`);
 
       }
 
@@ -6582,7 +7179,7 @@ function renderTimeline(){
 
     return `<div class="gantt-row">
 
-      <div class="gantt-name" title="${t.name}">${t.name||'?'}</div>
+      <div class="gantt-name" title="${_esc(t.name)}">${_esc(t.name)||'?'}</div>
 
       <div class="gantt-track">${tickLineHtml}${nowLineHtml}${blocks}${turnBlocks.join('')}</div>
 
@@ -7020,7 +7617,7 @@ function pickRouteForRow(rowId){
 
         <div style="flex:1;">
 
-          <div style="font-weight:bold;font-size:14px;color:var(--primary);">${r.name}</div>
+          <div style="font-weight:bold;font-size:14px;color:var(--primary);">${_esc(r.name)}</div>
 
           <div style="font-size:12px;color:#888;margin-top:3px;">${segs} · ${totalMin} דק'</div>
 
@@ -7220,7 +7817,7 @@ function renderPlannerPreview(){
 
           <span class="instr-dot" style="background:${color};"></span>
 
-          <span class="instr-name-h">${row.name||'?'}</span>
+          <span class="instr-name-h">${_esc(row.name)||'?'}</span>
 
           <span class="instr-badge bad">❌ לא ניתן לתכנן</span>
 
@@ -7310,7 +7907,7 @@ function renderPlannerPreview(){
 
         <span class="instr-dot" style="background:${color};width:13px;height:13px;border-radius:50%;flex-shrink:0;"></span>
 
-        <span class="instr-name-h" style="font-size:15px;">${row.name}</span>
+        <span class="instr-name-h" style="font-size:15px;">${_esc(row.name)}</span>
 
         <span class="instr-meta">⏱️ ${toHHMM(row.startMin)} – ${toHHMM(row.endMin)}</span>
 
@@ -7436,7 +8033,7 @@ function buildCombinedGanttHTML(){
 
     return`<div class="gantt-instructor-row">
 
-      <div class="gantt-instr-label" style="color:${color};" title="${row.name}">${row.name||'?'}</div>
+      <div class="gantt-instr-label" style="color:${color};" title="${_esc(row.name)}">${_esc(row.name)||'?'}</div>
 
       <div class="gantt-instr-track">${tickLines}${shiftBg}${breakBlocks}${blocks}</div>
 
@@ -7446,7 +8043,7 @@ function buildCombinedGanttHTML(){
 
   const legend=plannerResults.map(({row,color})=>
 
-    `<span><span style="display:inline-block;width:10px;height:10px;background:${color};border-radius:2px;margin-left:4px;vertical-align:middle;"></span>${row.name}</span>`
+    `<span><span style="display:inline-block;width:10px;height:10px;background:${color};border-radius:2px;margin-left:4px;vertical-align:middle;"></span>${_esc(row.name)}</span>`
 
   ).join('');
 
@@ -7547,6 +8144,10 @@ const DEFAULTS={
 const settingsPath=()=>'settings';
 
 let _settings={...DEFAULTS};
+
+// ╔══════════════════════════════════════════════════════════╗
+// ║  MODULE: settings  (rules, task defs, shift hours)       ║
+// ╚══════════════════════════════════════════════════════════╝
 
 async function loadSettings(){
 
@@ -7836,7 +8437,7 @@ function openFavoriteRoutePicker(){
 
         <div style="flex:1;">
 
-          <div style="font-weight:bold;font-size:14px;color:var(--primary);">${r.name}</div>
+          <div style="font-weight:bold;font-size:14px;color:var(--primary);">${_esc(r.name)}</div>
 
           <div style="font-size:12px;color:#888;margin-top:3px;">${segs} · ${totalMin} דק'</div>
 
@@ -8052,7 +8653,7 @@ function renderSettingsInstrList(){
 
     <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid #f0f4f8;">
 
-      <span style="font-size:14px;font-weight:500;">${name}</span>
+      <span style="font-size:14px;font-weight:500;">${_esc(name)}</span>
 
       <button onclick="removeInstrByIndex(${i})"
 
@@ -8088,6 +8689,30 @@ function getInt(id,def){return parseInt(document.getElementById(id)?.value)||def
 
 function getStr(id,def){return document.getElementById(id)?.value||def;}
 
+// ═══════════════════════════════════════════════════════════
+// AUTO-BACKUP
+// ═══════════════════════════════════════════════════════════
+async function _autoBackupToFirebase(){
+  if(!window._fbDb)return;
+  try{
+    const today=_localDateStr(new Date());
+    // Check if backup already exists for today (avoid overwriting)
+    const existing=await _fbGet(_fbRef(_db,'backups/'+today));
+    if(existing.exists())return; // already backed up today
+    const snapshot={
+      date:today,
+      savedAt:Date.now(),
+      savedBy:currentUserName||'system',
+      settings:{..._settings},
+      taskDefs:[...taskDefs],
+      instructors:[..._instrNames],
+      tripsToday:trips.length>0?trips.map(t=>({...t})):undefined,
+    };
+    await _fbSet(_fbRef(_db,'backups/'+today),snapshot);
+    console.log('[V100] Auto-backup saved for',today);
+  }catch(e){console.warn('[V100] Auto-backup failed:',e);}
+}
+
 async function saveSettings(){
   _logAction('save_settings','שמירת הגדרות מערכת');
   showToast('🔄 שומר הגדרות...','info');
@@ -8102,7 +8727,7 @@ async function saveSettings(){
 
     if(p1.length<4){document.getElementById('passErr').textContent='סיסמה קצרה מדי (מינימום 4 תווים)';return;}
 
-    window._adminPassword=p1;
+    window._adminPasswordHash=btoa(p1); // store hashed, not plain
 
     document.getElementById('passErr').textContent='';
 
@@ -8161,6 +8786,8 @@ async function saveSettings(){
       await _fbSet(_fbRef(_db,settingsPath()),newSettings);
       await _fbSet(_fbRef(_db,'taskDefs'),taskDefs);
     }catch(e){console.warn('saveSettings Firebase:',e);}
+    // Auto-backup on every settings save (once per day)
+    _autoBackupToFirebase();
   }
 
   const sv=document.getElementById('settingsSaved');
@@ -8255,7 +8882,7 @@ function renderTaskDefsList(){
 
         <input class="task-def-icon-input" type="text" value="${t.icon||'📋'}" maxlength="2" title="סמל (אימוג'י)" oninput="updateTaskDefField(${i},'icon',this.value)">
 
-        <input class="task-def-name-input" type="text" value="${t.label}" placeholder="שם המשימה" oninput="updateTaskDefField(${i},'label',this.value)">
+        <input class="task-def-name-input" type="text" value="${_esc(t.label)}" placeholder="שם המשימה" oninput="updateTaskDefField(${i},'label',this.value)">
 
         <input class="task-def-color-input" type="color" value="${t.color||'#2980b9'}" title="צבע" oninput="updateTaskDefField(${i},'color',this.value)">
 
@@ -8269,31 +8896,6 @@ function renderTaskDefsList(){
 
         ${tripBadge}
 
-        <label class="task-def-trip-toggle" title="האם משימה זו דורשת טופס סיכום?" style="background:${t.requiresSummary?'#fef9e7':'#f8f8f8'};border:1px solid ${t.requiresSummary?'#f0c050':'#ddd'};padding:3px 8px;border-radius:6px;display:inline-flex;align-items:center;gap:4px;cursor:pointer;font-size:12px;">
-
-          <input type="checkbox" ${t.requiresSummary?'checked':''} onchange="updateTaskDefField(${i},'requiresSummary',this.checked)">
-
-          📝 טופס סיכום
-
-        </label>
-
-        <div id="summaryFields_${i}" style="display:${t.requiresSummary?'flex':'none'};gap:8px;flex-wrap:wrap;align-items:flex-start;margin-top:6px;padding:8px;background:#fffbf0;border-radius:7px;border:1px solid #f0c050;width:100%;">
-
-          <label style="display:flex;align-items:center;gap:4px;font-size:12px;font-weight:500;">
-            <input type="checkbox" ${(t.summaryFields||[]).some(f=>f.type==='quantity')?'checked':''} onchange="toggleSummaryField(${i},'quantity',this.checked)">
-            🔢 כמות
-          </label>
-          <input type="text" placeholder="שם השדה (למשל: מספר בקרות)" value="${(t.summaryFields||[]).find(f=>f.type==='quantity')?.label||''}" oninput="updateSummaryFieldLabel(${i},'quantity',this.value)"
-            style="flex:1;min-width:140px;padding:4px 8px;border:1px solid #ddd;border-radius:5px;font-size:12px;display:${(t.summaryFields||[]).some(f=>f.type==='quantity')?'block':'none'};">
-
-          <label style="display:flex;align-items:center;gap:4px;font-size:12px;font-weight:500;">
-            <input type="checkbox" ${(t.summaryFields||[]).some(f=>f.type==='duration')?'checked':''} onchange="toggleSummaryField(${i},'duration',this.checked)">
-            ⏱ משך
-          </label>
-          <input type="text" placeholder="שם השדה (למשל: משך בדקות)" value="${(t.summaryFields||[]).find(f=>f.type==='duration')?.label||''}" oninput="updateSummaryFieldLabel(${i},'duration',this.value)"
-            style="flex:1;min-width:140px;padding:4px 8px;border:1px solid #ddd;border-radius:5px;font-size:12px;display:${(t.summaryFields||[]).some(f=>f.type==='duration')?'block':'none'};">
-
-        </div>
 
         <button class="task-def-del-btn" onclick="removeTaskDef(${i})" title="מחק משימה">×</button>
 
@@ -8440,7 +9042,7 @@ function renderDashboard(){
     const pct=Math.round((v.min/maxMin)*100);
     const lessons=(v.min/45).toFixed(1);
     return`<div class="dash-bar-row">
-      <div class="dash-bar-name" title="${name}">${name}</div>
+      <div class="dash-bar-name" title="${_esc(name)}">${_esc(name)}</div>
       <div class="dash-bar-track"><div class="dash-bar-fill" style="width:${pct}%;background:${colors[i%colors.length]};"></div></div>
       <div class="dash-bar-pct">${lessons} שיעורים</div>
     </div>`;
@@ -8472,13 +9074,13 @@ function renderDailyScheduleSummary(){
       const shiftIco=SHIFT_ICO[e.shift]||'';
       const noteTag=e.note?`<span title="${e.note}" style="font-size:11px;color:#e67e22;margin-right:4px;">💬</span>`:'';
       return`<span style="display:inline-flex;align-items:center;gap:4px;background:#f0f4f8;border-radius:6px;padding:3px 8px;margin:2px;font-size:12px;white-space:nowrap;">
-        ${tDef.icon} <b>${tDef.label}</b>
+        ${tDef.icon} <b>${_esc(tDef.label)}</b>
         <span style="color:#888;font-size:11px;">${shiftIco} ${timeStr}</span>
         ${noteTag}
       </span>`;
     }).join('');
     return`<tr>
-      <td style="font-weight:bold;font-size:13px;padding:6px 10px;white-space:nowrap;border-bottom:1px solid #eee;">${name}</td>
+      <td style="font-weight:bold;font-size:13px;padding:6px 10px;white-space:nowrap;border-bottom:1px solid #eee;">${_esc(name)}</td>
       <td style="padding:6px 10px;border-bottom:1px solid #eee;">${cells}</td>
     </tr>`;
   }).join('');
@@ -8667,6 +9269,7 @@ function lsSaveSched(){
     Object.assign(existing,schedData);
 
     localStorage.setItem('v100_sched_all',JSON.stringify(existing));
+    _bus.emit(EV_SCHED);
 
   }catch(e){}
 
@@ -8692,53 +9295,31 @@ function startSchedSync(){
   // In demo mode: always use localStorage schedule data
   if(_isDemoMode()||!window._fbDb){lsLoadSched();return;}
 
-  _fbRef(_db,'schedule').on('value',snap=>{
-
-    schedData={};
-
-    if(snap.exists()){
-
-      const val=snap.val();
-
-      // Handle both structures:
-      // Flat:   schedule/YYYY-MM-DD/entryId
-      // Nested: schedule/YYYY-MM/YYYY-MM-DD/entryId
-      Object.entries(val).forEach(([key,val2])=>{
-
-        if(!val2||typeof val2!=='object')return;
-
-        // If key looks like a date (YYYY-MM-DD), flat structure
-        if(/^\d{4}-\d{2}-\d{2}$/.test(key)){
-
-          schedData[key]=Object.values(val2).filter(e=>e&&typeof e==='object');
-
-        } else {
-
-          // key is a month (YYYY-MM), val2 is {date: {entryId: entry}}
-          Object.entries(val2).forEach(([date,entries])=>{
-
-            if(!entries||typeof entries!=='object')return;
-
-            if(!schedData[date])schedData[date]=[];
-
-            const newEntries=Object.values(entries).filter(e=>e&&typeof e==='object');
-
-            schedData[date].push(...newEntries);
-
+  try{
+    _fbRef(_db,'schedule').on('value',snap=>{
+      try{
+        schedData={};
+        if(snap.exists()){
+          const val=snap.val();
+          Object.entries(val).forEach(([key,val2])=>{
+            if(!val2||typeof val2!=='object')return;
+            if(/^\d{4}-\d{2}-\d{2}$/.test(key)){
+              schedData[key]=Object.values(val2).filter(e=>e&&typeof e==='object');
+            } else {
+              Object.entries(val2).forEach(([date,entries])=>{
+                if(!entries||typeof entries!=='object')return;
+                if(!schedData[date])schedData[date]=[];
+                const newEntries=Object.values(entries).filter(e=>e&&typeof e==='object');
+                schedData[date].push(...newEntries);
+              });
+            }
           });
-
         }
-
-      });
-
-    }
-
-    renderCalendar();
-
-    // Refresh today tasks
-    try{if(currentRole==='instructor')setTimeout(renderTodayTasks,100);}catch(e){}
-
-  });
+        renderCalendar();
+        try{if(currentRole==='instructor')setTimeout(renderTodayTasks,100);}catch(e){}
+      }catch(e){console.warn('schedSync handler:',e);}
+    });
+  }catch(e){showToast('שגיאת סנכרון לוח שיבוצים — נסה לרענן','warning');console.error('startSchedSync:',e);}
 
 }
 
@@ -9047,40 +9628,41 @@ function renderSchedAssignTable(date){
 
   const taskOpts=(selTask)=>taskDefs.length
 
-    ?taskDefs.map(t=>`<option value="${t.id}"${t.id===selTask?' selected':''}>${t.icon||''} ${t.label}</option>`).join('')
+    ?taskDefs.map(t=>`<option value="${t.id}"${t.id===selTask?' selected':''}>${_esc(t.icon||'')} ${_esc(t.label)}</option>`).join('')
 
     :`<option value="training">🚇 הדרכה</option>`;
 
   const names=_instrNames.length?_instrNames:[];
 
   tbody.innerHTML=names.map(name=>{
-
-    const entry=existing.find(e=>e.name===name);
+    // Support multiple entries per instructor (tasks[])
+    const instrEntries=existing.filter(e=>e.name===name);
+    const entry=instrEntries[0]||null;
+    const extraEntries=instrEntries.slice(1);
 
     const shift=entry?entry.shift:'none';
-
     const task=entry?entry.task:(taskDefs[0]?.id||'training');
-
     const note=entry?entry.note||'':'';
-
     const hasShift=shift&&shift!=='none';
+    const encodedName=name.replace(/"/g,'&quot;');
 
-    return`<tr class="sched-assign-row" data-name="${name.replace(/"/g,'&quot;')}"
+    // Extra task rows HTML (additional tasks same instructor)
+    const extraRows=extraEntries.map((ex,xi)=>`
+      <tr class="sched-extra-task-row" data-extra-name="${encodedName}" data-extra-idx="${xi}">
+        <td></td><td style="color:#888;font-size:11px;padding-right:8px;">└ משימה נוספת</td>
+        <td><select class="sched-extra-task" onchange="_schedCheckDupTask(this,'${encodedName.replace(/'/g,'\\')}')">${taskOpts(ex.task)}</select></td>
+        <td><input type="text" class="sched-extra-note" placeholder="הערה..." value="${(ex.note||'').replace(/"/g,'&quot;')}"></td>
+        <td><button onclick="_schedDelExtraTask(this)" title="הסר משימה" style="font-size:15px;padding:3px 10px;width:auto !important;border:1.5px solid #e74c3c;border-radius:6px;color:#e74c3c;background:#fdf2f2;cursor:pointer;">✕</button></td>
+      </tr>`).join('');
 
+    return`<tr class="sched-assign-row" data-name="${encodedName}"
       style="${hasShift?'background:#f0fff6;':''}">
-
-      <td class="sched-assign-name">${name}</td>
-
+      <td class="sched-assign-name">${_esc(name)}</td>
       <td><select class="sched-row-shift" onchange="handleSchedRowShiftChange(this)">${shiftOpts(shift)}</select></td>
-
       <td><select class="sched-row-task">${taskOpts(task)}</select></td>
-
       <td><input type="text" class="sched-row-note" placeholder="הערה..." value="${note.replace(/"/g,'&quot;')}"></td>
-
-      <td></td>
-
-    </tr>`;
-
+      <td><button class="sched-add-task-btn" onclick="_schedAddExtraTask(this,'${encodedName}')" title="הוסף משימה נוספת">+ משימה</button></td>
+    </tr>${extraRows}`;
   }).join('');
 
   if(!names.length){
@@ -9089,6 +9671,76 @@ function renderSchedAssignTable(date){
 
   }
 
+}
+
+// ── Extra task management in schedule table ──
+function _schedAddExtraTask(btn, instrName) {
+  const tbody = document.getElementById('schedAssignBody');
+  if (!tbody) return;
+
+  // Get existing task for this instructor's main row
+  const mainRow=document.querySelector(`#schedAssignBody .sched-assign-row[data-name="${CSS.escape(instrName)}"]`);
+  const mainTask=mainRow?.querySelector('.sched-row-task')?.value||'';
+
+  // Collect all tasks already assigned (main + existing extra rows)
+  const usedTasks=new Set();
+  if(mainTask)usedTasks.add(mainTask);
+  tbody.querySelectorAll(`.sched-extra-task-row[data-extra-name="${instrName}"]`).forEach(r=>{
+    const t=r.querySelector('.sched-extra-task')?.value;
+    if(t)usedTasks.add(t);
+  });
+
+  const taskOpts = taskDefs.length
+    ? taskDefs.map(t=>`<option value="${t.id}">${_esc(t.icon||'')} ${_esc(t.label)}</option>`).join('')
+    : `<option value="training">🚇 הדרכה</option>`;
+  // Find the last row for this instructor to insert after
+  const allRows = [...tbody.querySelectorAll('tr')];
+  const btnRow = btn.closest('tr');
+  let insertAfter = btnRow;
+  // Find last extra-task row for this instructor
+  allRows.forEach(r => {
+    if(r.dataset.extraName === instrName) insertAfter = r;
+  });
+  // Pre-select first unused task
+  const _firstUnused = taskDefs.find(t => !usedTasks.has(t.id));
+  const _defaultTask = _firstUnused?.id || (taskDefs[0]?.id || '');
+  const taskOptsDefault = taskDefs.length
+    ? taskDefs.map(t=>`<option value="${t.id}" ${t.id===_defaultTask?'selected':''}>${_esc(t.icon||'')} ${_esc(t.label)}</option>`).join('')
+    : '<option value="training">הדרכה</option>';
+
+  const newRow = document.createElement('tr');
+  newRow.className = 'sched-extra-task-row';
+  newRow.dataset.extraName = instrName;
+  newRow.dataset.extraIdx = Date.now();
+  const _escapedName = instrName.replace(/'/g, "\'");
+  newRow.innerHTML = `<td></td><td style="color:#888;font-size:11px;padding-right:8px;">└ משימה נוספת</td>
+    <td><select class="sched-extra-task" onchange="_schedCheckDupTask(this,'${_escapedName}')">${taskOptsDefault}</select></td>
+    <td><input type="text" class="sched-extra-note" placeholder="הערה..."></td>
+    <td><button class="sched-del-task-btn" onclick="_schedDelExtraTask(this)" title="הסר" style="font-size:16px;padding:3px 10px;width:auto !important;border:1.5px solid #e74c3c;border-radius:6px;color:#e74c3c;background:#fdf2f2;cursor:pointer;">✕</button></td>`;
+  insertAfter.after(newRow);
+  collectCurrentTabState();
+}
+
+function _schedCheckDupTask(sel, instrName) {
+  const task = sel.value;
+  const mainRow = document.querySelector(`#schedAssignBody .sched-assign-row[data-name="${CSS.escape(instrName)}"]`);
+  const mainTask = mainRow?.querySelector('.sched-row-task')?.value||'';
+  const usedTasks = new Set([mainTask]);
+  document.querySelectorAll(`#schedAssignBody .sched-extra-task-row[data-extra-name="${instrName}"] .sched-extra-task`).forEach(s=>{
+    if(s!==sel && s.value) usedTasks.add(s.value);
+  });
+  if(usedTasks.has(task)){
+    const taskLabel = taskDefs.find(t=>t.id===task)?.label || task;
+    showToast(`⚠️ המדריך כבר משובץ ל"${taskLabel}" במשמרת זו`, 'warning');
+    // Reset to first unused task
+    const unused = taskDefs.find(t=>!usedTasks.has(t.id));
+    if(unused) sel.value = unused.id;
+  }
+}
+
+function _schedDelExtraTask(btn) {
+  btn.closest('tr')?.remove();
+  collectCurrentTabState();
 }
 
 function handleSchedRowShiftChange(sel){
@@ -9120,62 +9772,49 @@ function renderSchedEntriesList(date){
 
   if(!entries.length){list.innerHTML='<div style="color:#aaa;font-size:13px;padding:6px 0;margin-bottom:8px;">אין שיבוצים ביום זה</div>';return;}
 
-  list.innerHTML=entries.map(e=>{
+  // Group entries by instructor name
+  const grouped={};
+  entries.forEach(e=>{if(!grouped[e.name])grouped[e.name]=[];grouped[e.name].push(e);});
 
-    const statusLabel={pending:'ממתין',approved:'מאושר',rejected:'נדחה'}[e.status]||'ממתין';
-
-    const times=e.shift==='custom'?`${e.startTime}–${e.endTime}`:(SHIFT_HOURS[e.shift]?`${SHIFT_HOURS[e.shift].s}–${SHIFT_HOURS[e.shift].e}`:'');
-
-    const canApprove=currentRole==='admin'&&e.status==='pending';
-
-    const canDelete=currentRole==='admin'||(e.name===currentUserName&&e.status==='pending');
-
-    const canAssign=currentRole==='admin'&&e.status==='approved'&&taskDefs.find(t=>t.id===e.task)?.isTrip;
-
-    const alreadyPlanned=checkTripsPlanned(date,e.name);
-
-    const assignBtn=canAssign?`<button onclick="openAssignTripsModal('${date}','${e.id}')"
-
-      style="font-size:11px;padding:4px 8px;background:${alreadyPlanned?'#eafaf1':'#eaf2fb'};
-
-      border:1px solid ${alreadyPlanned?'var(--success)':'var(--secondary)'};
-
-      color:${alreadyPlanned?'var(--success)':'var(--secondary)'};
-
-      border-radius:6px;cursor:pointer;margin:0;white-space:nowrap;">
-
-      ${alreadyPlanned?'✅ נסיעות שובצו':'⚡ שבץ נסיעות'}</button>`:'';
-
-    return`<div class="sched-entry-row">
-
-      <div style="flex:1;">
-
-        <b style="font-size:13px;">${e.name}</b>
-
-        <span class="task-badge" style="margin-right:6px;">${TASK_LABELS[e.task]||e.task}</span>
-
-        <span class="sched-status-badge ${e.status||'pending'}">${statusLabel}</span>
-
-        <div style="font-size:11px;color:#888;margin-top:3px;">${SHIFT_LABELS[e.shift]||''} ${times} ${e.note?'· '+e.note:''}</div>
-
+  list.innerHTML=Object.entries(grouped).map(([name,instrEntries])=>{
+    const mainEntry=instrEntries[0];
+    const extraEntries=instrEntries.slice(1);
+    const times=mainEntry.shift==='custom'?`${mainEntry.startTime}–${mainEntry.endTime}`:(SHIFT_HOURS[mainEntry.shift]?`${SHIFT_HOURS[mainEntry.shift].s}–${SHIFT_HOURS[mainEntry.shift].e}`:'');
+    const statusLabel={pending:'ממתין',approved:'מאושר',rejected:'נדחה'}[mainEntry.status]||'ממתין';
+    const canApprove=currentRole==='admin'&&mainEntry.status==='pending';
+    const canDelete=currentRole==='admin'||(mainEntry.name===currentUserName&&mainEntry.status==='pending');
+    const canAssign=currentRole==='admin'&&mainEntry.status==='approved'&&taskDefs.find(t=>t.id===mainEntry.task)?.isTrip;
+    const alreadyPlanned=checkTripsPlanned(date,name);
+    const assignBtn=canAssign?`<button onclick="openAssignTripsModal('${date}','${mainEntry.id}')"
+      style="font-size:11px;padding:4px 8px;background:${alreadyPlanned?'#eafaf1':'#eaf2fb'};border:1px solid ${alreadyPlanned?'var(--success)':'var(--secondary)'};color:${alreadyPlanned?'var(--success)':'var(--secondary)'};border-radius:6px;cursor:pointer;margin:0;white-space:nowrap;">${alreadyPlanned?'✅ נסיעות שובצו':'⚡ שבץ נסיעות'}</button>`:'';
+    // Extra tasks inline (below main)
+    const extraHtml=extraEntries.map(ex=>`
+      <div style="display:flex;align-items:center;gap:8px;margin-top:6px;padding:5px 10px;background:#f0f4ff;border-radius:7px;border-right:3px solid #3498db;">
+        <span style="font-size:10px;color:#3498db;font-weight:600;white-space:nowrap;">➕ משימה נוספת</span>
+        <span class="task-badge" style="font-size:11px;">${TASK_LABELS[ex.task]||ex.task}</span>
+        ${ex.note?`<span style="font-size:11px;color:#888;">· ${_esc(ex.note)}</span>`:''}
+        <span style="flex:1;"></span>
+        ${currentRole==='admin'?`<button onclick="deleteEntry('${date}','${ex.id}')" title="הסר משימה נוספת"
+          style="width:auto !important;padding:2px 9px;font-size:15px;font-weight:bold;border:1.5px solid #e74c3c;border-radius:6px;color:#e74c3c;background:#fdf2f2;cursor:pointer;line-height:1;">×</button>`:''}
+      </div>`).join('');
+    return`<div style="background:white;border:1.5px solid #e0e8f5;border-radius:12px;padding:10px 14px;margin-bottom:8px;direction:rtl;">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+        <div style="flex:1;min-width:140px;">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            <span style="font-size:14px;font-weight:700;color:#1a2a3a;">${_esc(name)}</span>
+            <span class="task-badge">${TASK_LABELS[mainEntry.task]||mainEntry.task}</span>
+            <span class="sched-status-badge ${mainEntry.status||'pending'}" style="font-size:11px;">${statusLabel}</span>
+          </div>
+          <div style="font-size:11px;color:#888;margin-top:4px;">${SHIFT_LABELS[mainEntry.shift]||''} <span style="color:#555;">${times}</span>${mainEntry.note?` · ${_esc(mainEntry.note)}`:''}</div>
+        </div>
+        <div style="display:flex;gap:6px;align-items:center;flex-shrink:0;">
+          ${assignBtn}
+          ${canApprove?`<button class="btn-sched-approve" style="font-size:11px;padding:5px 10px;" onclick="approveEntry('${date}','${mainEntry.id}')">✅</button><button class="btn-sched-reject" style="font-size:11px;padding:5px 10px;" onclick="rejectEntry('${date}','${mainEntry.id}')">❌</button>`:''}
+          ${canDelete?`<button onclick="deleteEntry('${date}','${mainEntry.id}')" title="מחק שיבוץ" style="width:auto !important;padding:4px 10px;font-size:18px;font-weight:bold;background:#fdf2f2;border:1.5px solid #e74c3c;color:#e74c3c;border-radius:8px;cursor:pointer;line-height:1;">×</button>`:''}
+        </div>
       </div>
-
-      <div style="display:flex;gap:5px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end;">
-
-        ${assignBtn}
-
-        ${canApprove?`<button class="btn-sched-approve" style="font-size:11px;padding:4px 8px;" onclick="approveEntry('${date}','${e.id}')">✅</button><button class="btn-sched-reject" style="font-size:11px;padding:4px 8px;" onclick="rejectEntry('${date}','${e.id}')">❌</button>`:''}
-
-        ${canDelete?`<button class="btn-sched-del" title="מחק שיבוץ"
-
-          style="font-size:16px;padding:4px 10px;min-width:32px;min-height:32px;font-weight:bold;background:#fdf2f2;border:1.5px solid #e74c3c;color:#e74c3c;border-radius:7px;cursor:pointer;display:flex;align-items:center;justify-content:center;"
-
-          onclick="deleteEntry('${date}','${e.id}')">×</button>`:''}
-
-      </div>
-
+      ${extraHtml}
     </div>`;
-
   }).join('');
 
 }
@@ -9236,6 +9875,10 @@ document.addEventListener('DOMContentLoaded',()=>{
 // SCHED ENTRY SUBMISSION — handles both instructor simple form and manager table
 
 // ═══════════════════════════════════════════════════════════
+
+// ╔══════════════════════════════════════════════════════════╗
+// ║  MODULE: schedule  (sched entries, weekly, copy tools)   ║
+// ╚══════════════════════════════════════════════════════════╝
 
 async function submitSchedEntry(approved=false){
 
@@ -9384,7 +10027,7 @@ function addCustomSchedRow(){
 
   const taskOpts=taskDefs.length
 
-    ?taskDefs.map(t=>`<option value="${t.id}">${t.icon||''} ${t.label}</option>`).join('')
+    ?taskDefs.map(t=>`<option value="${t.id}">${_esc(t.icon||'')} ${_esc(t.label)}</option>`).join('')
 
     :'<option value="training">🚇 הדרכה</option>';
 
@@ -9579,23 +10222,41 @@ function saveCurrentTabState(){
   const saves=[];
 
   rows.forEach(row=>{
-
+    if(row.classList.contains('sched-extra-task-row'))return; // handled below
     const isCustom=row.classList.contains('sched-custom-row');
-
     const name=isCustom?(row.querySelector('.sched-row-custom-name')?.value.trim()||'')
-
       :(row.dataset.name||'');
-
     const shift=row.querySelector('.sched-row-shift')?.value||'none';
-
     const task=row.querySelector('.sched-row-task')?.value||(taskDefs[0]?.id||'training');
-
     const note=row.querySelector('.sched-row-note')?.value.trim()||'';
-
     if(name&&shift!=='none') saves.push({name,shift,task,note,isCustom});
-
+  });
+  // Collect extra task rows (additional tasks per instructor)
+  document.querySelectorAll('#schedAssignBody .sched-extra-task-row').forEach(row=>{
+    const name=row.dataset.extraName||'';
+    if(!name)return;
+    // Find the main row shift for this instructor
+    const mainRow=document.querySelector(`#schedAssignBody .sched-assign-row[data-name="${CSS.escape(name)}"]`);
+    const shift=mainRow?.querySelector('.sched-row-shift')?.value||'none';
+    if(shift==='none')return; // only save extra tasks if main row has a shift
+    const task=row.querySelector('.sched-extra-task')?.value||(taskDefs[0]?.id||'training');
+    const note=row.querySelector('.sched-extra-note')?.value.trim()||'';
+    // Validate: skip if same task already in saves for this instructor (duplicate prevention)
+    const isDup = saves.some(s => s.name===name && s.task===task);
+    if(!isDup) saves.push({name,shift,task,note,isCustom:false,_extraTask:true});
   });
 
+  // Only preserve self-added entries for instructors NOT rendered in the table
+  // (truly self-added by instructors outside the regular assignment list)
+  const _tableNames=new Set(saves.map(s=>s.name));
+  const _existingDate = schedData[_schedModalActiveDate] || [];
+  _existingDate.forEach(e => {
+    if(!e._selfAdded) return; // only preserve instructor self-added entries
+    if(_tableNames.has(e.name)) return; // if instructor IS in table, table controls their entries
+    // Preserve entry for instructors not in the table at all
+    const already = saves.some(s => s.id && s.id===e.id);
+    if(!already) saves.push({...e});
+  });
   _schedModalPendingSaves[_schedModalActiveDate]=saves;
 
 }
@@ -9758,20 +10419,18 @@ async function submitAllSchedTabs(approved=false){
 
       const endTime=s.shift==='custom'?'15:30':(sh?sh.e:'15:30');
 
-      const existing=(schedData[date]||[]).find(e=>e.name===s.name);
+      // For extra tasks: match by name + _extraTask + task to avoid overwriting main entry
+      const existing = s._extraTask
+        ? (schedData[date]||[]).find(e=>e.name===s.name && e._extraTask && e.task===s.task)
+        : (schedData[date]||[]).find(e=>e.name===s.name && !e._extraTask);
 
       const entry={
-
-        id:existing?existing.id:('e_'+Date.now()+'_'+totalSaved),
-
-        name:s.name,shift:s.shift,task:s.task||(taskDefs[0]?.id||'training'),
-
-        startTime,endTime,note:s.note||'',
-
-        status:approved?'approved':'pending',
-
-        submittedBy:currentUserName,createdAt:Date.now()
-
+        id: existing ? existing.id : ('e_'+Date.now()+'_'+Math.random().toString(36).slice(2,6)),
+        name:s.name, shift:s.shift, task:s.task||(taskDefs[0]?.id||'training'),
+        startTime, endTime, note:s.note||'',
+        status: approved?'approved':'pending',
+        submittedBy: currentUserName, createdAt: Date.now(),
+        _extraTask: s._extraTask || false
       };
 
       await saveSchedEntry(date,entry);
@@ -9790,7 +10449,14 @@ async function submitAllSchedTabs(approved=false){
 
   } else {
 
-    showToast(`✅ ${totalSaved} שיבוצים נשמרו בהצלחה!`,'success');
+    const _extraCount = Object.values(_schedModalPendingSaves).flat().filter(s=>s._extraTask).length;
+    if(_extraCount>0 && totalSaved===_extraCount){
+      showToast('✅ משימות נוספו בהצלחה!','success');
+    } else if(_extraCount>0){
+      showToast(`✅ השיבוצים עודכנו (כולל ${_extraCount} משימות נוספות)`, 'success');
+    } else {
+      showToast(`✅ ${totalSaved} שיבוצים נשמרו בהצלחה!`,'success');
+    }
 
     // Reset pending saves
 
@@ -9828,8 +10494,20 @@ function collectTableRows(){
 
   });
 
-  return result;
+  // Also collect extra task rows
+  document.querySelectorAll('#schedAssignBody .sched-extra-task-row').forEach(row=>{
+    const name=row.dataset.extraName||'';
+    if(!name)return;
+    const mainRow=document.querySelector(`#schedAssignBody .sched-assign-row[data-name="${CSS.escape(name)}"]`);
+    const shift=mainRow?.querySelector('.sched-row-shift')?.value||'none';
+    if(shift==='none')return;
+    const task=row.querySelector('.sched-extra-task')?.value||(taskDefs[0]?.id||'training');
+    const note=row.querySelector('.sched-extra-note')?.value.trim()||'';
+    const isDupCtr = result.some(s => s.name===name && s.task===task);
+    if(!isDupCtr) result.push({name,shift,task,note,isCustom:false,_extraTask:true});
+  });
 
+  return result;
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -10050,7 +10728,7 @@ function renderWeeklySchedTable(){
   const shiftOpts=`<option value="none">—</option>${Object.keys(SHIFT_HOURS).filter(k=>k!=='custom').map(k=>`<option value="${k}">${(typeof SHIFT_LABELS!=='undefined'&&SHIFT_LABELS[k])||('⏰ '+k)}</option>`).join('')}<option value="custom">⏰ הגדר שעות</option>`;
 
   const taskOpts=(taskDefs.length
-    ?taskDefs.map(t=>`<option value="${t.id}">${t.icon||''} ${t.label}</option>`).join('')
+    ?taskDefs.map(t=>`<option value="${t.id}">${_esc(t.icon||'')} ${_esc(t.label)}</option>`).join('')
     :'<option value="training">🚇 הדרכה</option>')
     +'<option value="_custom_task_">✏️ הגדר משימה</option>';
 
@@ -10092,7 +10770,7 @@ function renderWeeklySchedTable(){
 
     tbodyHtml+=`<tr class="wsched-instr-row" data-name="${name.replace(/"/g,'&quot;')}">
 
-      <td class="wsched-instr-name">${name}</td>`;
+      <td class="wsched-instr-name">${_esc(name)}</td>`;
 
     days.forEach(dateISO=>{
 
@@ -10188,7 +10866,7 @@ function addWeeklyCustomRow(){
 
   // Define taskOpts locally (was missing — caused silent failure)
   const taskOpts=taskDefs.length
-    ?taskDefs.map(t=>`<option value="${t.id}">${t.icon||''} ${t.label}</option>`).join('')
+    ?taskDefs.map(t=>`<option value="${t.id}">${_esc(t.icon||'')} ${_esc(t.label)}</option>`).join('')
     :'<option value="training">🚇 הדרכה</option>';
 
   const tbody=document.querySelector("#weeklySchedTable table tbody");
@@ -10197,7 +10875,7 @@ function addWeeklyCustomRow(){
   const tr=document.createElement("tr");
   tr.className="wsched-instr-row wsched-custom-row";
 
-  let cells=`<td class="wsched-instr-name"><input type="text" placeholder="שם מדריך..." class="wsched-custom-name" style="width:100%;padding:4px 6px;border:1.5px solid #ddd;border-radius:6px;font-size:12px;font-weight:bold;"></td>`;
+  let cells=`<td class="wsched-instr-name"><input type="text" placeholder="שם מדריך..." class="wsched-custom-name" style="width:100%;padding:4px 6px;border:1.5px solid #ddd;border-radius:6px;font-size:16px;font-weight:bold;"></td>`;
 
   days.forEach(dateISO=>{
     cells+=`<td data-date="${dateISO}">
@@ -10899,7 +11577,7 @@ function openAutoGenModal(){
   listEl.innerHTML=datesWithEntries.map(({date,entries})=>{
     const d=new Date(date+'T12:00:00');
     const label=d.toLocaleDateString('he-IL',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
-    const instrList=entries.map(e=>`<span style="font-size:11px;background:#eaf2fb;border-radius:4px;padding:2px 6px;margin:2px 1px;display:inline-block;">${e.name} (${SHIFT_LABELS[e.shift]||e.shift})</span>`).join('');
+    const instrList=entries.map(e=>`<span style="font-size:11px;background:#eaf2fb;border-radius:4px;padding:2px 6px;margin:2px 1px;display:inline-block;">${_esc(e.name)} (${_esc(SHIFT_LABELS[e.shift]||e.shift)})</span>`).join('');
     return`<div style="padding:10px 0;border-bottom:1px solid #f0f4f8;">
       <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;">
         <input type="checkbox" class="autogen-date-cb" value="${date}" checked style="width:16px;height:16px;margin-top:2px;accent-color:var(--secondary);flex-shrink:0;">
@@ -11366,8 +12044,7 @@ document.addEventListener('click',e=>{
 // Works for BOTH manager and instructor views
 // ═══════════════════════════════════════════════════════════
 
-let _editingTripInModal=null;
-let _editingForInstructor=null; // which instructor's trip is being edited
+let _editState={tripId:null,forInstructor:null}; // unified edit state (replaces _editState.tripId + _editState.forInstructor)
 let _modalEditRoute=[];
 
 function openTripEditModal(tripId){
@@ -11378,9 +12055,9 @@ function openTripEditModal(tripId){
     showToast('⛔ אינך רשאי לערוך נסיעה של מדריך אחר','warning');return;
   }
 
-  _editingTripInModal=tripId;
+  _editState.tripId=tripId;
   editingTripId=String(tripId); // also set old var so val() excludes this trip from conflict check
-  _editingForInstructor=trip.name; // track which instructor owns this edit
+  _editState.forInstructor=trip.name; // track which instructor owns this edit
 
   // Load trip route into curRoute
   curRoute=JSON.parse(JSON.stringify(trip.route||[]));
@@ -11423,8 +12100,8 @@ function openTripEditModal(tripId){
 }
 
 function applyTripEditFromManual(){
-  if(!_editingTripInModal)return;
-  const trip=trips.find(t=>String(t.id)===String(_editingTripInModal));
+  if(!_editState.tripId)return;
+  const trip=trips.find(t=>String(t.id)===String(_editState.tripId));
   if(!trip){showToast('נסיעה לא נמצאה','warning');return;}
 
   if(!curRoute.length){showToast('המסלול ריק — הוסף לפחות מקטע אחד','warning');return;}
@@ -11436,9 +12113,9 @@ function applyTripEditFromManual(){
   trip.startStr=startStr;
   trip.timeline=buildTimeline(startStr,curRoute);
 
-  _editingTripInModal=null;
+  _editState.tripId=null;
   editingTripId=null;
-  _editingForInstructor=null;
+  _editState.forInstructor=null;
   try{const _ms=document.getElementById('manualSection');if(_ms){_ms.removeAttribute('data-editing-for');_ms.removeAttribute('open');}}catch(e){}
 
   // Restore save button
@@ -11459,8 +12136,8 @@ function applyTripEditFromManual(){
 
 function closeTripEditModal(){
   document.getElementById('tripEditModal').classList.remove('open');
-  _editingTripInModal=null;
-  _editingForInstructor=null;
+  _editState.tripId=null;
+  _editState.forInstructor=null;
   try{const _ms=document.getElementById('manualSection');if(_ms){_ms.removeAttribute('data-editing-for');_ms.removeAttribute('open');}}catch(e){}
   _modalEditRoute=[];
 }
@@ -11542,8 +12219,8 @@ document.addEventListener('input',e=>{
 });
 
 function saveTripEdit(){
-  if(!_editingTripInModal)return;
-  const trip=trips.find(t=>String(t.id)===String(_editingTripInModal));
+  if(!_editState.tripId)return;
+  const trip=trips.find(t=>String(t.id)===String(_editState.tripId));
   if(!trip)return;
   const newStart=document.getElementById('tripEditStartTime').value;
   if(!newStart){showToast('יש להזין שעת יציאה','warning');return;}
@@ -11561,11 +12238,11 @@ function saveTripEdit(){
 }
 
 function deleteTripFromEdit(){
-  if(!_editingTripInModal)return;
-  const trip=trips.find(t=>String(t.id)===String(_editingTripInModal));
+  if(!_editState.tripId)return;
+  const trip=trips.find(t=>String(t.id)===String(_editState.tripId));
   if(!trip)return;
   if(!confirm(`למחוק את הנסיעה של ${trip.name}?`))return;
-  trips=trips.filter(t=>String(t.id)!==String(_editingTripInModal));
+  trips=trips.filter(t=>String(t.id)!==String(_editState.tripId));
   saveToStorage();
   renderLog();
   closeTripEditModal();
@@ -11814,15 +12491,15 @@ function openInstrWeeklyModalFromDate(baseDateStr,deltaDays){
     return`<tr>
       <td style="font-size:13px;font-weight:bold;white-space:nowrap;padding:8px 6px;">${dayLabel}</td>
       <td style="padding:6px;">
-        <select id="_iwm_shift_${i}" data-date="${dateStr}" style="width:100%;padding:7px;border:1.5px solid #ddd;border-radius:7px;font-size:13px;" onchange="_iwmToggleCustom(${i})">
+        <select id="_iwm_shift_${i}" data-date="${dateStr}" style="width:100%;padding:7px;border:1.5px solid #ddd;border-radius:7px;font-size:16px;" onchange="_iwmToggleCustom(${i})">
           <option value="none">—</option>
           ${shiftOpts}
         </select>
       </td>
       <td id="_iwm_custom_${i}" style="padding:6px;display:none;">
-        <input type="time" id="_iwm_start_${i}" value="07:00" style="width:74px;padding:5px;border:1.5px solid #ddd;border-radius:6px;font-size:12px;">
+        <input type="time" id="_iwm_start_${i}" value="07:00" style="width:74px;padding:5px;border:1.5px solid #ddd;border-radius:6px;font-size:16px;">
         <span style="color:#888;font-size:11px;margin:0 2px;">–</span>
-        <input type="time" id="_iwm_end_${i}" value="15:30" style="width:74px;padding:5px;border:1.5px solid #ddd;border-radius:6px;font-size:12px;">
+        <input type="time" id="_iwm_end_${i}" value="15:30" style="width:74px;padding:5px;border:1.5px solid #ddd;border-radius:6px;font-size:16px;">
       </td>
       ${existing?`<td style="font-size:11px;color:var(--success);padding:6px;white-space:nowrap;">✓ קיים</td>`:'<td></td>'}
     </tr>`;
@@ -12046,11 +12723,11 @@ function _openCustomHoursPopup(sel, defaultStart, defaultEnd){
     <div style="font-size:13px;font-weight:bold;color:var(--primary);margin-bottom:10px;">⏰ הגדרת שעות משמרת</div>
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
       <label style="font-size:12px;color:#555;white-space:nowrap;">שעת התחלה:</label>
-      <input type="time" id="_chs_start" value="${defaultStart||'07:00'}" style="padding:5px;border:1.5px solid #ddd;border-radius:7px;font-size:13px;width:auto;">
+      <input type="time" id="_chs_start" value="${defaultStart||'07:00'}" style="padding:5px;border:1.5px solid #ddd;border-radius:7px;font-size:16px;width:auto;">
     </div>
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
       <label style="font-size:12px;color:#555;white-space:nowrap;">שעת סיום:</label>
-      <input type="time" id="_chs_end" value="${defaultEnd||'15:30'}" style="padding:5px;border:1.5px solid #ddd;border-radius:7px;font-size:13px;width:auto;">
+      <input type="time" id="_chs_end" value="${defaultEnd||'15:30'}" style="padding:5px;border:1.5px solid #ddd;border-radius:7px;font-size:16px;width:auto;">
     </div>
     <div style="display:flex;gap:8px;">
       <button onclick="_applyCustomHours()" style="width:auto;flex:1;padding:8px;background:var(--secondary);color:white;border:none;border-radius:8px;font-size:13px;font-weight:bold;cursor:pointer;">✅ אשר</button>
@@ -12345,6 +13022,10 @@ function changeMonthlyDash(delta){
   loadMonthlyDash();
 }
 
+// ╔══════════════════════════════════════════════════════════╗
+// ║  MODULE: dashboard  (monthly KPIs, tabs, history)        ║
+// ╚══════════════════════════════════════════════════════════╝
+
 async function loadMonthlyDash(){
   const yr=_monthlyDashDate.getFullYear();
   const mo=_monthlyDashDate.getMonth();
@@ -12567,12 +13248,16 @@ function renderSegmentAnalysis(){
 
   for(const dayTrips of Object.values(_monthHistoryCache)){
     for(const t of dayTrips){
-      (t.timeline||[]).forEach(seg=>{
+      // For confirmed trips use actual timeline; for planned use route segments
+      const segsToCount = (t.timeline&&t.timeline.length)
+        ? t.timeline
+        : (t.route||[]).filter(r=>r.id&&r.id!=='TURN'&&r.id!=='TURN_ORA').map(r=>({id:r.id,startMin:0}));
+      segsToCount.forEach(seg=>{
         if(segData[seg.id]===undefined)return;
         segData[seg.id]++;
         const hour=Math.floor((seg.startMin||0)/60);
         if(hourBuckets[seg.id]&&hour>=0&&hour<24)hourBuckets[seg.id][hour]++;
-      });
+      }); // end segsToCount.forEach
     }
   }
 
@@ -12695,7 +13380,7 @@ async function renderTimesheet(){
   const STATUS_LBL={approved:'✅ מאושר',pending:'⏳ ממתין',rejected:'❌ נדחה'};
 
   tbody.innerHTML=rows.map(r=>`<tr>
-    <td><b>${r.name}</b></td>
+    <td><b>${_esc(r.name)}</b></td>
     <td style="font-size:12px;color:#888;">${r.dayLabel}</td>
     <td style="font-size:11px;color:#555;">${r.task}</td>
     <td style="font-weight:bold;color:#27ae60;">${r.entry}</td>
@@ -12833,7 +13518,7 @@ async function renderComparison(){
         {label:'שיעורים',a:Math.round(totalA.lessons),b:Math.round(totalB.lessons),hi:true},
         {label:'עיכובים',a:totalA.delays,b:totalB.delays,hi:false},
       ].map(k=>`<div style="background:#f8faff;border-radius:9px;padding:12px;border:1px solid #dde6f0;text-align:center;">
-        <div style="font-size:11px;color:#888;margin-bottom:6px;">${k.label}</div>
+        <div style="font-size:11px;color:#888;margin-bottom:6px;">${_esc(k.label)}</div>
         <div style="display:flex;justify-content:center;align-items:baseline;gap:10px;">
           <div><div style="font-size:11px;color:#666;">${labelA}</div><div style="font-size:20px;font-weight:bold;color:#2980b9;">${k.a}</div></div>
           <div style="font-size:18px;color:#ccc;">→</div>
@@ -12905,7 +13590,7 @@ async function renderComparison(){
         const diff=b.qty-a.qty;
         const diffTag=diff===0?'—':diff>0?`<span style="color:#27ae60;">▲${diff}</span>`:`<span style="color:#e74c3c;">▼${Math.abs(diff)}</span>`;
         return`<tr style="border-bottom:1px solid #f5f5f5;">
-          <td style="padding:6px 10px;">${tDef.icon||'📋'} ${tDef.label}</td>
+          <td style="padding:6px 10px;">${_esc(tDef.icon||'📋')} ${_esc(tDef.label)}</td>
           <td style="text-align:center;font-weight:bold;">${a.qty}</td><td style="text-align:center;color:#888;">${(a.dur/60).toFixed(1)} שע'</td>
           <td style="text-align:center;font-weight:bold;">${b.qty}</td><td style="text-align:center;color:#888;">${(b.dur/60).toFixed(1)} שע'</td>
           <td style="text-align:center;">${diffTag}</td>
@@ -13081,7 +13766,7 @@ async function renderCoverageTab(){
         <thead>
           <tr style="background:#f0f4f8;">
             <th>מדריך</th>
-            ${dayCoverage.map(d=>`<th style="font-size:11px;white-space:nowrap;">${d.label}</th>`).join('')}
+            ${dayCoverage.map(d=>`<th style="font-size:11px;white-space:nowrap;">${_esc(d.label)}</th>`).join('')}
             <th>כיסוי</th>
             <th>סטטוס</th>
           </tr>
@@ -13115,22 +13800,31 @@ function renderEfficiencyTab(){
 
   for(const dayTrips of Object.values(_monthHistoryCache)){
     for(const t of dayTrips){
-      if(!t.timeline||!t.timeline.length)continue;
+      // Include ALL trips — use route theoretical duration as fallback when no timeline
       const routeKey=(t.route||[]).filter(r=>r.id!=='TURN'&&r.id!=='TURN_ORA').map(r=>r.id).join('→');
       if(!routeKey)continue;
-      if(!routeStats[routeKey])routeStats[routeKey]={count:0,totalLessons:0,totalMin:0,delays:0,routeChanges:0,changeReasons:[],instructors:new Set()};
+      const isConfirmed=!!(t.timeline&&t.timeline.length);
+      // Duration: actual from timeline or theoretical from route segments
+      const dur=isConfirmed
+        ? (t.timeline[t.timeline.length-1].endMin||0)-(t.timeline[0].startMin||0)
+        : (t.route||[]).reduce((a,r)=>a+(r.t||0),0);
+      if(!dur)continue; // skip if no duration data at all
+
+      if(!routeStats[routeKey])routeStats[routeKey]={
+        count:0,confirmed:0,totalLessons:0,totalMin:0,
+        delays:0,routeChanges:0,changeReasons:[],instructors:new Set()
+      };
       const s=routeStats[routeKey];
       s.count++;
-      const dur=(t.route||[]).reduce((a,r)=>a+(r.t||0),0);
+      if(isConfirmed)s.confirmed++;
       s.totalMin+=dur;
       s.totalLessons+=dur/45;
-      if(t.delayMin>0)s.delays++;
-      // ── Route-change tracking (routeVariant > 0 = was edited mid-execution) ──
+      if(isConfirmed&&t.delayMin>0)s.delays++;
+      // ── Route-change tracking ──
       if(t.routeVariant>0){
         s.routeChanges++;
-        if(t.routeReason||t.delayNote){
+        if(t.routeReason||t.delayNote)
           s.changeReasons.push((t.routeReason||t.delayNote||'').trim());
-        }
       }
       if(t.name)s.instructors.add(t.name);
     }
@@ -13138,12 +13832,14 @@ function renderEfficiencyTab(){
 
   const routes=Object.entries(routeStats)
     .map(([key,s])=>({
-      key,count:s.count,
+      key,count:s.count,confirmed:s.confirmed,
+      plannedOnly:s.count-s.confirmed,
+      confirmedPct:Math.round((s.confirmed/s.count)*100),
       avgLessons:s.totalLessons/s.count,
       avgMin:s.totalMin/s.count,
       lessonsPerHour:(s.totalLessons/s.count)/(s.totalMin/s.count/60),
       delays:s.delays,
-      delayPct:Math.round(s.delays/s.count*100),
+      delayPct:s.confirmed>0?Math.round(s.delays/s.confirmed*100):0,
       routeChanges:s.routeChanges,
       changePct:Math.round(s.routeChanges/s.count*100),
       changeReasons:[...new Set(s.changeReasons)].slice(0,3),
@@ -13176,12 +13872,13 @@ function renderEfficiencyTab(){
       <td style="text-align:center;">
         ${i<3?`<span style="display:inline-block;width:22px;height:22px;line-height:22px;border-radius:50%;background:${rankBg};color:${rankCol};font-size:11px;font-weight:bold;">${i+1}</span>`:i+1}
       </td>
-      <td style="font-family:monospace;font-size:12px;color:#2980b9;font-weight:bold;">${r.key}</td>
+      <td style="font-family:monospace;font-size:12px;color:#2980b9;font-weight:bold;">${_esc(r.key)}</td>
       <td style="text-align:center;">
         <div style="background:#eee;border-radius:4px;height:8px;width:60px;overflow:hidden;display:inline-block;vertical-align:middle;margin-left:4px;">
-          <div style="width:${Math.round(r.count/maxCount*100)}%;height:100%;background:#2980b9;border-radius:4px;"></div>
+          <div style="width:${Math.round(r.confirmed/maxCount*100)}%;height:100%;background:#27ae60;border-radius:4px;"></div>
         </div>
-        ${r.count}
+        <span style="font-size:12px;font-weight:bold;">${r.confirmed}</span>
+        ${r.plannedOnly>0?`<small style="color:#e67e22;font-size:10px;display:block;">+${r.plannedOnly} מתוכנן</small>`:''}
       </td>
       <td style="text-align:center;font-weight:bold;">${r.avgLessons.toFixed(1)}</td>
       <td style="text-align:center;">${Math.round(r.avgMin)} דק'</td>
@@ -13200,7 +13897,7 @@ function renderEfficiencyTab(){
           ? `<span style="font-weight:bold;color:${rcCol};">${r.routeChanges}</span><small style="color:#aaa;display:block;font-size:10px;">${r.changePct}%</small>`
           : '<span style="color:#bbb;">—</span>'}
       </td>
-      <td style="text-align:center;font-size:11px;color:#555;" title="${r.instructors}">${r.instrCount} <small style="color:#aaa;">(${r.instructors.length>30?r.instructors.slice(0,30)+'...':r.instructors})</small></td>
+      <td style="text-align:center;font-size:11px;color:#555;" title="${_esc(r.instructors)}">${r.instrCount} <small style="color:#aaa;">(${r.instructors.length>30?r.instructors.slice(0,30)+'...':r.instructors})</small></td>
     </tr>`;
   }).join('');
 
@@ -13210,7 +13907,7 @@ function renderEfficiencyTab(){
         <thead><tr>
           <th style="width:36px;">#</th>
           <th>מסלול</th>
-          <th style="text-align:center;">ביצועים</th>
+          <th style="text-align:center;">בוצע / מתוכנן</th>
           <th style="text-align:center;">שיעורים ממוצע</th>
           <th style="text-align:center;">משך ממוצע</th>
           <th style="text-align:center;">שיעורים/שעה</th>
@@ -13263,9 +13960,9 @@ function renderAuditLog(){
     const col=actionColors[e.action]||'#888';
     return`<tr>
       <td style="font-size:11px;color:#888;white-space:nowrap;">${e.time}</td>
-      <td><span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:bold;background:${col}22;color:${col};border:1px solid ${col}55;">${e.action}</span></td>
-      <td style="font-size:12px;font-weight:bold;">${e.user}</td>
-      <td style="font-size:12px;color:#555;">${e.details}</td>
+      <td><span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:bold;background:${col}22;color:${col};border:1px solid ${col}55;">${_esc(e.action)}</span></td>
+      <td style="font-size:12px;font-weight:bold;">${_esc(e.user)}</td>
+      <td style="font-size:12px;color:#555;">${_esc(e.details)}</td>
     </tr>`;
   }).join('');
 }
@@ -13492,10 +14189,10 @@ function switchToInstructorView(previewName){
   try{
     const _ms=document.getElementById('manualSection');
     if(_ms){
-      _ms.setAttribute('data-editing-for', _editingForInstructor||'');
-      if(_editingForInstructor&&_editingForInstructor!==previewName){
+      _ms.setAttribute('data-editing-for', _editState.forInstructor||'');
+      if(_editState.forInstructor&&_editState.forInstructor!==previewName){
         _ms.removeAttribute('open');
-      } else if(_editingForInstructor===previewName&&_editingTripInModal){
+      } else if(_editState.forInstructor===previewName&&_editState.tripId){
         _ms.open=true;
       }
     }
@@ -13503,6 +14200,7 @@ function switchToInstructorView(previewName){
 
   try{if(typeof startInstrSync==='function')startInstrSync();}catch(e){}
   setTimeout(_updateTraineeBtnVisibility, 200);
+  setTimeout(_updateTraineeAlertBadge, 250);
   setTimeout(()=>{
     try{renderLog();}catch(e){}
     try{if(typeof renderInstrView==='function')renderInstrView();}catch(e){}
@@ -13658,7 +14356,7 @@ function renderTodayTasks(){
       return`<div style="background:#eaf4fd;border-radius:10px;padding:12px 14px;border:1px solid #b5d4f4;">
         <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:${(taskDef.message||entry.note)?'10px':'0'};">
           <div>
-            <span style="font-size:15px;font-weight:bold;color:var(--primary);">${taskDef.icon||'🚇'} ${taskDef.label}</span>
+            <span style="font-size:15px;font-weight:bold;color:var(--primary);">${taskDef.icon||'🚇'} ${_esc(taskDef.label)}</span>
             <span style="font-size:12px;color:#888;margin-right:8px;">${shiftName} ${timeStr}</span>
           </div>
           <span style="font-size:11px;color:#2980b9;background:#ddeeff;padding:3px 8px;border-radius:5px;">${myTrips.length} נסיעות — ראה יומן למטה</span>
@@ -13667,36 +14365,406 @@ function renderTodayTasks(){
       </div>`;
     }
 
-    // ── Summary-form task ──
-    if(taskDef.requiresSummary){
-      const reportKey=`${today}__${currentUserName}__${entry.id}`;
-      const existingReport=window._taskReportsCache?.[reportKey];
-      const isDone=!!existingReport;
-      return`<div style="background:${isDone?'#eaf5e8':'#fffbf0'};border-radius:10px;padding:12px 14px;border:1px solid ${isDone?'#a8d5a2':'#f0c050'};">
-        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:${(taskDef.message||entry.note)?'10px':'0'};">
-          <div>
-            <span style="font-size:15px;font-weight:bold;color:var(--primary);">${taskDef.icon||'📋'} ${taskDef.label}</span>
-            <span style="font-size:12px;color:#888;margin-right:8px;">${shiftName} ${timeStr}</span>
-            ${isDone?'<span style="font-size:11px;color:#27ae60;font-weight:bold;">✅ דווח</span>':''}
-          </div>
-          <button onclick="openTaskReportModal(this.dataset.e,this.dataset.d,this.dataset.t)" data-e="${entry.id}" data-d="${today}" data-t="${taskDef.id||''}" style="width:auto;padding:6px 14px;background:${isDone?'#27ae60':'#e67e22'};color:white;border:none;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;">
-            📝 ${isDone?'ערוך דיווח':'עדכן סיום משימה'}
-          </button>
-        </div>
-        ${_buildTaskDetails(taskDef,entry)}
-        ${isDone?`<div style="font-size:11px;color:#666;margin-top:8px;padding-top:8px;border-top:1px solid #ddd;">📊 ${formatReportSummary(existingReport,taskDef)}</div>`:''}
-      </div>`;
-    }
-
-    // ── Regular task ──
+    // ── All non-trip tasks render as regular cards (summary via unified form) ──
     return`<div style="background:#f8f8f8;border-radius:10px;padding:12px 14px;border:1px solid #e0e0e0;">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:${(taskDef.message||entry.note)?'10px':'0'};">
-        <span style="font-size:15px;font-weight:bold;color:var(--primary);">${taskDef.icon||'📋'} ${taskDef.label}</span>
+        <span style="font-size:15px;font-weight:bold;color:var(--primary);">${taskDef.icon||'📋'} ${_esc(taskDef.label)}</span>
         <span style="font-size:12px;color:#888;">${shiftName} ${timeStr}</span>
       </div>
       ${_buildTaskDetails(taskDef,entry)}
     </div>`;
   }).join('');
+}
+
+// ── Instructor self-add task ──
+// ══════════════════════════════════════════════════════
+// UNIFIED DAILY REPORT — B
+// ══════════════════════════════════════════════════════
+
+let _urFeedbackCount = 0;
+
+function openUnifiedReport(prefillDate) {
+  const overlay = document.getElementById('unifiedReportOverlay');
+  if (!overlay) return;
+
+  // Prefill date
+  const today = prefillDate || currentDate || _localDateStr(new Date());
+  const dateEl = document.getElementById('ur-date');
+  if (dateEl) dateEl.value = today;
+
+  // Prefill instructor (locked)
+  const instrEl = document.getElementById('ur-instructor');
+  if (instrEl) instrEl.value = currentUserName || '';
+
+  // Prefill shift times from today's schedule entry
+  const entries = (schedData[today] || []).filter(e => e.name === currentUserName);
+  if (entries.length) {
+    const sh = SHIFT_HOURS[entries[0].shift] || {};
+    const startEl = document.getElementById('ur-shift-start');
+    const endEl = document.getElementById('ur-shift-end');
+    if (startEl) startEl.value = entries[0].startTime || sh.s || '';
+    if (endEl) endEl.value = entries[0].endTime || sh.e || '';
+  }
+
+  // Clear numeric fields
+  ['ur-light-hours','ur-sinerio-hours'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  const notesEl = document.getElementById('ur-notes');
+  if (notesEl) notesEl.value = '';
+
+  // Render custom fields
+  _urRenderCustomFields();
+
+  // Clear feedback blocks
+  _urFeedbackCount = 0;
+  const fb = document.getElementById('ur-feedback-blocks');
+  if (fb) fb.innerHTML = '';
+
+  overlay.classList.add('open');
+  overlay.scrollTop = 0;
+}
+
+function closeUnifiedReport() {
+  const overlay = document.getElementById('unifiedReportOverlay');
+  if (overlay) overlay.classList.remove('open');
+}
+
+function _urRenderCustomFields() {
+  const container = document.getElementById('ur-custom-fields');
+  if (!container) return;
+  const customFields = _getUrCustomFields();
+  if (!customFields.length) { container.innerHTML = ''; return; }
+  container.innerHTML = customFields.map(f => `
+    <div class="ur-field">
+      <label>${_esc(f.label)}</label>
+      ${f.type === 'number'
+        ? `<input type="number" id="ur-custom-${f.id}" min="0" placeholder="0" style="width:100px;">`
+        : f.type === 'checkbox'
+        ? `<label style="display:flex;align-items:center;gap:8px;font-weight:400;"><input type="checkbox" id="ur-custom-${f.id}" style="width:18px;height:18px;"> ${_esc(f.label)}</label>`
+        : `<input type="text" id="ur-custom-${f.id}" placeholder="${_esc(f.label)}...">`}
+    </div>`).join('');
+}
+
+function _getUrCustomFields() {
+  try { return JSON.parse(localStorage.getItem('ur_custom_fields') || '[]'); } catch(e) { return []; }
+}
+
+function _urAddFeedbackBlock() {
+  _urFeedbackCount++;
+  const idx = _urFeedbackCount;
+  const container = document.getElementById('ur-feedback-blocks');
+  if (!container) return;
+
+  const trainees = (typeof TraineeSystem !== 'undefined' && TraineeSystem.getDefaultCourseTrainees)
+    ? TraineeSystem.getDefaultCourseTrainees()
+    : (typeof TraineeSystem !== 'undefined' ? TraineeSystem.trainees || [] : []);
+  const traineeOpts = trainees.length
+    ? trainees.map(t => `<option value="${t.id}">${_esc(t.name)}</option>`).join('')
+    : '<option value="">אין חניכים בקורס הנוכחי</option>';
+
+  // Always use the 3 fixed training-phase types (these are locked mission types)
+  const mTypes = [
+    {id:'course', name:'קורס מעשי'},
+    {id:'mt1',   name:'חניכה'},
+    {id:'mt2',   name:'כשירות מעשית/ שעות נוספות'}
+  ];
+  const missionOpts = mTypes.map(m =>
+    `<option value="${m.id}" data-name="${_esc(m.name)}">${_esc(m.name)}</option>`).join('');
+
+  const skills = (typeof TraineeSystem !== 'undefined' && TraineeSystem.settings?.skills)
+    ? TraineeSystem.settings.skills
+    : [{id:'s1',name:'מיומנות 1'},{id:'s2',name:'מיומנות 2'},{id:'s3',name:'מיומנות 3'},{id:'s4',name:'מיומנות 4'},{id:'s5',name:'מיומנות 5'}];
+  const skillsHtml = skills.map(sk => `
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+      <label style="font-size:12px;color:#555;flex:1;text-align:right;">${_esc(sk.name)}</label>
+      <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
+        <button type="button" onclick="_urSkillStep('ur-fb-${idx}-${sk.id}',-1)"
+          style="width:auto !important;height:28px;padding:0 10px;border-radius:6px;border:1.5px solid #bbb;background:#efefef;color:#333;font-size:18px;font-weight:900;cursor:pointer;line-height:1;letter-spacing:-1px;">−</button>
+        <input type="number" id="ur-fb-${idx}-${sk.id}" min="1" max="10" placeholder=""
+          style="width:44px;height:28px;padding:0;border:1.5px solid #ddd;border-radius:6px;text-align:center;font-size:14px;font-weight:700;color:#1a2a3a;background:white;">
+        <button type="button" onclick="_urSkillStep('ur-fb-${idx}-${sk.id}',1)"
+          style="width:auto !important;height:28px;padding:0 10px;border-radius:6px;border:1.5px solid #bbb;background:#efefef;color:#333;font-size:18px;font-weight:900;cursor:pointer;line-height:1;">+</button>
+      </div>
+    </div>`).join('');
+
+  const block = document.createElement('div');
+  block.className = 'ur-trainee-block';
+  block.dataset.fbIdx = idx;
+  block.innerHTML = `
+    <div class="ur-trainee-block-hdr">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        <span style="font-size:13px;font-weight:bold;color:#2980b9;">🎓 חניך</span>
+        <select id="ur-fb-${idx}-trainee" onchange="_urUpdateChips(${idx})"
+          style="padding:6px 10px;border:1.5px solid #b5d4f4;border-radius:7px;font-size:13px;direction:rtl;">${traineeOpts}</select>
+        <select id="ur-fb-${idx}-mission" onchange="_urUpdateChips(${idx})"
+          style="padding:6px 10px;border:1.5px solid #c8e0f5;border-radius:7px;font-size:13px;direction:rtl;background:#f0f8ff;">${missionOpts}</select>
+      </div>
+      <button class="ur-remove-feedback" onclick="this.closest('.ur-trainee-block').remove()">✕</button>
+    </div>
+    <!-- Chips area — populated by _urUpdateChips -->
+    <div id="ur-fb-${idx}-chips-wrap" style="margin:10px 0 4px;">
+      <div id="ur-fb-${idx}-chips-label" style="font-size:12px;font-weight:600;color:#555;margin-bottom:6px;">סמן שיעורים שבוצעו:</div>
+      <div id="ur-fb-${idx}-chips" style="display:flex;flex-wrap:wrap;gap:5px;"></div>
+      <input id="ur-fb-${idx}-extra" type="text" placeholder="פרט את נושא השיעור ומספר השיעורים שניתנו..."
+        style="display:none;width:100%;padding:7px 10px;border:1.5px solid #ddd;border-radius:7px;font-size:13px;direction:rtl;box-sizing:border-box;margin-top:6px;">
+    </div>
+    <div style="margin-bottom:10px;">
+      <label style="font-size:12px;font-weight:600;color:#555;display:block;margin-bottom:6px;">ציוני מיומניות (1–10)</label>
+      ${skillsHtml}
+    </div>
+    <div>
+      <label style="font-size:12px;font-weight:600;color:#555;display:block;margin-bottom:4px;">הערות נוספות</label>
+      <textarea id="ur-fb-${idx}-note" rows="2" placeholder="הערות מקצועיות, דגשים לשיפור או נקודות לשימור..." style="width:100%;padding:7px;border:1.5px solid #ddd;border-radius:7px;font-size:13px;direction:rtl;font-family:inherit;resize:vertical;box-sizing:border-box;"></textarea>
+    </div>`;
+  container.appendChild(block);
+  // Init chips for first trainee + default mission
+  _urUpdateChips(idx);
+}
+
+function _urSkillStep(inputId, delta) {
+  const el = document.getElementById(inputId);
+  if (!el) return;
+  const cur = parseInt(el.value || '', 10);
+  const base = isNaN(cur) ? (delta > 0 ? 0 : 1) : cur;
+  const next = Math.max(1, Math.min(10, base + delta));
+  el.value = next;
+}
+
+function _urUpdateChips(idx) {
+  const traineeId = document.getElementById(`ur-fb-${idx}-trainee`)?.value;
+  const missionSel = document.getElementById(`ur-fb-${idx}-mission`);
+  const missionId = missionSel?.value || 'course';
+  const missionName = missionSel?.options[missionSel.selectedIndex]?.dataset?.name || 'קורס מעשי';
+  const chipsWrap = document.getElementById(`ur-fb-${idx}-chips-wrap`);
+  const chipsEl   = document.getElementById(`ur-fb-${idx}-chips`);
+  const extraEl   = document.getElementById(`ur-fb-${idx}-extra`);
+  if (!chipsEl) return;
+
+  // כשירות/שעות נוספות → text field only, no chips
+  if (missionId === 'mt2' || missionName.includes('כשירות')) {
+    chipsEl.style.display = 'none';
+    document.getElementById(`ur-fb-${idx}-chips-label`).style.display = 'none';
+    if (extraEl) { extraEl.style.display = 'block'; extraEl.placeholder = 'פרט את נושא השיעור ומספר השיעורים שניתנו...'; }
+    return;
+  }
+  // All other types → show chips 1-50
+  if (extraEl) extraEl.style.display = 'none';
+  chipsEl.style.display = 'flex';
+  document.getElementById(`ur-fb-${idx}-chips-label`).style.display = 'block';
+
+  // Get already-done lessons for this trainee + mission
+  const trainees = (typeof TraineeSystem !== 'undefined' && TraineeSystem.getDefaultCourseTrainees)
+    ? TraineeSystem.getDefaultCourseTrainees()
+    : [];
+  const trainee = trainees.find(t => String(t.id) === String(traineeId));
+  const done = new Set();
+  (trainee?.lessons || []).forEach(l => {
+    if (l.mission === missionName) (l.lessonNums || []).forEach(n => done.add(n));
+  });
+
+  // קורס מעשי → sequential (chips locked up to max done)
+  // חניכה → free selection
+  const isFree = (missionId === 'mt1' || missionName === 'חניכה');
+  const maxDone = done.size ? Math.max(...done) : 0;
+
+  chipsEl.innerHTML = Array.from({length:50},(_,i)=>i+1).map(n => {
+    const isDone   = done.has(n);
+    const isLocked = !isFree && n < maxDone;
+    const style    = isDone   ? 'background:#27ae60;color:white;border-color:#27ae60;'
+                    : isLocked ? 'background:#ddd;color:#aaa;cursor:not-allowed;border-color:#ddd;'
+                    : 'background:white;color:#333;border-color:#aaa;';
+    return `<button type="button" data-chip-n="${n}" data-fb-idx="${idx}"
+      onclick="_urToggleChip(this,${n},${isFree?'true':'false'})"
+      style="width:30px;height:30px;border-radius:50%;border:1.5px solid;font-size:11px;font-weight:bold;cursor:pointer;${style}padding:0;width:auto !important;min-width:28px;">
+      ${n}</button>`;
+  }).join('');
+}
+
+function _urToggleChip(btn, n, isFree) {
+  const isDone = btn.style.background.includes('27ae60');
+  const isLocked = btn.style.cursor === 'not-allowed';
+  if (isLocked) return;
+  if (isDone) {
+    btn.style.cssText += 'background:white;color:#333;border-color:#aaa;';
+  } else {
+    btn.style.cssText += 'background:#27ae60;color:white;border-color:#27ae60;';
+  }
+}
+
+async function submitUnifiedReport() {
+  const date = document.getElementById('ur-date')?.value || currentDate;
+  const instructor = currentUserName;
+  if (!date || !instructor) { showToast('שגיאה: חסר תאריך או שם מדריך', 'error'); return; }
+
+  // ── Section A: Day summary ──
+  const report = {
+    date, instructorName: instructor,
+    type: 'unified_daily',
+    submittedAt: Date.now(),
+    shiftStart: document.getElementById('ur-shift-start')?.value || '',
+    shiftEnd:   document.getElementById('ur-shift-end')?.value   || '',
+    lightHours: parseFloat(document.getElementById('ur-light-hours')?.value  || '0') || 0,
+    sinerioHours: parseFloat(document.getElementById('ur-sinerio-hours')?.value || '0') || 0,
+    notes: document.getElementById('ur-notes')?.value.trim() || ''
+  };
+  // Custom fields
+  _getUrCustomFields().forEach(f => {
+    const el = document.getElementById('ur-custom-' + f.id);
+    if (!el) return;
+    report['custom_' + f.id] = f.type === 'checkbox' ? el.checked : (f.type === 'number' ? (parseFloat(el.value)||0) : el.value.trim());
+  });
+
+  // ── Section B: Trainee feedback ──
+  const feedbackBlocks = document.querySelectorAll('#ur-feedback-blocks .ur-trainee-block');
+  const lessonResults = [];
+  const skills = (typeof TraineeSystem !== 'undefined' && TraineeSystem.settings?.skills)
+    ? TraineeSystem.settings.skills
+    : [{id:'s1'},{id:'s2'},{id:'s3'},{id:'s4'},{id:'s5'}];
+
+  feedbackBlocks.forEach(block => {
+    const idx = block.dataset.fbIdx;
+    const traineeId = document.getElementById(`ur-fb-${idx}-trainee`)?.value;
+    if (!traineeId) return;
+    const mSel = document.getElementById(`ur-fb-${idx}-mission`);
+    const missionName = mSel?.options[mSel?.selectedIndex]?.dataset?.name || 'קורס מעשי';
+    const missionId   = mSel?.value || 'course';
+    // Collect selected chip numbers
+    const lessonNums = [];
+    block.querySelectorAll('[data-chip-n]').forEach(btn => {
+      if (btn.style.background && btn.style.background.includes('27ae60'))
+        lessonNums.push(parseInt(btn.dataset.chipN));
+    });
+    // Extra text for כשירות
+    const extraEl = document.getElementById(`ur-fb-${idx}-extra`);
+    const extraDesc = extraEl?.style.display !== 'none' ? (extraEl?.value.trim() || '') : '';
+    const lesson = {
+      date, instructor, mission: missionName,
+      lessonNums: lessonNums.sort((a,b)=>a-b),
+      extraDesc,
+      note: document.getElementById(`ur-fb-${idx}-note`)?.value.trim() || ''
+    };
+    skills.forEach(sk => {
+      const val = parseInt(document.getElementById(`ur-fb-${idx}-${sk.id}`)?.value || '', 10);
+      if (!isNaN(val) && val >= 1 && val <= 10) lesson[sk.id] = val;
+    });
+    lessonResults.push({ traineeId, lesson });
+  });
+
+  // Save day summary to taskReports
+  const reportKey = `${date}__${instructor}__unified`;
+  if (!window._taskReportsCache) window._taskReportsCache = {};
+  window._taskReportsCache[reportKey] = report;
+  try {
+    const lsKey = 'taskReports_' + date;
+    const existing = JSON.parse(localStorage.getItem(lsKey) || '{}');
+    existing[reportKey] = report;
+    localStorage.setItem(lsKey, JSON.stringify(existing));
+  } catch(e) {}
+  if (window._fbDb) {
+    try {
+      const safeKey = instructor.replace(/[.#$[\]/]/g,'_') + '__unified';
+      await _fbSet(_fbRef(_db, `taskReports/${date}/${safeKey}`), report);
+    } catch(e) { console.warn('unified report Firebase:', e); }
+  }
+
+  // Inject trainee lessons into TraineeSystem
+  if (lessonResults.length && typeof TraineeSystem !== 'undefined') {
+    lessonResults.forEach(({ traineeId, lesson }) => {
+      try { TraineeSystem.addLessonFromExternal(traineeId, lesson); } catch(e) { console.warn('addLesson:', e); }
+    });
+  }
+
+  closeUnifiedReport();
+  showToast(`✅ סיכום יום נשמר${lessonResults.length ? ` + ${lessonResults.length} משובי חניכים` : ''}`, 'success');
+  _logAction('save_unified_report', `סיכום יום ${date}`);
+}
+
+// ── Custom fields settings (manager) ──
+function _urOpenCustomFieldsSettings() {
+  const fields = _getUrCustomFields();
+  const container = document.getElementById('ur-settings-list');
+  if (!container) return;
+  container.innerHTML = fields.length
+    ? fields.map((f, i) => `
+      <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:#f8faff;border:1px solid #e0e8f5;border-radius:8px;margin-bottom:6px;">
+        <span style="flex:1;font-size:13px;">${_esc(f.label)} <small style="color:#aaa;">[${f.type}]</small></span>
+        <button onclick="_urDeleteCustomField(${i})" style="width:auto !important;background:none;border:none;color:#e74c3c;cursor:pointer;font-size:15px;">🗑</button>
+      </div>`).join('')
+    : '<div style="color:#aaa;font-size:13px;text-align:center;padding:12px;">אין שדות מותאמים</div>';
+}
+function _urDeleteCustomField(idx) {
+  const fields = _getUrCustomFields();
+  fields.splice(idx, 1);
+  localStorage.setItem('ur_custom_fields', JSON.stringify(fields));
+  _urOpenCustomFieldsSettings();
+  showToast('שדה הוסר', 'info');
+}
+function _urAddCustomField() {
+  const nameEl = document.getElementById('ur-new-field-name');
+  const typeEl = document.getElementById('ur-new-field-type');
+  if (!nameEl || !typeEl) return;
+  const label = nameEl.value.trim();
+  if (!label) { showToast('יש להזין שם לשדה', 'warning'); return; }
+  const fields = _getUrCustomFields();
+  fields.push({ id: 'cf_' + Date.now(), label, type: typeEl.value });
+  localStorage.setItem('ur_custom_fields', JSON.stringify(fields));
+  nameEl.value = '';
+  _urOpenCustomFieldsSettings();
+  showToast('✅ שדה נוסף: ' + label, 'success');
+}
+
+function openInstrAddTask(){
+  const modal=document.getElementById('instrAddTaskModal');
+  if(!modal)return;
+  const sel=document.getElementById('instrAddTaskType');
+  if(sel){
+    sel.innerHTML=taskDefs.length
+      ?taskDefs.map(t=>`<option value="${t.id}">${_esc(t.icon||'')} ${_esc(t.label)}</option>`).join('')
+      :`<option value="training">🚇 הדרכה</option>`;
+  }
+  const noteEl=document.getElementById('instrAddTaskNote');
+  if(noteEl)noteEl.value='';
+  modal.style.display='flex';
+}
+function closeInstrAddTask(){
+  const m=document.getElementById('instrAddTaskModal');
+  if(m)m.style.display='none';
+}
+async function confirmInstrAddTask(){
+  const taskId=document.getElementById('instrAddTaskType')?.value;
+  const note=document.getElementById('instrAddTaskNote')?.value.trim()||'';
+  if(!taskId){showToast('בחר סוג משימה','warning');return;}
+  const today=currentDate||_localDateStr(new Date());
+  // Find existing entry for this instructor to get shift
+  const existing=(schedData[today]||[]).filter(e=>e.name===currentUserName);
+  const shift=existing[0]?.shift||'custom';
+  const newEntry={
+    id:Date.now()+'_'+Math.random().toString(36).slice(2,6),
+    name:currentUserName,shift,task:taskId,note,
+    startTime:existing[0]?.startTime||'',endTime:existing[0]?.endTime||'',
+    status:'approved',_selfAdded:true
+  };
+  if(!schedData[today])schedData[today]=[];
+  schedData[today].push(newEntry);
+  // Save to Firebase/localStorage
+  try{
+    if(window._fbDb){
+      // Use same path as saveSchedEntry for consistency
+      const _iPath=schedPathForDate(today)+'/'+today+'/'+newEntry.id;
+      await _fbSet(_fbRef(_db,_iPath),newEntry);
+    }
+    const lsKey='v100_sched_all';
+    const ls=JSON.parse(localStorage.getItem(lsKey)||'{}');
+    if(!ls[today])ls[today]=[];
+    ls[today].push(newEntry);
+    localStorage.setItem(lsKey,JSON.stringify(ls));
+  }catch(e){console.warn('instrAddTask save:',e);}
+  closeInstrAddTask();
+  renderTodayTasks();
+  _bus.emit(EV_SCHED);
+  showToast('✅ משימה נוספה: '+(taskDefs.find(t=>t.id===taskId)?.label||taskId),'success');
 }
 
 // Build task details section (instructions + personal note)
@@ -13733,11 +14801,11 @@ function formatReportSummary(report,taskDef){
   const parts=[];
   if(report.quantity!==undefined&&report.quantity!==''){
     const lbl=(taskDef.summaryFields||[]).find(f=>f.type==='quantity')?.label||'כמות';
-    parts.push(`${lbl}: <b>${report.quantity}</b>`);
+    parts.push(`${lbl}: <b>${_esc(String(report.quantity))}</b>`);
   }
   if(report.duration!==undefined&&report.duration!==''){
     const lbl=(taskDef.summaryFields||[]).find(f=>f.type==='duration')?.label||'משך';
-    parts.push(`${lbl}: <b>${report.duration}</b>`);
+    parts.push(`${lbl}: <b>${_esc(String(report.duration))}</b>`);
   }
   return parts.join(' | ');
 }
@@ -13765,10 +14833,10 @@ function openTaskReportModal(entryId,date,taskId){
   // Add drivers field for tasks that have driverFields flag
   const showDrivers=!!(taskDef.driverFields);
   const driversField=showDrivers
-    ?'<div><label style="display:block;font-size:13px;font-weight:bold;margin-bottom:5px;color:#8e44ad;">👤 נהגים שנבקרו (מופרדים בפסיקים)</label><input id="trField_drivers" type="text" value="'+(existing.inspectedDrivers||'')+'" placeholder="למשל: דוד כהן, דני לוי, רונית גל" style="width:100%;padding:9px 12px;border:1.5px solid #c39bd3;border-radius:8px;font-size:13px;box-sizing:border-box;"></div>'
+    ?'<div><label style="display:block;font-size:13px;font-weight:bold;margin-bottom:5px;color:#8e44ad;">👤 נהגים שנבקרו (מופרדים בפסיקים)</label><input id="trField_drivers" type="text" value="'+(existing.inspectedDrivers||'')+'" placeholder="למשל: דוד כהן, דני לוי, רונית גל" style="width:100%;padding:9px 12px;border:1.5px solid #c39bd3;border-radius:8px;font-size:16px;box-sizing:border-box;"></div>'
     :'';
-  const extraFields=driversField+'<div><label style="display:block;font-size:13px;font-weight:bold;margin-bottom:5px;color:#7f8c8d;">⚠️ אתגרים / בעיות</label><textarea id="trField_challenges" rows="2" placeholder="תאר אתגרים..." style="width:100%;padding:9px;border:1.5px solid #ddd;border-radius:8px;font-size:13px;box-sizing:border-box;resize:vertical;">'+(existing.challenges||'')+'</textarea></div>'
-    +'<div><label style="display:block;font-size:13px;font-weight:bold;margin-bottom:5px;color:#7f8c8d;">💬 הערות חופשיות</label><textarea id="trField_notes" rows="2" placeholder="הערות נוספות..." style="width:100%;padding:9px;border:1.5px solid #ddd;border-radius:8px;font-size:13px;box-sizing:border-box;resize:vertical;">'+(existing.notes||'')+'</textarea></div>';
+  const extraFields=driversField+'<div><label style="display:block;font-size:13px;font-weight:bold;margin-bottom:5px;color:#7f8c8d;">⚠️ אתגרים / בעיות</label><textarea id="trField_challenges" rows="2" placeholder="תאר אתגרים..." style="width:100%;padding:9px;border:1.5px solid #ddd;border-radius:8px;font-size:16px;box-sizing:border-box;resize:vertical;">'+(existing.challenges||'')+'</textarea></div>'
+    +'<div><label style="display:block;font-size:13px;font-weight:bold;margin-bottom:5px;color:#7f8c8d;">💬 הערות חופשיות</label><textarea id="trField_notes" rows="2" placeholder="הערות נוספות..." style="width:100%;padding:9px;border:1.5px solid #ddd;border-radius:8px;font-size:16px;box-sizing:border-box;resize:vertical;">'+(existing.notes||'')+'</textarea></div>';
 
   const fieldsEl=document.getElementById('inlineReportFields');
   if(fieldsEl)fieldsEl.innerHTML=(measureFields||'<div style="color:#aaa;font-size:12px;text-align:center;padding:4px 0;">מלא הערות בלבד</div>')+extraFields;
@@ -13956,10 +15024,10 @@ async function enhanceMonthlyDashWithTasks(){
 
   // Cache and render tasks tab
   _monthTaskStatsCache=instrTaskStats;
-  renderTasksTab(instrTaskStats); // renders inline in main view
+  _renderTasksTabFromStats(instrTaskStats); // renders inline in main view
 }
 
-function renderTasksTab(instrTaskStats){
+function _renderTasksTabFromStats(instrTaskStats){
   let taskTab=document.getElementById('dashTabTasks');
   if(!taskTab)return;
 
@@ -13996,7 +15064,7 @@ function renderTasksTab(instrTaskStats){
       const noteBadge=t.notes&&t.notes.length
         ?'<span title="'+t.notes.join(' | ')+'" style="font-size:10px;color:#e67e22;cursor:help;margin-right:4px;">💬'+t.notes.length+'</span>':'';
       instrRows.push(`<tr style="border-bottom:1px solid #f5f5f5;">
-        <td style="padding:7px 10px;font-weight:bold;font-size:13px;">${name}</td>
+        <td style="padding:7px 10px;font-weight:bold;font-size:13px;">${_esc(name)}</td>
         <td style="padding:7px 10px;text-align:center;font-weight:bold;color:var(--primary);">${t.quantity||'—'}</td>
         <td style="padding:7px 10px;text-align:center;color:#888;">${t.duration?Math.round(t.duration)+' דק\'':'—'}</td>
         <td style="padding:7px 10px;font-size:11px;">${noteBadge}${driversList}</td>
@@ -14010,7 +15078,7 @@ function renderTasksTab(instrTaskStats){
       ?`<div style="margin-top:10px;border-top:1px solid #eee;padding-top:10px;">
           <div style="font-size:11px;font-weight:bold;color:#888;margin-bottom:6px;">💬 הערות החודש</div>
           ${allNotes.map(n=>`<div style="background:#fff8f0;border-radius:6px;padding:6px 10px;margin-bottom:4px;font-size:12px;border-right:3px solid #f39c12;">
-            <b>${n.instr}:</b> ${n.note}
+            <b>${_esc(n.instr)}:</b> ${_esc(n.note)}
           </div>`).join('')}
         </div>`:'';
 
@@ -14020,7 +15088,7 @@ function renderTasksTab(instrTaskStats){
 
     return`<div style="margin-bottom:20px;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:6px;">
-        <div style="font-size:15px;font-weight:bold;color:var(--primary);">${tDef.icon||'📋'} ${tDef.label}</div>
+        <div style="font-size:15px;font-weight:bold;color:var(--primary);">${_esc(tDef.icon||'📋')} ${_esc(tDef.label)}</div>
         <div style="display:flex;gap:10px;flex-wrap:wrap;">
           <span style="background:#eaf4fb;color:var(--primary);border-radius:20px;padding:3px 12px;font-size:12px;font-weight:bold;">${totalQty} ${qtyLabel}</span>
           <span style="background:#f0f0f0;color:#555;border-radius:20px;padding:3px 12px;font-size:12px;">${hrs} שעות</span>
@@ -14235,18 +15303,26 @@ async function renderDaySummary(){
     let statusCell='';
 
     if(tDef.isTrip){
-      // Trip task
+      // Trip task — include ALL trips (confirmed + planned)
       const myTrips=dayTrips.filter(t=>t.name===e.name);
       const totalTrips=myTrips.length;
+      const confirmedByTimeline=myTrips.filter(t=>t.timeline&&t.timeline.length>0).length;
+      const plannedOnly=totalTrips-confirmedByTimeline;
       const instrKey=(e.name||'').replace(/[.#$[\]/]/g,'_');
       const instrSt=dayStatuses[instrKey]||{};
-      const confirmedCount=instrSt.status==='returned'?totalTrips:0;
+      const confirmedCount=confirmedByTimeline>0?confirmedByTimeline:(instrSt.status==='returned'?totalTrips:0);
 
+      // Planned cell: show total with breakdown
       plannedCell=`<span style="font-size:12px;">${totalTrips} נסיעות</span>`;
 
       if(confirmedCount>0){
-        executedCell=`<span style="font-size:12px;color:#27ae60;font-weight:bold;">✅ ${confirmedCount} אושרו</span>`;
+        executedCell=`<span style="font-size:12px;color:#27ae60;font-weight:bold;">✅ ${confirmedCount} אושרו</span>`
+          +(plannedOnly>0?`<small style="color:#e67e22;display:block;font-size:11px;">📋 ${plannedOnly} מתוכנן</small>`:'');
         statusCell='<span style="background:#eaf5e8;color:#27ae60;font-size:11px;padding:2px 8px;border-radius:10px;font-weight:bold;">הושלם</span>';
+      } else if(plannedOnly>0){
+        // Trips exist but no confirmation — auto-recorded
+        executedCell=`<span style="font-size:12px;color:#e67e22;">📋 ${plannedOnly} מתוכנן</span>`;
+        statusCell='<span style="background:#fef9ec;color:#e67e22;font-size:11px;padding:2px 8px;border-radius:10px;font-weight:bold;">מתוכנן</span>';
       } else if(totalTrips>0){
         executedCell='<span style="font-size:12px;color:#e74c3c;">❌ לא אושרו</span>';
         statusCell='<span style="background:#fdecea;color:#e74c3c;font-size:11px;padding:2px 8px;border-radius:10px;font-weight:bold;">חסר</span>';
@@ -14278,8 +15354,8 @@ async function renderDaySummary(){
     const noteTag=e.note?`<span title="${e.note}" style="font-size:11px;color:#e67e22;margin-right:4px;">💬</span>`:'';
 
     return`<tr style="border-bottom:1px solid #f0f0f0;">
-      <td style="padding:8px 10px;font-weight:bold;font-size:13px;white-space:nowrap;">${e.name}</td>
-      <td style="padding:8px 10px;font-size:12px;">${tDef.icon} ${tDef.label} ${noteTag}</td>
+      <td style="padding:8px 10px;font-weight:bold;font-size:13px;white-space:nowrap;">${_esc(e.name)}</td>
+      <td style="padding:8px 10px;font-size:12px;">${tDef.icon} ${_esc(tDef.label)} ${noteTag}</td>
       <td style="padding:8px 10px;">${plannedCell}</td>
       <td style="padding:8px 10px;">${executedCell}</td>
       <td style="padding:8px 10px;text-align:center;">${statusCell}</td>
@@ -14299,10 +15375,10 @@ async function renderDaySummary(){
 function _syncManualSectionVisibility(){
   const ms=document.getElementById('manualSection');
   if(!ms)return;
-  if(!_editingForInstructor||_editingForInstructor===currentUserName){
+  if(!_editState.forInstructor||_editState.forInstructor===currentUserName){
     // This instructor owns the edit (or no edit active) — show as-is
     // If there's an active edit for this instructor, keep it open
-    if(_editingForInstructor===currentUserName&&_editingTripInModal){
+    if(_editState.forInstructor===currentUserName&&_editState.tripId){
       ms.open=true;
     }
   } else {
@@ -14321,9 +15397,9 @@ function _syncManualSectionVisibility(){
 
 // Exit edit mode completely — clears all edit state
 function exitEditMode(){
-  _editingTripInModal=null;
+  _editState.tripId=null;
   editingTripId=null;
-  _editingForInstructor=null;
+  _editState.forInstructor=null;
   curRoute=[];
   try{
     const ms=document.getElementById('manualSection');
@@ -14411,6 +15487,9 @@ function closeDemoPanel(){
   document.getElementById('demoPanelOverlay').style.display='none';
 }
 
+// ╔══════════════════════════════════════════════════════════╗
+// ║  MODULE: demo  (demo data generation)                    ║
+// ╚══════════════════════════════════════════════════════════╝
 async function generateAndActivateDemo(){
   const startMonth=document.getElementById('demoStartMonth').value;
   const instrCount=parseInt(document.getElementById('demoInstrCount').value)||5;
@@ -14932,7 +16011,7 @@ function _renderMonthSchedBreakdown(yr,mo){
     const instrs=instrByTask[tDef.id]?[...instrByTask[tDef.id]].join(', '):'—';
     const instrCnt=instrByTask[tDef.id]?instrByTask[tDef.id].size:0;
     return`<tr style="border-bottom:1px solid #f0f0f0;">
-      <td style="padding:7px 10px;font-size:13px;">${tDef.icon||'📋'} ${tDef.label}</td>
+      <td style="padding:7px 10px;font-size:13px;">${_esc(tDef.icon||'📋')} ${_esc(tDef.label)}</td>
       <td style="padding:7px 10px;text-align:center;font-weight:bold;color:${cnt?'var(--primary)':'#ccc'};">${instrCnt}</td>
       <td style="padding:7px 10px;text-align:center;color:#888;">${cnt}</td>
       <td style="padding:7px 10px;font-size:11px;color:#555;">${cnt?instrs:'—'}</td>
@@ -14984,7 +16063,7 @@ async function renderTasksTab(){
       if(!schedByTask[e.task])schedByTask[e.task]={};
       if(!schedByTask[e.task][e.name])schedByTask[e.task][e.name]={days:0,minutes:0};
       schedByTask[e.task][e.name].days++;
-      try{const sh=e.startTime||'';const en=e.endTime||'';if(sh&&en){const tm=t=>parseInt(t.split(':')[0])*60+parseInt(t.split(':')[1]);schedByTask[e.task][e.name].minutes+=Math.max(0,tm(en)-tm(sh));}}catch(ex){}
+      try{const sh=e.startTime||'';const en=e.endTime||'';if(sh&&en){schedByTask[e.task][e.name].minutes+=Math.max(0,_toMin(en)-_toMin(sh));}}catch(ex){}
     });
   });
   const rptByTaskInstr={};
@@ -15006,7 +16085,7 @@ async function renderTasksTab(){
       const names=Object.keys(byInstr).sort();if(!names.length)return;
       const tot={trips:names.reduce((s,n)=>s+byInstr[n].trips,0),lessons:names.reduce((s,n)=>s+byInstr[n].lessons,0),hrs:names.reduce((s,n)=>s+byInstr[n].min,0)/60};
       const rows=names.map(n=>`<tr style="border-bottom:1px solid #f5f5f5;"><td style="padding:7px 10px;font-weight:bold;">${n}</td><td style="text-align:center;font-weight:bold;color:var(--primary);">${byInstr[n].trips}</td><td style="text-align:center;color:var(--secondary);">${byInstr[n].lessons.toFixed(1)}</td><td style="text-align:center;color:#888;">${(byInstr[n].min/60).toFixed(1)} שע'</td></tr>`).join('');
-      html+=`<div style="margin-bottom:20px;"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;"><div style="font-size:15px;font-weight:bold;color:var(--primary);">${tDef.icon||'🚇'} ${tDef.label}</div><div style="display:flex;gap:8px;"><span style="background:#eaf4fb;color:var(--primary);border-radius:20px;padding:2px 10px;font-size:12px;font-weight:bold;">${tot.trips} נסיעות</span><span style="background:#eaffea;color:#27ae60;border-radius:20px;padding:2px 10px;font-size:12px;">${tot.lessons.toFixed(1)} שיעורים</span></div></div><table style="width:100%;border-collapse:collapse;background:white;border-radius:10px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.06);"><thead><tr style="background:#eaf4fb;"><th style="padding:7px 10px;font-size:11px;text-align:right;border-bottom:2px solid #c8e0f5;">מדריך</th><th style="padding:7px 10px;font-size:11px;text-align:center;border-bottom:2px solid #c8e0f5;">נסיעות</th><th style="padding:7px 10px;font-size:11px;text-align:center;border-bottom:2px solid #c8e0f5;">שיעורים</th><th style="padding:7px 10px;font-size:11px;text-align:center;border-bottom:2px solid #c8e0f5;">שעות</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+      html+=`<div style="margin-bottom:20px;"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;"><div style="font-size:15px;font-weight:bold;color:var(--primary);">${tDef.icon||'🚇'} ${_esc(tDef.label)}</div><div style="display:flex;gap:8px;"><span style="background:#eaf4fb;color:var(--primary);border-radius:20px;padding:2px 10px;font-size:12px;font-weight:bold;">${tot.trips} נסיעות</span><span style="background:#eaffea;color:#27ae60;border-radius:20px;padding:2px 10px;font-size:12px;">${tot.lessons.toFixed(1)} שיעורים</span></div></div><table style="width:100%;border-collapse:collapse;background:white;border-radius:10px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.06);"><thead><tr style="background:#eaf4fb;"><th style="padding:7px 10px;font-size:11px;text-align:right;border-bottom:2px solid #c8e0f5;">מדריך</th><th style="padding:7px 10px;font-size:11px;text-align:center;border-bottom:2px solid #c8e0f5;">נסיעות</th><th style="padding:7px 10px;font-size:11px;text-align:center;border-bottom:2px solid #c8e0f5;">שיעורים</th><th style="padding:7px 10px;font-size:11px;text-align:center;border-bottom:2px solid #c8e0f5;">שעות</th></tr></thead><tbody>${rows}</tbody></table></div>`;
     });
   }
   const nonTripTaskIds=[...new Set([...Object.keys(schedByTask),...Object.values(taskReports).map(r=>r.taskId).filter(Boolean)])];
@@ -15029,7 +16108,7 @@ async function renderTasksTab(){
       return`<tr style="border-bottom:1px solid #f5f5f5;"><td style="padding:7px 10px;font-weight:bold;">${name}</td><td style="text-align:center;padding:7px 10px;color:#555;">${sv.days}</td><td style="text-align:center;padding:7px 10px;color:#888;">${(sv.minutes/60).toFixed(1)} שע'</td>${rptCell}${drCell}</tr>`;
     }).join('');
     const drHead=tDef.driverFields?'<th style="padding:7px 10px;font-size:11px;border-bottom:2px solid #dde;">נהגים</th>':'';
-    html+=`<div style="margin-bottom:20px;"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;"><div style="font-size:15px;font-weight:bold;color:var(--primary);">${tDef.icon||'📋'} ${tDef.label}</div><div style="display:flex;gap:8px;"><span style="background:#eaf4fb;color:var(--primary);border-radius:20px;padding:2px 10px;font-size:12px;">${totDays} ימים</span><span style="background:#f0f0f0;color:#555;border-radius:20px;padding:2px 10px;font-size:12px;">${(totMins/60).toFixed(1)} שע'</span></div></div><table style="width:100%;border-collapse:collapse;background:white;border-radius:10px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.06);"><thead><tr style="background:#f0f4f8;"><th style="padding:7px 10px;font-size:11px;text-align:right;border-bottom:2px solid #dde;">מדריך</th><th style="padding:7px 10px;font-size:11px;text-align:center;border-bottom:2px solid #dde;">ימים</th><th style="padding:7px 10px;font-size:11px;text-align:center;border-bottom:2px solid #dde;">שעות</th><th style="padding:7px 10px;font-size:11px;border-bottom:2px solid #dde;">דיווח</th>${drHead}</tr></thead><tbody>${rows}</tbody></table></div>`;
+    html+=`<div style="margin-bottom:20px;"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;"><div style="font-size:15px;font-weight:bold;color:var(--primary);">${_esc(tDef.icon||'📋')} ${_esc(tDef.label)}</div><div style="display:flex;gap:8px;"><span style="background:#eaf4fb;color:var(--primary);border-radius:20px;padding:2px 10px;font-size:12px;">${totDays} ימים</span><span style="background:#f0f0f0;color:#555;border-radius:20px;padding:2px 10px;font-size:12px;">${(totMins/60).toFixed(1)} שע'</span></div></div><table style="width:100%;border-collapse:collapse;background:white;border-radius:10px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.06);"><thead><tr style="background:#f0f4f8;"><th style="padding:7px 10px;font-size:11px;text-align:right;border-bottom:2px solid #dde;">מדריך</th><th style="padding:7px 10px;font-size:11px;text-align:center;border-bottom:2px solid #dde;">ימים</th><th style="padding:7px 10px;font-size:11px;text-align:center;border-bottom:2px solid #dde;">שעות</th><th style="padding:7px 10px;font-size:11px;border-bottom:2px solid #dde;">דיווח</th>${drHead}</tr></thead><tbody>${rows}</tbody></table></div>`;
   });
   taskTab.innerHTML=html||'<div style="color:#aaa;text-align:center;padding:20px;">אין נתוני משימות לחודש זה</div>';
 }
@@ -15222,6 +16301,11 @@ function _generateTraineeDemoData() {
 function _updateTraineeAlertBadge(){
   const badge = document.getElementById('traineeAlertBadge');
   if(!badge) return;
+  // Only show to admin — hide if role unknown or instructor
+  if(typeof currentRole === 'undefined' || currentRole !== 'admin') {
+    badge.style.display = 'none';
+    return;
+  }
   const count = _traineeOverloadAlerts ? _traineeOverloadAlerts.length : 0;
   if(count > 0){
     badge.textContent = '⚠️ ' + count + ' התרע' + (count===1?'ה':'ות') + ' עומס';
@@ -15266,6 +16350,12 @@ window._v100TraineeOverload = function(name, actual, max, level, date) {
 };
 function _renderTraineeOverloadBanner() {
   _updateTraineeAlertBadge();
+  // Only show banner to admin — hide any existing banner for non-admin
+  if(typeof currentRole === 'undefined' || currentRole !== 'admin') {
+    const _eb = document.getElementById('traineeOverloadBanner');
+    if(_eb) _eb.style.display = 'none';
+    return;
+  }
   let banner = document.getElementById('traineeOverloadBanner');
   if (!banner) {
     banner = document.createElement('div');
@@ -15294,6 +16384,7 @@ window._traineeInitialized = false;
 function _updateTraineeBtnVisibility() {
   const _isInstr = typeof currentRole !== 'undefined' && currentRole === 'instructor';
   const _isAdmin = typeof currentRole !== 'undefined' && currentRole === 'admin';
+  _updateTraineeAlertBadge(); // sync badge with current role every time
   const cont = document.getElementById('traineeSystemContainer');
   if (!cont) return;
   // Reports button — hide for instructor
@@ -15397,12 +16488,12 @@ document.addEventListener('DOMContentLoaded', () => {
     <div style="display:flex;flex-direction:column;gap:14px;margin-bottom:20px;">
       <div>
         <label style="font-size:13px;font-weight:bold;display:block;margin-bottom:5px;">📅 תחילת תקופה</label>
-        <input type="month" id="demoStartMonth" style="width:100%;padding:9px;border:1.5px solid #ddd;border-radius:8px;font-size:14px;box-sizing:border-box;">
+        <input type="month" id="demoStartMonth" style="width:100%;padding:9px;border:1.5px solid #ddd;border-radius:8px;font-size:16px;box-sizing:border-box;">
         <div style="font-size:11px;color:#888;margin-top:3px;">ניתן לבחור עד 12 חודשים אחורה</div>
       </div>
       <div>
         <label style="font-size:13px;font-weight:bold;display:block;margin-bottom:5px;">👥 כמות מדריכים</label>
-        <select id="demoInstrCount" style="width:100%;padding:9px;border:1.5px solid #ddd;border-radius:8px;font-size:14px;">
+        <select id="demoInstrCount" style="width:100%;padding:9px;border:1.5px solid #ddd;border-radius:8px;font-size:16px;">
           <option value="3">3 מדריכים</option>
           <option value="4">4 מדריכים</option>
           <option value="5" selected>5 מדריכים</option>
@@ -15443,9 +16534,9 @@ document.addEventListener('DOMContentLoaded', () => {
       <button onclick="closeNotesModal()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#aaa;">✕</button>
     </div>
     <label style="font-size:13px;font-weight:bold;color:#555;display:block;margin-bottom:4px;">📅 תאריך</label>
-    <input type="date" id="noteDate" style="width:100%;padding:8px 10px;border:1.5px solid #ddd;border-radius:8px;font-size:14px;margin-bottom:12px;box-sizing:border-box;direction:ltr;">
+    <input type="date" id="noteDate" style="width:100%;padding:8px 10px;border:1.5px solid #ddd;border-radius:8px;font-size:16px;margin-bottom:12px;box-sizing:border-box;direction:ltr;">
     <label style="font-size:13px;font-weight:bold;color:#555;display:block;margin-bottom:4px;">📝 תוכן הפתק</label>
-    <textarea id="noteText" rows="3" placeholder="כתוב תזכורת, אירוע, הערה..." style="width:100%;padding:8px 10px;border:1.5px solid #ddd;border-radius:8px;font-size:13px;resize:vertical;box-sizing:border-box;margin-bottom:12px;"></textarea>
+    <textarea id="noteText" rows="3" placeholder="כתוב תזכורת, אירוע, הערה..." style="width:100%;padding:8px 10px;border:1.5px solid #ddd;border-radius:8px;font-size:16px;resize:vertical;box-sizing:border-box;margin-bottom:12px;"></textarea>
     <label style="font-size:13px;font-weight:bold;color:#555;display:block;margin-bottom:8px;">🎨 צבע פתק</label>
     <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;">
       <label title="צהוב" style="cursor:pointer;"><input type="radio" name="noteColor" value="#fef08a" checked style="display:none;"><span class="note-color-swatch" style="background:#fef08a;border-left:4px solid #ca8a04;box-shadow:2px 2px 5px rgba(0,0,0,.2);display:inline-block;width:28px;height:28px;border-radius:3px;transition:.15s;"></span></label>
@@ -15470,6 +16561,98 @@ document.addEventListener('DOMContentLoaded', () => {
     </div>
   </div>
 </div>
+
+<!-- ── Instructor Add Task Modal ─────────────────────── -->
+<div id="instrAddTaskModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9200;align-items:center;justify-content:center;">
+  <div style="background:white;border-radius:16px;padding:24px;width:min(380px,95vw);direction:rtl;">
+    <h3 style="margin:0 0 16px;font-size:16px;color:#1a2a3a;">➕ הוסף משימה ליום</h3>
+    <div style="margin-bottom:12px;">
+      <label style="font-size:12px;color:#888;display:block;margin-bottom:4px;">סוג משימה</label>
+      <select id="instrAddTaskType" style="width:100%;padding:9px 12px;border:1.5px solid #ddd;border-radius:8px;font-size:14px;direction:rtl;"></select>
+    </div>
+    <div style="margin-bottom:16px;">
+      <label style="font-size:12px;color:#888;display:block;margin-bottom:4px;">הערה (אופציונלי)</label>
+      <input id="instrAddTaskNote" type="text" placeholder="הערה קצרה..." style="width:100%;padding:9px 12px;border:1.5px solid #ddd;border-radius:8px;font-size:14px;direction:rtl;box-sizing:border-box;">
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;">
+      <button onclick="closeInstrAddTask()" style="width:auto !important;padding:8px 16px;background:#f0f4f8;border:1px solid #ddd;border-radius:8px;cursor:pointer;font-size:13px;">ביטול</button>
+      <button onclick="confirmInstrAddTask()" style="width:auto !important;padding:8px 16px;background:#3498db;color:white;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:bold;">הוסף</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ── Unified Daily Report Modal ───────────────────── -->
+<div id="unifiedReportOverlay" class="unified-report-overlay" style="display:none;">
+  <div class="unified-report-box">
+
+    <!-- Header -->
+    <div class="unified-report-head">
+      <h3>📝 סיכום יום מאוחד</h3>
+      <button class="unified-report-close" onclick="closeUnifiedReport()">×</button>
+    </div>
+
+    <!-- Section A: Day Summary -->
+    <div class="unified-report-section">
+      <h4>📋 סיכום יום</h4>
+      <div class="ur-row-2">
+        <div class="ur-field">
+          <label>תאריך משמרת</label>
+          <input type="date" id="ur-date">
+        </div>
+        <div class="ur-field">
+          <label>שם מדריך</label>
+          <input type="text" id="ur-instructor" readonly style="background:#f5f5f5;color:#888;cursor:not-allowed;">
+        </div>
+      </div>
+      <div class="ur-row-2">
+        <div class="ur-field">
+          <label>שעת התחלת משמרת</label>
+          <input type="time" id="ur-shift-start">
+        </div>
+        <div class="ur-field">
+          <label>שעת סיום משמרת</label>
+          <input type="time" id="ur-shift-end">
+        </div>
+      </div>
+      <div class="ur-row-2">
+        <div class="ur-field">
+          <div class="ur-num-field">
+            <label>שעות הדרכה קלה</label>
+            <input type="number" id="ur-light-hours" min="0" max="16" step="0.5" placeholder="0">
+          </div>
+        </div>
+        <div class="ur-field">
+          <div class="ur-num-field">
+            <label>שעות סינריון</label>
+            <input type="number" id="ur-sinerio-hours" min="0" max="16" step="0.5" placeholder="0">
+          </div>
+        </div>
+      </div>
+      <div class="ur-field">
+        <label>הערות — סיכום כללי, משימות נוספות, תקלות, בעיות</label>
+        <textarea id="ur-notes" rows="3" placeholder="תאר את המשמרת..."></textarea>
+      </div>
+      <!-- Custom fields (added by manager) -->
+      <div id="ur-custom-fields"></div>
+    </div>
+
+    <!-- Section B: Trainee Feedback -->
+    <div class="unified-report-section">
+      <h4>🎓 משוב חניכים <span style="font-size:11px;font-weight:400;color:#888;">(מלא רק עבור קורס מעשי)</span></h4>
+      <div id="ur-feedback-blocks"></div>
+      <button class="ur-add-feedback-btn" onclick="_urAddFeedbackBlock()">➕ הוסף משוב חניך נוסף</button>
+    </div>
+
+    <!-- Footer -->
+    <div class="unified-report-footer">
+      <button class="ur-btn-cancel" onclick="closeUnifiedReport()">ביטול</button>
+      <button class="ur-btn-save" onclick="submitUnifiedReport()">💾 שמור סיכום יום</button>
+    </div>
+
+  </div>
+</div>
+
 </body>
 
 </html>
