@@ -15627,23 +15627,65 @@ async function generateAndActivateDemo(){
         if(Object.keys(tripMap).length)monthTrips[date]=tripMap;
 
         const rptMap={};
+        // Non-trip instructors: bakara/driver-training reports
         instrs.filter((name,i)=>TASKS_BY_INSTR[i]!=='training').forEach(name=>{
           if(_pseudoRand(date+name+'rp')>0.28){
             const entry=fullSched[date]?.find(e=>e.name===name);
             if(!entry)return;
             const sk=name.replace(/[.#$[\]/]/g,'_')+'__'+entry.id;
-            rptMap[sk]={date,instructorName:name,taskId:entry.task,
-              taskLabel:entry.task==='bakara'?'בקרות':'הדרכת נהגים',
+            const taskId=entry.task||'bakara';
+            const tDef=demoTaskDefs.find(t=>t.id===taskId);
+            rptMap[sk]={date,instructorName:name,taskId,
+              taskLabel:tDef?tDef.label:(taskId==='bakara'?'בקרות':'הדרכת נהגים'),
               entryId:entry.id,submittedAt:Date.now(),
               quantity:Math.round(2+_pseudoRand(date+name+'q')*8),
               quantityLabel:'מספר בקרות',
               duration:Math.round(60+_pseudoRand(date+name+'d')*120),
               durationLabel:'זמן (דקות)',
-              challenges:_pseudoRand(date+name+'ch')<0.2?'תקלה קלה בדרך':'',notes:_pseudoRand(date+name+'nt')>0.3?DEMO_TASK_NOTES[Math.floor(_pseudoRand(date+name+'nts')*DEMO_TASK_NOTES.length)]:'',
-            names:_generateInspectedNames(date,name)};
+              challenges:_pseudoRand(date+name+'ch')<0.2?'תקלה קלה בדרך':'',
+              notes:_pseudoRand(date+name+'nt')>0.3?DEMO_TASK_NOTES[Math.floor(_pseudoRand(date+name+'nts')*DEMO_TASK_NOTES.length)]:'',
+              inspectedDrivers:_generateInspectedNames(date,name),
+              names:_generateInspectedNames(date,name)};
             totalReports++;
           }
         });
+        // Trip instructors: unified day summary (taskReport) for past dates
+        const _isToday=(date===_localDateStr(new Date()));
+        const _isFuture=(date>_localDateStr(new Date()));
+        if(!_isToday&&!_isFuture){
+          instrs.filter((_,i)=>_tripTaskIds.has(TASKS_BY_INSTR[i])).forEach(name=>{
+            if(_pseudoRand(date+name+'ur')>0.15){// 85% chance of filing unified report
+              const entry=fullSched[date]?.find(e=>e.name===name);
+              if(!entry)return;
+              const myTrips=Object.values(tripMap).filter(t=>t.name===name);
+              if(!myTrips.length)return;
+              const totalLesson=myTrips.reduce((s,t)=>(t.route||[]).reduce((a,r)=>a+(r.t||0),0)+s,0);
+              const sk=name.replace(/[.#$[\]/]/g,'_')+'__unified';
+              // Generate 1-4 trainee feedback entries
+              const _numFeedback=Math.round(1+_pseudoRand(date+name+'nf')*3);
+              const _DEMO_TRAINEE_IDS=[1013,1012,1010,1006,1011,1004,1007,1014,1015,1005,1008,1003,1001,1009,1002];
+              const _feedbackEntries=[];
+              for(let fi=0;fi<_numFeedback;fi++){
+                const tidx=Math.floor(_pseudoRand(date+name+'tid'+fi)*_DEMO_TRAINEE_IDS.length);
+                const traineeId=_DEMO_TRAINEE_IDS[tidx];
+                const s1=Math.round(6+_pseudoRand(date+name+'s1'+fi)*4);
+                const s2=Math.round(6+_pseudoRand(date+name+'s2'+fi)*4);
+                const s3=Math.round(5+_pseudoRand(date+name+'s3'+fi)*5);
+                const s4=Math.round(6+_pseudoRand(date+name+'s4'+fi)*4);
+                const s5=Math.round(6+_pseudoRand(date+name+'s5'+fi)*4);
+                _feedbackEntries.push({traineeId,s1,s2,s3,s4,s5,note:'שיעור שגרתי.'});
+              }
+              rptMap[sk]={date,instructorName:name,taskId:'training',
+                taskLabel:'קורס מעשי',entryId:entry.id,submittedAt:Date.now(),
+                quantity:myTrips.length,quantityLabel:'מספר נסיעות',
+                duration:totalLesson,durationLabel:'זמן שיעורים (דקות)',
+                notes:_pseudoRand(date+name+'un')>0.5?DEMO_TASK_NOTES[Math.floor(_pseudoRand(date+name+'uns')*DEMO_TASK_NOTES.length)]:'',
+                traineeFeedback:_feedbackEntries,
+                isUnified:true};
+              totalReports++;
+            }
+          });
+        }
         if(Object.keys(rptMap).length)monthReports[date]=rptMap;
 
         // ── instrStatus derived from actual trips for consistency ──
@@ -16293,6 +16335,33 @@ function _generateTraineeDemoData() {
   // Demo overload alerts are fired via _fireDemoTraineeAlerts() — called on login/demo-activate
 
   TraineeSystem.trainees.sort((a,b)=>(b.lessons||[]).length-(a.lessons||[]).length);
+
+  // Inject lessons from demo taskReports (unified reports by trip instructors)
+  try {
+    const _today = _localDateStr(new Date());
+    const _demoMonths = JSON.parse(localStorage.getItem('demo_months') || '[]');
+    _demoMonths.forEach(mk => {
+      const rpts = JSON.parse(localStorage.getItem('demo_rpts_' + mk) || '{}');
+      Object.entries(rpts).forEach(([date, rptMap]) => {
+        if(date >= _today) return; // skip today and future
+        Object.values(rptMap).forEach(r => {
+          if(!r.isUnified || !r.traineeFeedback || !r.traineeFeedback.length) return;
+          r.traineeFeedback.forEach(fb => {
+            try {
+              TraineeSystem.addLessonFromExternal(fb.traineeId, {
+                date, instructor: r.instructorName,
+                mission: 'קורס מעשי',
+                s1: fb.s1, s2: fb.s2, s3: fb.s3, s4: fb.s4, s5: fb.s5,
+                note: fb.note || '',
+                _fromDemoReport: true
+              });
+            } catch(e) {}
+          });
+        });
+      });
+    });
+  } catch(e) { console.warn('demo trainee lesson inject:', e); }
+
   TraineeSystem.renderList();
   TraineeSystem.renderInsTags();
 }
