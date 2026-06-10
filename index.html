@@ -6615,23 +6615,89 @@ function _confirmRouteChange(){const reason=(document.getElementById('routeChang
 function _cancelRouteChange(){const box=document.getElementById('routeChangeBox');if(box)box.style.display='none';_pendingSaveCallback=null;showToast('שינוי המסלול בוטל','info');}
 
 let _traineeAssignTripId = null;
+let _traineeAssignCourseIdx = 0; // which course is currently shown
+
+// Load courses directly from localStorage/demo — no need for TraineeSystem.init()
+function _loadCoursesForAssign() {
+  if (typeof TraineeSystem !== 'undefined' && TraineeSystem.courses && TraineeSystem.courses.length) {
+    return TraineeSystem.courses.filter(c => c.status !== 'archived');
+  }
+  // Fallback: read directly from storage
+  try {
+    const isDemoMode = typeof _isDemoMode === 'function' && _isDemoMode();
+    if (isDemoMode) {
+      const saved = localStorage.getItem('demo_trainee_data');
+      if (saved) {
+        const d = JSON.parse(saved);
+        const trainees = d.trainees || [];
+        if (trainees.length) return [{ id: 'default', name: 'קורס ראשי', trainees, isDefault: true }];
+      }
+    }
+    const raw = localStorage.getItem('trainee_courses');
+    if (raw) {
+      const courses = JSON.parse(raw);
+      const active = courses.filter(c => c.status !== 'archived');
+      if (active.length) return active;
+    }
+  } catch(e) {}
+  return [];
+}
+
+function _renderTraineeAssignList(courses, courseIdx, assigned) {
+  const list = document.getElementById('traineeAssignList');
+  const courseBar = document.getElementById('traineeAssignCourseBar');
+  if (!list) return;
+
+  const course = courses[courseIdx] || courses[0];
+  const trainees = course ? (course.trainees || []) : [];
+
+  // Course selector bar — show only if >1 course
+  if (courseBar) {
+    if (courses.length > 1) {
+      courseBar.style.display = 'flex';
+      courseBar.innerHTML = courses.map((c, i) =>
+        `<button onclick="_traineeAssignCourseIdx=${i};_renderTraineeAssignList(window._taCourses,${i},window._taAssigned)" style="padding:5px 12px;border-radius:20px;border:1.5px solid ${i===courseIdx?'#8e44ad':'#ddd'};background:${i===courseIdx?'#8e44ad':'white'};color:${i===courseIdx?'white':'#555'};cursor:pointer;font-size:12px;font-weight:${i===courseIdx?'bold':'normal'};width:auto;">
+          ${_esc(c.name)}${c.isDefault?' ⭐':''}
+        </button>`
+      ).join('');
+    } else {
+      courseBar.style.display = 'none';
+    }
+  }
+
+  if (!trainees.length) {
+    list.innerHTML = '<div style="color:#aaa;text-align:center;padding:24px;font-size:13px;">אין חניכים בקורס זה.</div>';
+    return;
+  }
+
+  list.innerHTML = trainees.map(tr =>
+    `<label style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1.5px solid ${assigned.includes(String(tr.id))?'#8e44ad':'#eee'};border-radius:9px;cursor:pointer;background:${assigned.includes(String(tr.id))?'#f9f0ff':'white'};">
+      <input type="checkbox" value="${tr.id}" ${assigned.includes(String(tr.id))?'checked':''} style="width:16px;height:16px;accent-color:#8e44ad;" onchange="this.closest('label').style.borderColor=this.checked?'#8e44ad':'#eee';this.closest('label').style.background=this.checked?'#f9f0ff':'white';">
+      <span style="font-weight:600;">${_esc(tr.name)}</span>
+      <span style="color:#888;font-size:12px;margin-right:auto;">${(tr.lessons||[]).length} שיעורים</span>
+    </label>`
+  ).join('');
+}
+
 function openTraineeAssign(tripId) {
   _traineeAssignTripId = tripId;
   const trip = trips.find(t=>String(t.id)===String(tripId));
   if (!trip) return;
   const modal = document.getElementById('traineeAssignModal');
-  const list  = document.getElementById('traineeAssignList');
-  if (!modal || !list) return;
+  if (!modal) return;
+
   const assigned = trip.assignedTrainees || [];
-  // Use default course trainees for assignment
-  const trainees = (typeof TraineeSystem!=='undefined')
-    ? (TraineeSystem.getDefaultCourseTrainees ? TraineeSystem.getDefaultCourseTrainees() : TraineeSystem.trainees)
-    : [];
-  if (!trainees.length) {
-    list.innerHTML = '<div style="color:#888;text-align:center;padding:20px;">פתח תחילה את אזור החניכים.</div>';
-  } else {
-    list.innerHTML = trainees.map(tr => '<label style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1.5px solid ' + (assigned.includes(String(tr.id))?'#8e44ad':'#eee') + ';border-radius:9px;cursor:pointer;"><input type="checkbox" value="' + tr.id + '" ' + (assigned.includes(String(tr.id))?'checked':'') + ' style="width:16px;height:16px;accent-color:#8e44ad;"><span style="font-weight:600;">' + tr.name + '</span><span style="color:#888;font-size:12px;margin-right:auto;">' + (tr.lessons||[]).length + ' שיעורים</span></label>').join('');
-  }
+  const courses = _loadCoursesForAssign();
+
+  // Find default course index
+  const defIdx = courses.findIndex(c => c.isDefault);
+  _traineeAssignCourseIdx = defIdx >= 0 ? defIdx : 0;
+
+  // Store on window so inline onclick can access
+  window._taCourses = courses;
+  window._taAssigned = assigned;
+
+  _renderTraineeAssignList(courses, _traineeAssignCourseIdx, assigned);
   modal.style.display = 'flex';
 }
 function closeTraineeAssign() { const m=document.getElementById('traineeAssignModal');if(m)m.style.display='none';_traineeAssignTripId=null; }
@@ -16539,11 +16605,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
 <!-- ══ TRAINEE ASSIGN MODAL ═══════════════════════════════ -->
 <div id="traineeAssignModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9000;align-items:center;justify-content:center;">
-  <div style="background:white;border-radius:16px;padding:24px;width:min(420px,95vw);max-height:80vh;overflow-y:auto;direction:rtl;">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+  <div style="background:white;border-radius:16px;padding:24px;width:min(440px,95vw);max-height:85vh;overflow-y:auto;direction:rtl;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
       <h3 style="margin:0;font-size:16px;">🎓 שיוך חניכים לנסיעה</h3>
       <button onclick="closeTraineeAssign()" style="background:none;border:none;font-size:20px;cursor:pointer;">✕</button>
     </div>
+    <!-- Course selector bar — shown only when multiple courses exist -->
+    <div id="traineeAssignCourseBar" style="display:none;flex-wrap:wrap;gap:6px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid #eee;"></div>
     <div id="traineeAssignList" style="display:flex;flex-direction:column;gap:8px;margin-bottom:18px;"></div>
     <div style="display:flex;gap:10px;justify-content:flex-end;">
       <button onclick="saveTraineeAssign()" style="padding:10px 22px;background:#8e44ad;color:white;border:none;border-radius:8px;cursor:pointer;font-weight:bold;">שמור</button>
