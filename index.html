@@ -283,6 +283,13 @@ input,button,select{width:100%;padding:10px;margin:4px 0;border-radius:8px;borde
 /* ── TIMELINE ─────────────────────────────────────────── */
 
 .timeline-section{background:white;padding:18px 20px;border-radius:var(--radius);border:1px solid #dce3ec;box-shadow:var(--shadow);}
+details.timeline-section{padding:0;}
+details.timeline-section summary::-webkit-details-marker{display:none;}
+details.timeline-section summary{border-radius:var(--radius);}
+details.timeline-section[open] summary{border-radius:var(--radius) var(--radius) 0 0;border-bottom:1px solid #eef2f8;}
+details.timeline-section[open] #timelineToggleArrowAdmin,
+details.timeline-section[open] #timelineToggleArrowInstr{transform:rotate(180deg);}
+details.timeline-section summary:hover{background:#f7f9ff;}
 
 .gantt-row{display:flex;align-items:center;margin-bottom:6px;min-height:34px;}
 
@@ -679,6 +686,8 @@ body.dark-mode .my-trips-sec,body.dark-mode .team-sec,
 body.dark-mode .settings-box,body.dark-mode .confirm-box,
 
 body.dark-mode .modal-box,body.dark-mode .login-box{background:#242938;border-color:#3a4060;color:#e0e6f0;}
+
+body.dark-mode details.timeline-section summary:hover{background:#2d3348;}
 
 body.dark-mode .controls{background:#1e2335;border-color:#3a4060;}
 
@@ -2040,17 +2049,15 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 
     <div class="team-sec"><h4>👥 סטטוס הצוות</h4><div class="tgrid" id="teamGrid"></div></div>
 
-    <div class="timeline-section">
-
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-
+    <details id="timelineSectionInstr" class="timeline-section" style="padding:0;">
+      <summary style="display:flex;justify-content:space-between;align-items:center;padding:14px 20px;cursor:pointer;list-style:none;user-select:none;" onclick="setTimeout(()=>{if(document.getElementById('timelineSectionInstr').open)renderGanttInto('ganttGridInstr');},0)">
         <h4 style="margin:0;color:var(--primary);">📊 ציר זמן — כל הצוות</h4>
-
+        <span id="timelineToggleArrowInstr" style="font-size:13px;color:#888;transition:transform .2s;">▼</span>
+      </summary>
+      <div style="padding:0 20px 16px;">
+        <div style="overflow-x:auto;"><div id="ganttGridInstr"><div class="gantt-empty">אין נסיעות</div></div></div>
       </div>
-
-      <div style="overflow-x:auto;"><div id="ganttGridInstr"><div class="gantt-empty">אין נסיעות</div></div></div>
-
-    </div>
+    </details>
 
     <!-- Instructor schedule view -->
 
@@ -2764,31 +2771,24 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 
   <!-- ── GANTT TIMELINE ────────────────────────────── -->
 
-  <div class="timeline-section">
-
-    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
-
+  <details id="timelineSectionAdmin" class="timeline-section" style="padding:0;">
+    <summary style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;padding:14px 20px;cursor:pointer;list-style:none;user-select:none;" onclick="setTimeout(()=>{if(document.getElementById('timelineSectionAdmin').open)renderTimeline();},0)">
       <h4 style="margin:0;color:var(--primary);">📊 ציר זמן נסיעות</h4>
-
-      <div class="gantt-legend">
-
-        <span><span class="legend-dot" style="background:#2980b9"></span>N</span>
-
-        <span><span class="legend-dot" style="background:#27ae60"></span>L</span>
-
-        <span><span class="legend-dot" style="background:#e67e22"></span>O</span>
-
-        <span><span class="legend-dot" style="background:#7f8c8d"></span>D</span>
-
-        <span><span class="legend-dot" style="background:#c0392b"></span>סיבוב</span>
-
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+        <div class="gantt-legend" style="margin:0;">
+          <span><span class="legend-dot" style="background:#2980b9"></span>N</span>
+          <span><span class="legend-dot" style="background:#27ae60"></span>L</span>
+          <span><span class="legend-dot" style="background:#e67e22"></span>O</span>
+          <span><span class="legend-dot" style="background:#7f8c8d"></span>D</span>
+          <span><span class="legend-dot" style="background:#c0392b"></span>סיבוב</span>
+        </div>
+        <span id="timelineToggleArrowAdmin" style="font-size:13px;color:#888;transition:transform .2s;">▼</span>
       </div>
-
+    </summary>
+    <div style="padding:0 20px 16px;">
+      <div style="overflow-x:auto;"><div id="ganttGrid"><div class="gantt-empty">אין נסיעות</div></div></div>
     </div>
-
-    <div style="overflow-x:auto;"><div id="ganttGrid"><div class="gantt-empty">אין נסיעות</div></div></div>
-
-  </div>
+  </details>
 
   </div><!-- /managerView -->
 
@@ -5795,8 +5795,7 @@ function renderInstrView(){
   renderGanttInto('ganttGridInstr');
   // Load today's task reports and render (previously in wrapper)
   try{
-    const _riv_today=_localDateStr(new Date());
-    loadTaskReportsForDate(_riv_today).then(()=>renderTodayTasks()).catch(()=>renderTodayTasks());
+    loadTaskReportsForDate(currentDate).then(()=>renderTodayTasks()).catch(()=>renderTodayTasks());
   }catch(e){}
 }
 
@@ -6037,7 +6036,14 @@ async function saveToStorage(){
     renderCalendar();
     _bus.emit(EV_TRIPS);
 
-  }catch(e){}
+  }catch(e){
+    // Firebase save failed — fall back to localStorage so data isn't lost
+    try{
+      localStorage.setItem('trips_'+currentDate,JSON.stringify(trips));
+      console.warn('[V100] saveToStorage Firebase failed, saved to localStorage:',e);
+    }catch(le){console.warn('[V100] saveToStorage localStorage fallback also failed:',le);}
+    showToast('⚠️ שמירה לענן נכשלה — נשמר מקומית','warning');
+  }
 
 }
 
@@ -6162,6 +6168,9 @@ function changeDate(delta){
 
   currentDate=_localDateStr(d);
 
+  // Reset task-reports cache so stale reports from previous date don't linger in memory
+  window._taskReportsCache={};window._taskReportsCacheDate=null;
+
   updateDateLabel();
 
   resubscribeTripsListener();
@@ -6177,6 +6186,9 @@ function changeDate(delta){
 function onDateChange(){
 
   currentDate=document.getElementById('dateSelector').value||currentDate;
+
+  // Reset task-reports cache so stale reports from previous date don't linger in memory
+  window._taskReportsCache={};window._taskReportsCacheDate=null;
 
   updateDateLabel();
 
@@ -7150,6 +7162,13 @@ function startNowLineTimer(){if(_nowTimer)clearInterval(_nowTimer);_nowTimer=set
 function renderTimeline(){
 
   const grid=document.getElementById('ganttGrid');
+
+  // Skip render if the admin timeline section is collapsed — will render on open
+  const adminDetails=document.getElementById('timelineSectionAdmin');
+  if(adminDetails&&!adminDetails.open){
+    if(trips.length===0){grid.innerHTML='<div class="gantt-empty">אין נסיעות להצגה</div>';}
+    return;
+  }
 
   if(trips.length===0){grid.innerHTML='<div class="gantt-empty">אין נסיעות להצגה</div>';return;}
 
@@ -9156,7 +9175,7 @@ function renderDailyScheduleSummary(){
       const sh=SHIFT_HOURS[e.shift]||{s:e.startTime||'',e:e.endTime||''};
       const timeStr=e.shift==='custom'?`${e.startTime||''}–${e.endTime||''}`:`${sh.s}–${sh.e}`;
       const shiftIco=SHIFT_ICO[e.shift]||'';
-      const noteTag=e.note?`<span title="${e.note}" style="font-size:11px;color:#e67e22;margin-right:4px;">💬</span>`:'';
+      const noteTag=e.note?`<span title="${_esc(e.note)}" style="font-size:11px;color:#e67e22;margin-right:4px;">💬</span>`:'';
       return`<span style="display:inline-flex;align-items:center;gap:4px;background:#f0f4f8;border-radius:6px;padding:3px 8px;margin:2px;font-size:12px;white-space:nowrap;">
         ${tDef.icon} <b>${_esc(tDef.label)}</b>
         <span style="color:#888;font-size:11px;">${shiftIco} ${timeStr}</span>
@@ -13102,6 +13121,8 @@ function updateApprovalBadge(){
 
 function changeMonthlyDash(delta){
   _monthlyDashDate=new Date(_monthlyDashDate.getFullYear(),_monthlyDashDate.getMonth()+delta,1);
+  // Clear history cache so the new month loads fresh data
+  _monthHistoryCache={};
   // Update label immediately
   const lbl=document.getElementById('monthlyDashLabel');
   if(lbl)lbl.textContent=_monthlyDashDate.toLocaleDateString('he-IL',{month:'long',year:'numeric'});
@@ -13475,7 +13496,7 @@ async function renderTimesheet(){
     <td style="text-align:center;font-weight:bold;">${r.hoursStr} שע'</td>
     <td style="text-align:center;font-weight:bold;color:#2980b9;">${r.lessons}</td>
     <td style="text-align:center;color:${STATUS_CLR[r.status]||'#888'};font-size:11px;font-weight:bold;">${STATUS_LBL[r.status]||r.status}</td>
-    <td style="font-size:11px;color:#e67e22;">${r.note||''}</td>
+    <td style="font-size:11px;color:#e67e22;">${_esc(r.note||'')}</td>
   </tr>`).join('');
 
   // Update header to reflect new columns
@@ -14409,7 +14430,8 @@ function renderTodayTasks(){
   const dateLbl=document.getElementById('todayTasksDate');
   if(!container)return;
 
-  const today=_localDateStr(new Date());
+  // Use currentDate (tracks admin date-navigation; for instructors currentDate == real today)
+  const today=currentDate||_localDateStr(new Date());
   if(dateLbl){
     const d=new Date(today+'T12:00:00');
     dateLbl.textContent=d.toLocaleDateString('he-IL',{weekday:'short',day:'numeric',month:'long'});
@@ -15147,9 +15169,9 @@ function _renderTasksTabFromStats(instrTaskStats){
 
       // Per-instructor row
       const driversList=t.drivers&&t.drivers.length
-        ?'<div style="font-size:10px;color:#8e44ad;margin-top:2px;">👤 '+t.drivers.join(', ')+'</div>':'';
+        ?'<div style="font-size:10px;color:#8e44ad;margin-top:2px;">👤 '+t.drivers.map(_esc).join(', ')+'</div>':'';
       const noteBadge=t.notes&&t.notes.length
-        ?'<span title="'+t.notes.join(' | ')+'" style="font-size:10px;color:#e67e22;cursor:help;margin-right:4px;">💬'+t.notes.length+'</span>':'';
+        ?'<span title="'+_esc(t.notes.join(' | '))+'" style="font-size:10px;color:#e67e22;cursor:help;margin-right:4px;">💬'+t.notes.length+'</span>':'';
       instrRows.push(`<tr style="border-bottom:1px solid #f5f5f5;">
         <td style="padding:7px 10px;font-weight:bold;font-size:13px;">${_esc(name)}</td>
         <td style="padding:7px 10px;text-align:center;font-weight:bold;color:var(--primary);">${t.quantity||'—'}</td>
@@ -15351,7 +15373,11 @@ async function renderDaySummary(){
     try{
       const snap=await _fbGet(_fbRef(_db,'trips/'+dateStr));
       dayTrips=snap.exists()?Object.values(snap.val()).map(parseTrip):[];
-    }catch(e){}
+    }catch(e){
+      console.warn('[V100] renderDaySummary trips load failed:',e);
+      wrap.innerHTML='<div style="color:#e74c3c;font-size:13px;text-align:center;padding:14px;">⚠️ שגיאה בטעינת נסיעות — נסה לרענן</div>';
+      return;
+    }
   }
 
   // Load task reports for this date
@@ -15368,7 +15394,11 @@ async function renderDaySummary(){
     try{
       const snap=await _fbGet(_fbRef(_db,'instrStatus/'+dateStr));
       dayStatuses=snap.exists()?snap.val():{};
-    }catch(e){}
+    }catch(e){
+      console.warn('[V100] renderDaySummary instrStatus load failed:',e);
+      // Non-fatal: continue with empty statuses rather than blocking render
+      dayStatuses={};
+    }
   }
 
   // Get schedData for this date
@@ -15423,8 +15453,8 @@ async function renderDaySummary(){
       const report=(window._taskReportsCache&&window._taskReportsCache[reportKey])||null;
       plannedCell=`<span style="font-size:12px;">משמרת ${timeStr}</span>`;
       if(report){
-        const parts=(tDef.summaryFields||[]).map(f=>`${f.label}: <b>${report[f.type]||'—'}</b>`).join(' | ');
-        const challenges=report.challenges?`<span style="font-size:10px;color:#e67e22;">⚠️ ${report.challenges}</span>`:'';
+        const parts=(tDef.summaryFields||[]).map(f=>`${_esc(f.label)}: <b>${_esc(String(report[f.type]||'—'))}</b>`).join(' | ');
+        const challenges=report.challenges?`<span style="font-size:10px;color:#e67e22;">⚠️ ${_esc(report.challenges)}</span>`:'';
         executedCell=`<span style="font-size:12px;">${parts||'דווח'}</span> ${challenges}`;
         statusCell='<span style="background:#eaf5e8;color:#27ae60;font-size:11px;padding:2px 8px;border-radius:10px;font-weight:bold;">הושלם</span>';
       } else {
