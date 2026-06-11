@@ -76,15 +76,16 @@ body{font-family:'Segoe UI',Tahoma,sans-serif;background:var(--bg);margin:0;padd
 }
 
 .v100-role-dot{
-  font-size:11px;padding:1px 7px;border-radius:10px;
-  background:#1e3d5c;color:#5ba8d4;font-weight:600;
+  font-size:11px;padding:2px 8px;border-radius:8px;
+  background:#243447;color:#7ab8d8;font-weight:600;
+  border:1px solid #2e4460;flex-shrink:0;
 }
 
 .v100-user-name{color:#c8d8e8;font-weight:600;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:90px;}
 
 .v100-action-btn{
-  padding:5px 13px;border-radius:7px;font-size:12px;font-weight:500;
-  cursor:pointer;transition:.15s;white-space:nowrap;
+  padding:6px 14px;border-radius:7px;font-size:12px;font-weight:500;
+  cursor:pointer;transition:.15s;white-space:nowrap;border:none;
 }
 .v100-btn-ghost{
   background:transparent;color:#9ab0c4;
@@ -93,16 +94,23 @@ body{font-family:'Segoe UI',Tahoma,sans-serif;background:var(--bg);margin:0;padd
 .v100-btn-ghost:hover{background:#243447;color:#e8eef5;border-color:#3d5a78;}
 
 .v100-icon-btn{
-  width:30px;height:30px;border-radius:7px;
+  width:34px;height:34px;border-radius:7px;
   background:transparent;border:1px solid #2e4460;
-  color:#9ab0c4;font-size:15px;cursor:pointer;
+  color:#9ab0c4;font-size:17px;cursor:pointer;
   display:flex;align-items:center;justify-content:center;
-  transition:.15s;padding:0;
+  transition:.15s;padding:0;flex-shrink:0;
 }
 .v100-icon-btn:hover{background:#243447;color:#e8eef5;}
 
 .saved-indicator{font-size:11px;color:#5ba8d4;display:none;}
 .saved-indicator.show{display:inline;}
+
+.v100-icon-group{
+  display:flex;align-items:center;gap:4px;
+  padding:0 6px;
+  border-right:1px solid #2e4460;
+}
+.v100-icon-group:last-child{border-right:none;padding-right:0;}
 
 /* ── NAV WRAPPER ───────────────────────────────────────── */
 
@@ -2087,15 +2095,20 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
       <span class="saved-indicator" id="savedIndicator">✓ נשמר</span>
 
       <div class="v100-user-pill">
-        <span class="v100-role-dot" id="userRoleTag"></span>
         <span class="v100-user-name" id="userNameLbl"></span>
+        <span class="v100-role-dot" id="userRoleTag"></span>
       </div>
 
-      <button onclick="reloadApp()" id="globalReloadBtn" class="v100-icon-btn" title="רענן" style="display:none;">↺</button>
-      <button class="v100-icon-btn" onclick="toggleDarkMode()" id="darkBtn" title="מצב לילה">☽</button>
-      <button id="switchViewBtn" onclick="switchToInstructorView()" class="v100-action-btn v100-btn-ghost" style="display:none;">👤 מדריך</button>
-      <button id="switchBackBtn" onclick="switchBackToAdmin()" class="v100-action-btn v100-btn-ghost" style="display:none;">↩ מנהל</button>
-      <button class="v100-action-btn v100-btn-ghost" onclick="doLogout()">התנתק</button>
+      <div class="v100-icon-group">
+        <button onclick="reloadApp()" id="globalReloadBtn" class="v100-icon-btn" title="רענן" style="display:none;">↺</button>
+        <button class="v100-icon-btn" onclick="toggleDarkMode()" id="darkBtn" title="מצב לילה">☽</button>
+      </div>
+
+      <div class="v100-icon-group">
+        <button id="switchViewBtn" onclick="switchToInstructorView()" class="v100-action-btn v100-btn-ghost" style="display:none;">👤 מדריך</button>
+        <button id="switchBackBtn" onclick="switchBackToAdmin()" class="v100-action-btn v100-btn-ghost" style="display:none;">↩ מנהל</button>
+        <button class="v100-action-btn v100-btn-ghost" onclick="doLogout()">התנתק</button>
+      </div>
     </div>
   </div>
 
