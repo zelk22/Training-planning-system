@@ -32,9 +32,9 @@ body{font-family:'Segoe UI',Tahoma,sans-serif;background:var(--bg);margin:0;padd
 
 .v100-topbar{
   display:flex;align-items:center;justify-content:space-between;
-  background:#0f1923;color:#e8eef5;
-  padding:0 20px;height:54px;
-  border-radius:14px 14px 0 0;
+  background:#1a2332;color:#e8eef5;
+  padding:0 20px;height:52px;
+  border-radius:12px 12px 0 0;
   margin-bottom:0;
   gap:12px;
 }
@@ -42,136 +42,116 @@ body{font-family:'Segoe UI',Tahoma,sans-serif;background:var(--bg);margin:0;padd
 .v100-topbar-brand{display:flex;align-items:center;gap:10px;}
 
 .v100-logo-mark{
-  width:34px;height:34px;border-radius:9px;
-  background:linear-gradient(135deg,#2980b9,#1a5276);
+  width:32px;height:32px;border-radius:8px;
+  background:#2980b9;
   display:flex;align-items:center;justify-content:center;
-  font-size:16px;font-weight:800;color:white;letter-spacing:-1px;
+  font-size:15px;font-weight:800;color:white;
   flex-shrink:0;
 }
 
-.v100-brand-text{display:flex;flex-direction:column;line-height:1.2;}
-.v100-brand-name{font-size:14px;font-weight:700;color:#e8eef5;letter-spacing:.2px;}
-.v100-brand-sub{font-size:10px;color:#6b7f94;font-weight:400;}
+.v100-brand-text{display:flex;flex-direction:column;line-height:1.25;}
+.v100-brand-name{font-size:13px;font-weight:700;color:#e8eef5;}
+.v100-brand-sub{font-size:10px;color:#7a8fa3;}
 
 .v100-version-chip{
-  background:#1d2d3e;color:#4a9fd4;
+  background:#243447;color:#5ba8d4;
   font-size:10px;font-weight:700;
-  padding:2px 7px;border-radius:20px;
-  border:1px solid #2a4060;letter-spacing:.5px;
+  padding:2px 8px;border-radius:20px;
+  border:1px solid #2e4460;
 }
 
 .v100-topbar-actions{
-  display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+  display:flex;align-items:center;gap:6px;flex-wrap:wrap;
 }
 
 .v100-user-pill{
-  display:flex;align-items:center;gap:7px;
-  background:#1d2d3e;border:1px solid #2a4060;
-  border-radius:20px;padding:4px 12px 4px 10px;
+  display:flex;align-items:center;gap:6px;
+  background:#243447;border:1px solid #2e4460;
+  border-radius:20px;padding:4px 12px;
   font-size:12px;
 }
 
 .v100-role-dot{
   font-size:11px;padding:1px 7px;border-radius:10px;
-  background:#1a4a6b;color:#4a9fd4;font-weight:600;
+  background:#1e3d5c;color:#5ba8d4;font-weight:600;
 }
 
 .v100-user-name{color:#c8d8e8;font-weight:600;font-size:12px;}
 
 .v100-action-btn{
-  padding:5px 12px;border-radius:7px;font-size:12px;font-weight:600;
-  cursor:pointer;border:none;transition:.15s;white-space:nowrap;
+  padding:5px 13px;border-radius:7px;font-size:12px;font-weight:500;
+  cursor:pointer;transition:.15s;white-space:nowrap;
 }
-.v100-btn-blue{background:#1d4e7a;color:#7dbfea;border:1px solid #2a6496;}
-.v100-btn-blue:hover{background:#235d8f;}
-.v100-btn-danger{background:#3d1a1a;color:#e88080;border:1px solid #6b2424;}
-.v100-btn-danger:hover{background:#4d2020;}
-.v100-btn-ghost{background:transparent;color:#8a9cb0;border:1px solid #2a3a4a;}
-.v100-btn-ghost:hover{background:#1d2d3e;color:#c8d8e8;}
+.v100-btn-ghost{
+  background:transparent;color:#9ab0c4;
+  border:1px solid #2e4460;
+}
+.v100-btn-ghost:hover{background:#243447;color:#e8eef5;border-color:#3d5a78;}
 
 .v100-icon-btn{
-  width:32px;height:32px;border-radius:7px;
-  background:transparent;border:1px solid #2a3a4a;
-  color:#8a9cb0;font-size:16px;cursor:pointer;
+  width:30px;height:30px;border-radius:7px;
+  background:transparent;border:1px solid #2e4460;
+  color:#9ab0c4;font-size:15px;cursor:pointer;
   display:flex;align-items:center;justify-content:center;
   transition:.15s;padding:0;
 }
-.v100-icon-btn:hover{background:#1d2d3e;color:#c8d8e8;}
+.v100-icon-btn:hover{background:#243447;color:#e8eef5;}
 
-.saved-indicator{font-size:11px;color:#4a9fd4;display:none;}
+.saved-indicator{font-size:11px;color:#5ba8d4;display:none;}
 .saved-indicator.show{display:inline;}
 
 /* ── NAV WRAPPER ───────────────────────────────────────── */
 
 .v100-nav-wrapper{
-  background:#161f2b;
-  border-radius:0;
-  margin-bottom:16px;
+  background:#f4f7fb;
+  border-bottom:1px solid #dde4ee;
+  margin-bottom:18px;
 }
-
-/* View-switch row — always above tabs */
-.v100-view-switch{
-  display:flex;align-items:center;
-  padding:6px 18px 0;
-  gap:8px;
-  min-height:0;
-}
-
-.v100-switch-btn{
-  display:inline-flex;align-items:center;gap:6px;
-  padding:5px 14px;border-radius:20px;
-  font-size:12px;font-weight:600;cursor:pointer;
-  transition:.15s;white-space:nowrap;border:none;
-}
-.v100-switch-instr{background:#1d4e7a;color:#7dbfea;}
-.v100-switch-instr:hover{background:#235d8f;color:#a8d4f5;}
-.v100-switch-admin{background:#4a1a1a;color:#e88080;}
-.v100-switch-admin:hover{background:#5d2020;color:#f0a0a0;}
 
 /* ── NAV TABS ──────────────────────────────────────────── */
 
 .v100-nav{
-  display:flex;align-items:flex-end;gap:0;
+  display:flex;align-items:flex-end;
   background:transparent;
-  padding:0 14px;
-  border-bottom:1px solid #1d2d3e;
+  padding:0 12px;
+  border:none;
   overflow-x:auto;
   scrollbar-width:none;
-  margin:0;
+  gap:2px;
 }
 .v100-nav::-webkit-scrollbar{display:none;}
 
 .v100-nav-tab{
   display:flex;align-items:center;gap:7px;
-  padding:11px 18px 10px;
+  padding:11px 16px 10px;
   font-size:13px;font-weight:500;
-  color:#8a9cb0;
+  color:#5a6e84;
   background:transparent;border:none;
   border-bottom:2px solid transparent;
   cursor:pointer;white-space:nowrap;
   transition:color .15s, border-color .15s, background .15s;
   margin-bottom:-1px;
   border-radius:6px 6px 0 0;
-  letter-spacing:.1px;
 }
 .v100-nav-tab:hover{
-  color:#c8d8e8;
-  background:rgba(255,255,255,0.04);
+  color:#1a2332;
+  background:rgba(26,35,50,0.05);
 }
 .v100-nav-tab.v100-nav-active{
-  color:#e8eef5;
-  border-bottom-color:#4a9fd4;
-  background:rgba(74,159,212,0.07);
+  color:#1a5276;
+  border-bottom-color:#2980b9;
+  background:white;
   font-weight:600;
 }
-.v100-tab-icon{font-size:15px;line-height:1;}
+.v100-tab-icon{font-size:14px;line-height:1;}
 .v100-tab-label{line-height:1;}
 
 /* dark mode */
-body.dark-mode .v100-topbar{background:#0a1018;}
-body.dark-mode .v100-nav-wrapper{background:#0d1520;}
-body.dark-mode .v100-nav{border-color:#1a2535;}
-body.dark-mode .v100-nav-tab.v100-nav-active{background:rgba(74,159,212,0.1);}
+body.dark-mode .v100-topbar{background:#111827;}
+body.dark-mode .v100-nav-wrapper{background:#1e2535;border-color:#2d3a50;}
+body.dark-mode .v100-nav-tab{color:#8a9cb0;}
+body.dark-mode .v100-nav-tab:hover{color:#c8d8e8;background:rgba(255,255,255,0.04);}
+body.dark-mode .v100-nav-tab.v100-nav-active{color:#5ba8d4;background:#243447;border-bottom-color:#2980b9;}
 
 
 
@@ -2109,24 +2089,14 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 
       <button onclick="reloadApp()" id="globalReloadBtn" class="v100-icon-btn" title="רענן" style="display:none;">↺</button>
       <button class="v100-icon-btn" onclick="toggleDarkMode()" id="darkBtn" title="מצב לילה">☽</button>
+      <button id="switchViewBtn" onclick="switchToInstructorView()" class="v100-action-btn v100-btn-ghost" style="display:none;">👤 מדריך</button>
+      <button id="switchBackBtn" onclick="switchBackToAdmin()" class="v100-action-btn v100-btn-ghost" style="display:none;">↩ מנהל</button>
       <button class="v100-action-btn v100-btn-ghost" onclick="doLogout()">התנתק</button>
     </div>
   </div>
 
   <!-- ── NAV TABS (admin only) ─────────────────────── -->
   <div class="v100-nav-wrapper" id="v100AdminNav" style="display:none;">
-
-    <!-- Row 1: view-switch buttons — always visible above tabs -->
-    <div class="v100-view-switch" id="v100ViewSwitch">
-      <button id="switchViewBtn" onclick="switchToInstructorView()" class="v100-switch-btn v100-switch-instr" style="display:none;">
-        <span>👤</span> תצוגת מדריך
-      </button>
-      <button id="switchBackBtn" onclick="switchBackToAdmin()" class="v100-switch-btn v100-switch-admin" style="display:none;">
-        <span>↩</span> חזור למנהל
-      </button>
-    </div>
-
-    <!-- Row 2: tabs -->
     <nav class="v100-nav">
       <button class="v100-nav-tab v100-nav-active" onclick="v100NavTo('planner')" id="navTabPlanner">
         <span class="v100-tab-icon">📅</span><span class="v100-tab-label">תכנון יומי</span>
