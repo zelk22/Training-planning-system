@@ -33,13 +33,15 @@ body{font-family:'Segoe UI',Tahoma,sans-serif;background:var(--bg);margin:0;padd
 .v100-topbar{
   display:flex;align-items:center;justify-content:space-between;
   background:#1a2332;color:#e8eef5;
-  padding:0 20px;height:52px;
+  padding:0 16px;height:52px;
   border-radius:12px 12px 0 0;
   margin-bottom:0;
-  gap:12px;
+  gap:10px;
+  min-width:0;
+  overflow:hidden;
 }
 
-.v100-topbar-brand{display:flex;align-items:center;gap:10px;}
+.v100-topbar-brand{display:flex;align-items:center;gap:10px;min-width:0;flex-shrink:1;}
 
 .v100-logo-mark{
   width:32px;height:32px;border-radius:8px;
@@ -49,9 +51,9 @@ body{font-family:'Segoe UI',Tahoma,sans-serif;background:var(--bg);margin:0;padd
   flex-shrink:0;
 }
 
-.v100-brand-text{display:flex;flex-direction:column;line-height:1.25;}
-.v100-brand-name{font-size:13px;font-weight:700;color:#e8eef5;}
-.v100-brand-sub{font-size:10px;color:#7a8fa3;}
+.v100-brand-text{display:flex;flex-direction:column;line-height:1.25;min-width:0;}
+.v100-brand-name{font-size:13px;font-weight:700;color:#e8eef5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.v100-brand-sub{font-size:10px;color:#7a8fa3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 
 .v100-version-chip{
   background:#243447;color:#5ba8d4;
@@ -61,14 +63,16 @@ body{font-family:'Segoe UI',Tahoma,sans-serif;background:var(--bg);margin:0;padd
 }
 
 .v100-topbar-actions{
-  display:flex;align-items:center;gap:6px;flex-wrap:wrap;
+  display:flex;align-items:center;gap:6px;
+  flex-shrink:0;
+  flex-wrap:nowrap;
 }
 
 .v100-user-pill{
   display:flex;align-items:center;gap:6px;
   background:#243447;border:1px solid #2e4460;
   border-radius:20px;padding:4px 12px;
-  font-size:12px;
+  font-size:12px;max-width:180px;min-width:0;
 }
 
 .v100-role-dot{
@@ -76,7 +80,7 @@ body{font-family:'Segoe UI',Tahoma,sans-serif;background:var(--bg);margin:0;padd
   background:#1e3d5c;color:#5ba8d4;font-weight:600;
 }
 
-.v100-user-name{color:#c8d8e8;font-weight:600;font-size:12px;}
+.v100-user-name{color:#c8d8e8;font-weight:600;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:90px;}
 
 .v100-action-btn{
   padding:5px 13px;border-radius:7px;font-size:12px;font-weight:500;
