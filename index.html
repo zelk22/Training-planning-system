@@ -2061,10 +2061,12 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
     <div style="margin-top:22px;margin-bottom:14px;padding:14px;background:#fff3f3;border:1.5px solid #e74c3c;border-radius:10px;">
       <div style="font-weight:bold;color:#c0392b;margin-bottom:10px;">⚠️ פעולות ניהול מתקדמות</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-start;">
-        <button onclick="if(confirm('אפס נסיעות היום?')){_logAction('reset_trips','אפס נסיעות יום');trips=[];saveToStorage();renderLog();renderDashboard();showToast('נמחקו','info');}" style="width:auto !important;padding:7px 14px;background:#e74c3c;color:white;border:none;border-radius:7px;cursor:pointer;font-size:12px;font-weight:600;">🗑️ אפס נסיעות</button>
-        <button onclick="if(confirm('איפוס כללי — ימחק את כל הנתונים המקומיים?')){_logAction('reset_all','איפוס כללי');localStorage.clear();location.reload();}" style="width:auto !important;padding:7px 14px;background:#c0392b;color:white;border:none;border-radius:7px;cursor:pointer;font-size:12px;font-weight:600;">⚠️ איפוס כללי</button>
+        <button onclick="resetTripsOnly()" style="width:auto !important;padding:7px 14px;background:#e74c3c;color:white;border:none;border-radius:7px;cursor:pointer;font-size:12px;font-weight:600;">🗑️ אפס נסיעות</button>
+        <button onclick="resetAll()" style="width:auto !important;padding:7px 14px;background:#c0392b;color:white;border:none;border-radius:7px;cursor:pointer;font-size:12px;font-weight:600;">⚠️ איפוס כללי</button>
+        <button onclick="resetFirebaseHistory()" style="width:auto !important;padding:7px 14px;background:#6c3483;color:white;border:none;border-radius:7px;cursor:pointer;font-size:12px;font-weight:600;">🗄️ נקה היסטוריה</button>
         <button onclick="showActionLog()" style="width:auto !important;padding:7px 14px;background:#7f8c8d;color:white;border:none;border-radius:7px;cursor:pointer;font-size:12px;font-weight:600;">🔍 לוג פעולות</button>
       </div>
+      <div style="font-size:11px;color:#888;margin-top:8px;">נקה היסטוריה — מוחק נתוני עבר מהשרת. השתמש אם הדשבורד החודשי מציג נתונים ישנים.</div>
     </div>
 
       <button class="btn-save-settings" onclick="saveSettings()">✅ שמור הגדרות</button>
@@ -3270,10 +3272,16 @@ window.TraineeSystem = {
         <div id="overload-alerts"></div>
 
         <div id="add-panel" style="display:none" class="panel">
-            <h4>➕ הוספת חניך חדש</h4>
+            <h4>➕ הוספת חניכים</h4>
+            <!-- Pending list — shown when more than one name queued -->
+            <div id="add-panel-pending" style="display:none;margin-bottom:10px;padding:10px 12px;background:#f0fff4;border:1.5px solid #27ae60;border-radius:8px;">
+              <div style="font-size:12px;font-weight:bold;color:#27ae60;margin-bottom:6px;">📋 ממתינים לשמירה:</div>
+              <div id="add-panel-pending-list" style="display:flex;flex-direction:column;gap:4px;"></div>
+            </div>
             <div class="panel-row">
                 <input type="text" id="new-trainee-name" placeholder="שם מלא של החניך...">
-                <button class="btn btn-blue"  data-action="confirm-add-trainee">הוסף</button>
+                <button class="btn btn-blue"  data-action="confirm-add-trainee-another" style="background:#27ae60;">+ הוסף חניך נוסף</button>
+                <button class="btn btn-blue"  data-action="confirm-add-trainee">💾 שמור הכל</button>
                 <button class="btn btn-ghost" data-action="toggle-panel" data-panel="add-panel">ביטול</button>
             </div>
         </div>
@@ -3596,7 +3604,8 @@ window.TraineeSystem = {
             if (!el || !c.contains(el)) return;
             const action = el.dataset.action;
             if (action === 'toggle-panel')  this.togglePanel(el.dataset.panel);
-            if (action === 'confirm-add-trainee') this.confirmAddTrainee();
+            if (action === 'confirm-add-trainee') this.confirmAddTrainee(false);
+            if (action === 'confirm-add-trainee-another') this.confirmAddTrainee(true);
             if (action === 'add-instructor') this.addInstructor();
             if (action === 'show-reports')   this.showReports();
             if (action === 'open-ts-settings') this.openSettings();
@@ -3813,6 +3822,11 @@ window.TraineeSystem = {
         const el     = this.$(id);
         const isOpen = el.style.display === 'block';
         ['add-panel', 'ins-panel'].forEach(p => { this.$(p).style.display = 'none'; });
+        // Clear pending list when closing add-panel
+        if (isOpen && id === 'add-panel') {
+            this._pendingTrainees = [];
+            this._renderPendingList();
+        }
         if (!isOpen) {
             el.style.display = 'block';
             const inp = el.querySelector('input');
@@ -3820,19 +3834,62 @@ window.TraineeSystem = {
         }
     },
 
-    confirmAddTrainee() {
-        const inp  = this.$('new-trainee-name');
-        const name = inp.value.trim();
-        if (!name) { inp.focus(); return; }
-        const newTrainee = { id: Date.now(), name, lessons: [] };
-        this.trainees.push(newTrainee);
-        // Also update the course object directly
-        const cur = this.courses.find(c => c.id === this.currentCourseId);
-        if (cur) cur.trainees = JSON.parse(JSON.stringify(this.trainees));
-        this.persist();
-        inp.value = '';
-        this.$('add-panel').style.display = 'none';
-        this.renderList();
+    confirmAddTrainee(keepOpen = false) {
+        const inp = this.$('new-trainee-name');
+
+        if (keepOpen) {
+            // "הוסף חניך נוסף" — add current name to pending list without saving
+            const name = inp.value.trim();
+            if (!name) { inp.focus(); return; }
+            // Init pending array if needed
+            if (!this._pendingTrainees) this._pendingTrainees = [];
+            this._pendingTrainees.push(name);
+            inp.value = '';
+            inp.focus();
+            // Show pending list
+            this._renderPendingList();
+        } else {
+            // "שמור הכל" — save pending list + current input field
+            if (!this._pendingTrainees) this._pendingTrainees = [];
+            const name = inp.value.trim();
+            if (name) this._pendingTrainees.push(name);
+            if (!this._pendingTrainees.length) { inp.focus(); return; }
+            // Save all at once
+            this._pendingTrainees.forEach(n => {
+                const newTrainee = { id: Date.now() + Math.random(), name: n, lessons: [] };
+                this.trainees.push(newTrainee);
+            });
+            const cur = this.courses.find(c => c.id === this.currentCourseId);
+            if (cur) cur.trainees = JSON.parse(JSON.stringify(this.trainees));
+            this.persist();
+            // Reset
+            this._pendingTrainees = [];
+            inp.value = '';
+            this.$('add-panel').style.display = 'none';
+            this._renderPendingList();
+            this.renderList();
+        }
+    },
+
+    _renderPendingList() {
+        const wrap = this.$('add-panel-pending');
+        const list = this.$('add-panel-pending-list');
+        if (!wrap || !list) return;
+        const pending = this._pendingTrainees || [];
+        if (!pending.length) { wrap.style.display = 'none'; return; }
+        wrap.style.display = 'block';
+        list.innerHTML = pending.map((n, i) =>
+            `<div style="display:flex;align-items:center;justify-content:space-between;font-size:13px;color:#1a5276;">
+               <span>✓ ${n}</span>
+               <button onclick="TraineeSystem._removePending(${i})" style="background:none;border:none;color:#e74c3c;cursor:pointer;font-size:14px;padding:0 4px;">✕</button>
+             </div>`
+        ).join('');
+    },
+
+    _removePending(i) {
+        if (!this._pendingTrainees) return;
+        this._pendingTrainees.splice(i, 1);
+        this._renderPendingList();
     },
 
     deleteTrainee(id, name, e) {
@@ -7046,6 +7103,21 @@ async function resetTripsOnly(){
   openRangeResetModal('trips');
 }
 
+async function resetFirebaseHistory(){
+  if(!confirm('מחיקת כל ההיסטוריה מהשרת (Firebase history/).\nהדשבורד החודשי יוצג ריק.\n\nלהמשיך?'))return;
+  if(!window._fbDb){showToast('אין חיבור ל-Firebase','warning');return;}
+  showToast('🔄 מוחק היסטוריה מהשרת...','info');
+  try{
+    await _fbRef(_db,'history').remove();
+    try{if(window._clearMonthCache)window._clearMonthCache();}catch(e){}
+    const tbody=document.getElementById('monthlyInstrBody');
+    if(tbody)tbody.innerHTML='<tr><td colspan="7" style="text-align:center;color:#aaa;padding:20px;">אין נתוני נסיעות לחודש זה בהיסטוריה</td></tr>';
+    const kpi=document.getElementById('monthlyKPIs');
+    if(kpi)kpi.innerHTML='';
+    showToast('✅ ההיסטוריה נמחקה בהצלחה','success');
+  }catch(e){showToast('שגיאה: '+e.message,'warning');}
+}
+
 function confirmClearAll(){trips=[];closeClearModal();saveToStorage();renderLog();renderCalendar();}
 
 // ═══════════════════════════════════════════════════════════
@@ -9672,7 +9744,7 @@ async function deleteSchedEntry(date,id){
 
   if(!window._fbDb){renderCalendar();return;}
 
-  // 3. Pause Firebase listener so deleted entry doesn't come back instantly
+  // 3. Pause Firebase listener so deleted entry doesn't come back while modal is open
   try{_fbRef(_db,'schedule').off('value');}catch(e){}
 
   // 4. Delete from Firebase
@@ -9682,8 +9754,9 @@ async function deleteSchedEntry(date,id){
 
   }catch(e){console.warn('deleteSchedEntry:',e);}
 
-  // 5. Re-attach listener after delete propagates
-  setTimeout(()=>startSchedSync(),500);
+  // 5. Re-attach listener only after modal is closed (not while user is still editing)
+  // Flag that we need to re-sync when modal closes
+  window._schedNeedsResync = true;
 
 }
 async function updateSchedStatus(date,id,status){
@@ -10076,6 +10149,12 @@ function closeSchedModal(){
 
   schedEditId=null;schedEditDate=null;
 
+  // Re-attach Firebase listener if a delete was performed while modal was open
+  if(window._schedNeedsResync){
+    window._schedNeedsResync=false;
+    setTimeout(()=>startSchedSync(),300);
+  }
+
 }
 
 function renderSchedEntriesList(date){
@@ -10434,6 +10513,7 @@ async function deleteEntry(date,id){
   await deleteSchedEntry(date,id);
 
   renderSchedEntriesList(date);
+  renderSchedAssignTable(date);
 
   renderCalendar();
 
@@ -10780,6 +10860,12 @@ async function submitAllSchedTabs(approved=false){
 
     renderSchedDayTabs();
 
+  }
+
+  // Re-attach Firebase listener after all saves complete (was paused during any deletes)
+  if(window._schedNeedsResync){
+    window._schedNeedsResync=false;
+    setTimeout(()=>startSchedSync(),300);
   }
 
 }
@@ -11783,6 +11869,7 @@ async function confirmRangeReset(){
     if(window._fbDb){
 
       try{await _fbRef(_db,'trips').remove();}catch(e){}
+      try{await _fbRef(_db,'history').remove();}catch(e){}
 
     }
 
@@ -11819,6 +11906,7 @@ async function confirmRangeReset(){
             const d=`${ym}-${String(day).padStart(2,'0')}`;
 
             try{await _fbRef(_db,'trips/'+d).remove();}catch(e){}
+            try{await _fbRef(_db,'history/'+d).remove();}catch(e){}
 
           }
 
@@ -11827,6 +11915,7 @@ async function confirmRangeReset(){
           for(const d of datesInMonth){
 
             try{await _fbRef(_db,'trips/'+d).remove();}catch(e){}
+            try{await _fbRef(_db,'history/'+d).remove();}catch(e){}
 
           }
 
@@ -11851,6 +11940,9 @@ async function confirmRangeReset(){
   // ── FORCE IMMEDIATE CLEAR AND RE-RENDER (works in all environments including Claude viewer) ──
   trips=[];
   schedData=mode==='all'?(scope==='all'?{}:schedData):schedData;
+
+  // Clear monthly dashboard cache so next open fetches fresh data from Firebase
+  try{if(window._clearMonthCache)window._clearMonthCache();}catch(e){}
 
   renderLog();
   renderCalendar();
@@ -12658,6 +12750,9 @@ function switchBackToAdmin(){
   const _sb=document.getElementById('switchBackBtn');if(_sb)_sb.style.display='none';
   document.getElementById('userRoleTag').textContent='מנהל';
   document.getElementById('userNameLbl').textContent=currentUserName;
+  // Restore admin nav tabs
+  const adminNav=document.getElementById('v100AdminNav');
+  if(adminNav)adminNav.style.display='block';
   // Restore instrNavBar to hidden
   const _navBar=document.getElementById('instrNavBar');
   if(_navBar)_navBar.style.display='none';
@@ -14479,6 +14574,10 @@ function switchToInstructorView(previewName){
   if(mv)mv.style.display='none';
   if(iv)iv.classList.add('show');
 
+  // Hide admin nav tabs — instructor has no tabs
+  const adminNav=document.getElementById('v100AdminNav');
+  if(adminNav)adminNav.style.display='none';
+
   // Update header buttons
   const swBtn=document.getElementById('switchViewBtn');
   const sbBtn=document.getElementById('switchBackBtn');
@@ -14724,8 +14823,29 @@ function openUnifiedReport(prefillDate) {
     if (endEl) endEl.value = entries[0].endTime || sh.e || '';
   }
 
-  // Clear numeric fields
-  ['ur-light-hours','ur-sinerio-hours'].forEach(id => {
+  // Auto-calculate sinerio hours from shift start/end
+  const _calcSinerioHours = () => {
+    const s = document.getElementById('ur-shift-start')?.value;
+    const e = document.getElementById('ur-shift-end')?.value;
+    if (!s || !e) return;
+    const [sh, sm] = s.split(':').map(Number);
+    const [eh, em] = e.split(':').map(Number);
+    let mins = (eh * 60 + em) - (sh * 60 + sm);
+    if (mins <= 0) mins += 24 * 60; // חצות
+    const hours = Math.round(mins / 60 * 2) / 2; // עיגול ל-0.5
+    const sinerioEl = document.getElementById('ur-sinerio-hours');
+    if (sinerioEl) sinerioEl.value = hours > 0 ? hours : '';
+  };
+  // Register listeners (remove old ones first to avoid duplicates)
+  const startEl2 = document.getElementById('ur-shift-start');
+  const endEl2   = document.getElementById('ur-shift-end');
+  if (startEl2) { startEl2.removeEventListener('change', _calcSinerioHours); startEl2.addEventListener('change', _calcSinerioHours); }
+  if (endEl2)   { endEl2.removeEventListener('change', _calcSinerioHours);   endEl2.addEventListener('change', _calcSinerioHours); }
+  // Run immediately if times already prefilled
+  _calcSinerioHours();
+
+  // Clear numeric fields (sinerio-hours is auto-calculated from shift times, not cleared)
+  ['ur-light-hours'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
@@ -16094,7 +16214,6 @@ function exitDemoMode(){
     if(v)localStorage.setItem(k,v);
     else localStorage.removeItem(k);
   });
-  // Restore trips/reports/statuses
   // Remove all per-day demo copies
   const months2=JSON.parse(localStorage.getItem('demo_months')||'[]');
   months2.forEach(mk=>{
@@ -16108,27 +16227,36 @@ function exitDemoMode(){
   localStorage.removeItem('demo_trainee_data');
   const _dayPfx=['trips_','taskReports_','instrStatus_'];
   Object.keys(localStorage).forEach(k=>{if(_dayPfx.some(p=>k.startsWith(p)))localStorage.removeItem(k);});
+
+  // Clear memory cache immediately
+  try{if(window._clearMonthCache)window._clearMonthCache();}catch(e){}
+  try{if(window._resetMonthlyDash)window._resetMonthlyDash();}catch(e){}
+
+  // Blank out monthly dashboard immediately so stale data not visible
+  try{
+    const _tbody=document.getElementById('monthlyInstrBody');
+    if(_tbody)_tbody.innerHTML='<tr><td colspan="7" style="text-align:center;color:#aaa;padding:16px;">⏳ מנקה נתוני דמו...</td></tr>';
+    const _kpi=document.getElementById('monthlyKPIs');
+    if(_kpi)_kpi.innerHTML='';
+  }catch(e){}
+
   _logAction('demo_off','יציאה ממצב דמו');
   _updateDemoBanner(false);
-  // Reset TraineeSystem so it reloads real data on next open
+
+  // Reset TraineeSystem
   window._traineeInitialized = false;
   if(typeof TraineeSystem !== 'undefined'){
-    // Restore original loadData/persist if patched
     if(TraineeSystem._origLoadData) { TraineeSystem.loadData = TraineeSystem._origLoadData; TraineeSystem._origLoadData = null; }
     if(TraineeSystem._origPersist)  { TraineeSystem.persist  = TraineeSystem._origPersist;  TraineeSystem._origPersist  = null; }
-    // Clear demo trainees from memory
     TraineeSystem.trainees = [];
     TraineeSystem.instructors = [];
   }
-  // Clear demo overload alerts
   _traineeOverloadAlerts = _traineeOverloadAlerts.filter(a=>!a._demo);
   try{localStorage.setItem('trainee_overload_alerts',JSON.stringify(_traineeOverloadAlerts));}catch(e){}
   _renderTraineeOverloadBanner();
-  // If section is open, re-init TraineeSystem with real data immediately
   const _tsSection = document.getElementById('traineeSection');
   const _tsCont = document.getElementById('traineeSystemContainer');
   if(_tsSection && _tsSection.open && typeof TraineeSystem !== 'undefined'){
-    // Re-init will call the real loadData (already restored above)
     try {
       TraineeSystem.init('traineeSystemContainer');
       _updateTraineeBtnVisibility();
@@ -16136,30 +16264,42 @@ function exitDemoMode(){
       if(_tsCont) _tsCont.innerHTML = '<div style="padding:30px;text-align:center;color:#888;font-size:14px;">⏳ לחץ כאן לטעינת מערכת החניכים...</div>';
     }
   } else if(_tsCont) {
-    // Section closed — just reset placeholder so next open loads fresh
     _tsCont.innerHTML = '<div style="padding:30px;text-align:center;color:#888;font-size:14px;">⏳ לחץ כאן לטעינת מערכת החניכים...</div>';
   }
-  // DON'T close panel — allow re-activation without refresh
-  // Reload real data
-  try{schedData={};}catch(e){}
-  try{if(window._clearMonthCache)window._clearMonthCache();}catch(e){}
-  try{if(window._resetMonthlyDash)window._resetMonthlyDash();}catch(e){}
-  try{lsLoadSched();}catch(e){}
-  try{normalizeTaskDefs();}catch(e){}
-  const _exitToday=_localDateStr(new Date());
-  try{const raw=localStorage.getItem('trips_'+_exitToday);trips=raw?Object.values(JSON.parse(raw)).map(parseTrip):[];}catch(e){trips=[];}
-  try{renderCalendar();}catch(e){}
-  try{renderLog();}catch(e){}
-  try{renderInstrTripJournal();}catch(e){}
-  try{if(typeof startSchedSync==='function')startSchedSync();}catch(e){}
-  setTimeout(()=>{try{renderCalendar();}catch(e){}},200);
-  try{renderDashboard();}catch(e){}
-  // Update panel buttons
-  const _genBtn=document.getElementById('demoGenerateBtn');
-  const _exitBtn=document.getElementById('demoExitBtn');
-  if(_genBtn)_genBtn.style.display='block';
-  if(_exitBtn)_exitBtn.style.display='none';
-  showToast('✅ חזרת לנתונים האמיתיים','success');
+
+  // Delete Firebase demo data FIRST, then reload app
+  const _doFirebaseCleanupAndReload=async()=>{
+    if(window._fbDb){
+      showToast('🔄 מנקה נתוני דמו מהשרת...','info');
+      try{await _fbRef(_db,'history').remove();}catch(e){}
+      try{await _fbRef(_db,'trips').remove();}catch(e){}
+    }
+    // Reload real data after Firebase is clean
+    try{schedData={};}catch(e){}
+    try{lsLoadSched();}catch(e){}
+    try{normalizeTaskDefs();}catch(e){}
+    const _exitToday=_localDateStr(new Date());
+    try{const raw=localStorage.getItem('trips_'+_exitToday);trips=raw?Object.values(JSON.parse(raw)).map(parseTrip):[];}catch(e){trips=[];}
+    try{renderCalendar();}catch(e){}
+    try{renderLog();}catch(e){}
+    try{renderInstrTripJournal();}catch(e){}
+    try{if(typeof startSchedSync==='function')startSchedSync();}catch(e){}
+    setTimeout(()=>{try{renderCalendar();}catch(e){}},200);
+    try{renderDashboard();}catch(e){}
+    // If monthly dashboard is open, reload it now that Firebase is clean
+    try{
+      const _mdp=document.getElementById('monthlyDashPanel');
+      if(_mdp&&_mdp.style.display!=='none'&&typeof loadMonthlyDash==='function'){
+        setTimeout(()=>{try{loadMonthlyDash();}catch(e){}},300);
+      }
+    }catch(e){}
+    const _genBtn=document.getElementById('demoGenerateBtn');
+    const _exitBtn=document.getElementById('demoExitBtn');
+    if(_genBtn)_genBtn.style.display='block';
+    if(_exitBtn)_exitBtn.style.display='none';
+    showToast('✅ חזרת לנתונים האמיתיים','success');
+  };
+  _doFirebaseCleanupAndReload();
 }
 
 function clearDemoData(){
