@@ -11508,9 +11508,22 @@ async function autoGenerateTripsForWeek(){
       return tDef?!!tDef.isTrip:false;
     });
 
-    if(!entries.length)continue;
-
+    const assignedNames=new Set(entries.map(e=>e.name));
     let dateTrips=await loadTripsForDate(dateISO);
+    const isToday=(dateISO===currentDate);
+    const nowMin2=new Date().getHours()*60+new Date().getMinutes();
+
+    // Remove unexecuted trips for instructors no longer assigned a trip-task
+    dateTrips=dateTrips.filter(t=>{
+      if(assignedNames.has(t.name))return true;
+      if(isToday&&t.timeline&&t.timeline.length){
+        const tripEnd=t.timeline[t.timeline.length-1].endMin;
+        if(tripEnd<=nowMin2)return true;
+      }
+      return false;
+    });
+
+    if(!entries.length)continue;
 
     let dayAdded=0;
 
@@ -11524,28 +11537,15 @@ async function autoGenerateTripsForWeek(){
 
       if(endMin<=startMin)endMin+=24*60;
 
-      // ── DUPLICATE CHECK: skip if instructor already has trips in this shift window ──
-      const alreadyHasTrips=dateTrips.some(t=>{
-
-        if(t.name!==entry.name||!t.timeline||!t.timeline.length)return false;
-
-        const tStart=t.timeline[0].startMin;
-
-        const tEnd=t.timeline[t.timeline.length-1].endMin;
-
-        // Check overlap with shift window
-
-        return tStart<endMin&&tEnd>startMin;
-
+      // Remove this instructor's unexecuted trips before regenerating
+      dateTrips=dateTrips.filter(t=>{
+        if(t.name!==entry.name)return true;
+        if(isToday&&t.timeline&&t.timeline.length){
+          const tripEnd=t.timeline[t.timeline.length-1].endMin;
+          if(tripEnd<=nowMin2)return true;
+        }
+        return false;
       });
-
-      if(alreadyHasTrips){
-
-        console.log(`Skipping ${entry.name} on ${dateISO||date} — trips already exist in shift`);
-
-        continue;
-
-      }
 
       const existingTls=dateTrips.filter(t=>t.name!==entry.name).map(t=>({name:t.name,timeline:t.timeline}));
 
@@ -12051,28 +12051,52 @@ async function runAutoGenSelected(){
   let totalAdded=0,uidCounter=0;
   const baseTs=Date.now();
   const summaryLines=[];
+  const nowMin=new Date().getHours()*60+new Date().getMinutes();
   for(const date of selected){
     const entries=(schedData[date]||[]).filter(e=>{
       if(e.status!=='approved'&&e.status!=='pending')return false;
       const tDef=taskDefs.find(t=>t.id===e.task);
       return tDef?tDef.isTrip:false;
     });
-    if(!entries.length)continue;
+    // Names of instructors who currently have a valid trip-task assignment
+    const assignedNames=new Set(entries.map(e=>e.name));
     let dateTrips=await loadTripsForDate(date);
+    const isToday=(date===currentDate);
+    // Remove unexecuted trips for instructors whose assignment changed or was removed
+    // "Unexecuted" = trip end time hasn't passed yet (for today), or any future date
+    const tripsToKeep=dateTrips.filter(t=>{
+      if(assignedNames.has(t.name))return true; // still assigned → keep
+      // Not assigned anymore — keep only if already started/done today
+      if(isToday&&t.timeline&&t.timeline.length){
+        const tripEnd=t.timeline[t.timeline.length-1].endMin;
+        if(tripEnd<=nowMin)return true; // already finished — keep
+      }
+      return false; // not assigned + not done → remove
+    });
+    const removedCount=dateTrips.length-tripsToKeep.length;
+    dateTrips=tripsToKeep;
+
     let dayAdded=0;
+    if(!entries.length){
+      // No trip-task entries — just save cleaned trips if something was removed
+      if(removedCount>0)try{await saveTripsForDate(date,dateTrips);}catch(e){}
+      continue;
+    }
     for(const entry of entries){
       const sh=SHIFT_HOURS[entry.shift]||{s:entry.startTime||'07:00',e:entry.endTime||'15:30'};
       let startMin=timeToMin(entry.shift==='custom'?entry.startTime:sh.s);
       let endMin=timeToMin(entry.shift==='custom'?entry.endTime:sh.e);
       if(endMin<=startMin)endMin+=24*60;
-      // Skip if instructor already has trips in this shift window
-      const alreadyHasTrips=dateTrips.some(t=>{
-        if(t.name!==entry.name||!t.timeline||!t.timeline.length)return false;
-        const tStart=t.timeline[0].startMin;
-        const tEnd=t.timeline[t.timeline.length-1].endMin;
-        return tStart<endMin&&tEnd>startMin;
+      // Remove this instructor's existing unexecuted trips before regenerating
+      const executedTrips=dateTrips.filter(t=>{
+        if(t.name!==entry.name)return true;
+        if(isToday&&t.timeline&&t.timeline.length){
+          const tripEnd=t.timeline[t.timeline.length-1].endMin;
+          if(tripEnd<=nowMin)return true; // already done — keep
+        }
+        return false; // not done — remove so we can regenerate
       });
-      if(alreadyHasTrips)continue;
+      dateTrips=executedTrips;
       const existingTls=dateTrips.filter(t=>t.name!==entry.name).map(t=>({name:t.name,timeline:t.timeline}));
       const row={name:entry.name,startMin,endMin,startSeg:'D3',endSeg:'any',breakMin:breakMin_};
       let instrTrips=[];
@@ -12082,7 +12106,7 @@ async function runAutoGenSelected(){
         dayAdded++;totalAdded++;
       });
     }
-    if(dayAdded>0){try{await saveTripsForDate(date,dateTrips);}catch(e){console.warn('saveTripsForDate error:',e);}}
+    if(dayAdded>0||removedCount>0){try{await saveTripsForDate(date,dateTrips);}catch(e){console.warn('saveTripsForDate error:',e);}}
     summaryLines.push(`<b>${date}:</b> ${dayAdded} נסיעות (${entries.map(e=>e.name).join(', ')})`);
   }
   if(selected.includes(currentDate))await loadFromStorage();
