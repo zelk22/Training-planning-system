@@ -10508,16 +10508,48 @@ async function rejectEntry(date,id){
 
 async function deleteEntry(date,id){
 
-  if(!confirm('למחוק שיבוץ זה?'))return;
+  // Find the entry to get the instructor name before deleting
+  const entry=(schedData[date]||[]).find(e=>e.id===id);
+  const instrName=entry?.name;
+
+  // Check if this instructor has trips on this date
+  const instrTrips = date===currentDate
+    ? trips.filter(t=>t.name===instrName)
+    : await loadTripsForDate(date).then(arr=>arr.filter(t=>t.name===instrName)).catch(()=>[]);
+
+  let deleteTrips=false;
+  if(instrName && instrTrips.length>0){
+    deleteTrips=confirm(
+      `למחוק שיבוץ זה?\n\nשים לב: ל${instrName} יש ${instrTrips.length} נסיעות מתוכננות ביום זה.\nלחץ אישור כדי למחוק גם את הנסיעות, ביטול כדי למחוק שיבוץ בלבד.`
+    );
+    if(deleteTrips===null)return; // user cancelled entirely — but confirm returns bool, not null
+  } else {
+    if(!confirm('למחוק שיבוץ זה?'))return;
+  }
 
   await deleteSchedEntry(date,id);
 
+  // Delete instructor's trips for this date if confirmed
+  if(deleteTrips && instrName){
+    if(date===currentDate){
+      trips=trips.filter(t=>t.name!==instrName);
+      await saveToStorage();
+      renderLog();
+    } else {
+      try{
+        const allDateTrips=await loadTripsForDate(date);
+        const remaining=allDateTrips.filter(t=>t.name!==instrName);
+        await saveTripsForDate(date,remaining);
+      }catch(e){console.warn('deleteEntry trips:',e);}
+    }
+    showToast(`🗑️ השיבוץ ו-${instrTrips.length} נסיעות של ${instrName} נמחקו`,'success');
+  } else {
+    showToast('🗑️ השיבוץ נמחק בהצלחה!','success');
+  }
+
   renderSchedEntriesList(date);
   renderSchedAssignTable(date);
-
   renderCalendar();
-
-  showToast('🗑️ השיבוץ נמחק בהצלחה!','success');
 
 }
 
