@@ -956,7 +956,7 @@ body.dark-mode .msg-card{background:#1e2d42;border-color:#2a3a52;}
 
 /* Mentor mode: show a mentor header bar */
 #mentorInstrBar { display:none; }
-.mentor-mode #mentorInstrBar { display:flex !important; }
+.mentor-mode #mentorInstrBar { display:flex; }
 
 @media print{
 
@@ -2205,6 +2205,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
       <div class="v100-icon-group">
         <button onclick="reloadApp()" id="globalReloadBtn" class="v100-icon-btn" title="רענן" style="display:none;">↺</button>
         <button class="v100-icon-btn" onclick="toggleDarkMode()" id="darkBtn" title="מצב לילה">☽</button>
+        <button onclick="openDemoPanel()" id="demoBtnMain" class="v100-action-btn v100-btn-ghost" title="מצב דמו" style="border-color:#8e44ad;color:#c9a3e6;">🎭 מצב דמו</button>
       </div>
 
       <div class="v100-icon-group">
@@ -2216,6 +2217,15 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
         <button id="switchBackBtn" onclick="switchBackToAdmin()" class="v100-action-btn v100-btn-ghost" style="display:none;">↩ מנהל</button>
         <button class="v100-action-btn v100-btn-ghost" onclick="doLogout()">התנתק</button>
       </div>
+    </div>
+  </div>
+
+  <!-- Demo mode banner (global — shown above tabs, in every section, when demo is active) -->
+  <div id="demoBanner" style="display:none;background:#fff3cd;border:1.5px solid #f0ad4e;border-radius:8px;padding:8px 14px;margin:8px 16px 0;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+    <span style="font-size:13px;font-weight:bold;color:#856404;">🎭 מצב דמו פעיל — הנתונים המוצגים הם לדוגמה בלבד</span>
+    <div style="display:flex;gap:8px;">
+      <button onclick="exitDemoMode()" style="width:auto;padding:5px 12px;background:#856404;color:white;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:bold;">⏸ יציאה מדמו</button>
+      <button onclick="openDemoPanel()" style="width:auto;padding:5px 12px;background:#f0ad4e;color:#333;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:bold;">⚙️ הגדרות דמו</button>
     </div>
   </div>
 
@@ -2280,14 +2290,13 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
       </div>
       <div style="display:flex;gap:6px;">
         <button onclick="_showInstrPicker()" style="width:auto;padding:5px 10px;background:#fff;border:1.5px solid var(--secondary);color:var(--secondary);border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;">👤 החלף מדריך</button>
-        <button onclick="_showMentorPicker()" style="width:auto;padding:5px 10px;background:#f3eaf9;border:1.5px solid #8e44ad;color:#6c3483;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;">🎓 חונכים</button>
         <button onclick="switchBackToAdmin()" style="width:auto;padding:5px 10px;background:#fdf2f2;border:1.5px solid var(--danger);color:var(--danger);border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;">🔙 חזור למנהל</button>
       </div>
     </div>
 
     <!-- Mentor header bar (visible only in mentor-mode) -->
     <div id="mentorInstrBar" style="background:#f3eaf9;border-radius:10px;padding:10px 14px;margin-bottom:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;border:1.5px solid #c39bd3;">
-      <div style="display:flex;align-items:center;gap:10px;">
+      <div id="mentorRealHeader" style="display:flex;align-items:center;gap:10px;">
         <span style="font-size:20px;">🎓</span>
         <div>
           <div style="font-size:14px;font-weight:bold;color:#6c3483;">ממשק חונך</div>
@@ -2297,26 +2306,17 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
       <!-- Mentor preview navigation (visible only to admin in preview mode) -->
       <div id="mentorPreviewNav" style="display:none;align-items:center;gap:8px;">
         <button onclick="switchPreviewMentor(-1)" style="width:auto;background:#fff;border:1.5px solid #8e44ad;color:#6c3483;border-radius:50%;width:30px;height:30px;cursor:pointer;font-size:16px;padding:0;font-weight:bold;display:flex;align-items:center;justify-content:center;line-height:1;">›</button>
-        <button onclick="_showMentorPicker()" style="width:auto;padding:5px 10px;background:#fff;border:1.5px solid #8e44ad;color:#6c3483;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;">👤 החלף חונך</button>
+        <span id="mentorPreviewName" style="font-size:14px;font-weight:bold;color:#6c3483;min-width:80px;text-align:center;"></span>
         <button onclick="switchPreviewMentor(1)" style="width:auto;background:#fff;border:1.5px solid #8e44ad;color:#6c3483;border-radius:50%;width:30px;height:30px;cursor:pointer;font-size:16px;padding:0;font-weight:bold;display:flex;align-items:center;justify-content:center;line-height:1;">‹</button>
       </div>
       <div style="display:flex;gap:6px;align-items:center;">
-        <button id="mentorMsgAdminBtn" onclick="_openMentorMessageDialog()" style="display:none;width:auto;padding:5px 10px;background:#fff;border:1.5px solid #8e44ad;color:#6c3483;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;">✉️ הודעה לחונך</button>
+        <button id="switchMentorPreviewBtn" onclick="_showMentorPicker()" style="display:none;width:auto;padding:5px 10px;background:#fff;border:1.5px solid #8e44ad;color:#6c3483;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;">👤 החלף חונך</button>
         <button id="mentorLogoutBtn" onclick="doLogout()" style="width:auto;padding:5px 12px;background:#fdf2f2;border:1.5px solid var(--danger);color:var(--danger);border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;">יציאה</button>
       </div>
     </div>
 
-    <!-- Mentor message banner (shown when there's an active message) -->
-    <div id="mentorMsgBanner" style="display:none;background:#fffbea;border:1.5px solid #f0c040;border-radius:10px;padding:12px 16px;margin-bottom:12px;position:relative;">
-      <div style="display:flex;align-items:flex-start;gap:10px;">
-        <span style="font-size:20px;flex-shrink:0;">📌</span>
-        <div style="flex:1;">
-          <div style="font-size:12px;font-weight:bold;color:#856404;margin-bottom:4px;">הודעה מהמנהל</div>
-          <div id="mentorMsgText" style="font-size:14px;color:#333;line-height:1.5;white-space:pre-wrap;"></div>
-          <div id="mentorMsgExpiry" style="font-size:11px;color:#aaa;margin-top:6px;"></div>
-        </div>
-      </div>
-    </div>
+    <!-- Friendly greeting (real login only, hidden during admin preview) -->
+    <div id="userGreeting" style="display:none;background:linear-gradient(135deg,#eef6ff,#f5f0ff);border:1.5px solid #cfe0f5;border-radius:10px;padding:12px 16px;margin-bottom:12px;font-size:15px;font-weight:bold;color:var(--primary);text-align:center;"></div>
 
     <!-- ══ TODAY TASKS AREA ══════════════════════════════ -->
     <div id="todayTasksCard" style="background:white;border-radius:12px;border:1px solid #dce3ec;padding:14px 16px;margin-bottom:12px;">
@@ -2583,17 +2583,6 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
       <button onclick="toggleMonthlyDash()" id="monthlyDashBtn" style="width:auto !important;display:inline-block;margin:2px;padding:8px 14px;background:#eaf4fd;border:1px solid var(--secondary);color:var(--secondary);border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;">📊 דשבורד חודשי</button>
       <button onclick="toggleApprovalPanel()" id="approvalToggleBtn" style="width:auto !important;display:inline-block;margin:2px;padding:8px 14px;background:#fef9e7;border:1px solid #f0c050;color:#856404;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;position:relative;">📋 אישור שיבוצים <span id="approvalBadge" style="display:none;background:#e74c3c;color:white;border-radius:10px;padding:1px 5px;font-size:10px;font-weight:bold;margin-right:3px;"></span></button>
       <button onclick="openNotesModal()" style="width:auto !important;display:inline-block;margin:2px;padding:8px 14px;background:#fef08a;border:1px solid #eab308;color:#713f12;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;">📌 פתקים</button>
-      <button onclick="openSettings()" style="width:auto !important;display:inline-block;margin:2px;padding:8px 14px;background:#f0f4f8;border:1px solid #ddd;color:#555;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;">⚙️ הגדרות</button>
-      <button onclick="openDemoPanel()" id="demoBtnMain" style="width:auto !important;display:inline-block;margin:2px;padding:8px 14px;background:#6c3483;color:white;border:none;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;">🎭 מצב דמו</button>
-    </div>
-
-    <!-- Demo mode banner (shown when demo is active) -->
-    <div id="demoBanner" style="display:none;background:#fff3cd;border:1.5px solid #f0ad4e;border-radius:8px;padding:8px 14px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
-      <span style="font-size:13px;font-weight:bold;color:#856404;">🎭 מצב דמו פעיל — הנתונים המוצגים הם לדוגמה בלבד</span>
-      <div style="display:flex;gap:8px;">
-        <button onclick="exitDemoMode()" style="width:auto;padding:5px 12px;background:#856404;color:white;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:bold;">⏸ יציאה מדמו</button>
-        <button onclick="openDemoPanel()" style="width:auto;padding:5px 12px;background:#f0ad4e;color:#333;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:bold;">⚙️ הגדרות דמו</button>
-      </div>
     </div>
 
     <!-- Legend -->
@@ -2628,11 +2617,11 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 
   <div class="assign-box" style="width:min(98vw,1200px);max-height:92vh;overflow-y:auto;">
 
-    <div class="assign-head">
+    <div class="assign-head" style="position:relative;">
 
       <h3 id="weeklySchedTitle" style="color:var(--primary);">📅 שיבוץ שבועי</h3>
 
-      <div style="display:flex;gap:8px;align-items:center;">
+      <div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);display:flex;gap:8px;align-items:center;">
 
         <button onclick="changeWeeklySchedWeek(-1)" style="background:none;border:1px solid #ddd;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:16px;">‹</button>
 
@@ -2640,7 +2629,11 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 
         <button onclick="changeWeeklySchedWeek(1)" style="background:none;border:1px solid #ddd;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:16px;">›</button>
 
-        <button onclick="closeWeeklySchedModal()" style="background:none;border:1px solid #ddd;border-radius:50%;width:28px;height:28px;cursor:pointer;font-size:15px;color:#888;display:flex;align-items:center;justify-content:center;padding:0;margin:0;">×</button>
+      </div>
+
+      <div style="display:flex;gap:8px;align-items:center;">
+
+        <button onclick="closeWeeklySchedModal()" style="background:none;border:1px solid #ddd;border-radius:50%;width:44px;height:44px;cursor:pointer;font-size:24px;color:#888;display:flex;align-items:center;justify-content:center;padding:0;margin:0;">×</button>
 
       </div>
 
@@ -3495,10 +3488,11 @@ window.TraineeSystem = {
             </div>`;
         this.loadSettings().then(() => { this.applySkillLabels(); this.applySigVisibility(); });
         this.loadCourses().then(() => { this.loadData(); });
+        this._initLessonContent();
     },
 
     $(id) {
-        return this.container.querySelector('#' + id);
+        return this.container ? this.container.querySelector('#' + id) : null;
     },
 
     getHTML() {
@@ -3521,7 +3515,7 @@ window.TraineeSystem = {
         direction: rtl;
     }
     .trainee-module * { box-sizing: border-box; }
-    .trainee-module .container { max-width: 1100px; margin: auto; }
+    .trainee-module .container { max-width: 1400px; margin: auto; }
 
     .trainee-module .view { display: none; background: white; padding: 35px; border-radius: 20px; box-shadow: 0 15px 35px rgba(0,0,0,0.1); margin-top: 10px; border-top: 6px solid var(--rail-blue); }
     .trainee-module .active-view { display: block; animation: trainee-fadeIn 0.3s ease; }
@@ -3632,7 +3626,7 @@ window.TraineeSystem = {
     /* ── TraineeSystem Settings Modal ── */
     .ts-settings-overlay { position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9500;display:none;align-items:center;justify-content:center; }
     .ts-settings-overlay.open { display:flex; }
-    .ts-settings-box { background:white;border-radius:18px;width:min(700px,96vw);max-height:88vh;overflow:hidden;display:flex;flex-direction:column;direction:rtl; }
+    .ts-settings-box { background:white;border-radius:18px;width:min(1200px,96vw);height:90vh;max-height:90vh;overflow:hidden;display:flex;flex-direction:column;direction:rtl; }
     .ts-settings-head { display:flex;justify-content:space-between;align-items:center;padding:18px 22px;border-bottom:2px solid #eef2f8; }
     .ts-settings-head h3 { margin:0;font-size:17px;color:#1a2a3a; }
     .ts-settings-close { background:none;border:none;font-size:22px;cursor:pointer;color:#888;width:auto !important;padding:4px 8px; }
@@ -3741,8 +3735,10 @@ window.TraineeSystem = {
             rgba(255,255,255,0.25) calc(100%/50 - 1px), rgba(255,255,255,0.25) calc(100%/50)
         );
     }
-    .trainee-module .chinuch-bar-ticks { position: absolute; inset: 0; display: flex; pointer-events: none; }
+    .trainee-module .chinuch-bar-ticks { position: absolute; inset: 0; display: flex; pointer-events: auto; }
     .trainee-module .chinuch-tick { flex: 1; border-left: 1px solid rgba(0,0,0,0.1); }
+    .lesson-content-cell:hover { background: rgba(255,255,255,0.25); }
+
 
     .trainee-module .alerts-title { font-size: 1.15em; font-weight: bold; margin: 28px 0 12px 0; color: var(--rail-dark); border-right: 5px solid var(--rail-blue); padding-right: 14px; }
 
@@ -3863,9 +3859,30 @@ window.TraineeSystem = {
                                     background:#27ae60;display:flex;align-items:center;
                                     justify-content:center;color:white;font-size:0.8em;font-weight:700;
                                     text-shadow:0 1px 2px rgba(0,0,0,0.3);">מסחרי</div>
-                        <div id="course-ticks" style="position:absolute;inset:0;pointer-events:none;"></div>
+                        <div id="course-ticks" style="position:absolute;inset:0;"></div>
                     </div>
                 </div>
+            </div>
+
+            <div id="orbus-section" style="display:none;margin:20px 0 10px;">
+              <div style="font-size:0.85em;font-weight:700;color:#718096;margin-bottom:8px;display:flex;justify-content:space-between;">
+                <span>🚋 השתלמות אורבוס</span>
+                <span id="orbus-count" style="color:#a0aec0;font-weight:400;">0 / 7 שיעורים</span>
+              </div>
+              <div id="orbus-bar-outer" style="width:100%;height:28px;border-radius:6px;overflow:hidden;position:relative;border:1px solid #ccc;background:#eee;">
+                <div id="orbus-bar-fill" style="position:absolute;top:0;bottom:0;right:0;width:0%;background:#e67e22;transition:width .8s ease;"></div>
+                <div id="orbus-ticks" style="position:absolute;inset:0;"></div>
+              </div>
+            </div>
+
+            <div id="lessonContentModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:9999;align-items:center;justify-content:center;">
+              <div style="background:white;border-radius:14px;max-width:420px;width:90%;padding:22px 24px;direction:rtl;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                  <h3 style="margin:0;font-size:16px;color:#1a2a3a;">📌 דגשי ביצוע — <span id="lc-modal-type"></span> שיעור <span id="lc-modal-num"></span></h3>
+                  <button onclick="TraineeSystem.closeLessonContent()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#888;">×</button>
+                </div>
+                <div id="lc-modal-body" style="font-size:14px;color:#333;line-height:1.6;white-space:pre-wrap;"></div>
+              </div>
             </div>
 
             <div id="chinuch-section" class="chinuch-wrapper" style="display:none;">
@@ -3979,6 +3996,7 @@ window.TraineeSystem = {
       <button class="ts-stab" data-ts-tab="reportfields">📋 שדות דיווח</button>
       <button class="ts-stab" data-ts-tab="milestones">🏁 מיילסטונים</button>
       <button class="ts-stab" data-ts-tab="mentors">🎓 חונכים</button>
+      <button class="ts-stab" data-ts-tab="highlights" id="ts-tab-highlights-btn" style="display:none;">📌 דגשי ביצוע</button>
     </div>
     <!-- Tab: Skills -->
     <div class="ts-spanel active" id="ts-panel-skills">
@@ -4122,8 +4140,8 @@ window.TraineeSystem = {
         <div style="background:#f8faff;border:1.5px solid #f0ad4e;border-radius:10px;padding:14px 16px;">
           <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
             <div>
-              <div style="font-size:14px;font-weight:bold;color:#1a2a3a;">🏁 טסט 50 — תנאי לאורבוס</div>
-              <div style="font-size:11px;color:#888;margin-top:2px;">נדרש לפני קורס מעשי אורבוס</div>
+              <div style="font-size:14px;font-weight:bold;color:#1a2a3a;">🏁 טסט 50 — כניסה להשתלמות אורבוס</div>
+              <div style="font-size:11px;color:#888;margin-top:2px;">נדרש לפני השתלמות אורבוס (שיעור 50)</div>
             </div>
             <div style="display:flex;align-items:center;gap:8px;">
               <label style="font-size:11px;color:#888;white-space:nowrap;">סף שיעורים:</label>
@@ -4189,6 +4207,19 @@ window.TraineeSystem = {
       </div>
     </div>
 
+    <!-- Tab: Lesson Content Highlights (admin only) -->
+    <div class="ts-spanel" id="ts-panel-highlights">
+      <div style="display:flex;gap:8px;margin-bottom:14px;">
+        <button class="ts-hl-type-btn active" data-hl-type="sitadis" style="flex:1;padding:8px;border-radius:8px;border:1.5px solid #3498db;background:#eaf4fd;color:#2980b9;font-weight:bold;cursor:pointer;">סיטאדיס (50)</button>
+        <button class="ts-hl-type-btn" data-hl-type="orbus" style="flex:1;padding:8px;border-radius:8px;border:1.5px solid #ddd;background:white;color:#888;font-weight:bold;cursor:pointer;">אורבוס (7)</button>
+        <button class="ts-hl-type-btn" data-hl-type="chinuch" style="flex:1;padding:8px;border-radius:8px;border:1.5px solid #ddd;background:white;color:#888;font-weight:bold;cursor:pointer;">חניכה (50)</button>
+      </div>
+      <p style="font-size:12px;color:#888;margin:0 0 12px;">דגשי ביצוע מוצגים למדריך בלחיצה על השיעור בגרף ההתקדמות.</p>
+      <div id="ts-highlights-list" style="display:flex;flex-direction:column;gap:8px;max-height:440px;overflow-y:auto;"></div>
+      <button data-action="save-lesson-content" id="lc-save-btn" style="margin-top:14px;padding:10px 16px;background:#3498db;color:white;border:none;border-radius:8px;cursor:pointer;font-weight:bold;">💾 שמור דגשים</button>
+      <span id="lc-saved-msg" style="display:none;margin-right:10px;color:#27ae60;font-size:13px;">✓ נשמר!</span>
+    </div>
+
     <div class="ts-settings-footer">
       <span class="ts-saved-msg" id="ts-saved-msg">✓ נשמר!</span>
       <button class="ts-settings-footer button ts-btn-cancel" data-action="close-ts-settings" style="padding:9px 20px;border-radius:9px;font-size:13px;font-weight:bold;cursor:pointer;border:1px solid #ddd;background:#f0f4f8;color:#555;width:auto !important;">ביטול</button>
@@ -4220,6 +4251,8 @@ window.TraineeSystem = {
 
     bindEvents() {
         const c = this.container;
+        if (c.dataset.eventsBound === "1") return; // מונע רישום כפול של מאזינים ב-init() חוזר
+        c.dataset.eventsBound = "1";
 
         c.addEventListener('click', (e) => {
             const el = e.target.closest('[data-action]');
@@ -4243,6 +4276,28 @@ window.TraineeSystem = {
             if (action === 'toggle-log')   this.$('log-body').classList.toggle('open');
             if (action === 'clear-sig')    this.clearSig();
             if (action === 'save-lesson')  this.saveLesson();
+            if (action === 'save-lesson-content') this.saveLessonContent();
+        });
+
+        // Lesson content: highlight type switch (sitadis / orbus / chinuch)
+        c.addEventListener('click', (e) => {
+            const btn = e.target.closest('.ts-hl-type-btn');
+            if (!btn || !c.contains(btn)) return;
+            if (this._isLessonContentAdmin()) this._collectLessonContentFromUI();
+            this._tsHighlightType = btn.dataset.hlType;
+            this.renderLessonContentPanel();
+        });
+
+        // Lesson content: mark dirty when admin types in a textarea
+        c.addEventListener('input', (e) => {
+            if (e.target.matches('[data-ts-highlight-idx]')) this._lcDirty = true;
+        });
+
+        // Lesson content cells — click to open modal
+        c.addEventListener('click', (e) => {
+            const cell = e.target.closest('.lesson-content-cell');
+            if (!cell || !c.contains(cell)) return;
+            this.openLessonContent(parseInt(cell.dataset.lessonNum, 10), cell.dataset.lessonType);
         });
 
         c.addEventListener('click', (e) => {
@@ -4267,12 +4322,12 @@ window.TraineeSystem = {
             const editBtn = e.target.closest('[data-edit-name]');
             if (editBtn) {
                 e.stopPropagation();
-                this.editName(parseInt(editBtn.dataset.editName, 10), editBtn.dataset.name, e);
+                this.editName(parseFloat(editBtn.dataset.editName), editBtn.dataset.name, e);
             }
             const delBtn = e.target.closest('[data-delete-trainee]');
             if (delBtn) {
                 e.stopPropagation();
-                this.deleteTrainee(parseInt(delBtn.dataset.deleteTrainee, 10), delBtn.dataset.name, e);
+                this.deleteTrainee(parseFloat(delBtn.dataset.deleteTrainee), delBtn.dataset.name, e);
             }
             const delLesson = e.target.closest('[data-delete-lesson]');
             if (delLesson) {
@@ -4308,14 +4363,22 @@ window.TraineeSystem = {
             this.traineesRef.once('value'),
             this.instructorsRef.once('value')
         ]).then(([tSnap, iSnap]) => {
-            this.trainees    = tSnap.val()  ? Object.values(tSnap.val())  : [];
+            // this.trainees is already correctly set by loadCourses() from the active course.
+            // Only fall back to the legacy flat path if no course-based data exists.
+            if (!this.currentCourseId || !this.courses.length) {
+                this.trainees = tSnap.val() ? Object.values(tSnap.val()) : [];
+            }
             this.instructors = iSnap.val()  ? Object.values(iSnap.val())  : [];
             this.renderList();
             this.renderInsTags();
             this.traineesRef.on('value', snap => {
-                this.trainees = snap.val() ? Object.values(snap.val()) : [];
-                this.renderList();
-                if (this.currentId) this.renderDetail();
+                // Legacy flat-path listener — kept for backward-compat recovery only.
+                // Must not override the currently active course's trainee list.
+                if (!this.currentCourseId || !this.courses.length) {
+                    this.trainees = snap.val() ? Object.values(snap.val()) : [];
+                    this.renderList();
+                    if (this.currentId) this.renderDetail();
+                }
             });
             this.instructorsRef.on('value', snap => {
                 this.instructors = snap.val() ? Object.values(snap.val()) : [];
@@ -4339,6 +4402,13 @@ window.TraineeSystem = {
     },
 
     persist() {
+        // DEMO MODE GUARD — memory only, never write to Firebase or localStorage courses
+        if (typeof _isDemoMode === 'function' && _isDemoMode()) {
+            try { localStorage.setItem('demo_trainee_data', JSON.stringify({trainees: this.trainees, instructors: this.instructors})); } catch(e) {}
+            window._traineeSummaryCache = null;
+            return;
+        }
+
         // Update current course trainees before saving
         const cur = this.courses.find(c => c.id === this.currentCourseId);
         if (cur) cur.trainees = JSON.parse(JSON.stringify(this.trainees));
@@ -4347,24 +4417,27 @@ window.TraineeSystem = {
         const coursesToSave = this.courses.filter(c => !c._temp);
 
         // Save courses to Firebase
+        // NOTE: .set() is async — a try/catch here only catches SYNCHRONOUS throws.
+        // Real write failures (offline, permission denied) happen later and were
+        // previously silent. .catch() below surfaces them to the user via toast.
         if (this.coursesRef) {
             try {
                 const cData = {};
                 coursesToSave.forEach(c => { cData[c.id] = c; });
-                this.coursesRef.set(cData);
+                this.coursesRef.set(cData).catch(err => {
+                    console.error('persist courses failed:', err);
+                    if (typeof showToast === 'function') showToast('❌ שמירת החניכים נכשלה — בדוק חיבור אינטרנט', 'error');
+                });
             } catch(e) { console.warn('persist courses:', e); }
         }
-        // Also save trainees separately for backward compat
-        try {
-            const tData = {};
-            this.trainees.forEach(t => { tData[t.id] = t; });
-            this.traineesRef.set(tData);
-        } catch(e) {}
-
+        // NOTE: legacy flat trainees_v20 path is intentionally NOT overwritten here anymore.
+        // It caused silent data loss: persist() only holds the ACTIVE course's trainees,
+        // so .set() was wiping out all other courses' trainees from the legacy path on every save.
+        // trainees_v20 remains read-only recovery fallback (see loadData()).
         try {
             const iData = {};
             this.instructors.forEach((name, i) => { iData[i] = name; });
-            this.instructorsRef.set(iData);
+            this.instructorsRef.set(iData).catch(err => console.error('persist instructors failed:', err));
         } catch(e) {}
         // localStorage backup — also exclude temp courses
         try { localStorage.setItem('trainee_courses', JSON.stringify(coursesToSave)); } catch(e) {}
@@ -4418,24 +4491,48 @@ window.TraineeSystem = {
         });
 
         const ticks = this.$('chinuch-ticks');
-        if (ticks) {
-            for (let i = 0; i < 50; i++) {
-                const t = document.createElement('div');
-                t.className = 'chinuch-tick';
-                ticks.appendChild(t);
-            }
+        if (ticks) ticks.innerHTML = ''; // built by buildCourseTicks() with interactive cells
+    },
+
+    _buildInteractiveCells(containerId, count, type) {
+        const container = this.$(containerId);
+        if (!container) return;
+        container.innerHTML = '';
+        for (let i = 1; i < count; i++) {
+            const line = document.createElement('div');
+            line.style.cssText = `position:absolute;top:0;bottom:0;width:1px;background:rgba(0,0,0,0.12);right:${(i/count)*100}%;`;
+            container.appendChild(line);
+        }
+        for (let n = 1; n <= count; n++) {
+            const cell = document.createElement('div');
+            cell.className = 'lesson-content-cell';
+            cell.dataset.lessonNum = n;
+            cell.dataset.lessonType = type;
+            cell.style.cssText = `position:absolute;top:0;bottom:0;width:${100/count}%;right:${((n-1)/count)*100}%;cursor:pointer;`;
+            cell.title = `שיעור ${n} — דגשי ביצוע`;
+            container.appendChild(cell);
         }
     },
 
     buildCourseTicks() {
-        const container = this.$('course-ticks');
-        if (!container) return;
-        container.innerHTML = '';
-        for (let i = 1; i < 50; i++) {
-            const tick = document.createElement('div');
-            tick.style.cssText = `position:absolute;top:0;bottom:0;width:1px;background:rgba(0,0,0,0.12);right:${(i / 50) * 100}%;`;
-            container.appendChild(tick);
-        }
+        this._buildInteractiveCells('course-ticks', 50, 'sitadis');
+        this._buildInteractiveCells('orbus-ticks', 7, 'orbus');
+        this._buildInteractiveCells('chinuch-ticks', 50, 'chinuch');
+    },
+
+    openLessonContent(n, type) {
+        const modal = this.$('lessonContentModal');
+        if (!modal) return;
+        modal.querySelector('#lc-modal-num').textContent = n;
+        modal.querySelector('#lc-modal-type').textContent = type === 'orbus' ? 'אורבוס' : type === 'chinuch' ? 'חניכה' : 'סיטאדיס';
+        const text = (this.lessonContent?.[type]?.[n]) || '';
+        modal.querySelector('#lc-modal-body').textContent = text || 'לא הוגדרו דגשים לשיעור זה.';
+        modal.style.display = 'flex';
+    },
+
+    closeLessonContent() {
+        const m = this.$('lessonContentModal');
+        if (m) m.style.display = 'none';
     },
 
     setTrain(lesson) {
@@ -4507,9 +4604,9 @@ window.TraineeSystem = {
         if (!pending.length) { wrap.style.display = 'none'; return; }
         wrap.style.display = 'block';
         list.innerHTML = pending.map((n, i) =>
-            `<div style="display:flex;align-items:center;justify-content:space-between;font-size:13px;color:#1a5276;">
-               <span>✓ ${n}</span>
-               <button onclick="TraineeSystem._removePending(${i})" style="background:none;border:none;color:#e74c3c;cursor:pointer;font-size:14px;padding:0 4px;">✕</button>
+            `<div style="display:flex;align-items:center;gap:6px;font-size:13px;color:#1a5276;white-space:nowrap;">
+               <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">✓ ${i + 1}. ${n}</span>
+               <button onclick="TraineeSystem._removePending(${i})" style="background:none;border:none;color:#e74c3c;cursor:pointer;font-size:14px;padding:0 4px;flex-shrink:0;">✕</button>
              </div>`
         ).join('');
     },
@@ -4826,6 +4923,18 @@ window.TraineeSystem = {
         // Render milestone status badges on detail view
         this._renderDetailMilestoneBadges(t, maxL);
 
+        const orbusSection = this.$('orbus-section');
+        if (orbusSection) {
+            if (maxL >= 50) {
+                orbusSection.style.display = 'block';
+                const pct = Math.min((orbusDone.size / 7) * 100, 100);
+                this.$('orbus-bar-fill').style.width = pct + '%';
+                this.$('orbus-count').innerText = `${orbusDone.size} / 7 שיעורים`;
+            } else {
+                orbusSection.style.display = 'none';
+            }
+        }
+
         const chinuchSection = this.$('chinuch-section');
         if (chinuchDone.size > 0) {
             chinuchSection.style.display = 'block';
@@ -4875,6 +4984,7 @@ window.TraineeSystem = {
         extraWrap.style.display = 'none';
 
         const t      = this.trainees.find(x => x.id === this.currentId);
+        if (!t) return; // חניכים טרם נטענו מ-Firebase — מונע crash
         const isFree = _mType ? _mType.id === 'mt1' : mission === 'חניכה';
         const isOrbus = (mission === 'קורס מעשי אורבוס');
         const isChinuchMission = (isFree || mission === 'חניכה') && !isOrbus
@@ -5109,7 +5219,7 @@ window.TraineeSystem = {
         const avg = t => { const ls=t.lessons||[]; if(!ls.length)return 0; return ((ls.reduce((s,l)=>s+(l.s1+l.s2+l.s3+l.s4+l.s5),0)/(ls.length*50))*100).toFixed(0); };
         const rows = [...this.trainees].sort((a,b)=>(b.lessons||[]).length-(a.lessons||[]).length).map(t => {
             const ls=t.lessons||[]; const maxL=new Set(ls.flatMap(l=>(l.mission==='קורס מעשי סיטאדיס'||l.mission==='קורס מעשי'||l.mission==='קורס')?(l.lessonNums||[]):[]).filter(n=>n)).size;
-            return `<tr><td style="padding:8px 10px;border-bottom:1px solid #eee;">${t.name}</td><td style="padding:8px 10px;border-bottom:1px solid #eee;text-align:center;">${ls.length}</td><td style="padding:8px 10px;border-bottom:1px solid #eee;text-align:center;">${maxL}/50</td><td style="padding:8px 10px;border-bottom:1px solid #eee;text-align:center;font-weight:bold;color:${avg(t)<65?'#e74c3c':avg(t)<82?'#e67e22':'#27ae60'}">${avg(t)}%</td><td style="padding:8px 10px;border-bottom:1px solid #eee;text-align:center;">${ls.length?ls[ls.length-1].ins:'-'}</td></tr>`;
+            return `<tr><td style="padding:8px 10px;border-bottom:1px solid #eee;">${_esc(t.name)}</td><td style="padding:8px 10px;border-bottom:1px solid #eee;text-align:center;">${ls.length}</td><td style="padding:8px 10px;border-bottom:1px solid #eee;text-align:center;">${maxL}/50</td><td style="padding:8px 10px;border-bottom:1px solid #eee;text-align:center;font-weight:bold;color:${avg(t)<65?'#e74c3c':avg(t)<82?'#e67e22':'#27ae60'}">${avg(t)}%</td><td style="padding:8px 10px;border-bottom:1px solid #eee;text-align:center;">${ls.length?ls[ls.length-1].ins:'-'}</td></tr>`;
         }).join('');
         const overlay = document.createElement('div');
         overlay.id = 'ts-rep-overlay';
@@ -5323,6 +5433,38 @@ window.TraineeSystem = {
         };
     },
 
+    // ═══════════════════════════════════════════════════════════
+    // LESSON CONTENT — Sprint 1: Data Layer + Firebase listener
+    // ═══════════════════════════════════════════════════════════
+
+    _isLessonContentAdmin() {
+        return (typeof currentRole !== 'undefined' && currentRole === 'admin');
+    },
+
+    _initLessonContent() {
+        const empty = { sitadis: {}, orbus: {}, chinuch: {} };
+        if (typeof _isDemoMode === 'function' && _isDemoMode()) {
+            try {
+                const raw = localStorage.getItem('v100_lesson_content');
+                this.lessonContent = raw ? { ...empty, ...JSON.parse(raw) } : empty;
+            } catch(e) { this.lessonContent = empty; }
+            console.log('[lessonContent] demo mode — loaded from localStorage', this.lessonContent);
+            return;
+        }
+        this.lessonContentRef = firebase.database().ref('lessonContent');
+        this._lcDirty = false;
+        this.lessonContentRef.on('value', (snap) => {
+            this.lessonContent = snap.exists() ? { ...empty, ...snap.val() } : empty;
+            console.log('[lessonContent] synced from Firebase', this.lessonContent);
+            if (this.currentId && typeof this.renderDetail === 'function') this.renderDetail();
+            if (!this._lcDirty && this.$('ts-panel-highlights')?.style.display !== 'none') {
+                this.renderLessonContentPanel?.();
+            } else if (this._lcDirty) {
+                console.log('[lessonContent] skipped panel re-render — unsaved edit in progress (_lcDirty)');
+            }
+        });
+    },
+
     async loadSettings() {
         const defaults = this._defaultSettings();
         let loaded = false;
@@ -5472,11 +5614,118 @@ window.TraineeSystem = {
         if (!overlay) return;
         overlay.classList.add('open');
         this.switchSettingsTab('skills');
+        this._applyLessonContentPermissions();
     },
 
     closeSettings() {
         const overlay = this.$('ts-settings-overlay');
         if (overlay) overlay.classList.remove('open');
+    },
+
+    // ═══════════════════════════════════════════════════════════
+    // LESSON CONTENT — Sprint 3: Admin UI + render methods
+    // ═══════════════════════════════════════════════════════════
+
+    _tsHighlightType: 'sitadis',
+
+    // Called automatically by switchSettingsTab via _renderTab_highlights pattern
+    _renderTab_highlights() {
+        this.renderLessonContentPanel();
+    },
+
+    renderLessonContentPanel() {
+        const list = this.$('ts-highlights-list');
+        if (!list) return;
+        const type  = this._tsHighlightType || 'sitadis';
+        const count = type === 'orbus' ? 7 : 50;
+        const data  = this.lessonContent?.[type] || {};
+        let html = '';
+        for (let n = 1; n <= count; n++) {
+            const val = data[n] || '';
+            html += `<div style="display:flex;gap:10px;align-items:flex-start;">
+              <span style="min-width:34px;padding-top:8px;font-weight:bold;color:#888;font-size:13px;">#${n}</span>
+              <textarea data-ts-highlight-idx="${n}" rows="2" placeholder="דגש לשיעור ${n}..."
+                style="flex:1;padding:8px 10px;border:1.5px solid #ddd;border-radius:8px;font-size:13px;direction:rtl;resize:vertical;">${_esc(val)}</textarea>
+            </div>`;
+        }
+        list.innerHTML = html;
+        this.container.querySelectorAll('.ts-hl-type-btn').forEach(b => {
+            const active = b.dataset.hlType === type;
+            b.classList.toggle('active', active);
+            b.style.background   = active ? '#eaf4fd' : 'white';
+            b.style.color        = active ? '#2980b9' : '#888';
+            b.style.borderColor  = active ? '#3498db' : '#ddd';
+        });
+        this._applyLessonContentPermissions();
+    },
+
+    _applyLessonContentPermissions() {
+        const admin = this._isLessonContentAdmin();
+        const saveBtn = this.$('lc-save-btn');
+        if (saveBtn) saveBtn.style.display = admin ? '' : 'none';
+        const textareas = this.container.querySelectorAll('[data-ts-highlight-idx]');
+        textareas.forEach(t => {
+            t.readOnly = !admin;
+            t.style.background = admin ? 'white' : '#f5f5f5';
+        });
+        // Show/hide tab button itself
+        const tabBtn = this.$('ts-tab-highlights-btn');
+        if (tabBtn) tabBtn.style.display = admin ? '' : 'none';
+    },
+
+    _collectLessonContentFromUI() {
+        const rows = this.container.querySelectorAll('[data-ts-highlight-idx]');
+        if (!rows.length) return;
+        const type = this._tsHighlightType || 'sitadis';
+        const data = {};
+        rows.forEach(t => {
+            const n = t.dataset.tsHighlightIdx;
+            const v = t.value.trim();
+            if (v) data[n] = v;
+        });
+        if (!this.lessonContent) this.lessonContent = { sitadis: {}, orbus: {}, chinuch: {} };
+        this.lessonContent[type] = data;
+    },
+
+    // ═══════════════════════════════════════════════════════════
+    // LESSON CONTENT — Sprint 4: Firebase write path
+    // ═══════════════════════════════════════════════════════════
+
+    async saveLessonContent() {
+        if (!this._isLessonContentAdmin()) {
+            console.warn('[lessonContent] save blocked — not admin');
+            return;
+        }
+        this._collectLessonContentFromUI();
+        const type  = this._tsHighlightType || 'sitadis';
+        const data  = this.lessonContent?.[type] || {};
+        const count = type === 'orbus' ? 7 : 50;   // sitadis=50, chinuch=50, orbus=7
+
+        // localStorage — always (demo backup + offline fallback)
+        try { localStorage.setItem('v100_lesson_content', JSON.stringify(this.lessonContent)); } catch(e) {}
+
+        if (typeof _isDemoMode === 'function' && _isDemoMode()) {
+            console.log('[lessonContent] demo mode — skipped Firebase write');
+        } else {
+            // Granular update(): only write keys for this type — never touch the other branch
+            const updates = {};
+            for (let n = 1; n <= count; n++) {
+                updates[`lessonContent/${type}/${n}`] = data[n] || null; // null = delete empty key
+            }
+            try {
+                await firebase.database().ref().update(updates);
+                console.log('[lessonContent] Firebase update() OK —', Object.keys(updates).length, 'keys, type=', type);
+                this._lcDirty = false; // unsaved draft cleared — live listener may re-render again
+            } catch(e) {
+                console.warn('[lessonContent] Firebase update failed:', e);
+                showToast('\u26a0\ufe0f \u05e9\u05d9\u05e0\u05d5\u05d9 \u05dc\u05d0 \u05e0\u05e9\u05de\u05e8 \u05dc-Firebase \u2014 \u05d1\u05d3\u05d5\u05e7 \u05d7\u05d9\u05d1\u05d5\u05e8', 'error');
+                return; // don't show success msg on failure
+            }
+        }
+
+        const msg = this.$('lc-saved-msg');
+        if (msg) { msg.style.display = 'inline'; setTimeout(() => msg.style.display = 'none', 2500); }
+        showToast('\u2705 \u05d3\u05d2\u05e9\u05d9 \u05d4\u05d1\u05d9\u05e6\u05d5\u05e2 \u05e0\u05e9\u05de\u05e8\u05d5', 'success');
     },
 
     switchSettingsTab(tab) {
@@ -5563,7 +5812,7 @@ window.TraineeSystem = {
                 : 'flex:1;padding:7px 10px;border:1.5px solid #ddd;border-radius:7px;font-size:13px;font-family:inherit;direction:rtl;';
             return `<div class="ts-mission-row" data-ts-mission-idx="${i}" data-ts-mission-id="${m.id}" data-ts-mission-locked="${isLocked}">
                 <button data-ts-toggle-lock="${i}" title="${isLocked?'לחץ לפתיחת נעילה':'לחץ לנעילה'}" style="${lockBtnStyle}">${isLocked?'🔒':'🔓'}</button>
-                <input class="ts-mission-name-input" type="text" value="${m.name}" placeholder="שם סוג משימה" ${isLocked?'disabled':''} style="${nameStyle}">
+                <input class="ts-mission-name-input" type="text" value="${_esc(m.name)}" placeholder="שם סוג משימה" ${isLocked?'disabled':''} style="${nameStyle}">
                 ${!isLocked ? `<button data-ts-del-mission="${i}" style="background:none;border:none;color:#e74c3c;cursor:pointer;font-size:16px;padding:2px 6px;width:auto !important;">🗑</button>` : ''}
             </div>`;
         }).join('');
@@ -5600,7 +5849,7 @@ window.TraineeSystem = {
         const list = this.$('ts-alerts-list');
         if (!list || !this.settings) return;
         const alerts = this.settings.alertThresholds || [];
-        const skillOpts = (this.settings.skills || []).map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+        const skillOpts = (this.settings.skills || []).map(s => `<option value="${s.id}">${_esc(s.name)}</option>`).join('');
         const sevOpts = [
             {v:'critical', l:'🔴'},
             {v:'warning',  l:'🟠'},
@@ -5960,8 +6209,11 @@ window.TraineeSystem = {
             if (Array.isArray(lesson[k]) && lesson[k].length === 0) delete lesson[k];
         });
         t.lessons.push(lesson);
-        this.persist();
-        this.renderList(); // refresh if currently shown
+        // Skip persist/renderList during batch demo injection — caller handles it
+        if (!lessonData._fromDemoReport) {
+            this.persist();
+            this.renderList();
+        }
     },
 
     // Public: get alert thresholds matching a skill and score
@@ -6044,7 +6296,9 @@ window.TraineeSystem = {
 
     _saveCourses() {
         const coursesToSave = this.courses.filter(c => !c._temp);
-        try { localStorage.setItem('trainee_courses', JSON.stringify(coursesToSave)); } catch(e) {}
+        if (!(typeof _isDemoMode === 'function' && _isDemoMode())) {
+            try { localStorage.setItem('trainee_courses', JSON.stringify(coursesToSave)); } catch(e) {}
+        }
         if (this.coursesRef && !(typeof _isDemoMode === 'function' && _isDemoMode())) {
             try {
                 const cData = {};
@@ -6063,7 +6317,13 @@ window.TraineeSystem = {
         const course = this.courses.find(c => c.id === courseId);
         if (!course) return;
         this.currentCourseId = courseId;
-        this.trainees = course.trainees || [];
+        // במצב דמו — שומר על חניכי הדמו, לא מחליף לנתוני האמת של הקורס
+        if (typeof _isDemoMode === 'function' && _isDemoMode()) {
+            const saved = localStorage.getItem('demo_trainee_data');
+            if (saved) { try { const d = JSON.parse(saved); this.trainees = d.trainees || []; } catch(e) {} }
+        } else {
+            this.trainees = course.trainees || [];
+        }
         this.renderList();
         this.renderInsTags();
         this._updateCourseSelector();
@@ -6084,7 +6344,7 @@ window.TraineeSystem = {
             const arch  = c.status === 'archived' ? ' 📦' : '';
             const pLabel = priorityLabel[c.priority] ? ` [${priorityLabel[c.priority]}]` : '';
             return `<option value="${c.id}" ${c.id === this.currentCourseId ? 'selected' : ''}>
-                ${c.name}${pLabel}${label}${arch}
+                ${_esc(c.name)}${pLabel}${label}${arch}
             </option>`;
         }).join('');
     },
@@ -6138,7 +6398,7 @@ window.TraineeSystem = {
             return `<div style="background:${bgColor};border:1.5px solid ${borderColor};border-radius:10px;padding:12px 14px;margin-bottom:8px;">
               <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
                 <div style="flex:1;min-width:120px;">
-                  <input data-ts-course-name="${course.id}" value="${course.name}"
+                  <input data-ts-course-name="${course.id}" value="${_esc(course.name)}"
                     style="font-size:14px;font-weight:bold;color:#1a2a3a;border:none;background:transparent;
                            border-bottom:1.5px solid ${isDefault?'#27ae60':'#ddd'};padding:2px 4px;width:100%;direction:rtl;"
                     onchange="TraineeSystem._renameCourse('${course.id}',this.value)">
@@ -6741,17 +7001,12 @@ function _countUnreadForMe() {
   return count;
 }
 
-// Count unread across all recipients (admin view) — includes incoming from employees
+// Count unread incoming messages for admin (messages sent TO admin, not yet read by admin)
 function _countTotalUnread() {
   let count = 0;
   Object.values(_msgsCache).forEach(msg => {
-    if (!msg || !msg.recipients) return;
-    if (msg.toAdmin) {
-      // Count as 1 unread if admin hasn't read it
-      if (!msg.recipients['מנהל']?.read) count++;
-    } else {
-      Object.values(msg.recipients).forEach(r => { if (r && !r.read) count++; });
-    }
+    if (!msg || !msg.toAdmin) return;
+    if (!msg.recipients?.['מנהל']?.read) count++;
   });
   return count;
 }
@@ -6817,7 +7072,16 @@ function _renderMsgDrawer() {
     const _gearH = document.getElementById('msgSettingsGearHeader');
     if (_gearH) _gearH.style.display = 'flex';
 
-    html += `<div class="msg-drawer-section">📥 הודעות נכנסות${incomingMsgsTop.length?' ('+incomingMsgsTop.length+')':''}</div>
+    html += `<div class="msg-drawer-section" style="display:flex;align-items:center;justify-content:space-between;">
+      <span>📥 הודעות נכנסות${incomingMsgsTop.length?' ('+incomingMsgsTop.length+')':''}</span>
+      ${incomingMsgsTop.length ? `<label style="display:flex;align-items:center;gap:4px;font-size:10.5px;color:#e74c3c;cursor:pointer;font-weight:bold;text-transform:none;letter-spacing:normal;">
+        <input type="checkbox" id="msgSelectAllIncoming" onchange="_toggleAllMsgBulk('incoming',this.checked)" style="accent-color:#e74c3c;width:13px;height:13px;"> בחר הכל
+      </label>` : ''}
+    </div>
+    <div id="msgBulkBarIncoming" style="display:none;align-items:center;justify-content:space-between;background:#fdf2f2;border:1.5px solid #e74c3c;border-radius:8px;padding:8px 12px;margin-bottom:8px;">
+      <span id="msgBulkCountIncoming" style="font-size:12px;color:#c0392b;font-weight:bold;"></span>
+      <button onclick="_deleteSelectedMsgs('incoming')" style="width:auto;padding:5px 12px;background:#e74c3c;color:white;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:bold;">🗑️ מחק נבחרים</button>
+    </div>
     <div id="msgSettingsPanel" style="display:none;margin-bottom:10px;">
       <div class="msg-card" style="margin-bottom:0;">
         <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:13px;">
@@ -6837,7 +7101,10 @@ function _renderMsgDrawer() {
         const date = msg.createdAt ? new Date(msg.createdAt).toLocaleDateString('he-IL') : '';
         html += `<div class="msg-card ${!isRead?'unread-admin':''}">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-            <div style="font-size:11px;color:#888;">${date} · <b>${_esc(msg.from||'')}</b> · ${_esc(msg.fromRole==='mentor'?'חונך':'מדריך')}</div>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <input type="checkbox" class="msgBulkChk" data-id="${id}" data-section="incoming" onchange="_updateMsgBulkBar('incoming')" style="accent-color:#e74c3c;width:14px;height:14px;flex-shrink:0;">
+              <div style="font-size:11px;color:#888;">${date} · <b>${_esc(msg.from||'')}</b> · ${_esc(msg.fromRole==='mentor'?'חונך':'מדריך')}</div>
+            </div>
             <button onclick="_deleteMsg('${id}')" style="background:none;border:none;color:#e74c3c;cursor:pointer;font-size:14px;padding:0;">🗑️</button>
           </div>
           <div style="font-size:13px;color:#222;white-space:pre-wrap;margin-bottom:8px;">${_esc(msg.text||'')}</div>
@@ -6853,7 +7120,7 @@ function _renderMsgDrawer() {
     <div class="msg-card" id="msgComposeCard">
       <div style="margin-bottom:10px;">
         <label style="font-size:12px;font-weight:bold;color:#555;display:block;margin-bottom:6px;">נמענים</label>
-        <div id="msgRecipientsWrap" style="max-height:140px;overflow-y:auto;border:1.5px solid #e0e7ef;border-radius:8px;padding:8px 10px;"></div>
+        <div id="msgRecipientsWrap" style="max-height:220px;overflow-y:auto;border:1.5px solid #e0e7ef;border-radius:8px;padding:8px 10px;"></div>
       </div>
       <div style="margin-bottom:10px;">
         <label style="font-size:12px;font-weight:bold;color:#555;display:block;margin-bottom:6px;">סוג הודעה</label>
@@ -6888,7 +7155,16 @@ function _renderMsgDrawer() {
       .filter(([,m]) => m && !m.toAdmin)
       .sort((a,b) => (b[1].createdAt||0)-(a[1].createdAt||0));
     if (msgs.length) {
-      html += `<div class="msg-drawer-section">📋 הודעות שנשלחו (${msgs.length})</div>`;
+      html += `<div class="msg-drawer-section" style="display:flex;align-items:center;justify-content:space-between;">
+        <span>📋 הודעות שנשלחו (${msgs.length})</span>
+        <label style="display:flex;align-items:center;gap:4px;font-size:10.5px;color:#e74c3c;cursor:pointer;font-weight:bold;text-transform:none;letter-spacing:normal;">
+          <input type="checkbox" id="msgSelectAllSent" onchange="_toggleAllMsgBulk('sent',this.checked)" style="accent-color:#e74c3c;width:13px;height:13px;"> בחר הכל
+        </label>
+      </div>
+      <div id="msgBulkBarSent" style="display:none;align-items:center;justify-content:space-between;background:#fdf2f2;border:1.5px solid #e74c3c;border-radius:8px;padding:8px 12px;margin-bottom:8px;">
+        <span id="msgBulkCountSent" style="font-size:12px;color:#c0392b;font-weight:bold;"></span>
+        <button onclick="_deleteSelectedMsgs('sent')" style="width:auto;padding:5px 12px;background:#e74c3c;color:white;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:bold;">🗑️ מחק נבחרים</button>
+      </div>`;
       msgs.forEach(([id, msg]) => {
         if (!msg) return;
         const totalR = Object.keys(msg.recipients||{}).length;
@@ -6903,7 +7179,10 @@ function _renderMsgDrawer() {
         }).join('');
         html += `<div class="msg-card ${readR < totalR ? 'unread-admin' : ''}">
           <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">
-            <div style="font-size:11px;color:#888;">${date} · ${typeLabel} · ${readR}/${totalR} נקראו</div>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <input type="checkbox" class="msgBulkChk" data-id="${id}" data-section="sent" onchange="_updateMsgBulkBar('sent')" style="accent-color:#e74c3c;width:14px;height:14px;flex-shrink:0;margin-top:2px;">
+              <div style="font-size:11px;color:#888;">${date} · ${typeLabel} · ${readR}/${totalR} נקראו</div>
+            </div>
             <button onclick="_deleteMsg('${id}')" style="background:none;border:none;color:#e74c3c;cursor:pointer;font-size:14px;padding:0;" title="מחק">🗑️</button>
           </div>
           <div style="font-size:13px;color:#222;margin-bottom:8px;white-space:pre-wrap;">${_esc(msg.text||'')}</div>
@@ -6962,27 +7241,59 @@ function _renderMsgDrawer() {
   if (isAdmin) {
     const wrap = document.getElementById('msgRecipientsWrap');
     if (wrap) {
-      const allPeople = [
-        ...(_instrNames||[]).map(n=>({name:n, type:'מדריך'})),
-        ...(_mentorNames||[]).map(n=>({name:n, type:'חונך'}))
-      ];
-      if (!allPeople.length) {
-        wrap.innerHTML = '<div style="color:#aaa;font-size:12px;">אין מדריכים/חונכים מוגדרים</div>';
+      const instrList = _instrNames||[];
+      const mentorList = _mentorNames||[];
+      if (!instrList.length && !mentorList.length) {
+        wrap.innerHTML = '<div style="color:#aaa;font-size:12px;text-align:center;padding:8px;">אין מדריכים/חונכים מוגדרים</div>';
       } else {
-        wrap.innerHTML = `<label style="display:flex;align-items:center;gap:6px;margin-bottom:6px;font-size:12px;cursor:pointer;font-weight:bold;">
-          <input type="checkbox" id="msgSelectAll" onchange="_toggleSelectAllRecipients(this.checked)" style="accent-color:var(--primary);"> בחר הכל
-        </label>` +
-        allPeople.map(p => `<label style="display:flex;align-items:center;gap:6px;margin-bottom:4px;font-size:13px;cursor:pointer;">
-          <input type="checkbox" class="msgRecipientChk" data-name="${_esc(p.name)}" style="accent-color:var(--primary);">
-          ${_esc(p.name)} <span style="font-size:10px;color:#aaa;">(${p.type})</span>
-        </label>`).join('');
+        const rowHtml = (name, group) => `<label style="display:flex;align-items:center;gap:8px;padding:6px 4px;border-radius:6px;cursor:pointer;font-size:13px;">
+          <input type="checkbox" class="msgRecipientChk" data-name="${_esc(name)}" data-group="${group}" onchange="_updateMsgRecipientsCount()" style="accent-color:var(--primary);width:15px;height:15px;flex-shrink:0;">
+          <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${_esc(name)}</span>
+        </label>`;
+        const groupHtml = (icon, label, list, group) => !list.length ? '' : `
+          <div style="display:flex;align-items:center;justify-content:space-between;margin:10px 0 4px;padding:0 2px;">
+            <span style="font-size:11px;font-weight:bold;color:#888;">${icon} ${label} (${list.length})</span>
+            <label style="display:flex;align-items:center;gap:4px;font-size:10.5px;color:var(--primary);cursor:pointer;font-weight:bold;">
+              <input type="checkbox" class="msgGroupSelectAll" data-group="${group}" onchange="_toggleGroupRecipients('${group}',this.checked)" style="accent-color:var(--primary);width:13px;height:13px;"> בחר הכל
+            </label>
+          </div>
+          ${list.map(n => rowHtml(n, group)).join('')}`;
+        wrap.innerHTML = `
+          <div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:8px;margin-bottom:4px;border-bottom:1.5px solid #e0e7ef;">
+            <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:bold;cursor:pointer;">
+              <input type="checkbox" id="msgSelectAll" onchange="_toggleSelectAllRecipients(this.checked)" style="accent-color:var(--primary);width:15px;height:15px;"> בחר הכל (הכל)
+            </label>
+            <span id="msgRecipientsCount" style="font-size:11px;color:#aaa;"></span>
+          </div>
+          ${groupHtml('👤','מדריכים', instrList, 'instr')}
+          ${groupHtml('🎓','חונכים', mentorList, 'mentor')}
+        `;
       }
     }
   }
 }
 
+function _updateMsgRecipientsCount() {
+  const n = document.querySelectorAll('.msgRecipientChk:checked').length;
+  const el = document.getElementById('msgRecipientsCount');
+  if (el) el.textContent = n > 0 ? n + ' נבחרו' : '';
+  const total = document.querySelectorAll('.msgRecipientChk').length;
+  const allChk = document.getElementById('msgSelectAll');
+  if (allChk) allChk.checked = total > 0 && n === total;
+  document.querySelectorAll('.msgGroupSelectAll').forEach(gChk => {
+    const groupBoxes = document.querySelectorAll('.msgRecipientChk[data-group="'+gChk.dataset.group+'"]');
+    gChk.checked = groupBoxes.length > 0 && [...groupBoxes].every(c => c.checked);
+  });
+}
+
+function _toggleGroupRecipients(group, checked) {
+  document.querySelectorAll('.msgRecipientChk[data-group="'+group+'"]').forEach(chk => chk.checked = checked);
+  _updateMsgRecipientsCount();
+}
+
 function _toggleSelectAllRecipients(checked) {
   document.querySelectorAll('.msgRecipientChk').forEach(chk => chk.checked = checked);
+  _updateMsgRecipientsCount();
 }
 
 function _toggleMsgSettings() {
@@ -7091,6 +7402,45 @@ async function _deleteMsg(msgId) {
   }
 }
 
+function _toggleAllMsgBulk(section, checked) {
+  document.querySelectorAll('.msgBulkChk[data-section="'+section+'"]').forEach(c => c.checked = checked);
+  _updateMsgBulkBar(section);
+}
+
+function _updateMsgBulkBar(section) {
+  const all = document.querySelectorAll('.msgBulkChk[data-section="'+section+'"]');
+  const chks = document.querySelectorAll('.msgBulkChk[data-section="'+section+'"]:checked');
+  const barId = section === 'incoming' ? 'msgBulkBarIncoming' : 'msgBulkBarSent';
+  const countId = section === 'incoming' ? 'msgBulkCountIncoming' : 'msgBulkCountSent';
+  const selectAllId = section === 'incoming' ? 'msgSelectAllIncoming' : 'msgSelectAllSent';
+  const bar = document.getElementById(barId);
+  const countEl = document.getElementById(countId);
+  const selectAllEl = document.getElementById(selectAllId);
+  if (selectAllEl) selectAllEl.checked = all.length > 0 && chks.length === all.length;
+  if (!bar) return;
+  if (chks.length > 0) {
+    bar.style.display = 'flex';
+    if (countEl) countEl.textContent = chks.length + ' נבחרו';
+  } else {
+    bar.style.display = 'none';
+  }
+}
+
+async function _deleteSelectedMsgs(section) {
+  const chks = [...document.querySelectorAll('.msgBulkChk[data-section="'+section+'"]:checked')];
+  if (!chks.length) return;
+  if (!safeConfirm('למחוק ' + chks.length + ' הודעות נבחרות? הפעולה סופית.')) return;
+  try {
+    if (window._fbDb) {
+      await Promise.all(chks.map(c => window._fbDb.ref('messages/' + c.dataset.id).remove()));
+    }
+    showToast('🗑️ ' + chks.length + ' הודעות נמחקו', 'info');
+  } catch(e) {
+    showToast('שגיאה במחיקה', 'error');
+    console.warn('_deleteSelectedMsgs:', e);
+  }
+}
+
 // Send message to admin from employee
 async function _sendMsgToAdmin() {
   const ta = document.getElementById('msgToAdminText');
@@ -7121,6 +7471,26 @@ async function _sendMsgToAdmin() {
 }
 
 // Render inline message banner inside instrView (for instructors/mentors)
+// Friendly greeting for real login (instructor/mentor) — by time of day + first name
+function _renderUserGreeting(name) {
+  const el = document.getElementById('userGreeting');
+  if (!el || !name) return;
+  const firstName = name.trim().split(' ')[0];
+  const h = new Date().getHours();
+  let icon, label;
+  if (h < 12) { icon='☀️'; label='בוקר טוב'; }
+  else if (h < 17) { icon='🌤️'; label='צהריים טובים'; }
+  else if (h < 21) { icon='🌆'; label='ערב טוב'; }
+  else { icon='🌙'; label='לילה טוב'; }
+  el.textContent = `${icon} ${label}, ${firstName}!`;
+  el.style.display = 'block';
+}
+
+function _hideUserGreeting() {
+  const el = document.getElementById('userGreeting');
+  if (el) el.style.display = 'none';
+}
+
 function _renderInstrMsgBanner() {
   const me = currentUserName;
   if (!me || currentRole === 'admin') return;
@@ -7165,179 +7535,6 @@ function _renderInstrMsgBanner() {
     </div>`).join('');
 }
 
-// ═══════════════════════════════════════════════════════════════
-// MENTOR MESSAGES (legacy single-mentor banner)
-// ═══════════════════════════════════════════════════════════════
-
-async function _loadMentorMessage(mentorName) {
-  const banner = document.getElementById('mentorMsgBanner');
-  const textEl = document.getElementById('mentorMsgText');
-  const expiryEl = document.getElementById('mentorMsgExpiry');
-  if (!banner || !textEl) return;
-
-  let msg = null;
-  try {
-    if (window._fbDb) {
-      const key = mentorName.replace(/[.#$[\]/]/g, '_');
-      const snap = await window._fbDb.ref('mentorMessages/' + key).once('value');
-      if (snap.exists()) msg = snap.val();
-    }
-  } catch(e) { console.warn('_loadMentorMessage:', e); }
-
-  if (!msg || !msg.text) { banner.style.display = 'none'; return; }
-
-  // Check expiry
-  if (!msg.permanent && msg.expiresAt) {
-    const now = Date.now();
-    if (now > msg.expiresAt) {
-      banner.style.display = 'none';
-      // Auto-delete expired message
-      try {
-        const key = mentorName.replace(/[.#$[\]/]/g, '_');
-        if (window._fbDb) window._fbDb.ref('mentorMessages/' + key).remove();
-      } catch(e) {}
-      return;
-    }
-  }
-
-  textEl.textContent = msg.text;
-  if (msg.permanent) {
-    expiryEl.textContent = 'הודעה קבועה';
-  } else if (msg.expiresAt) {
-    const d = new Date(msg.expiresAt);
-    expiryEl.textContent = 'בתוקף עד: ' + d.toLocaleDateString('he-IL', {day:'numeric', month:'long', year:'numeric'});
-  }
-  banner.style.display = 'block';
-}
-
-function _openMentorMessageDialog() {
-  const mentorName = window._previewMentorName || currentUserName;
-  if (!mentorName) return;
-
-  const existing = document.getElementById('_mentorMsgDialog');
-  if (existing) existing.remove();
-
-  const overlay = document.createElement('div');
-  overlay.id = '_mentorMsgDialog';
-  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center;';
-  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
-
-  const box = document.createElement('div');
-  box.style.cssText = 'background:white;border-radius:14px;padding:22px;width:min(440px,94vw);direction:rtl;box-shadow:0 8px 32px rgba(0,0,0,.2);';
-
-  box.innerHTML = `
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-      <h3 style="margin:0;font-size:16px;color:#6c3483;">✉️ הודעה לחונך: ${_esc(mentorName)}</h3>
-      <button onclick="this.closest('#_mentorMsgDialog').remove()" style="background:none;border:2px solid #ccc;border-radius:50%;width:32px;height:32px;cursor:pointer;font-size:18px;color:#666;padding:0;">×</button>
-    </div>
-    <div style="margin-bottom:14px;">
-      <label style="font-size:12px;font-weight:bold;color:#555;display:block;margin-bottom:6px;">תוכן ההודעה</label>
-      <textarea id="_mentorMsgText" rows="4" placeholder="כתוב הודעה / הנחיה לחונך..." style="width:100%;box-sizing:border-box;padding:10px 12px;border:1.5px solid #ddd;border-radius:8px;font-size:14px;direction:rtl;font-family:inherit;resize:vertical;"></textarea>
-    </div>
-    <div style="margin-bottom:18px;">
-      <label style="font-size:12px;font-weight:bold;color:#555;display:block;margin-bottom:8px;">משך תוקף ההודעה</label>
-      <div style="display:flex;flex-direction:column;gap:8px;">
-        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;">
-          <input type="radio" name="_msgDur" value="day" checked style="accent-color:#8e44ad;"> יום אחד (ברירת מחדל)
-        </label>
-        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;">
-          <input type="radio" name="_msgDur" value="permanent" style="accent-color:#8e44ad;"> קבוע (עד שהמנהל מוחק)
-        </label>
-        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;">
-          <input type="radio" name="_msgDur" value="custom" style="accent-color:#8e44ad;"> מותאם —
-          <input type="date" id="_mentorMsgDate" style="padding:4px 8px;border:1.5px solid #ddd;border-radius:6px;font-size:13px;" min="${new Date().toISOString().slice(0,10)}">
-        </label>
-      </div>
-    </div>
-    <div style="display:flex;gap:8px;justify-content:flex-end;">
-      <button onclick="_deleteMentorMessage('${_esc(mentorName)}')" style="padding:9px 16px;background:#fdf2f2;border:1.5px solid var(--danger);color:var(--danger);border-radius:8px;cursor:pointer;font-size:13px;font-weight:bold;width:auto;">🗑️ מחק הודעה</button>
-      <button onclick="_saveMentorMessage('${_esc(mentorName)}')" style="padding:9px 20px;background:#8e44ad;color:white;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:bold;width:auto;">💾 שמור</button>
-    </div>
-  `;
-
-  // Load existing message into form
-  (async () => {
-    try {
-      if (window._fbDb) {
-        const key = mentorName.replace(/[.#$[\]/]/g, '_');
-        const snap = await window._fbDb.ref('mentorMessages/' + key).once('value');
-        if (snap.exists()) {
-          const m = snap.val();
-          const ta = box.querySelector('#_mentorMsgText');
-          if (ta && m.text) ta.value = m.text;
-          if (m.permanent) {
-            const r = box.querySelector('[value="permanent"]');
-            if (r) r.checked = true;
-          } else if (m.expiresAt) {
-            const r = box.querySelector('[value="custom"]');
-            if (r) r.checked = true;
-            const dateIn = box.querySelector('#_mentorMsgDate');
-            if (dateIn) dateIn.value = new Date(m.expiresAt).toISOString().slice(0,10);
-          }
-        }
-      }
-    } catch(e) {}
-  })();
-
-  overlay.appendChild(box);
-  document.body.appendChild(overlay);
-  setTimeout(() => box.querySelector('#_mentorMsgText')?.focus(), 80);
-}
-
-async function _saveMentorMessage(mentorName) {
-  const ta = document.getElementById('_mentorMsgText');
-  const text = ta?.value.trim();
-  if (!text) { showToast('יש לכתוב הודעה', 'warning'); return; }
-
-  const durEl = document.querySelector('[name="_msgDur"]:checked');
-  const dur = durEl?.value || 'day';
-
-  let expiresAt = null;
-  let permanent = false;
-
-  if (dur === 'permanent') {
-    permanent = true;
-  } else if (dur === 'custom') {
-    const dateVal = document.getElementById('_mentorMsgDate')?.value;
-    if (!dateVal) { showToast('יש לבחור תאריך', 'warning'); return; }
-    expiresAt = new Date(dateVal + 'T23:59:59').getTime();
-  } else {
-    // Default: 1 day from now
-    expiresAt = Date.now() + 24 * 60 * 60 * 1000;
-  }
-
-  const msg = { text, permanent, expiresAt, updatedAt: Date.now(), updatedBy: currentUserName || 'מנהל' };
-
-  try {
-    if (window._fbDb) {
-      const key = mentorName.replace(/[.#$[\]/]/g, '_');
-      await window._fbDb.ref('mentorMessages/' + key).set(msg);
-    }
-    document.getElementById('_mentorMsgDialog')?.remove();
-    showToast('✅ ההודעה נשמרה', 'success');
-    // Refresh banner
-    _loadMentorMessage(mentorName);
-  } catch(e) {
-    showToast('שגיאה בשמירה', 'error');
-    console.warn('_saveMentorMessage:', e);
-  }
-}
-
-async function _deleteMentorMessage(mentorName) {
-  if (!safeConfirm('למחוק את ההודעה לחונך ' + mentorName + '?')) return;
-  try {
-    if (window._fbDb) {
-      const key = mentorName.replace(/[.#$[\]/]/g, '_');
-      await window._fbDb.ref('mentorMessages/' + key).remove();
-    }
-    document.getElementById('_mentorMsgDialog')?.remove();
-    const banner = document.getElementById('mentorMsgBanner');
-    if (banner) banner.style.display = 'none';
-    showToast('🗑️ ההודעה נמחקה', 'info');
-  } catch(e) {
-    showToast('שגיאה במחיקה', 'error');
-  }
-}
 
 // Load milestone pass map from Firebase into window._milestonePassMap
 async function _loadMilestonePassMap() {
@@ -7442,6 +7639,7 @@ async function doMentorLogin(){
 
 function enterMentorView(name){
   currentRole='mentor';currentUserName=name;
+  _updateDemoBtnVisibility();
   document.getElementById('loginOverlay').classList.add('hidden');
   // Badge
   const badge=document.getElementById('userBadge');badge.style.display='flex';
@@ -7458,10 +7656,13 @@ function enterMentorView(name){
   const _smBtnM=document.getElementById('switchMentorBtn');if(_smBtnM)_smBtnM.style.display='none';
   const sbBtn=document.getElementById('switchBackBtn');if(sbBtn)sbBtn.style.display='none';
   // Set mentor header bar — reset to real-mentor state (no admin elements)
-  const mib=document.getElementById('mentorInstrBar');if(mib)mib.style.display='flex';
+  // Mentor header bar — hidden by default for real login (redundant with topbar name/role + logout);
+  // shown only during admin preview (see _switchToMentorPreview) where it's the only way back to admin.
+  const mib=document.getElementById('mentorInstrBar');if(mib)mib.style.display='none';
+  const mrh=document.getElementById('mentorRealHeader');if(mrh)mrh.style.display='flex';
   const miName=document.getElementById('mentorInstrName');if(miName)miName.textContent='מחובר כ: '+name;
-  // Always hide admin-only button
-  const _admMsgBtn=document.getElementById('mentorMsgAdminBtn');if(_admMsgBtn)_admMsgBtn.style.display='none';
+  // Always hide admin-only buttons
+  const _smPrevBtn=document.getElementById('switchMentorPreviewBtn');if(_smPrevBtn)_smPrevBtn.style.display='none';
   const previewNav=document.getElementById('mentorPreviewNav');if(previewNav)previewNav.style.display='none';
   // Always restore exit button to real logout
   const _mibExitBtn=document.getElementById('mentorLogoutBtn');
@@ -7484,8 +7685,7 @@ function enterMentorView(name){
   // Show messages button and start listener for mentor
   const _mdbM=document.getElementById('msgDrawerBtn');if(_mdbM)_mdbM.style.display='inline-flex';
   _startMsgListener();
-  // Load message for this mentor (banner display)
-  _loadMentorMessage(name);
+  _renderUserGreeting(name);
   _logAction('login','כניסת חונך: '+name);
   showToast('ברוך הבא, '+name,'success');
   renderCalendar();
@@ -7751,6 +7951,7 @@ function enterApp(role,name){
   _initBusListeners();
 
   currentRole=role; currentUserName=name;
+  _updateDemoBtnVisibility();
   _logAction('login', role==='admin'?'כניסת מנהל':'כניסת מדריך: '+name);
   setTimeout(_updateTraineeAlertBadge, 100); // refresh badge visibility per role
   const _grb=document.getElementById('globalReloadBtn');if(_grb)_grb.style.display='block';
@@ -7823,6 +8024,15 @@ function enterApp(role,name){
 
     if(mv)mv.style.display='none';
 
+    // Defensive reset — hide admin-only header buttons that may have leaked
+    // from a previous admin session in the same tab (doLogout doesn't clear these)
+    const _amNav=document.getElementById('v100AdminNav');if(_amNav)_amNav.style.display='none';
+    const _amSwBtn=document.getElementById('switchViewBtn');if(_amSwBtn)_amSwBtn.style.display='none';
+    const _amSmBtn=document.getElementById('switchMentorBtn');if(_amSmBtn)_amSmBtn.style.display='none';
+    const _amSbBtn=document.getElementById('switchBackBtn');if(_amSbBtn)_amSbBtn.style.display='none';
+    const _amNavBar=document.getElementById('instrNavBar');if(_amNavBar)_amNavBar.style.display='none';
+    const _amMib=document.getElementById('mentorInstrBar');if(_amMib)_amMib.style.display='none';
+
     const iss=document.getElementById('instrScheduleSection');
 
     if(iss){iss.style.display='block';iss.style.visibility='visible';}
@@ -7832,6 +8042,7 @@ function enterApp(role,name){
     const _mdbI=document.getElementById('msgDrawerBtn');if(_mdbI)_mdbI.style.display='inline-flex';
     try{const raw=localStorage.getItem('v100_msgSettings');if(raw)_msgSettings={..._msgSettings,...JSON.parse(raw)};}catch(e){}
     _startMsgListener();
+    _renderUserGreeting(name);
 
     // Ensure trip journal is rendered for instructor on initial load
     setTimeout(()=>{
@@ -7874,6 +8085,8 @@ function doLogout(){
   currentRole=null; currentUserName=null;
   renderCalendar();
   const previewNav=document.getElementById('mentorPreviewNav');if(previewNav)previewNav.style.display='none';
+  const _smPrevBtnLo=document.getElementById('switchMentorPreviewBtn');if(_smPrevBtnLo)_smPrevBtnLo.style.display='none';
+  _hideUserGreeting();
 
   document.getElementById('loginOverlay').classList.remove('hidden');
 
@@ -7917,21 +8130,9 @@ function _refreshTabVisibility() {
 
   const activeTab = (typeof _v100ActiveTab !== 'undefined') ? _v100ActiveTab : 'planner';
 
-  // --- planner: Daily Dashboard, Coverage Alerts, Day Planner details, Gantt Timeline ---
+  // --- planner: Daily Dashboard, Day Planner details, Gantt Timeline ---
   if (dashboard) {
     dashboard.style.display = (activeTab === 'planner') ? '' : 'none';
-  }
-  if (coverageAlerts) {
-    if (activeTab === 'planner') {
-      try {
-        checkCoverageAlerts();
-      } catch (e) {
-        const list = document.getElementById('coverageAlertsList');
-        coverageAlerts.style.display = (list && list.children.length > 0) ? '' : 'none';
-      }
-    } else {
-      coverageAlerts.style.display = 'none';
-    }
   }
   if (dayPlanner) {
     dayPlanner.style.display = (activeTab === 'planner') ? '' : 'none';
@@ -7958,9 +8159,21 @@ function _refreshTabVisibility() {
     }
   }
 
-  // --- sched: Calendar grid ---
+  // --- sched: Calendar grid, Coverage Alerts ---
   if (schedule) {
     schedule.style.display = (activeTab === 'sched') ? '' : 'none';
+  }
+  if (coverageAlerts) {
+    if (activeTab === 'sched') {
+      try {
+        checkCoverageAlerts();
+      } catch (e) {
+        const list = document.getElementById('coverageAlertsList');
+        coverageAlerts.style.display = (list && list.children.length > 0) ? '' : 'none';
+      }
+    } else {
+      coverageAlerts.style.display = 'none';
+    }
   }
 
   // --- dash: Monthly Dashboard Panel, Audit Log Panel ---
@@ -8161,7 +8374,74 @@ function wrapAction(fn, successMsg, failMsg){
 
 function runAssignPreview(){/* removed — no-op */}
 
-function confirmAssignTrips(){closeAssignModal();}
+async function confirmAssignTrips(){
+
+  const date=window._pendingAssignDate;
+  const entryId=window._pendingAssignEntryId;
+
+  if(!date||!entryId){closeAssignModal();return;}
+
+  window._pendingAssignDate=null;
+  window._pendingAssignEntryId=null;
+
+  const entry=(schedData[date]||[]).find(e=>e.id===entryId);
+  if(!entry){showToast('שיבוץ לא נמצא','warning');closeAssignModal();return;}
+
+  const confirmBtn=document.getElementById('assignConfirmBtn');
+  if(confirmBtn){confirmBtn.disabled=true;confirmBtn.textContent='⏳ מתכנן...';}
+
+  const gap=(_settings&&_settings.defaultGap)||40;
+  const breakMin_=(_settings&&_settings.minBreak)||75;
+  const isToday=(date===currentDate);
+  const nowMin=new Date().getHours()*60+new Date().getMinutes();
+  const baseTs=Date.now();
+
+  let dateTrips=await loadTripsForDate(date);
+
+  // Remove unexecuted trips for this instructor
+  dateTrips=dateTrips.filter(t=>{
+    if(t.name!==entry.name)return true;
+    if(isToday&&t.timeline&&t.timeline.length){
+      const tripEnd=t.timeline[t.timeline.length-1].endMin;
+      if(tripEnd<=nowMin)return true;
+    }
+    return false;
+  });
+
+  const sh=SHIFT_HOURS[entry.shift]||{s:entry.startTime||'07:00',e:entry.endTime||'15:30'};
+  let startMin=timeToMin(entry.shift==='custom'?entry.startTime:sh.s);
+  let endMin=timeToMin(entry.shift==='custom'?entry.endTime:sh.e);
+  if(endMin<=startMin)endMin+=24*60;
+  const _tDef=taskDefs.find(t=>t.id===entry.task);
+  if(_tDef&&_tDef.durationHours){endMin=startMin+Math.round(_tDef.durationHours*60);}
+
+  const existingTls=dateTrips.filter(t=>t.name!==entry.name).map(t=>({name:t.name,timeline:t.timeline}));
+  const row={name:entry.name,startMin,endMin,startSeg:'D3',endSeg:'any',breakMin:breakMin_};
+  let instrTrips=[];
+  try{instrTrips=buildInstructorTrips(row,[...existingTls],gap);}catch(e){console.warn('buildTrips error:',e);}
+
+  let uidCounter=0;
+  instrTrips.forEach(t=>{
+    dateTrips.push({id:`${baseTs}_${String(++uidCounter).padStart(5,'0')}`,name:entry.name,route:t.route.slice(),timeline:t.timeline.slice(),startStr:toHHMM(t.startMin),delayMin:0});
+  });
+
+  try{await saveTripsForDate(date,dateTrips);}catch(e){console.warn('saveTripsForDate error:',e);}
+  if(isToday)await loadFromStorage();
+  renderCalendar();
+
+  const previewEl=document.getElementById('assignPreview');
+  const titleEl=document.getElementById('assignModalTitle');
+  if(titleEl)titleEl.textContent=`✅ נסיעות נוצרו — ${entry.name}`;
+  if(previewEl)previewEl.innerHTML=`<div style="background:#eafaf1;border-radius:9px;padding:14px;direction:rtl;">
+    <div style="font-size:15px;font-weight:bold;color:var(--success);margin-bottom:8px;">✅ ${instrTrips.length} נסיעות נוצרו בהצלחה</div>
+    <div style="font-size:13px;color:#555;">מדריך: <b>${_esc(entry.name)}</b> · ${date}</div>
+    <div style="font-size:12px;color:#888;margin-top:8px;">ניתן לצפות ולערוך בלוח הנסיעות.</div>
+  </div>`;
+  if(confirmBtn){confirmBtn.style.display='none';confirmBtn.disabled=false;}
+
+  showToast(`✅ ${instrTrips.length} נסיעות נוצרו עבור ${entry.name}`,'success');
+
+}
 
 function openAssignTripsModal(date,entryId){
 
@@ -8173,33 +8453,44 @@ function openAssignTripsModal(date,entryId){
 
   const confirmBtn=document.getElementById('assignConfirmBtn');
 
-  if(previewEl){
+  document.getElementById('assignModalTitle').textContent=entry?`⚡ תכנון נסיעות — ${entry.name}`:`⚡ תכנון נסיעות`;
 
-    if(!entry){
+  if(!entry){
 
-      previewEl.innerHTML='<div style="color:#e74c3c;padding:14px;text-align:center;">שיבוץ לא נמצא</div>';
+    if(previewEl)previewEl.innerHTML='<div style="color:#e74c3c;padding:14px;text-align:center;">שיבוץ לא נמצא</div>';
 
-    }else{
+    if(confirmBtn)confirmBtn.style.display='none';
 
-      const sh=SHIFT_HOURS[entry.shift]||{s:entry.startTime||'',e:entry.endTime||''};
+    if(modal)modal.classList.add('open');
 
-      previewEl.innerHTML=`<div style="background:#eafaf1;border-radius:9px;padding:14px;">
-
-        <div style="font-weight:bold;font-size:15px;color:var(--success);margin-bottom:8px;">✅ נסיעות שובצו</div>
-
-        <div style="font-size:13px;color:#555;"><b>${_esc(entry.name)}</b> · ${_esc(SHIFT_LABELS[entry.shift]||entry.shift)} · ${sh.s}–${sh.e}</div>
-
-        
-
-      </div>`;
-
-    }
+    return;
 
   }
 
-  if(confirmBtn)confirmBtn.style.display='none';
+  // Store context for confirmAssignTrips
+  window._pendingAssignDate=date;
+  window._pendingAssignEntryId=entryId;
 
-  document.getElementById('assignModalTitle').textContent=entry?`⚡ שיבוץ נסיעות — ${entry.name}`:'⚡ שיבוץ נסיעות'; // textContent — safe
+  const sh=SHIFT_HOURS[entry.shift]||{s:entry.startTime||'07:00',e:entry.endTime||'15:30'};
+  const alreadyPlanned=checkTripsPlanned(date,entry.name);
+  const existingCount=(trips||[]).filter(t=>t.name===entry.name).length;
+
+  if(previewEl){
+    previewEl.innerHTML=`<div style="background:#f8faff;border-radius:9px;padding:14px;direction:rtl;">
+      <div style="font-size:14px;font-weight:bold;color:var(--primary);margin-bottom:10px;">⚡ פרטי השיבוץ</div>
+      <div style="font-size:13px;color:#555;line-height:2;">
+        <div><b>מדריך:</b> ${_esc(entry.name)}</div>
+        <div><b>משמרת:</b> ${_esc(SHIFT_LABELS[entry.shift]||entry.shift)} (${sh.s}–${sh.e})</div>
+        <div><b>תאריך:</b> ${date}</div>
+        ${alreadyPlanned?`<div style="color:#e67e22;margin-top:6px;">⚠️ קיימות כבר ${existingCount} נסיעות — הפעלה מחדש תמחק את הלא-מבוצעות ותיצור חדשות</div>`:'<div style="color:#27ae60;margin-top:6px;">✨ לא קיימות נסיעות עדיין — ייווצרו חדשות</div>'}
+      </div>
+    </div>`;
+  }
+
+  if(confirmBtn){
+    confirmBtn.style.display='';
+    confirmBtn.textContent='✅ צור נסיעות';
+  }
 
   if(modal)modal.classList.add('open');
 
@@ -8337,7 +8628,7 @@ function renderInstrView(){
 
     const isOn=mySt.status==='on-trip'&&mySt.tripIdx===idx;
 
-    const routeLbl=upcoming.timeline.map(s=>s.id).join(' ➔ ');
+    const routeLbl=_routeLabel(upcoming);
 
     const tripDur=upcoming.route.reduce((a,r)=>a+r.t,0);
 
@@ -8929,6 +9220,12 @@ function sel(id){
 
     curRoute.push({id,t:RULES[id],label:id});
 
+    const tSInput=document.getElementById('tS');
+    if(tSInput && !tSInput.value){
+      const now=new Date();
+      tSInput.value=String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
+    }
+
     updateUI();val();
 
     document.getElementById('manualSection').open=true;
@@ -9017,9 +9314,9 @@ function val(){
 
     const ss=cur;cur+=s.t;
 
-    if(s.id!=='TURN'&&s.id!=='TURN_ORA'){html+=`<div class="forecast-entry"><span>${s.id}</span><b>${toHHMM(ss)}</b></div>`;myTl.push({id:s.id,startMin:ss,endMin:cur});}
+    if(s.id!=='TURN'&&s.id!=='TURN_ORA'){html+=`<div class="forecast-entry"><span>${s.id}</span><b>${toHHMM(cur)}</b></div>`;myTl.push({id:s.id,startMin:ss,endMin:cur});}
 
-    else html+=`<div class="forecast-entry" style="color:var(--danger)"><span>${_esc(s.label)}</span><b>${toHHMM(ss)}</b></div>`;
+    else html+=`<div class="forecast-entry" style="color:var(--danger)"><span>${_esc(s.label)}</span><b>${toHHMM(cur)}</b></div>`;
 
   });
 
@@ -9359,11 +9656,96 @@ function openTraineeAssign(tripId) {
   modal.style.display = 'flex';
 }
 function closeTraineeAssign() { const m=document.getElementById('traineeAssignModal');if(m)m.style.display='none';_traineeAssignTripId=null; }
+// ═════════════════════════════════════════════════════════════
+// DEPOT LESSONS — שיעורי דיפו לחניכים בשלב טכני (שיעורים 1-10)
+// ═════════════════════════════════════════════════════════════
+
+function _isTraineeInTechnicalStage(traineeId) {
+  if (typeof TraineeSystem === 'undefined' || !TraineeSystem.trainees) return false;
+  const t = TraineeSystem.trainees.find(tr => String(tr.id) === String(traineeId));
+  if (!t) return false;
+  const sitadisLessons = (t.lessons || [])
+    .filter(l => l.mission === 'קורס מעשי סיטאדיס' || l.mission === 'קורס מעשי' || l.mission === 'קורס')
+    .flatMap(l => l.lessonNums || []);
+  const maxSitadis = sitadisLessons.length ? Math.max(...sitadisLessons) : 0;
+  const msEntry = (window._milestonePassMap || {})[traineeId] || {};
+  const test10 = !!(msEntry.test10 || maxSitadis >= 10);
+  return maxSitadis > 0 && !test10;
+}
+
+function _routeLabel(trip) {
+  if (trip && trip.isDepotLesson) return '🏭 שיעור דיפו';
+  return (trip && trip.timeline || []).map(x => x.id).join('➤');
+}
+
+function _convertTripToDepot(tripId) {
+  const idx = trips.findIndex(t => String(t.id) === String(tripId));
+  if (idx < 0) return false;
+  const trip = trips[idx];
+  const startMin = (trip.timeline && trip.timeline.length) ? trip.timeline[0].startMin : timeToMin(trip.startStr || '00:00');
+  trip.isDepotLesson = true;
+  trip.route = [{id:'DEPOT', t:45, label:'שיעור דיפו'}];
+  trip.timeline = [{id:'DEPOT', startMin, endMin: startMin + 45}];
+  trip.startStr = toHHMM(startMin);
+  return true;
+}
+
+function buildDepotLessons(row) {
+  const result = [];
+  let cursor = row.startMin;
+  while (result.length < 6 && cursor + 45 <= row.endMin) {
+    result.push({
+      startMin: cursor, endMin: cursor + 45, tripMin: 45,
+      route: [{id:'DEPOT', t:45, label:'שיעור דיפו'}],
+      timeline: [{id:'DEPOT', startMin: cursor, endMin: cursor + 45}],
+      isDepotLesson: true
+    });
+    cursor += 45 + row.breakMin;
+  }
+  return result;
+}
+
+function _manualConvertToDepot(tripId) {
+  const trip = trips.find(t => String(t.id) === String(tripId));
+  if (!trip) return;
+  if (trip.isDepotLesson) { showToast('נסיעה זו כבר מסומנת כשיעור דיפו', 'info'); return; }
+  const depotCount = trips.filter(t => t.name === trip.name && t.isDepotLesson).length;
+  if (depotCount >= 6) { showToast('⚠️ הגעת למקסימום 6 שיעורי דיפו למשמרת', 'warning'); return; }
+  _convertTripToDepot(tripId);
+  saveToStorage();
+  renderLog();
+  showToast('🏭 הנסיעה הומרה לשיעור דיפו', 'success');
+}
+
 function saveTraineeAssign() {
   if (!_traineeAssignTripId) return;
   const selected = [...document.querySelectorAll('#traineeAssignList input:checked')].map(cb=>String(cb.value));
   const idx = trips.findIndex(t=>String(t.id)===String(_traineeAssignTripId));
-  if (idx>=0){trips[idx].assignedTrainees=selected;saveToStorage();renderLog();showToast('✅ החניכים שויכו','success');}
+  if (idx>=0) {
+    trips[idx].assignedTrainees = selected;
+
+    if (selected.length && !trips[idx].isDepotLesson) {
+      const statuses = selected.map(_isTraineeInTechnicalStage);
+      const allTechnical = statuses.every(Boolean);
+      const anyTechnical = statuses.some(Boolean);
+
+      if (allTechnical) {
+        const depotCount = trips.filter(t => t.name === trips[idx].name && t.isDepotLesson).length;
+        if (depotCount >= 6) {
+          showToast('⚠️ הגעת למקסימום 6 שיעורי דיפו למשמרת — לא בוצעה המרה נוספת', 'warning');
+        } else {
+          _convertTripToDepot(trips[idx].id);
+          showToast('🏭 הנסיעה הומרה לשיעור דיפו — חניך בשלב טכני', 'success');
+        }
+      } else if (anyTechnical) {
+        showToast('⚠️ החניכים המשויכים בשלבים שונים — בדוק ידנית אם נדרשת המרה לדיפו', 'warning');
+      }
+    }
+
+    saveToStorage();
+    renderLog();
+    if (!trips[idx].isDepotLesson) showToast('✅ החניכים שויכו', 'success');
+  }
   closeTraineeAssign();
 }
 
@@ -9697,7 +10079,7 @@ function renderLog(){
 
     const loc=last.id.includes('N')?'נווה יעקב':last.id.includes('O')?'הדסה':'דיפו';
 
-    const routeStr=t.timeline.map(x=>x.id).join('➔');
+    const routeStr=_routeLabel(t);
 
     const lessons=(t.route.reduce((s,r)=>s+r.t,0)/45).toFixed(1);
 
@@ -9798,7 +10180,7 @@ function renderLog(){
           <button class="btn-sm delay" onclick="openDelayModal('${t.id}')" title="הוסף עיכוב">⏱️</button>
 
           <button class="btn-sm del" onclick="delTrip('${t.id}')" title="מחק נסיעה">🗑️</button>
-          <button class="btn-sm" onclick="openTraineeAssign('${t.id}')" title="שייך חניכים" style="background:#8e44ad;color:white;border-color:#8e44ad;">🎓</button></td>
+          <button class="btn-sm" onclick="openTraineeAssign('${t.id}')" title="שייך חניכים" style="background:#8e44ad;color:white;border-color:#8e44ad;">🎓</button>${!t.isDepotLesson?`<button class="btn-sm" onclick="_manualConvertToDepot('${t.id}')" title="המר לשיעור דיפו" style="background:#16a085;color:white;border-color:#16a085;">🏭</button>`:''}</td>
 
     </tr>`;
 
@@ -10051,7 +10433,7 @@ function onPlannerName(id,val){
 
     if(last&&last.timeline.length>0){
 
-      const lastSeg=last.timeline[last.timeline.length-1].id;
+      const lastSeg=last.isDepotLesson?'D3':last.timeline[last.timeline.length-1].id;
 
       row.startSeg=lastSeg;
 
@@ -10781,7 +11163,7 @@ function buildCombinedGanttHTML(){
 
       const w=(t.tripMin/span)*100;
 
-      return`<div style="position:absolute;left:${l}%;width:${Math.max(w,0.8)}%;height:100%;background:${color};border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:9px;color:white;font-weight:bold;overflow:hidden;" title="${row.name} נסיעה ${i+1}: ${toHHMM(t.startMin)}–${toHHMM(t.endMin)}">${w>7?toHHMM(t.startMin):''}</div>`;
+      return`<div style="position:absolute;left:${l}%;width:${Math.max(w,0.8)}%;height:100%;background:${color};border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:9px;color:white;font-weight:bold;overflow:hidden;" title="${_esc(row.name)} נסיעה ${i+1}: ${toHHMM(t.startMin)}–${toHHMM(t.endMin)}">${w>7?toHHMM(t.startMin):''}</div>`;
 
     }).join('');
 
@@ -11145,7 +11527,7 @@ function renderSavedRoutesList(){
 
       <div style="flex:1;min-width:120px;">
 
-        <div style="font-weight:bold;font-size:14px;color:var(--primary);">${r.name}</div>
+        <div style="font-weight:bold;font-size:14px;color:var(--primary);">${_esc(r.name)}</div>
 
         <div style="font-size:12px;color:#888;margin-top:2px;">${segs} · ${totalMin} דק' · נשמר: ${r.created||''}</div>
 
@@ -12039,7 +12421,7 @@ function exportCSV(){
 
     const loc=last?.id?.includes('N')?'נווה יעקב':last?.id?.includes('O')?'הדסה':'דיפו';
 
-    const route=t.timeline.map(s=>s.id).join('→');
+    const route=_routeLabel(t);
 
     const lessons=(t.route.reduce((s,r)=>s+r.t,0)/45).toFixed(2);
 
@@ -12613,15 +12995,20 @@ function renderSchedAssignTable(date){
         .map(n => ({name: n, role: 'mentor'})) : [])
   ];
 
+  // Merge schedData + pendingSaves: pendingSaves takes priority for unsaved changes
+  const _pending=(_schedModalPendingSaves&&_schedModalPendingSaves[date])||[];
+
   tbody.innerHTML=names.map(({name, role})=>{
     // Support multiple entries per instructor (tasks[])
     const instrEntries=existing.filter(e=>e.name===name && (role==='mentor' ? e.role==='mentor' : e.role!=='mentor'));
     const entry=instrEntries[0]||null;
     const extraEntries=instrEntries.slice(1);
 
-    const shift=entry?entry.shift:'none';
-    const task=entry?entry.task:'';  // empty = ללא משימה
-    const note=entry?entry.note||'':'';
+    // Prefer pending (unsaved) state over saved schedData
+    const pendingEntry=_pending.find(s=>s.name===name&&!s._extraTask)||null;
+    const shift=pendingEntry?pendingEntry.shift:(entry?entry.shift:'none');
+    const task=pendingEntry?pendingEntry.task:(entry?entry.task:'');
+    const note=pendingEntry?pendingEntry.note:(entry?entry.note||'':'');
     const hasShift=shift&&shift!=='none';
     const encodedName=name.replace(/"/g,'&quot;');
 
@@ -13308,9 +13695,14 @@ function renderSchedDayTabs(){
 
 function switchSchedDayTab(date){
 
-  // Save current tab state before switching
-
-  saveCurrentTabState();
+  // Save current tab state before switching —
+  // but only if the DOM actually has filled rows OR existing saves exist,
+  // to avoid overwriting a freshly-restored tab with empty state.
+  const _leavingDate=_schedModalActiveDate;
+  const _domHasData=Array.from(document.querySelectorAll('#schedAssignBody .sched-assign-row'))
+    .some(r=>{ const s=r.querySelector('.sched-row-shift'); return s&&s.value&&s.value!=='none'; });
+  const _alreadySaved=(_schedModalPendingSaves[_leavingDate]||[]).length>0;
+  if(_domHasData||!_alreadySaved) saveCurrentTabState();
 
   _schedModalActiveDate=date;
 
@@ -13328,11 +13720,10 @@ function switchSchedDayTab(date){
 
   renderSchedAssignTable(date);
 
-  // Restore pending saves for this date if any
-
-  restoreTabState(date);
-
   renderSchedDayTabs();
+
+  // Restore AFTER tabs render — avoids Chrome reflow resetting select values
+  restoreTabState(date);
 
 }
 
@@ -13428,9 +13819,9 @@ function restoreTabState(date){
 
     } else {
 
-      // Find existing row by name and update
-
-      const row=document.querySelector(`#schedAssignBody .sched-assign-row[data-name="${s.name.replace(/"/g,'&quot;')}"]`);
+      // Find existing row by name — use dataset comparison to avoid apostrophe/CSS selector issues
+      const allRows=Array.from(document.querySelectorAll('#schedAssignBody .sched-assign-row'));
+      const row=allRows.find(r=>r.dataset.name===s.name)||null;
 
       if(row){
 
@@ -15305,7 +15696,7 @@ function renderInstrTripJournal(){
     const last=t.timeline[t.timeline.length-1];
     const endMin=last.endMin||0;
     const loc=last.id.includes('N')?'נווה יעקב':last.id.includes('O')?'הדסה':'דיפו';
-    const routeStr=t.timeline.map(x=>x.id).join('➔');
+    const routeStr=_routeLabel(t);
     const lessons=(t.route.reduce((s,r)=>s+r.t,0)/45).toFixed(1);
     const delayTag=t.delayMin>0?`<span style="color:var(--warning);font-size:11px;"> (+${t.delayMin} דק')</span>`:'';
     const tripStartMin=timeToMin(t.startStr||'00:00');
@@ -15749,6 +16140,7 @@ function _switchToMentorPreview(name){
   window._previewMentorName=name;
   // Enter mentor view (reuses instrView with mentor-mode)
   enterMentorView(name);
+  _hideUserGreeting();
   // Override the logout button in mentorInstrBar to return to admin instead of logging out
   const exitBtn=document.getElementById('mentorLogoutBtn');
   if(exitBtn){
@@ -15758,15 +16150,15 @@ function _switchToMentorPreview(name){
   }
   const mib=document.getElementById('mentorInstrBar');
   if(mib){
-    // Show admin message button
-    const msgBtn=document.getElementById('mentorMsgAdminBtn');
-    if(msgBtn)msgBtn.style.display='inline-block';
+    mib.style.display='flex';
+    // Hide real-mentor header, show clean preview nav (name + arrows) instead
+    const mrh=document.getElementById('mentorRealHeader');if(mrh)mrh.style.display='none';
+    const previewNameEl=document.getElementById('mentorPreviewName');if(previewNameEl)previewNameEl.textContent=name;
+    const _smPrevBtn=document.getElementById('switchMentorPreviewBtn');if(_smPrevBtn)_smPrevBtn.style.display='inline-block';
     // Show preview nav bar!
     const previewNav=document.getElementById('mentorPreviewNav');
     if(previewNav)previewNav.style.display='flex';
   }
-  // Load existing message for this mentor
-  _loadMentorMessage(name);
 }
 
 function switchPreviewMentor(delta){
@@ -15782,9 +16174,6 @@ function _exitMentorPreview(){
   if(!window._isMentorPreview)return;
   window._isMentorPreview=false;
   window._previewMentorName=null;
-  // Hide admin-only elements
-  const _msgBtn=document.getElementById('mentorMsgAdminBtn');if(_msgBtn)_msgBtn.style.display='none';
-  const _banner=document.getElementById('mentorMsgBanner');if(_banner)_banner.style.display='none';
   // Hide preview nav bar!
   const previewNav=document.getElementById('mentorPreviewNav');
   if(previewNav)previewNav.style.display='none';
@@ -15797,6 +16186,7 @@ function _exitMentorPreview(){
   // Restore
   if(role==='admin'){
     currentRole='admin';currentUserName=name;
+    _updateDemoBtnVisibility();
     document.getElementById('managerView').style.display='block';
     const adminNav=document.getElementById('v100AdminNav');if(adminNav)adminNav.style.display='block';
     const swBtn=document.getElementById('switchViewBtn');if(swBtn)swBtn.style.display='inline-block';
@@ -15828,6 +16218,7 @@ function switchBackToAdmin(){
   _adminPreviewMode=false;
   currentRole=window._savedRole||'admin';
   currentUserName=window._savedName||currentUserName;
+  _updateDemoBtnVisibility();
   renderCalendar();
   const _ivBack=document.getElementById('instrView');
   if(_ivBack){_ivBack.classList.remove('show');_ivBack.classList.remove('mentor-mode');}
@@ -16680,7 +17071,7 @@ async function exportMonthlyReport(){
 
   for(const [date,dayTrips] of Object.entries(monthData).sort()){
     for(const t of dayTrips){
-      const routeStr=(t.timeline||[]).map(x=>x.id).join('→');
+      const routeStr=_routeLabel(t);
       const lessons=((t.route||[]).reduce((a,r)=>a+(r.t||0),0)/45).toFixed(1);
       const endMin=t.timeline?.length?t.timeline[t.timeline.length-1].endMin:0;
       rows.push([
@@ -17137,6 +17528,10 @@ function checkCoverageAlerts(){
   const list=document.getElementById('coverageAlertsList');
   if(!banner||!list)return;
 
+  // Relevant only above the schedule table — never force it visible from another tab
+  const activeTab=(typeof _v100ActiveTab!=='undefined')?_v100ActiveTab:'planner';
+  if(activeTab!=='sched'){ banner.style.display='none'; return; }
+
   const today=new Date();
   const uncovered=[];
 
@@ -17311,7 +17706,7 @@ function renderEfficiencyTab(){
   for(const dayTrips of Object.values(_monthHistoryCache)){
     for(const t of dayTrips){
       // Include ALL trips — use route theoretical duration as fallback when no timeline
-      const routeKey=(t.route||[]).filter(r=>r.id!=='TURN'&&r.id!=='TURN_ORA').map(r=>r.id).join('→');
+      const routeKey=_routeLabel(t);
       if(!routeKey)continue;
       const isConfirmed=!!(t.timeline&&t.timeline.length);
       // Duration: actual from timeline or theoretical from route segments
@@ -17686,9 +18081,14 @@ function switchToInstructorView(previewName){
   // Set role + name
   currentRole='instructor';
   currentUserName=previewName;
-  // Hide name/role from header — instrNavBar shows it instead
-  document.getElementById('userRoleTag').textContent='';
-  document.getElementById('userNameLbl').textContent='';
+  _updateDemoBtnVisibility();
+  // Refresh inline message banner immediately (same behavior as mentor preview)
+  _renderInstrMsgBanner();
+  _refreshMsgBadge();
+  _hideUserGreeting();
+  // Show name/role in header — consistent with mentor preview behavior
+  document.getElementById('userRoleTag').textContent='מדריך';
+  document.getElementById('userNameLbl').textContent=previewName;
   // Also hide switchBackBtn from header — instrNavBar has its own back button
   const _sbHeader=document.getElementById('switchBackBtn');
   if(_sbHeader)_sbHeader.style.display='none';
@@ -18016,6 +18416,14 @@ function _urAddFeedbackBlock() {
     // If TraineeSystem already loaded, prefer its data (may be more up-to-date)
     if (typeof TraineeSystem !== 'undefined' && TraineeSystem.courses && TraineeSystem.courses.length) {
       courses = TraineeSystem.courses;
+    } else if (typeof TraineeSystem !== 'undefined' && !(typeof _isDemoMode === 'function' && _isDemoMode())) {
+      // Entered instructor/mentor view directly — TraineeSystem's own UI was never initialized,
+      // so courses were never fetched. Connect to Firebase and load them now, on demand.
+      try {
+        if (!TraineeSystem.coursesRef) TraineeSystem.initFirebase();
+        await TraineeSystem.loadCourses();
+        if (TraineeSystem.courses && TraineeSystem.courses.length) courses = TraineeSystem.courses;
+      } catch(e) { console.warn('[unifiedReport] on-demand course load failed:', e); }
     }
 
     // Build course selector
@@ -18194,7 +18602,7 @@ function _urResetFreeConfirmUI(idx) {
     if (typeof currentRole === 'undefined' || currentRole !== 'mentor') {
       _restoreTypes.splice(1, 0, {id:'orbus', name:'קורס מעשי אורבוס'});
     }
-    missionSel.innerHTML = _restoreTypes.map(m=>`<option value="${m.id}" data-name="${m.name}">${m.name}</option>`).join('');
+    missionSel.innerHTML = _restoreTypes.map(m=>`<option value="${m.id}" data-name="${_esc(m.name)}">${_esc(m.name)}</option>`).join('');
     missionSel.value = 'course';
     missionSel.dispatchEvent(new Event('change'));
   }
@@ -18587,6 +18995,9 @@ async function submitUnifiedReport() {
     lessonResults.push({ traineeId, freeName, freeCourseId, lesson, idx });
   });
 
+  // Attach feedback count to report before saving
+  report.feedbackCount = lessonResults.length;
+
   // Save day summary to taskReports
   const reportKey = `${date}__${instructor}__unified`;
   if (!window._taskReportsCache) window._taskReportsCache = {};
@@ -18883,10 +19294,15 @@ async function submitTaskReport(){
 
 // Load task reports for a date
 async function loadTaskReportsForDate(date){
-  // From localStorage
+  // From localStorage — build full date__key format
   try{
     const raw=localStorage.getItem('taskReports_'+date);
-    if(raw){const obj=JSON.parse(raw);Object.assign(window._taskReportsCache,obj);}
+    if(raw){
+      const obj=JSON.parse(raw);
+      Object.entries(obj).forEach(([k,v])=>{
+        window._taskReportsCache[`${date}__${k}`]=v;
+      });
+    }
   }catch(e){}
   // From Firebase
   if(!window._fbDb)return;
@@ -19303,40 +19719,58 @@ async function renderDaySummary(){
       // Planned cell: show total with breakdown
       plannedCell=`<span style="font-size:12px;">${totalTrips} נסיעות</span>`;
 
+      // Trip sub-line (secondary info)
+      let _tripLine='';
       if(confirmedCount>0){
-        executedCell=`<span style="font-size:12px;color:#27ae60;font-weight:bold;">✅ ${confirmedCount} אושרו</span>`
-          +(plannedOnly>0?`<small style="color:#e67e22;display:block;font-size:11px;">📋 ${plannedOnly} מתוכנן</small>`:'');
-        statusCell='<span style="background:#eaf5e8;color:#27ae60;font-size:11px;padding:2px 8px;border-radius:10px;font-weight:bold;">הושלם</span>';
+        _tripLine=`<small style="color:#27ae60;display:block;font-size:11px;">✅ ${confirmedCount} נסיעות אושרו${plannedOnly>0?` | 📋 ${plannedOnly} מתוכנן`:''}</small>`;
       } else if(plannedOnly>0){
-        // Trips exist but no confirmation — auto-recorded
-        executedCell=`<span style="font-size:12px;color:#e67e22;">📋 ${plannedOnly} מתוכנן</span>`;
-        statusCell='<span style="background:#fef9ec;color:#e67e22;font-size:11px;padding:2px 8px;border-radius:10px;font-weight:bold;">מתוכנן</span>';
+        _tripLine=`<small style="color:#e67e22;display:block;font-size:11px;">📋 ${plannedOnly} נסיעות מתוכננות</small>`;
       } else if(totalTrips>0){
-        executedCell='<span style="font-size:12px;color:#e74c3c;">❌ לא אושרו</span>';
-        statusCell='<span style="background:#fdecea;color:#e74c3c;font-size:11px;padding:2px 8px;border-radius:10px;font-weight:bold;">חסר</span>';
-      } else {
-        executedCell='<span style="font-size:12px;color:#aaa;">אין נסיעות</span>';
-        statusCell='<span style="font-size:11px;color:#aaa;">—</span>';
+        _tripLine=`<small style="color:#e74c3c;display:block;font-size:11px;">❌ לא אושרו</small>`;
       }
-    } else if(tDef.requiresSummary){
-      // Task with summary form
-      const reportKey=`${dateStr}__${e.name}__${e.id}`;
-      const report=(window._taskReportsCache&&window._taskReportsCache[reportKey])||null;
-      plannedCell=`<span style="font-size:12px;">משמרת ${timeStr}</span>`;
-      if(report){
-        const parts=(tDef.summaryFields||[]).map(f=>`${_esc(f.label)}: <b>${_esc(String(report[f.type]||'—'))}</b>`).join(' | ');
-        const challenges=report.challenges?`<span style="font-size:10px;color:#e67e22;">⚠️ ${_esc(report.challenges)}</span>`:'';
-        executedCell=`<span style="font-size:12px;">${parts||'דווח'}</span> ${challenges}`;
-        statusCell='<span style="background:#eaf5e8;color:#27ae60;font-size:11px;padding:2px 8px;border-radius:10px;font-weight:bold;">הושלם</span>';
+      // Primary: unified report summary
+      const _uKeyTrip=`${dateStr}__${e.name}__unified`;
+      const _uRptTrip=(window._taskReportsCache&&window._taskReportsCache[_uKeyTrip])||null;
+      if(_uRptTrip){
+        const _parts=[];
+        const _totalH=(_uRptTrip.lightHours||0)+(_uRptTrip.sinerioHours||0);
+        if(_totalH>0) _parts.push(`<span>${_totalH} שעות הדרכה</span>`);
+        if(_uRptTrip.notes) _parts.push(`<span>קיים הערות</span>`);
+        if(_uRptTrip.feedbackCount>0) _parts.push(`<span>${_uRptTrip.feedbackCount} משובים מולאו</span>`);
+        const _summary=_parts.length
+          ? `<span style="font-size:12px;color:#2c3e50;display:flex;flex-direction:column;gap:1px;">${_parts.join('')}${_tripLine}</span>`
+          : `<span style="font-size:12px;color:#27ae60;">✅ בוצע${_tripLine?'<br>':''}</span>${_tripLine}`;
+        executedCell=_summary;
       } else {
-        executedCell='<span style="font-size:12px;color:#e74c3c;">❌ טופס לא מולא</span>';
-        statusCell='<span style="background:#fdecea;color:#e74c3c;font-size:11px;padding:2px 8px;border-radius:10px;font-weight:bold;">חסר</span>';
+        executedCell=`<span style="font-size:12px;color:#aaa;">טרם דווח</span>${_tripLine?`<br>${_tripLine}`:''}`;
       }
     } else {
-      // Regular task — default: completed
+      // Regular task — summary from unified report if available
       plannedCell=`<span style="font-size:12px;">משמרת ${timeStr}</span>`;
-      executedCell='<span style="font-size:12px;color:#27ae60;">✅ בוצע</span>';
+      const _uKey=`${dateStr}__${e.name}__unified`;
+      const _uRpt=(window._taskReportsCache&&window._taskReportsCache[_uKey])||null;
+      if(_uRpt){
+        const _parts=[];
+        const _totalHours=(_uRpt.lightHours||0)+(_uRpt.sinerioHours||0);
+        if(_totalHours>0) _parts.push(`<span>${_totalHours} שעות הדרכה</span>`);
+        if(_uRpt.notes) _parts.push(`<span>קיים הערות</span>`);
+        if(_uRpt.feedbackCount>0) _parts.push(`<span>${_uRpt.feedbackCount} משובים מולאו</span>`);
+        executedCell=_parts.length
+          ? `<span style="font-size:12px;color:#2c3e50;display:flex;flex-direction:column;gap:2px;">${_parts.join('')}</span>`
+          : `<span style="font-size:12px;color:#27ae60;">✅ בוצע</span>`;
+      } else {
+        executedCell='<span style="font-size:12px;color:#aaa;">טרם דווח</span>';
+      }
       statusCell='<span style="background:#eaf5e8;color:#27ae60;font-size:11px;padding:2px 8px;border-radius:10px;font-weight:bold;">הושלם</span>';
+    }
+
+    // סטטוס סיכום יום — בודק טופס unified לכל מדריך, מחליף statusCell
+    const _unifiedKey=`${dateStr}__${e.name}__unified`;
+    const _unifiedReport=(window._taskReportsCache&&window._taskReportsCache[_unifiedKey])||null;
+    if(_unifiedReport){
+      statusCell='<span style="background:#eaf5e8;color:#27ae60;font-size:11px;padding:3px 10px;border-radius:10px;font-weight:bold;">✅ קיים</span>';
+    } else {
+      statusCell='<span style="background:#fdecea;color:#e74c3c;font-size:11px;padding:3px 10px;border-radius:10px;font-weight:bold;">❌ חסר</span>';
     }
 
     const noteTag=e.note?`<span title="${e.note}" style="font-size:11px;color:#e67e22;margin-right:4px;">💬</span>`:'';
@@ -19375,7 +19809,7 @@ function _syncManualSectionVisibility(){
   }
 }
 
- style="padding:9px 10px;font-size:12px;text-align:center;color:#555;border-bottom:2px solid #d9c8f5;">סטטוס</th>
+ style="padding:9px 10px;font-size:12px;text-align:center;color:#555;border-bottom:2px solid #d9c8f5;">טופס סיכום יום</th>
       </tr></thead>
       <tbody>${rows}</tbody>
     </table>`;
@@ -19663,11 +20097,16 @@ async function generateAndActivateDemo(){
                 const s5=Math.round(6+_pseudoRand(date+name+'s5'+fi)*4);
                 _feedbackEntries.push({traineeId,s1,s2,s3,s4,s5,note:'שיעור שגרתי.'});
               }
+              const _demoLightH=Math.round((1+_pseudoRand(date+name+'lh')*5)*2)/2;
+              const _demoSinerioH=Math.round((1+_pseudoRand(date+name+'sh')*3)*2)/2;
+              const _demoNotes=_pseudoRand(date+name+'un')>0.5?DEMO_TASK_NOTES[Math.floor(_pseudoRand(date+name+'uns')*DEMO_TASK_NOTES.length)]:'';
               rptMap[sk]={date,instructorName:name,taskId:'training',
                 taskLabel:'קורס מעשי סיטאדיס',entryId:entry.id,submittedAt:Date.now(),
                 quantity:myTrips.length,quantityLabel:'מספר נסיעות',
                 duration:totalLesson,durationLabel:'זמן שיעורים (דקות)',
-                notes:_pseudoRand(date+name+'un')>0.5?DEMO_TASK_NOTES[Math.floor(_pseudoRand(date+name+'uns')*DEMO_TASK_NOTES.length)]:'',
+                lightHours:_demoLightH,sinerioHours:_demoSinerioH,
+                feedbackCount:_feedbackEntries.length,
+                notes:_demoNotes,
                 traineeFeedback:_feedbackEntries,
                 isUnified:true};
               totalReports++;
@@ -19675,6 +20114,24 @@ async function generateAndActivateDemo(){
           });
         }
         if(Object.keys(rptMap).length)monthReports[date]=rptMap;
+
+        // ── unified reports for non-trip instructors ──
+        if(!_isToday&&!_isFuture){
+          instrs.filter((_,i)=>!_tripTaskIds.has(TASKS_BY_INSTR[i])).forEach(name=>{
+            if(_pseudoRand(date+name+'nur')>0.15){// 85% chance of filing unified report
+              const entry=fullSched[date]?.find(e=>e.name===name);
+              if(!entry)return;
+              const sk=name.replace(/[.#$[\]/]/g,'_')+'__unified';
+              if(rptMap[sk])return; // already has one
+              const _lightH=Math.round((1+_pseudoRand(date+name+'nlh')*5)*2)/2;
+              const _sinerioH=Math.round((1+_pseudoRand(date+name+'nsh')*3)*2)/2;
+              const _nNotes=_pseudoRand(date+name+'nun')>0.5?DEMO_TASK_NOTES[Math.floor(_pseudoRand(date+name+'nuns')*DEMO_TASK_NOTES.length)]:'';
+              rptMap[sk]={date,instructorName:name,type:'unified_daily',submittedAt:Date.now(),
+                lightHours:_lightH,sinerioHours:_sinerioH,feedbackCount:0,notes:_nNotes,isUnified:true};
+              totalReports++;
+            }
+          });
+        }
 
         // ── instrStatus derived from actual trips for consistency ──
         const stMap={};
@@ -19737,9 +20194,8 @@ async function generateAndActivateDemo(){
     document.getElementById('demoGenerateBtn').style.display='none';
     _reloadAppWithDemoData();
     _updateDemoBanner(true);
-    const _tCount=(typeof TraineeSystem!=='undefined'&&TraineeSystem.trainees)?TraineeSystem.trainees.length:15;
     setTimeout(()=>{try{if(typeof _generateTraineeDemoData==='function'&&typeof TraineeSystem!=='undefined'&&window._traineeInitialized)_generateTraineeDemoData();}catch(e){}},400);
-    showToast('🎭 מצב דמו פעיל! נוצרו נסיעות, שיבוצים ו-'+_tCount+' חניכים.','success');
+    showToast('🎭 מצב דמו פעיל — נטענו נתוני דמו.','success');
   }catch(err){
     showToast('שגיאה ביצירת דמו: '+err.message,'warning');console.error('Demo error:',err);
   }finally{
@@ -19747,6 +20203,36 @@ async function generateAndActivateDemo(){
   }
 }
 
+
+// מנתק את כל listeners הפעילים של TraineeSystem ומנקה cache בזיכרון
+// חובה לקרוא לפני TraineeSystem.init() ביציאה ממצב דמו
+function _resetTraineeSystemListeners() {
+  if (typeof TraineeSystem === 'undefined') return;
+  // Detach all listeners to clear Firebase SDK in-memory cache
+  try { if (TraineeSystem.traineesRef)    TraineeSystem.traineesRef.off();    } catch(e) {}
+  try { if (TraineeSystem.instructorsRef) TraineeSystem.instructorsRef.off(); } catch(e) {}
+  try { if (TraineeSystem.coursesRef)     TraineeSystem.coursesRef.off();     } catch(e) {}
+  try { if (TraineeSystem.settingsRef)    TraineeSystem.settingsRef.off();    } catch(e) {}
+  // Recreate refs to get fresh Firebase SDK instances (clears SDK value cache)
+  try {
+    if (TraineeSystem.db) {
+      TraineeSystem.traineesRef    = TraineeSystem.db.ref('trainees_v20');
+      TraineeSystem.instructorsRef = TraineeSystem.db.ref('instructors_v20');
+      TraineeSystem.coursesRef     = TraineeSystem.db.ref('courses_v20');
+      TraineeSystem.settingsRef    = TraineeSystem.db.ref('settings_v20');
+    }
+  } catch(e) {}
+  // Clear in-memory data
+  TraineeSystem.trainees     = [];
+  TraineeSystem.instructors  = [];
+  TraineeSystem.courses      = [];
+  TraineeSystem.currentCourseId = null;
+  // נקה את רשימת הכרטיסים מיד — כדי שלחיצה על כרטיס ישן לא תגרום crash
+  try {
+    const listEl = document.getElementById('trainee-list');
+    if (listEl) listEl.innerHTML = '';
+  } catch(e) {}
+}
 
 function exitDemoMode(){
   if(!confirm('לצאת ממצב דמו ולשחזר את הנתונים האמיתיים?'))return;
@@ -19767,10 +20253,13 @@ function exitDemoMode(){
   localStorage.removeItem('demo_months');
   localStorage.removeItem('demo_active');
   localStorage.removeItem('demo_trainee_data');
+  localStorage.removeItem('trainee_courses'); // force reload from Firebase on next init
   const _dayPfx=['trips_','taskReports_','instrStatus_'];
   Object.keys(localStorage).forEach(k=>{if(_dayPfx.some(p=>k.startsWith(p)))localStorage.removeItem(k);});
 
   // Clear memory cache immediately
+  window._taskReportsCache = {};
+  window._taskReportsCacheDate = null;
   try{if(window._clearMonthCache)window._clearMonthCache();}catch(e){}
   try{if(window._resetMonthlyDash)window._resetMonthlyDash();}catch(e){}
 
@@ -19785,23 +20274,36 @@ function exitDemoMode(){
   _logAction('demo_off','יציאה ממצב דמו');
   _updateDemoBanner(false);
 
-  // Reset TraineeSystem
+  // Reset TraineeSystem — disconnect all Firebase listeners first to clear SDK cache
+  localStorage.removeItem('demo_trainee_data'); // ensure no stale demo trainees in memory
   window._traineeInitialized = false;
   if(typeof TraineeSystem !== 'undefined'){
     if(TraineeSystem._origLoadData) { TraineeSystem.loadData = TraineeSystem._origLoadData; TraineeSystem._origLoadData = null; }
     if(TraineeSystem._origPersist)  { TraineeSystem.persist  = TraineeSystem._origPersist;  TraineeSystem._origPersist  = null; }
-    TraineeSystem.trainees = [];
-    TraineeSystem.instructors = [];
+    _resetTraineeSystemListeners();
   }
+  window._traineeSummaryCache = null;
+  setTimeout(()=>{ try{ window._traineeSummaryCache=null; _renderTraineeSummaryPanel(); }catch(e){} }, 1200);
   _traineeOverloadAlerts = _traineeOverloadAlerts.filter(a=>!a._demo);
   try{localStorage.setItem('trainee_overload_alerts',JSON.stringify(_traineeOverloadAlerts));}catch(e){}
   _renderTraineeOverloadBanner();
-  const _tsSection = document.getElementById('traineeSection');
   const _tsCont = document.getElementById('traineeSystemContainer');
-  if(_tsSection && _tsSection.open && typeof TraineeSystem !== 'undefined'){
+  if(typeof TraineeSystem !== 'undefined'){
     try {
+      _resetTraineeSystemListeners();
       TraineeSystem.init('traineeSystemContainer');
       _updateTraineeBtnVisibility();
+      // Switch to default course after reload
+      setTimeout(()=>{
+        try{
+          const defCourse = TraineeSystem.courses.find(c=>c.isDefault) || TraineeSystem.courses[0];
+          if(defCourse && defCourse.id !== TraineeSystem.currentCourseId){
+            TraineeSystem.switchCourse(defCourse.id);
+          }
+          window._traineeSummaryCache = null;
+          _renderTraineeSummaryPanel();
+        }catch(e){}
+      }, 1500);
     } catch(e) {
       if(_tsCont) _tsCont.innerHTML = '<div style="padding:30px;text-align:center;color:#888;font-size:14px;">⏳ לחץ כאן לטעינת מערכת החניכים...</div>';
     }
@@ -19850,20 +20352,23 @@ function clearDemoData(){
   keys.forEach(k=>localStorage.removeItem(k));
   localStorage.removeItem('demo_active');
   localStorage.removeItem('demo_days');
+  localStorage.removeItem('trainee_courses'); // force reload from Firebase on next init
+  localStorage.removeItem('demo_trainee_data'); // ensure no stale demo trainees in memory
   _updateDemoBanner(false);
   window._traineeInitialized = false;
   if(typeof TraineeSystem !== 'undefined'){
     if(TraineeSystem._origLoadData){TraineeSystem.loadData=TraineeSystem._origLoadData;TraineeSystem._origLoadData=null;}
     if(TraineeSystem._origPersist){TraineeSystem.persist=TraineeSystem._origPersist;TraineeSystem._origPersist=null;}
-    TraineeSystem.trainees=[];TraineeSystem.instructors=[];
+    _resetTraineeSystemListeners();
   }
+  window._traineeSummaryCache = null;
+  setTimeout(()=>{ try{ window._traineeSummaryCache=null; _renderTraineeSummaryPanel(); }catch(e){} }, 1200);
   _traineeOverloadAlerts=_traineeOverloadAlerts.filter(a=>!a._demo);
   try{localStorage.setItem('trainee_overload_alerts',JSON.stringify(_traineeOverloadAlerts));}catch(e){}
   _renderTraineeOverloadBanner();
-  const _tsSection2=document.getElementById('traineeSection');
   const _tsCont2=document.getElementById('traineeSystemContainer');
-  if(_tsSection2&&_tsSection2.open&&typeof TraineeSystem!=='undefined'){
-    try{TraineeSystem.init('traineeSystemContainer');_updateTraineeBtnVisibility();}catch(e){
+  if(typeof TraineeSystem!=='undefined'){
+    try{_resetTraineeSystemListeners();TraineeSystem.init('traineeSystemContainer');_updateTraineeBtnVisibility();}catch(e){
       if(_tsCont2)_tsCont2.innerHTML='<div style="padding:30px;text-align:center;color:#888;font-size:14px;">⏳ לחץ כאן לטעינת מערכת החניכים...</div>';
     }
   } else if(_tsCont2){
@@ -19872,15 +20377,27 @@ function clearDemoData(){
   showToast('🗑️ נתוני הדמו נמחקו','info');
 }
 
+function _updateDemoBtnVisibility(){
+  const btn=document.getElementById('demoBtnMain');
+  if(btn) btn.style.display=(currentRole==='admin')?'':'none';
+}
+
 function _updateDemoBanner(active){
   const banner=document.getElementById('demoBanner');
   const btn=document.getElementById('demoBtnMain');
   // Banner shows when demo is active
   if(banner)banner.style.display=active?'flex':'none';
-  // Button always visible — changes color to indicate state
+  // Button always visible — changes style to indicate state
   if(btn){
-    btn.style.background=active?'#f0ad4e':'#6c3483';
-    btn.style.color=active?'#333':'white';
+    if(active){
+      btn.style.background='#f0ad4e';
+      btn.style.color='#333';
+      btn.style.borderColor='#f0ad4e';
+    }else{
+      btn.style.background='transparent';
+      btn.style.color='#c9a3e6';
+      btn.style.borderColor='#8e44ad';
+    }
     btn.title=active?'מצב דמו פעיל — לחץ לניהול':'הפעל מצב דמו';
   }
 }
@@ -19996,6 +20513,16 @@ function applyPredefinedRoute(routeId){
 
 // Demo mode helper — when active, always read from localStorage
 function _isDemoMode(){return localStorage.getItem('demo_active')==='1';}
+
+// Demo mode — sync across tabs of the SAME browser only (local, not Firebase).
+// Fires when another tab in this browser changes 'demo_active' in localStorage.
+window.addEventListener('storage', function(e){
+  if(e.key !== 'demo_active') return;
+  if(window.TraineeSystem && window.TraineeSystem._lcDirty){
+    if(!confirm('מצב הדמו השתנה בטאב אחר. יש לך שינויים לא שמורים כאן — לרענן בכל זאת?')) return;
+  }
+  location.reload();
+});
 
 
 
@@ -20192,7 +20719,7 @@ async function exportDashboardXLSX(){
     // Sheet 2: route efficiency
     const routeStats={};
     Object.values(monthData).forEach(day=>(day||[]).forEach(t=>{
-      const rk=(t.route||[]).map(r=>r.id).join('→');
+      const rk=_routeLabel(t);
       if(!routeStats[rk])routeStats[rk]={count:0,lessons:0,min:0,delays:0};
       const v=routeStats[rk];v.count++;
       const dur=(t.route||[]).reduce((s,r)=>s+(r.t||0),0);
@@ -20215,7 +20742,7 @@ async function exportDashboardXLSX(){
     // Sheet 4: delays
     const delayRows=[['מדריך','תאריך','מסלול','עיכוב (דק)','סיבה']];
     Object.entries(monthData).forEach(([date,day])=>(day||[]).forEach(t=>{
-      if(t.delayMin>0)delayRows.push([t.name,date,(t.route||[]).map(r=>r.id).join('→'),t.delayMin,t.delayNote||'']);
+      if(t.delayMin>0)delayRows.push([t.name,date,_routeLabel(t),t.delayMin,t.delayNote||'']);
     }));
     const ws4=XLSX.utils.aoa_to_sheet(delayRows);
     XLSX.utils.book_append_sheet(wb,ws4,'עיכובים');
@@ -20223,7 +20750,7 @@ async function exportDashboardXLSX(){
     // Sheet 5: route changes
     const rcRows=[['מדריך','תאריך','מסלול שבוצע','סיבה']];
     Object.entries(monthData).forEach(([date,day])=>(day||[]).forEach(t=>{
-      if(t.routeVariant>0)rcRows.push([t.name,date,(t.route||[]).map(r=>r.id).join('→'),t.delayNote||'שינוי מסלול']);
+      if(t.routeVariant>0)rcRows.push([t.name,date,_routeLabel(t),t.delayNote||'שינוי מסלול']);
     }));
     const ws5=XLSX.utils.aoa_to_sheet(rcRows);
     XLSX.utils.book_append_sheet(wb,ws5,'שינויי מסלול');
@@ -20380,24 +20907,114 @@ function _generateTraineeDemoData() {
     if (prev && lessonsDone - prev <= 2) return (base?base+' ':'')+`✅ עבר טסט ${prev} בהצלחה.`;
     return base;
   };
+  // _l: lesson with scores; mission: 'קורס מעשי סיטאדיס' / 'קורס מעשי אורבוס' / 'כשירות מעשית/ שעות נוספות' / 'חניכה'
   const _l = (da,mission,nums,ins,s1,s2,s3,s4,s5,notes,extra='') => ({date:_d(da),mission,lessonNums:nums,extraDesc:extra,ins,s1,s2,s3,s4,s5,notes});
   const _seq = (from, to) => Array.from({length:to-from+1},(_,i)=>from+i);
+  // _lo: lesson without scores (for שעות נוספות which has no chips)
+  const _lo = (da,mission,notes) => ({date:_d(da),mission,lessonNums:[],ins:_ins[0],s1:0,s2:0,s3:0,s4:0,s5:0,notes});
+
   TraineeSystem.trainees = [
-    {id:1013,name:'אשרף עלי',lessons:[_l(200,'קורס',_seq(1,8),_ins[3],9,9,8,9,9,_note(8,'כניסה מצוינת.')),_l(185,'קורס',_seq(9,10),_ins[3],9,9,9,9,9,_note(10,'')),_l(170,'קורס',_seq(11,18),_ins[1],9,9,9,9,10,_note(18,'יציב.')),_l(155,'קורס',_seq(19,25),_ins[1],10,9,9,10,10,_note(25,'')),_l(140,'קורס',_seq(26,30),_ins[2],10,10,9,10,10,_note(30,'טסט 30.')),_l(120,'קורס',_seq(31,38),_ins[2],10,10,10,10,10,_note(38,'')),_l(100,'קורס',_seq(39,45),_ins[0],10,10,10,10,10,_note(45,'')),_l(80,'קורס',_seq(46,47),_ins[0],10,10,10,10,10,_note(47,'קרוב לסיום.')),_l(60,'שטח',[],_ins[0],10,10,10,10,10,_note(47,'')),_l(40,'שטח',[],_ins[1],10,10,10,10,10,_note(47,''))]},
-    {id:1012,name:'תאמר זעבי',lessons:[_l(190,'קורס',_seq(1,6),_ins[2],8,8,7,8,8,_note(6,'')),_l(175,'קורס',_seq(7,10),_ins[2],8,8,8,8,9,_note(10,'')),_l(160,'קורס',_seq(11,20),_ins[3],9,8,8,9,9,_note(20,'')),_l(140,'קורס',_seq(21,30),_ins[3],9,9,8,9,9,_note(30,'טסט 30.')),_l(115,'קורס',_seq(31,40),_ins[0],9,9,9,9,10,_note(40,'')),_l(90,'קורס',_seq(41,42),_ins[0],9,9,9,10,10,_note(42,'מתקרב לסיום.')),_l(70,'שטח',[],_ins[1],9,9,9,9,10,_note(42,'')),_l(50,'שטח',[],_ins[1],10,9,9,10,10,_note(42,''))]},
-    {id:1010,name:'נדב ברגר',lessons:[_l(150,'קורס',_seq(1,5),_ins[1],7,7,7,7,8,_note(5,'')),_l(135,'קורס',_seq(6,10),_ins[1],8,8,7,8,8,_note(10,'טסט 10.')),_l(115,'קורס',_seq(11,18),_ins[2],8,8,8,8,9,_note(18,'')),_l(95,'קורס',_seq(19,25),_ins[2],8,8,8,9,9,_note(25,'')),_l(75,'קורס',_seq(26,28),_ins[0],8,9,8,9,9,_note(28,'קרוב לטסט 30.'))]},
-    {id:1006,name:"ראמי ח'ורי",lessons:[_l(160,'קורס',_seq(1,5),_ins[1],9,9,5,9,8,_note(5,'פער תפעולי.')),_l(145,'קורס',_seq(6,10),_ins[1],9,9,5,9,8,_note(10,'טסט 10 בקושי.')),_l(125,'קורס',_seq(11,20),_ins[2],9,9,6,9,8,_note(20,'')),_l(105,'קורס',_seq(21,30),_ins[2],9,9,7,9,9,_note(30,'טסט 30 — ביצועים מספקים.')),_l(85,'קורס',_seq(31,32),_ins[0],9,9,8,9,9,_note(32,''))]},
-    {id:1011,name:'ירין אבני',lessons:[_l(145,'קורס',_seq(1,8),_ins[0],8,7,7,8,8,_note(8,'')),_l(125,'קורס',_seq(9,10),_ins[0],8,8,7,8,8,_note(10,'טסט 10.')),_l(105,'קורס',_seq(11,20),_ins[3],8,8,8,8,9,_note(20,'')),_l(85,'קורס',_seq(21,29),_ins[1],9,8,8,9,9,_note(29,'קרוב לטסט 30.'))]},
-    {id:1004,name:'אורי לוי',lessons:[_l(120,'קורס',_seq(1,5),_ins[0],6,6,6,6,7,_note(5,'')),_l(100,'קורס',_seq(6,10),_ins[0],7,6,6,7,7,_note(10,'טסט 10.')),_l(80,'קורס',_seq(11,18),_ins[1],7,7,6,7,7,_note(18,'')),_l(60,'קורס',_seq(19,22),_ins[1],7,7,7,7,8,_note(22,''))]},
-    {id:1007,name:'עמית שרון',lessons:[_l(100,'קורס',_seq(1,5),_ins[0],7,6,6,7,7,_note(5,'')),_l(80,'קורס',_seq(6,10),_ins[0],7,7,7,7,8,_note(10,'טסט 10.')),_l(60,'קורס',_seq(11,18),_ins[3],8,7,7,8,8,_note(18,''))]},
-    {id:1014,name:'תום פרידמן',lessons:[_l(110,'קורס',_seq(1,5),_ins[1],7,7,7,7,7,_note(5,'')),_l(90,'קורס',_seq(6,10),_ins[1],8,7,7,8,8,_note(10,'טסט 10.')),_l(70,'קורס',_seq(11,18),_ins[0],8,8,7,8,8,_note(18,'')),_l(50,'קורס',_seq(19,20),_ins[0],8,8,8,8,8,_note(20,''))]},
-    {id:1015,name:'שיר גולן',lessons:[_l(75,'קורס',_seq(1,5),_ins[0],6,6,6,6,7,_note(5,'')),_l(55,'קורס',_seq(6,10),_ins[0],7,6,6,7,7,_note(10,'טסט 10.')),_l(35,'קורס',_seq(11,13),_ins[2],7,7,6,7,7,_note(13,''))]},
-    {id:1005,name:"ח'אלד עמר",lessons:[_l(60,'קורס',_seq(1,4),_ins[3],7,6,4,7,7,_note(4,'סטיק נמוך.')),_l(45,'קורס',_seq(5,7),_ins[3],7,7,5,7,7,_note(7,'')),_l(30,'קורס',_seq(8,9),_ins[0],7,7,5,7,7,_note(9,'קרוב לטסט 10.'))]},
-    {id:1008,name:'גל מזרחי',lessons:[_l(90,'קורס',_seq(1,5),_ins[2],6,5,5,6,7,_note(5,'')),_l(70,'קורס',_seq(6,10),_ins[2],6,6,5,6,7,_note(10,'עבר בקושי.')),_l(50,'קורס',_seq(11,14),_ins[1],6,6,6,6,7,_note(14,''))]},
-    {id:1003,name:'סמי אבו-גנם',lessons:[_l(20,'קורס',_seq(1,5),_ins[2],9,8,8,9,9,_note(5,'כישרון טבעי.')),_l(13,'קורס',_seq(6,10),_ins[2],9,9,9,9,10,_note(10,'טסט 10 מצוין.')),_l(6,'שטח',[],_ins[2],9,9,9,9,10,_note(10,''),'N1→N2')]},
-    {id:1001,name:'מוחמד חמדאן',lessons:[_l(40,'קורס',_seq(1,3),_ins[0],6,5,4,5,6,_note(3,'סטיק נמוך מאוד.')),_l(25,'קורס',_seq(4,6),_ins[0],6,5,4,5,6,_note(6,'אין שיפור.')),_l(10,'קורס',_seq(7,7),_ins[1],6,5,5,6,6,_note(7,'קרוב לטסט 10.'))]},
-    {id:1009,name:'ריאד עמאר',lessons:[_l(100,'קורס',_seq(1,5),_ins[3],5,5,5,5,5,_note(5,'קשיים בסיסיים.')),_l(80,'קורס',_seq(6,10),_ins[3],5,5,5,4,5,_note(10,'נהלים חלשים.')),_l(60,'קורס',_seq(6,10),_ins[0],6,5,5,5,5,_note(10,'חזרה על טסט 10.')),_l(40,'קורס',_seq(11,16),_ins[0],6,6,5,5,5,_note(16,''))]},
-    {id:1002,name:'רועי כהן',lessons:[_l(15,'קורס',_seq(1,3),_ins[1],7,6,6,7,8,_note(3,'שיעור ראשון.'))]},
+    // ── קבוצה G — בחניכה: סיטאדיס 50 + אורבוס 7 + חניכה אקטיבית ──
+    {id:1013,name:'אשרף עלי',lessons:[
+      _l(220,'קורס מעשי סיטאדיס',_seq(1,10),_ins[3],9,9,8,9,9,_note(10,'כניסה מצוינת.')),
+      _l(200,'קורס מעשי סיטאדיס',_seq(11,20),_ins[3],9,9,9,9,9,_note(20,'')),
+      _l(180,'קורס מעשי סיטאדיס',_seq(21,30),_ins[1],9,9,9,9,10,_note(30,'טסט 30.')),
+      _l(160,'קורס מעשי סיטאדיס',_seq(31,40),_ins[1],10,9,9,10,10,_note(40,'')),
+      _l(140,'קורס מעשי סיטאדיס',_seq(41,50),_ins[2],10,10,9,10,10,_note(50,'טסט 50 — עבר!')),
+      _l(120,'קורס מעשי אורבוס',_seq(1,4),_ins[2],10,10,10,10,10,_note(4,'')),
+      _l(100,'קורס מעשי אורבוס',_seq(5,7),_ins[0],10,10,10,10,10,'השלים אורבוס.'),
+      _l(80,'חניכה',_seq(1,1),_ins[0],9,9,10,9,10,'שיעור חניכה ראשון — חניך מצוין.'),
+      _l(60,'חניכה',_seq(2,2),_ins[1],9,10,9,10,10,''),
+      _l(40,'חניכה',_seq(3,3),_ins[1],10,9,10,9,10,'ביצועים יציבים בחניכה.'),
+    ]},
+
+    // ── קבוצה F — מוכן לחניכה: סיטאדיס 50 + אורבוס 7, ללא חניכה ──
+    {id:1012,name:'תאמר זעבי',lessons:[
+      _l(210,'קורס מעשי סיטאדיס',_seq(1,10),_ins[2],8,8,7,8,8,_note(10,'')),
+      _l(185,'קורס מעשי סיטאדיס',_seq(11,20),_ins[2],8,8,8,8,9,_note(20,'')),
+      _l(160,'קורס מעשי סיטאדיס',_seq(21,30),_ins[3],9,8,8,9,9,_note(30,'טסט 30.')),
+      _l(135,'קורס מעשי סיטאדיס',_seq(31,40),_ins[3],9,9,8,9,9,_note(40,'')),
+      _l(110,'קורס מעשי סיטאדיס',_seq(41,50),_ins[0],9,9,9,10,10,_note(50,'טסט 50!')),
+      _l(85,'קורס מעשי אורבוס',_seq(1,4),_ins[0],9,9,9,9,10,''),
+      _l(60,'קורס מעשי אורבוס',_seq(5,7),_ins[1],9,9,9,10,10,'השלים אורבוס — מוכן לחניכה.'),
+    ]},
+    {id:1010,name:'נדב ברגר',lessons:[
+      _l(230,'קורס מעשי סיטאדיס',_seq(1,10),_ins[1],8,7,7,8,8,_note(10,'טסט 10.')),
+      _l(200,'קורס מעשי סיטאדיס',_seq(11,20),_ins[2],8,8,8,8,9,_note(20,'')),
+      _l(170,'קורס מעשי סיטאדיס',_seq(21,30),_ins[2],8,8,8,9,9,_note(30,'טסט 30.')),
+      _l(140,'קורס מעשי סיטאדיס',_seq(31,40),_ins[0],9,8,8,9,9,_note(40,'')),
+      _l(110,'קורס מעשי סיטאדיס',_seq(41,50),_ins[0],9,9,9,9,10,_note(50,'מוכן לחניכה!')),
+      _l(90,'קורס מעשי אורבוס',_seq(1,3),_ins[1],9,9,9,9,9,''),
+      _l(70,'קורס מעשי אורבוס',_seq(4,7),_ins[1],9,9,9,10,9,'השלים 7 שיעורי אורבוס.'),
+    ]},
+
+    // ── קבוצה E — השתלמות אורבוס: סיטאדיס 50 + אורבוס חלקי ──
+    {id:1006,name:"ראמי ח'ורי",lessons:[
+      _l(200,'קורס מעשי סיטאדיס',_seq(1,10),_ins[1],9,9,5,9,8,_note(10,'טסט 10 בקושי.')),
+      _l(175,'קורס מעשי סיטאדיס',_seq(11,20),_ins[1],9,9,6,9,8,_note(20,'')),
+      _l(150,'קורס מעשי סיטאדיס',_seq(21,30),_ins[2],9,9,7,9,9,_note(30,'טסט 30 — ביצועים מספקים.')),
+      _l(125,'קורס מעשי סיטאדיס',_seq(31,40),_ins[2],9,9,8,9,9,_note(40,'')),
+      _l(100,'קורס מעשי סיטאדיס',_seq(41,50),_ins[0],9,9,8,9,9,_note(50,'טסט 50 — פתח אורבוס.')),
+      _l(75,'קורס מעשי אורבוס',_seq(1,2),_ins[0],8,8,8,8,8,''),
+      _l(50,'קורס מעשי אורבוס',_seq(3,4),_ins[3],8,9,8,8,8,'בעיצומה של השתלמות אורבוס.'),
+    ]},
+
+    // ── קבוצה D — שלב מסחרי: סיטאדיס 30–49 ──
+    {id:1011,name:'ירין אבני',lessons:[
+      _l(165,'קורס מעשי סיטאדיס',_seq(1,10),_ins[0],8,7,7,8,8,_note(10,'טסט 10.')),
+      _l(140,'קורס מעשי סיטאדיס',_seq(11,20),_ins[3],8,8,8,8,9,_note(20,'')),
+      _l(115,'קורס מעשי סיטאדיס',_seq(21,30),_ins[3],9,8,8,9,9,_note(30,'טסט 30.')),
+      _l(90,'קורס מעשי סיטאדיס',_seq(31,38),_ins[1],9,8,8,9,9,_note(38,'')),
+    ]},
+    {id:1004,name:'אורי לוי',lessons:[
+      _l(150,'קורס מעשי סיטאדיס',_seq(1,10),_ins[0],6,6,6,6,7,_note(10,'טסט 10.')),
+      _l(125,'קורס מעשי סיטאדיס',_seq(11,20),_ins[1],7,7,6,7,7,_note(20,'')),
+      _l(100,'קורס מעשי סיטאדיס',_seq(21,30),_ins[1],7,7,7,7,8,_note(30,'טסט 30.')),
+      _l(75,'קורס מעשי סיטאדיס',_seq(31,35),_ins[0],7,7,7,7,8,_note(35,'')),
+    ]},
+
+    // ── קבוצה C — שלב תפעולי: סיטאדיס 10–29 ──
+    {id:1007,name:'עמית שרון',lessons:[
+      _l(120,'קורס מעשי סיטאדיס',_seq(1,10),_ins[0],7,6,6,7,7,_note(10,'טסט 10.')),
+      _l(95,'קורס מעשי סיטאדיס',_seq(11,20),_ins[3],8,7,7,8,8,_note(20,'')),
+      _l(70,'קורס מעשי סיטאדיס',_seq(21,24),_ins[3],8,7,7,8,8,''),
+    ]},
+    {id:1014,name:'תום פרידמן',lessons:[
+      _l(130,'קורס מעשי סיטאדיס',_seq(1,10),_ins[1],7,7,7,7,7,_note(10,'טסט 10.')),
+      _l(105,'קורס מעשי סיטאדיס',_seq(11,18),_ins[0],8,8,7,8,8,_note(18,'')),
+    ]},
+    {id:1015,name:'שיר גולן',lessons:[
+      _l(110,'קורס מעשי סיטאדיס',_seq(1,10),_ins[0],6,6,6,6,7,_note(10,'טסט 10.')),
+      _l(85,'קורס מעשי סיטאדיס',_seq(11,16),_ins[2],7,7,6,7,7,''),
+    ]},
+
+    // ── קבוצה B — שלב טכני + שעות נוספות ──
+    {id:1005,name:"ח'אלד עמר",lessons:[
+      _l(60,'קורס מעשי סיטאדיס',_seq(1,4),_ins[3],7,6,4,7,7,_note(4,'סטיק נמוך.')),
+      _l(45,'קורס מעשי סיטאדיס',_seq(5,7),_ins[3],7,7,5,7,7,''),
+      _lo(30,'כשירות מעשית/ שעות נוספות','תרגול נוסף על מנגנון הבלמים.'),
+      _lo(20,'כשירות מעשית/ שעות נוספות','חזרה על נהלי כניסה לתחנה.'),
+      _l(10,'קורס מעשי סיטאדיס',_seq(8,9),_ins[0],7,7,5,7,7,'קרוב לטסט 10.'),
+    ]},
+    {id:1008,name:'גל מזרחי',lessons:[
+      _l(90,'קורס מעשי סיטאדיס',_seq(1,5),_ins[2],6,5,5,6,7,''),
+      _l(70,'קורס מעשי סיטאדיס',_seq(6,8),_ins[2],6,6,5,6,7,'עבר בקושי.'),
+      _lo(55,'כשירות מעשית/ שעות נוספות','שיפור בסטיק — תרגול מגרש.'),
+      _lo(40,'כשירות מעשית/ שעות נוספות','תרגול נהלי ביטחון.'),
+    ]},
+
+    // ── קבוצה A — שלב טכני: סיטאדיס 1–9 ──
+    {id:1003,name:'סמי אבו-גנם',lessons:[
+      _l(20,'קורס מעשי סיטאדיס',_seq(1,5),_ins[2],9,8,8,9,9,'כישרון טבעי.'),
+      _l(13,'קורס מעשי סיטאדיס',_seq(6,8),_ins[2],9,9,9,9,10,''),
+    ]},
+    {id:1001,name:'מוחמד חמדאן',lessons:[
+      _l(40,'קורס מעשי סיטאדיס',_seq(1,3),_ins[0],6,5,4,5,6,'סטיק נמוך מאוד.'),
+      _l(25,'קורס מעשי סיטאדיס',_seq(4,6),_ins[0],6,5,4,5,6,'אין שיפור.'),
+    ]},
+    {id:1002,name:'רועי כהן',lessons:[
+      _l(15,'קורס מעשי סיטאדיס',_seq(1,3),_ins[1],7,6,6,7,8,'שיעור ראשון.'),
+    ]},
   ];
   TraineeSystem.instructors = [..._ins];
   // Demo overload alerts are fired via _fireDemoTraineeAlerts() — called on login/demo-activate
@@ -20432,6 +21049,9 @@ function _generateTraineeDemoData() {
 
   TraineeSystem.renderList();
   TraineeSystem.renderInsTags();
+  // Refresh summary dashboard with demo data
+  window._traineeSummaryCache = null;
+  setTimeout(()=>{ try{ _renderTraineeSummaryPanel(); }catch(e){} }, 300);
 }
 
 // ══ V100 Trainee Overload Handler ════════════════════════════
@@ -20522,17 +21142,23 @@ function _updateTraineeBtnVisibility() {
   const _isInstr = typeof currentRole !== 'undefined' && currentRole === 'instructor';
   const _isAdmin = typeof currentRole !== 'undefined' && currentRole === 'admin';
   _updateTraineeAlertBadge(); // sync badge with current role every time
+  // Trainee status dashboard (KPI cards, milestones, risk alerts) — admin only
+  const summaryPanel = document.getElementById('trainee-summary-panel');
+  if (summaryPanel) {
+    if (_isAdmin) { try { _renderTraineeSummaryPanel(); } catch(e) {} }
+    else { summaryPanel.style.display = 'none'; }
+  }
   const cont = document.getElementById('traineeSystemContainer');
   if (!cont) return;
-  // Reports button — hide for instructor
+  // Reports button — admin only (hide for instructor AND mentor)
   const rb = cont.querySelector('[data-action="show-reports"]');
-  if (rb) rb.style.display = _isInstr ? 'none' : '';
+  if (rb) rb.style.display = _isAdmin ? '' : 'none';
   // Settings button — show only for admin
   const sbtn = cont.querySelector('#ts-settings-btn');
   if (sbtn) sbtn.style.display = _isAdmin ? '' : 'none';
-  // "הוסף חניך" button — hide for instructor
+  // "הוסף חניך" button — admin only (hide for instructor AND mentor)
   const addBtn = cont.querySelector('[data-panel="add-panel"]');
-  if (addBtn) addBtn.style.display = _isInstr ? 'none' : '';
+  if (addBtn) addBtn.style.display = _isAdmin ? '' : 'none';
 }
 
 function _initTraineeIfNeeded() {
@@ -20821,9 +21447,12 @@ function _getTraineeSummary() {
 }
 
 function _renderTraineeSummaryPanel() {
-  if (typeof currentRole === 'undefined' || currentRole !== 'admin') return;
   var panel = document.getElementById('trainee-summary-panel');
   if (!panel) return;
+  if (typeof currentRole === 'undefined' || currentRole !== 'admin') {
+    panel.style.display = 'none';
+    return;
+  }
   panel.style.display = 'block';
   panel.innerHTML = '';
   var summary = _getTraineeSummary();
