@@ -763,11 +763,14 @@ body.dark-mode .login-input{background:#2d3348;border-color:#3a4060;color:#e0e6f
 
 .settings-tabs{display:flex;gap:0;padding:14px 24px 0;border-bottom:2px solid #eef2f8;margin-top:14px;flex-wrap:wrap;}
 
-.stab{padding:8px 11px;border:none;background:none;cursor:pointer;font-size:12.5px;color:#888;border-bottom:2px solid transparent;margin-bottom:-2px;width:auto;margin-top:0;}
+.stab{padding:9px 13px;border:none;background:none;cursor:pointer;font-size:15px;color:#888;border-bottom:2px solid transparent;margin-bottom:-2px;width:auto;margin-top:0;}
 
 .stab.active{color:var(--primary);border-bottom-color:var(--secondary);font-weight:bold;}
 
 .stab:hover{color:var(--primary);}
+
+/* Visual warning: instructor/mentor assigned to a shift with no task selected */
+select.task-missing{border:2px solid #e74c3c !important;background:#fdf2f2 !important;box-shadow:0 0 0 2px rgba(231,76,60,.15);}
 
 .settings-body{padding:20px 24px;}
 
@@ -1945,21 +1948,19 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 
     <div class="settings-tabs">
 
-      <button class="stab active" onclick="switchSettingsTab('segs',this)">מקטעים</button>
+      <button class="stab active" onclick="switchSettingsTab('segs',this)">משך מקטעים</button>
 
-      <button class="stab" onclick="switchSettingsTab('turns',this)">סיבובים</button>
+      <button class="stab" onclick="switchSettingsTab('ops',this)">הגבלות תפעול</button>
 
-      <button class="stab" onclick="switchSettingsTab('ops',this)">תפעול</button>
+      <button class="stab" onclick="switchSettingsTab('shifts',this)">סוג משמרות ומשימות</button>
 
-      <button class="stab" onclick="switchSettingsTab('restrict',this)">הגבלות</button>
-
-      <button class="stab" onclick="switchSettingsTab('shifts',this)">משמרות</button>
+      <button class="stab" onclick="switchSettingsTab('passwords',this)">🔑 ניהול סיסמאות</button>
 
       <button class="stab" onclick="switchSettingsTab('instrs',this)">מדריכים</button>
 
       <button class="stab" onclick="switchSettingsTab('mentors',this)">חונכים</button>
 
-      <button class="stab" onclick="switchSettingsTab('routes',this)">⭐ מסלולים</button>
+      <button class="stab" onclick="switchSettingsTab('routes',this)">⭐ מסלולים שמורים</button>
 
     </div>
 
@@ -1991,13 +1992,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 
         </div>
 
-      </div>
-
-      <!-- TAB: turns -->
-
-      <div class="settings-panel" id="stab-turns">
-
-        <div class="ssection-title">זמן סיבוב בתחנת קצה (דקות)</div>
+        <div class="ssection-title" style="margin-top:18px;">זמן סיבוב בתחנת קצה (דקות)</div>
 
         <div class="sfield-grid">
 
@@ -2029,13 +2024,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 
         </div>
 
-      </div>
-
-      <!-- TAB: restrictions -->
-
-      <div class="settings-panel" id="stab-restrict">
-
-        <div class="ssection-title">הגבלת יציאה מ-D4 (דרום)</div>
+        <div class="ssection-title" style="margin-top:18px;">הגבלת יציאה מ-D4 (דרום)</div>
 
         <div class="sfield-grid">
 
@@ -2050,18 +2039,6 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
           ⚠️ חזרה לדיפו דרך D4 (L1→D4) מותרת תמיד — ההגבלה חלה רק על יציאה מהדיפו.
 
         </div>
-
-        <div class="ssection-title" style="margin-top:18px;">סיסמת מנהל</div>
-
-        <div class="sfield-grid">
-
-          <div class="sfield"><label>סיסמה נוכחית</label><input type="password" id="s_pass1" placeholder="סיסמה חדשה"><div class="sfield-note">השאר ריק לאי-שינוי</div></div>
-
-          <div class="sfield"><label>אימות סיסמה</label><input type="password" id="s_pass2" placeholder="חזור על הסיסמה"></div>
-
-        </div>
-
-        <div class="login-err" id="passErr" style="text-align:right;margin-top:4px;"></div>
 
       </div>
 
@@ -2083,6 +2060,36 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
         <div id="taskDefsList" style="margin-bottom:12px;"></div>
 
         <button onclick="addTaskDef()" style="width:100%;padding:9px;border:2px dashed var(--secondary);background:#eaf2fb;color:var(--secondary);border-radius:8px;cursor:pointer;font-size:13px;font-weight:bold;margin:0;">+ הוסף סוג משימה</button>
+
+      </div>
+
+      <!-- ── PASSWORDS TAB (unified: admin + mentors shared) ── -->
+
+      <div class="settings-panel" id="stab-passwords">
+
+        <div class="ssection-title">סיסמת מנהל</div>
+
+        <div class="sfield-grid">
+
+          <div class="sfield"><label>סיסמה נוכחית</label><input type="password" id="s_pass1" placeholder="סיסמה חדשה"><div class="sfield-note">השאר ריק לאי-שינוי</div></div>
+
+          <div class="sfield"><label>אימות סיסמה</label><input type="password" id="s_pass2" placeholder="חזור על הסיסמה"></div>
+
+        </div>
+
+        <div class="login-err" id="passErr" style="text-align:right;margin-top:4px;"></div>
+
+        <div class="ssection-title" style="margin-top:22px;">סיסמת חונכים</div>
+        <div style="display:flex;gap:8px;margin-bottom:4px;">
+          <input type="password" id="s_mentorPass1" placeholder="סיסמה חדשה לכל החונכים" style="flex:1;padding:9px 12px;border:1.5px solid #ddd;border-radius:8px;font-size:14px;margin:0;">
+          <input type="password" id="s_mentorPass2" placeholder="אימות סיסמה" style="flex:1;padding:9px 12px;border:1.5px solid #ddd;border-radius:8px;font-size:14px;margin:0;">
+        </div>
+        <div class="login-err" id="mentorPassErr" style="text-align:right;margin-bottom:8px;"></div>
+        <div style="font-size:11px;color:#aaa;margin-bottom:8px;">סיסמה אחת משותפת לכל החונכים. השאר ריק לאי-שינוי.</div>
+
+        <div style="font-size:11px;color:#888;margin-top:18px;padding:10px 12px;background:#f8faff;border-radius:8px;border:1px dashed #c5d8f0;">
+          🔑 סיסמה אישית לכל מדריך נקבעת בטאב "מדריכים" — לחץ על סמל המפתח ליד שם המדריך.
+        </div>
 
       </div>
 
@@ -2110,14 +2117,6 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 
       <!-- ── MENTORS PANEL ───────────────────────────────── -->
       <div class="settings-panel" id="stab-mentors">
-
-        <div class="ssection-title">סיסמת חונכים</div>
-        <div style="display:flex;gap:8px;margin-bottom:4px;">
-          <input type="password" id="s_mentorPass1" placeholder="סיסמה חדשה לכל החונכים" style="flex:1;padding:9px 12px;border:1.5px solid #ddd;border-radius:8px;font-size:14px;margin:0;">
-          <input type="password" id="s_mentorPass2" placeholder="אימות סיסמה" style="flex:1;padding:9px 12px;border:1.5px solid #ddd;border-radius:8px;font-size:14px;margin:0;">
-        </div>
-        <div class="login-err" id="mentorPassErr" style="text-align:right;margin-bottom:8px;"></div>
-        <div style="font-size:11px;color:#aaa;margin-bottom:18px;">סיסמה אחת משותפת לכל החונכים. השאר ריק לאי-שינוי.</div>
 
         <div class="ssection-title" id="mentorListTitle">רשימת חונכים</div>
         <div id="settingsMentorList" style="margin-bottom:12px;max-height:240px;overflow-y:auto;border:0.5px solid #ddd;border-radius:8px;"></div>
@@ -3304,14 +3303,13 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 
     <!-- Settings tabs row -->
     <div class="settings-tabs" style="background:white;border-radius:14px 14px 0 0;border:1px solid #eef2f8;border-bottom:none;padding:14px 20px 0;margin-bottom:0;">
-      <button class="stab active" onclick="switchSettingsTab('segs',this)">מקטעים</button>
-      <button class="stab" onclick="switchSettingsTab('turns',this)">סיבובים</button>
-      <button class="stab" onclick="switchSettingsTab('ops',this)">תפעול</button>
-      <button class="stab" onclick="switchSettingsTab('restrict',this)">הגבלות</button>
-      <button class="stab" onclick="switchSettingsTab('shifts',this)">משמרות</button>
+      <button class="stab active" onclick="switchSettingsTab('segs',this)">משך מקטעים</button>
+      <button class="stab" onclick="switchSettingsTab('ops',this)">הגבלות תפעול</button>
+      <button class="stab" onclick="switchSettingsTab('shifts',this)">סוג משמרות ומשימות</button>
+      <button class="stab" onclick="switchSettingsTab('passwords',this)">🔑 ניהול סיסמאות</button>
       <button class="stab" onclick="switchSettingsTab('instrs',this)">מדריכים</button>
       <button class="stab" onclick="switchSettingsTab('mentors',this)">חונכים</button>
-      <button class="stab" onclick="switchSettingsTab('routes',this)">⭐ מסלולים</button>
+      <button class="stab" onclick="switchSettingsTab('routes',this)">⭐ מסלולים שמורים</button>
     </div>
 
     <!-- Settings body panels -->
@@ -3329,10 +3327,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
           <div class="sfield"><label>D3 — דיפו צפון</label><input type="number" id="si_D3" min="1" max="120"><div class="sfield-note">ברירת מחדל: 10 דק'</div></div>
           <div class="sfield"><label>D4 — דיפו דרום</label><input type="number" id="si_D4" min="1" max="120"><div class="sfield-note">ברירת מחדל: 10 דק'</div></div>
         </div>
-      </div>
-
-      <div id="si-turns" class="si-panel" style="display:none;">
-        <div class="ssection-title">זמן סיבוב בתחנת קצה (דקות)</div>
+        <div class="ssection-title" style="margin-top:18px;">זמן סיבוב בתחנת קצה (דקות)</div>
         <div class="sfield-grid">
           <div class="sfield"><label>סיבוב נווה יעקב (N1→N2)</label><input type="number" id="si_TURN" min="1" max="60"><div class="sfield-note">ברירת מחדל: 7 דק'</div></div>
           <div class="sfield"><label>סיבוב אורה (L2→L1)</label><input type="number" id="si_TURN_ORA" min="1" max="60"><div class="sfield-note">ברירת מחדל: 10 דק'</div></div>
@@ -3348,10 +3343,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
           <div class="sfield"><label>הפסקה מינימלית בין נסיעות</label><input type="number" id="si_minBreak" min="0" max="240" step="5"><div class="sfield-note">ברירת מחדל: 75 דק'</div></div>
           <div class="sfield"><label>מקסימום מדריכים למקטע</label><input type="number" id="si_maxPerSeg" min="0" max="20"><div class="sfield-note">0 = ללא הגבלה</div></div>
         </div>
-      </div>
-
-      <div id="si-restrict" class="si-panel" style="display:none;">
-        <div class="ssection-title">הגבלת יציאה מ-D4 (דרום)</div>
+        <div class="ssection-title" style="margin-top:18px;">הגבלת יציאה מ-D4 (דרום)</div>
         <div class="sfield-grid">
           <div class="sfield"><label>שעת תחילת הגבלה</label><input type="time" id="si_d4Start" style="text-align:right;"><div class="sfield-note">ברירת מחדל: 06:00</div></div>
           <div class="sfield"><label>שעת סיום הגבלה</label><input type="time" id="si_d4End" style="text-align:right;"><div class="sfield-note">ברירת מחדל: 19:00</div></div>
@@ -3359,12 +3351,6 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
         <div style="font-size:12px;color:#888;background:#fef9e7;padding:10px 12px;border-radius:8px;margin-top:4px;">
           ⚠️ חזרה לדיפו דרך D4 (L1→D4) מותרת תמיד — ההגבלה חלה רק על יציאה מהדיפו.
         </div>
-        <div class="ssection-title" style="margin-top:18px;">סיסמת מנהל</div>
-        <div class="sfield-grid">
-          <div class="sfield"><label>סיסמה נוכחית</label><input type="password" id="si_pass1" placeholder="סיסמה חדשה"><div class="sfield-note">השאר ריק לאי-שינוי</div></div>
-          <div class="sfield"><label>אימות סיסמה</label><input type="password" id="si_pass2" placeholder="חזור על הסיסמה"></div>
-        </div>
-        <div class="login-err" id="si_passErr" style="text-align:right;margin-top:4px;"></div>
       </div>
 
       <div id="si-shifts" class="si-panel" style="display:none;">
@@ -3378,6 +3364,27 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
         <button onclick="addTaskDef()" style="width:100%;padding:9px;border:2px dashed var(--secondary);background:#eaf2fb;color:var(--secondary);border-radius:8px;cursor:pointer;font-size:13px;font-weight:bold;margin:0;">+ הוסף סוג משימה</button>
       </div>
 
+      <div id="si-passwords" class="si-panel" style="display:none;">
+        <div class="ssection-title">סיסמת מנהל</div>
+        <div class="sfield-grid">
+          <div class="sfield"><label>סיסמה נוכחית</label><input type="password" id="si_pass1" placeholder="סיסמה חדשה"><div class="sfield-note">השאר ריק לאי-שינוי</div></div>
+          <div class="sfield"><label>אימות סיסמה</label><input type="password" id="si_pass2" placeholder="חזור על הסיסמה"></div>
+        </div>
+        <div class="login-err" id="si_passErr" style="text-align:right;margin-top:4px;"></div>
+
+        <div class="ssection-title" style="margin-top:22px;">סיסמת חונכים</div>
+        <div style="display:flex;gap:8px;margin-bottom:4px;">
+          <input type="password" id="si_mentorPass1" placeholder="סיסמה חדשה לכל החונכים" style="flex:1;padding:9px 12px;border:1.5px solid #ddd;border-radius:8px;font-size:14px;margin:0;">
+          <input type="password" id="si_mentorPass2" placeholder="אימות סיסמה" style="flex:1;padding:9px 12px;border:1.5px solid #ddd;border-radius:8px;font-size:14px;margin:0;">
+        </div>
+        <div class="login-err" id="si_mentorPassErr" style="text-align:right;margin-bottom:8px;"></div>
+        <div style="font-size:11px;color:#aaa;margin-bottom:8px;">סיסמה אחת משותפת לכל החונכים. השאר ריק לאי-שינוי.</div>
+
+        <div style="font-size:11px;color:#888;margin-top:18px;padding:10px 12px;background:#f8faff;border-radius:8px;border:1px dashed #c5d8f0;">
+          🔑 סיסמה אישית לכל מדריך נקבעת בטאב "מדריכים" — לחץ על סמל המפתח ליד שם המדריך.
+        </div>
+      </div>
+
       <div id="si-instrs" class="si-panel" style="display:none;">
         <div class="ssection-title" id="si_instrListTitle">רשימת מדריכים</div>
         <div id="si_settingsInstrList" style="margin-bottom:12px;max-height:320px;overflow-y:auto;border:0.5px solid #ddd;border-radius:8px;"></div>
@@ -3389,13 +3396,6 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
       </div>
 
       <div id="si-mentors" class="si-panel" style="display:none;">
-        <div class="ssection-title">סיסמת חונכים</div>
-        <div style="display:flex;gap:8px;margin-bottom:4px;">
-          <input type="password" id="si_mentorPass1" placeholder="סיסמה חדשה לכל החונכים" style="flex:1;padding:9px 12px;border:1.5px solid #ddd;border-radius:8px;font-size:14px;margin:0;">
-          <input type="password" id="si_mentorPass2" placeholder="אימות סיסמה" style="flex:1;padding:9px 12px;border:1.5px solid #ddd;border-radius:8px;font-size:14px;margin:0;">
-        </div>
-        <div class="login-err" id="si_mentorPassErr" style="text-align:right;margin-bottom:8px;"></div>
-        <div style="font-size:11px;color:#aaa;margin-bottom:18px;">סיסמה אחת משותפת לכל החונכים. השאר ריק לאי-שינוי.</div>
         <div class="ssection-title" id="si_mentorListTitle">רשימת חונכים</div>
         <div id="si_settingsMentorList" style="margin-bottom:12px;max-height:320px;overflow-y:auto;border:0.5px solid #ddd;border-radius:8px;"></div>
         <div style="display:flex;gap:8px;margin-bottom:18px;">
@@ -6730,10 +6730,29 @@ async function _tryAutoLogin(){
   }catch(e){console.warn('_tryAutoLogin:',e);}
 }
 
-function doAdminLogin(){
+async function doAdminLogin(){
 
-  const storedHash=window._adminPasswordHash||ADMIN_PASSWORD_HASH;
   const enteredHash=btoa(document.getElementById('adminPass').value);
+  let storedHash=window._adminPasswordHash||ADMIN_PASSWORD_HASH;
+
+  // Try a live check against Firebase first (matches instructor/mentor behavior),
+  // but with a short timeout + fallback to the local cache so admin is never
+  // locked out if Firebase is slow/unreachable.
+  if(window._fbDb){
+    try{
+      const live=await Promise.race([
+        _fbGet(_fbRef(_db,'auth/admin/password')),
+        new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')),3000))
+      ]);
+      if(live&&live.exists()){
+        storedHash=live.val();
+        window._adminPasswordHash=storedHash; // refresh local cache too
+      }
+    }catch(e){
+      console.warn('Live admin password check failed, using local cache:',e);
+    }
+  }
+
   if(enteredHash===storedHash){
 
     _saveSession('admin','מנהל');
@@ -11533,13 +11552,16 @@ function renderSavedRoutesList(){
 
         style="padding:6px 12px;background:#eaf2fb;color:var(--secondary);border:1.5px solid var(--secondary);border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;white-space:nowrap;">📥 טען</button>
 
-      <button onclick="deleteFavoriteRoute(${i})" title="מחק מסלול"
+      <button onclick="deleteFavoriteRoute(${i})"
 
         style="background:#fdf2f2;border:1.5px solid #e74c3c;border-radius:7px;width:30px;height:30px;cursor:pointer;font-size:16px;color:#e74c3c;display:flex;align-items:center;justify-content:center;padding:0;flex-shrink:0;">×</button>
 
     </div>`;
 
   }).join('');
+
+  const si=document.getElementById('si_savedRoutesList');
+  if(si) si.innerHTML=container.innerHTML;
 
 }
 
@@ -12159,8 +12181,9 @@ function renderTaskDefsList(){
 
     const tripBadge=t.isTrip?`<span class="trip-link-badge">🚇 מקושר לנסיעות</span>`:'';
     const mentorHiddenBadge=t.mentorHidden?`<span style="background:#f0f4f8;border:1px solid #c5d0de;border-radius:4px;padding:1px 6px;font-size:10px;color:#7f8c8d;">👁 מוסתר לחונכים</span>`:'';
+    const hiddenBadge=t.hidden?`<span style="background:#fdf2f2;border:1px solid #e74c3c;border-radius:4px;padding:1px 6px;font-size:10px;color:#e74c3c;">🙈 מוסתר מהבחירה</span>`:'';
 
-    return`<div class="task-def-card ${t.isTrip?'is-trip':''}" id="tdef_${i}">
+    return`<div class="task-def-card ${t.isTrip?'is-trip':''}" id="tdef_${i}" style="${t.hidden?'opacity:0.55;':''}">
 
       <div class="task-def-header">
 
@@ -12186,7 +12209,15 @@ function renderTaskDefsList(){
 
         </label>
 
-        ${tripBadge}${mentorHiddenBadge}
+        <label class="task-def-trip-toggle" title="הסתר משימה זו מרשימות הבחירה (משמש לעיתים רחוקות)" style="font-size:11px;color:#e74c3c;">
+
+          <input type="checkbox" ${t.hidden?'checked':''} onchange="updateTaskDefField(${i},'hidden',this.checked);renderTaskDefsList();">
+
+          הסתר מהבחירה
+
+        </label>
+
+        ${tripBadge}${mentorHiddenBadge}${hiddenBadge}
 
 
         <button class="task-def-del-btn" onclick="removeTaskDef(${i})" title="מחק משימה">×</button>
@@ -12222,6 +12253,9 @@ function renderTaskDefsList(){
     </div>`;
 
   }).join('');
+
+  const si=document.getElementById('si_taskDefsList');
+  if(si) si.innerHTML=container.innerHTML;
 
 }
 
@@ -12912,10 +12946,10 @@ function openSchedModal(date){
     if(shiftInstr){
       // Build options dynamically from SHIFT_HOURS (same as weekly schedule)
       shiftInstr.innerHTML = Object.keys(SHIFT_HOURS)
-        .filter(k=>k!=='custom')
+        .filter(k=>k!=='custom'&&!SHIFT_HOURS[k].hidden)
         .map(k=>`<option value="${k}">${(typeof SHIFT_LABELS!=='undefined'&&SHIFT_LABELS[k])||k}</option>`)
         .join('') + '<option value="custom">⏰ הגדר שעות</option>';
-      shiftInstr.value = Object.keys(SHIFT_HOURS).filter(k=>k!=='custom')[0] || 'morning';
+      shiftInstr.value = Object.keys(SHIFT_HOURS).filter(k=>k!=='custom'&&!SHIFT_HOURS[k].hidden)[0] || 'morning';
     }
     const noteInstr = document.getElementById('schedNoteInstr');
     if(noteInstr) noteInstr.value='';
@@ -12974,14 +13008,14 @@ function renderSchedAssignTable(date){
   const existing=schedData[date]||[];
 
   const shiftOpts=(sel)=>`<option value="none"${sel==='none'?' selected':''}>— לא משובץ —</option>`+
-    Object.keys(SHIFT_HOURS).filter(k=>k!=='custom')
+    Object.keys(SHIFT_HOURS).filter(k=>k!=='custom'&&!SHIFT_HOURS[k].hidden)
       .map(k=>`<option value="${k}"${sel===k?' selected':''}>${(typeof SHIFT_LABELS!=='undefined'&&SHIFT_LABELS[k])||k}</option>`)
       .join('')+
     `<option value="custom"${sel==='custom'?' selected':''}>⏰ הגדר שעות</option>`;
 
   const taskOpts=(selTask)=>'<option value=""'+((!selTask||selTask===''||selTask==='_none_')?' selected':'')+'>— ללא משימה —</option>'
     +(taskDefs.length
-      ?taskDefs.map(t=>`<option value="${t.id}"${t.id===selTask?' selected':''}>${_esc(t.icon||'')} ${_esc(t.label)}</option>`).join('')
+      ?taskDefs.filter(t=>!t.hidden).map(t=>`<option value="${t.id}"${t.id===selTask?' selected':''}>${_esc(t.icon||'')} ${_esc(t.label)}</option>`).join('')
       :`<option value="training">🚇 הדרכה</option>`)
     +'<option value="_custom_task_">✏️ הגדר משימה</option>';
 
@@ -13133,7 +13167,7 @@ function _schedAddExtraTask(btn, instrName) {
   });
 
   const taskOpts = taskDefs.length
-    ? taskDefs.map(t=>`<option value="${t.id}">${_esc(t.icon||'')} ${_esc(t.label)}</option>`).join('')
+    ? taskDefs.filter(t=>!t.hidden).map(t=>`<option value="${t.id}">${_esc(t.icon||'')} ${_esc(t.label)}</option>`).join('')
     : `<option value="training">🚇 הדרכה</option>`;
   // Find the last row for this instructor to insert after
   const allRows = [...tbody.querySelectorAll('tr')];
@@ -13147,7 +13181,7 @@ function _schedAddExtraTask(btn, instrName) {
   const _firstUnused = taskDefs.find(t => !usedTasks.has(t.id));
   const _defaultTask = _firstUnused?.id || (taskDefs[0]?.id || '');
   const taskOptsDefault = taskDefs.length
-    ? taskDefs.map(t=>`<option value="${t.id}" ${t.id===_defaultTask?'selected':''}>${_esc(t.icon||'')} ${_esc(t.label)}</option>`).join('')
+    ? taskDefs.filter(t=>!t.hidden).map(t=>`<option value="${t.id}" ${t.id===_defaultTask?'selected':''}>${_esc(t.icon||'')} ${_esc(t.label)}</option>`).join('')
     : '<option value="training">הדרכה</option>';
 
   const newRow = document.createElement('tr');
@@ -13334,6 +13368,9 @@ document.addEventListener('DOMContentLoaded',()=>{
     try{if(typeof renderSettingsInstrList==='function')renderSettingsInstrList();}catch(e){}
     try{if(typeof renderSettingsMentorList==='function')renderSettingsMentorList();}catch(e){}
     try{if(typeof renderShiftsDefList==='function')renderShiftsDefList();}catch(e){}
+    try{if(typeof renderTaskDefsList==='function')renderTaskDefsList();}catch(e){}
+    try{if(typeof loadFavoriteRoutes==='function')loadFavoriteRoutes();}catch(e){}
+    try{if(typeof renderSavedRoutesList==='function')renderSavedRoutesList();}catch(e){}
     try{populateAllInstrSelects();}catch(e){}
     // Auto-login if session exists
     try{await _tryAutoLogin();}catch(e){}
@@ -13499,11 +13536,11 @@ function addCustomSchedRow(){
 
   if(!tbody)return;
 
-  const shiftOpts=`${Object.keys(SHIFT_HOURS).filter(k=>k!=='custom').map(k=>`<option value="${k}">${(typeof SHIFT_LABELS!=='undefined'&&SHIFT_LABELS[k])||('⏰ '+k)}</option>`).join('')}<option value="custom">⏰ הגדר שעות</option><option value="custom">⏰ מותאם</option>`;
+  const shiftOpts=`${Object.keys(SHIFT_HOURS).filter(k=>k!=='custom'&&!SHIFT_HOURS[k].hidden).map(k=>`<option value="${k}">${(typeof SHIFT_LABELS!=='undefined'&&SHIFT_LABELS[k])||('⏰ '+k)}</option>`).join('')}<option value="custom">⏰ הגדר שעות</option><option value="custom">⏰ מותאם</option>`;
 
   const taskOpts='<option value="" selected>— ללא משימה —</option>'
     +(taskDefs.length
-      ?taskDefs.map(t=>`<option value="${t.id}">${_esc(t.icon||'')} ${_esc(t.label)}</option>`).join('')
+      ?taskDefs.filter(t=>!t.hidden).map(t=>`<option value="${t.id}">${_esc(t.icon||'')} ${_esc(t.label)}</option>`).join('')
       :'<option value="training">🚇 הדרכה</option>');
 
   const isMentorModeNow=(_schedTableMode==='mentor');
@@ -13726,6 +13763,27 @@ function switchSchedDayTab(date){
 
 }
 
+// ══ Visual warning: flag shift rows with no task selected (red border) ══
+function _sweepTaskMissing(root){
+  (root||document).querySelectorAll('select.sched-row-task, select.sched-extra-task, select.wsched-task-sel').forEach(sel=>{
+    sel.classList.toggle('task-missing', sel.value==='');
+  });
+}
+document.addEventListener('change',e=>{
+  const sel=e.target;
+  if(sel&&sel.matches&&sel.matches('select.sched-row-task, select.sched-extra-task, select.wsched-task-sel')){
+    sel.classList.toggle('task-missing', sel.value==='');
+  }
+});
+document.addEventListener('DOMContentLoaded',()=>{
+  ['schedAssignBody','weeklySchedTable'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(!el)return;
+    _sweepTaskMissing(el);
+    new MutationObserver(()=>_sweepTaskMissing(el)).observe(el,{childList:true,subtree:true});
+  });
+});
+
 function saveCurrentTabState(){
 
   // Collect current table state into _schedModalPendingSaves
@@ -13742,7 +13800,7 @@ function saveCurrentTabState(){
     const name=isCustom?(row.querySelector('.sched-row-custom-name')?.value.trim()||'')
       :(row.dataset.name||'');
     const shift=row.querySelector('.sched-row-shift')?.value||'none';
-    const task=row.querySelector('.sched-row-task')?.value||(taskDefs[0]?.id||'training');
+    const task=row.querySelector('.sched-row-task')?.value||'';
     const note=row.querySelector('.sched-row-note')?.value.trim()||'';
     if(name&&shift!=='none') saves.push({name,shift,task,note,isCustom});
   });
@@ -13754,7 +13812,7 @@ function saveCurrentTabState(){
     const mainRow=document.querySelector(`#schedAssignBody .sched-assign-row[data-name="${CSS.escape(name)}"]`);
     const shift=mainRow?.querySelector('.sched-row-shift')?.value||'none';
     if(shift==='none')return; // only save extra tasks if main row has a shift
-    const task=row.querySelector('.sched-extra-task')?.value||(taskDefs[0]?.id||'training');
+    const task=row.querySelector('.sched-extra-task')?.value||'';
     const note=row.querySelector('.sched-extra-note')?.value.trim()||'';
     // Validate: skip if same task already in saves for this instructor (duplicate prevention)
     const isDup = saves.some(s => s.name===name && s.task===task);
@@ -13948,7 +14006,7 @@ async function submitAllSchedTabs(approved=false){
       // Normalize custom task id: _ct_Name → task_Name
       const taskId=(s.task||'').startsWith('_ct_')
         ?'task_'+s.task.slice(4).replace(/\s+/g,'_').replace(/[^a-zA-Z0-9_\u05D0-\u05EA]/g,'')
-        :(s.task||(taskDefs[0]?.id||'training'));
+        :(s.task||'');
 
       // For extra tasks: match by name + _extraTask + task to avoid overwriting main entry
       const existing = s._extraTask
@@ -14027,7 +14085,7 @@ function collectTableRows(){
 
     const shift=row.querySelector('.sched-row-shift')?.value||'none';
 
-    const task=row.querySelector('.sched-row-task')?.value||(taskDefs[0]?.id||'training');
+    const task=row.querySelector('.sched-row-task')?.value||'';
 
     const note=row.querySelector('.sched-row-note')?.value.trim()||'';
 
@@ -14048,7 +14106,7 @@ function collectTableRows(){
     const shift=mainRow?.querySelector('.sched-row-shift')?.value||'none';
     const role=mainRow?.dataset.schedRole || 'instructor';
     if(shift==='none')return;
-    const task=row.querySelector('.sched-extra-task')?.value||(taskDefs[0]?.id||'training');
+    const task=row.querySelector('.sched-extra-task')?.value||'';
     const note=row.querySelector('.sched-extra-note')?.value.trim()||'';
     const isDupCtr = result.some(s => s.name===name && s.task===task);
     if(!isDupCtr) result.push({name,shift,task,note,isCustom:false,_extraTask:true,role});
@@ -14295,11 +14353,11 @@ function renderWeeklySchedTable(){
 
     last.toLocaleDateString('he-IL',{day:'numeric',month:'long',year:'numeric'});
 
-  const shiftOpts=`<option value="none">—</option>${Object.keys(SHIFT_HOURS).filter(k=>k!=='custom').map(k=>`<option value="${k}">${(typeof SHIFT_LABELS!=='undefined'&&SHIFT_LABELS[k])||('⏰ '+k)}</option>`).join('')}<option value="custom">⏰ הגדר שעות</option>`;
+  const shiftOpts=`<option value="none">—</option>${Object.keys(SHIFT_HOURS).filter(k=>k!=='custom'&&!SHIFT_HOURS[k].hidden).map(k=>`<option value="${k}">${(typeof SHIFT_LABELS!=='undefined'&&SHIFT_LABELS[k])||('⏰ '+k)}</option>`).join('')}<option value="custom">⏰ הגדר שעות</option>`;
 
   const taskOpts=(selTask='')=>'<option value=""'+((!selTask||selTask==='')?' selected':'')+'>— ללא משימה —</option>'
     +(taskDefs.length
-      ?taskDefs.map(t=>`<option value="${t.id}"${t.id===selTask?' selected':''}>${_esc(t.icon||'')} ${_esc(t.label)}</option>`).join('')
+      ?taskDefs.filter(t=>!t.hidden).map(t=>`<option value="${t.id}"${t.id===selTask?' selected':''}>${_esc(t.icon||'')} ${_esc(t.label)}</option>`).join('')
       :'<option value="training">🚇 הדרכה</option>');
 
   const isMentorMode=(_weeklyTableMode==='mentors');
@@ -14444,12 +14502,12 @@ function addWeeklyCustomRow(){
 
   const days=getWeekDays(_weeklySchedStartDate);
 
-  const shiftOpts=`<option value="none">—</option>${Object.keys(SHIFT_HOURS).filter(k=>k!=='custom').map(k=>`<option value="${k}">${(typeof SHIFT_LABELS!=='undefined'&&SHIFT_LABELS[k])||('⏰ '+k)}</option>`).join('')}<option value="custom">⏰ הגדר שעות</option>`;
+  const shiftOpts=`<option value="none">—</option>${Object.keys(SHIFT_HOURS).filter(k=>k!=='custom'&&!SHIFT_HOURS[k].hidden).map(k=>`<option value="${k}">${(typeof SHIFT_LABELS!=='undefined'&&SHIFT_LABELS[k])||('⏰ '+k)}</option>`).join('')}<option value="custom">⏰ הגדר שעות</option>`;
 
   // Define taskOpts locally (was missing — caused silent failure)
-  const taskOpts=taskDefs.length
-    ?taskDefs.map(t=>`<option value="${t.id}">${_esc(t.icon||'')} ${_esc(t.label)}</option>`).join('')
-    :'<option value="training">🚇 הדרכה</option>';
+  const taskOpts='<option value="" selected>— ללא משימה —</option>'+(taskDefs.length
+    ?taskDefs.filter(t=>!t.hidden).map(t=>`<option value="${t.id}">${_esc(t.icon||'')} ${_esc(t.label)}</option>`).join('')
+    :'<option value="training">🚇 הדרכה</option>');
 
   const tbody=document.querySelector("#weeklySchedTable table tbody");
   if(!tbody)return;
@@ -14524,7 +14582,7 @@ async function saveWeeklySchedEntries(approved=false){
 
       const taskTd=td.nextElementSibling;
 
-      const task=taskTd?.querySelector('.wsched-task-sel')?.value||(taskDefs[0]?.id||'training');
+      const task=taskTd?.querySelector('.wsched-task-sel')?.value||'';
 
       if(shift==='none'){
         // Delete only the entry matching the current role (mentor vs instructor)
@@ -15545,15 +15603,22 @@ function renderShiftsDefList(){
     const label=SHIFT_LABELS[key]||('⏰ '+key);
     const bg=SHIFT_COLORS[key]||'#f0f0f0';
     const border=SHIFT_BORDERS[key]||'#ccc';
-    return`<div style="background:${bg};border-radius:10px;padding:12px 14px;border:1px solid ${border};position:relative;">
-      <button onclick="deleteShiftDef('${key}')" title="מחק משמרת" style="position:absolute;top:6px;left:6px;background:#fdf2f2;border:1.5px solid #e74c3c;border-radius:50%;width:26px;height:26px;cursor:pointer;font-size:14px;color:#e74c3c;padding:0;line-height:1;display:flex;align-items:center;justify-content:center;font-weight:bold;">×</button>
-      <div style="font-size:13px;font-weight:bold;margin-bottom:8px;">${label}</div>
+    const isHidden=!!sh.hidden;
+    return`<div style="background:${bg};border-radius:10px;padding:12px 14px;border:1px solid ${border};position:relative;${isHidden?'opacity:0.55;':''}">
+      <button onclick="deleteShiftDef('${key}')" style="position:absolute;top:6px;left:6px;background:#fdf2f2;border:1.5px solid #e74c3c;border-radius:50%;width:26px;height:26px;cursor:pointer;font-size:14px;color:#e74c3c;padding:0;line-height:1;display:flex;align-items:center;justify-content:center;font-weight:bold;">×</button>
+      <div style="font-size:13px;font-weight:bold;margin-bottom:8px;">${label}${isHidden?' <span style="font-size:10px;color:#e74c3c;font-weight:normal;">🙈 מוסתר מהבחירה</span>':''}</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
         <div class="sfield"><label>התחלה</label><input type="time" id="sh_${key}_s" value="${sh.s}" onchange="updateShiftTime('${key}','s',this.value)"></div>
         <div class="sfield"><label>סיום</label><input type="time" id="sh_${key}_e" value="${sh.e}" onchange="updateShiftTime('${key}','e',this.value)"></div>
       </div>
+      <label style="display:flex;align-items:center;gap:6px;margin-top:8px;font-size:11px;color:#e74c3c;cursor:pointer;">
+        <input type="checkbox" ${isHidden?'checked':''} onchange="updateShiftTime('${key}','hidden',this.checked);renderShiftsDefList();" style="width:14px;height:14px;cursor:pointer;">
+        הסתר מהבחירה
+      </label>
     </div>`;
   }).join('');
+  const si=document.getElementById('si_shiftsDefList');
+  if(si) si.innerHTML=container.innerHTML;
 }
 
 // ── Shift definition persistence ──────────────────────
@@ -15649,7 +15714,7 @@ async function addCustomShiftDef(){
 // ─── FIX 2: Custom shift in sched modal dropdown ──────────
 function buildShiftOptions(currentVal){
   const baseOpts=Object.keys(SHIFT_HOURS)
-    .filter(k=>k!=='custom')
+    .filter(k=>k!=='custom'&&!SHIFT_HOURS[k].hidden)
     .map(k=>`<option value="${k}"${currentVal===k?' selected':''}>${SHIFT_LABELS[k]||k}</option>`)
     .join('');
   const customOpt=`<option value="custom"${currentVal==='custom'?' selected':''}>⏰ הגדר שעות</option>`;
@@ -16371,7 +16436,7 @@ function openInstrWeeklyModalFromDate(baseDateStr,deltaDays){
     ' – '+days[6].toLocaleDateString('he-IL',{day:'numeric',month:'long'});
 
   const shiftOpts=Object.keys(SHIFT_HOURS)
-    .filter(k=>k!=='custom')
+    .filter(k=>k!=='custom'&&!SHIFT_HOURS[k].hidden)
     .map(k=>`<option value="${k}">${(typeof SHIFT_LABELS!=='undefined'&&SHIFT_LABELS[k])||k}</option>`)
     .join('')+'<option value="custom">⏰ הגדר שעות</option>';
 
@@ -16671,7 +16736,7 @@ function _applyCustomHours(){
 function onWeeklyTaskChange(sel){
   if(sel.value!=='_custom_task_')return;
   const taskName=prompt('שם המשימה החדשה:');
-  if(!taskName||!taskName.trim()){sel.value=taskDefs[0]?.id||'training';return;}
+  if(!taskName||!taskName.trim()){sel.value='';return;}
   const name=taskName.trim();
   // Add as a temp option in this select
   const opt=document.createElement('option');
@@ -19109,7 +19174,7 @@ function openInstrAddTask(){
   const sel=document.getElementById('instrAddTaskType');
   if(sel){
     sel.innerHTML=taskDefs.length
-      ?taskDefs.map(t=>`<option value="${t.id}">${_esc(t.icon||'')} ${_esc(t.label)}</option>`).join('')
+      ?taskDefs.filter(t=>!t.hidden).map(t=>`<option value="${t.id}">${_esc(t.icon||'')} ${_esc(t.label)}</option>`).join('')
       :`<option value="training">🚇 הדרכה</option>`;
   }
   const noteEl=document.getElementById('instrAddTaskNote');
@@ -20557,6 +20622,14 @@ function toggleDelayFilter(){
 }
 
 // ══ SCHEDULE BREAKDOWN BY TASK TYPE ══════════════════════════
+let _showZeroTaskRows=(localStorage.getItem('v100_showZeroTaskRows')==='1');
+function _toggleZeroTaskRows(checked){
+  _showZeroTaskRows=checked;
+  try{localStorage.setItem('v100_showZeroTaskRows',checked?'1':'0');}catch(e){}
+  if(typeof _monthlyDashDate!=='undefined'){
+    try{_renderMonthSchedBreakdown(_monthlyDashDate.getFullYear(),_monthlyDashDate.getMonth());}catch(e){}
+  }
+}
 function _renderMonthSchedBreakdown(yr,mo){
   const wrap=document.getElementById('monthSchedBreakdown');
   if(!wrap)return;
@@ -20581,8 +20654,11 @@ function _renderMonthSchedBreakdown(yr,mo){
 
   if(!Object.keys(countByTask).length){wrap.innerHTML='';return;}
 
-  // Show ALL taskDefs (even ones with 0 assignments)
-  const rows=taskDefs.map(tDef=>{
+  // By default only show task types that had at least one assignment this
+  // month; "הצג גם משימות ללא נתונים" reveals the full list (all taskDefs).
+  const visibleDefs=_showZeroTaskRows?taskDefs:taskDefs.filter(tDef=>(countByTask[tDef.id]||0)>0);
+
+  const rows=visibleDefs.map(tDef=>{
     const cnt=countByTask[tDef.id]||0;
     const instrs=instrByTask[tDef.id]?[...instrByTask[tDef.id]].join(', '):'—';
     const instrCnt=instrByTask[tDef.id]?instrByTask[tDef.id].size:0;
@@ -20592,10 +20668,16 @@ function _renderMonthSchedBreakdown(yr,mo){
       <td style="padding:7px 10px;text-align:center;color:#888;">${cnt}</td>
       <td style="padding:7px 10px;font-size:11px;color:#555;">${cnt?instrs:'—'}</td>
     </tr>`;
-  }).join('');
+  }).join('')||`<tr><td colspan="4" style="padding:14px;text-align:center;color:#aaa;font-size:12px;">אין משימות עם שיבוצים בחודש זה</td></tr>`;
 
   wrap.innerHTML=`
-    <div style="font-size:12px;font-weight:bold;color:#888;margin-bottom:8px;letter-spacing:.3px;">📊 שיבוצים לפי משימה — החודש</div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:8px;">
+      <div style="font-size:12px;font-weight:bold;color:#888;letter-spacing:.3px;">📊 שיבוצים לפי משימה — החודש</div>
+      <label style="display:flex;align-items:center;gap:5px;font-size:11px;color:#888;cursor:pointer;">
+        <input type="checkbox" ${_showZeroTaskRows?'checked':''} onchange="_toggleZeroTaskRows(this.checked)" style="width:13px;height:13px;cursor:pointer;">
+        הצג גם משימות ללא נתונים
+      </label>
+    </div>
     <table style="width:100%;border-collapse:collapse;background:white;border-radius:10px;overflow:hidden;box-shadow:0 1px 6px rgba(0,0,0,.06);">
       <thead><tr style="background:#f5f0ff;">
         <th style="padding:8px 10px;font-size:11px;text-align:right;color:#555;border-bottom:2px solid #d9c8f5;">משימה</th>
