@@ -6894,42 +6894,31 @@ function renderSettingsMentorList(){
     container.innerHTML='<div style="padding:14px;font-size:13px;color:#aaa;text-align:center;">אין חונכים שמורים. הוסף חונך למטה.</div>';
     return;
   }
-  const perms=(typeof _mentorSchedPerms!=='undefined'&&_mentorSchedPerms)||{}; // keys are _msgKey(name)
-  const frag=document.createDocumentFragment();
-  _mentorNames.forEach((name,i)=>{
-    const row=document.createElement('div');
-    row.style.cssText='display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid #f0f4f8;';
+  // String-template with inline onclick/onchange (not addEventListener) so the
+  // markup keeps working after being mirrored via innerHTML into the inline
+  // settings tab's si_settingsMentorList container.
+  container.innerHTML=_mentorNames.map((name,i)=>{
     const isHidden=_hiddenMentors&&_hiddenMentors.has(name);
-    if(isHidden) row.style.opacity='0.6';
-    // Name label
-    const lbl=document.createElement('span');
-    lbl.style.cssText='font-size:14px;font-weight:500;flex:1;';
-    lbl.innerHTML=`<span style="color:#aaa;font-size:12px;margin-left:8px;">${i+1}.</span>`
-      +(isHidden?`<span style="text-decoration:line-through;color:#aaa;">${_esc(name)}</span>`:_esc(name));
-    // Visibility toggle
-    const visWrap=document.createElement('label');
-    visWrap.title='הצג/הסתר בשיבוצים';
-    visWrap.style.cssText='display:flex;align-items:center;gap:4px;cursor:pointer;flex-shrink:0;';
-    const visChk=document.createElement('input');
-    visChk.type='checkbox';
-    visChk.checked=isHidden;
-    visChk.style.cssText='accent-color:#e74c3c;width:15px;height:15px;cursor:pointer;';
-    visChk.addEventListener('change',()=>_setHiddenMentor(name,visChk.checked));
-    const visLbl=document.createElement('span');
-    visLbl.style.cssText=`font-size:11px;color:${isHidden?'#e74c3c':'#888'};white-space:nowrap;`;
-    visLbl.textContent=isHidden?'מוסתר משיבוצים':'הסתר משיבוצים';
-    visWrap.appendChild(visChk);visWrap.appendChild(visLbl);
-    // Delete button
-    const del=document.createElement('button');
-    del.style.cssText='background:#fdf2f2;border:1.5px solid #e74c3c;border-radius:6px;width:32px;height:32px;padding:0;cursor:pointer;font-size:18px;color:#e74c3c;display:flex;align-items:center;justify-content:center;margin:0;flex-shrink:0;';
-    del.textContent='×';
-    del.addEventListener('click',()=>removeMentor(name));
-    row.appendChild(lbl);row.appendChild(visWrap);row.appendChild(del);
-    frag.appendChild(row);
-  });
-  container.innerHTML='';
-  container.appendChild(frag);
+    const safeName=name.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    const nameDisplay=isHidden?`<span style="text-decoration:line-through;color:#aaa;">${_esc(name)}</span>`:_esc(name);
+    return`<div style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid #f0f4f8;${isHidden?'opacity:0.6':''}">
+      <span style="font-size:14px;font-weight:500;flex:1;"><span style="color:#aaa;font-size:12px;margin-left:8px;">${i+1}.</span>${nameDisplay}</span>
+      <label title="הצג/הסתר בשיבוצים" style="display:flex;align-items:center;gap:4px;cursor:pointer;flex-shrink:0;">
+        <input type="checkbox" ${isHidden?'checked':''} onchange="_setHiddenMentor('${safeName}',this.checked)"
+          style="accent-color:#e74c3c;width:15px;height:15px;cursor:pointer;">
+        <span style="font-size:11px;color:${isHidden?'#e74c3c':'#888'};white-space:nowrap;">${isHidden?'מוסתר משיבוצים':'הסתר משיבוצים'}</span>
+      </label>
+      <button onclick="removeMentor('${safeName}')"
+        style="background:#fdf2f2;border:1.5px solid #e74c3c;border-radius:6px;width:32px;height:32px;padding:0;cursor:pointer;font-size:18px;color:#e74c3c;display:flex;align-items:center;justify-content:center;margin:0;flex-shrink:0;">×</button>
+    </div>`;
+  }).join('');
+  // Keep the inline settings-tab mirror in sync immediately (no tab switch needed)
+  const siContainer=document.getElementById('si_settingsMentorList');
+  if(siContainer) siContainer.innerHTML=container.innerHTML;
+  const siTitle=document.getElementById('si_mentorListTitle');
+  if(siTitle&&titleEl) siTitle.textContent=titleEl.textContent;
 }
+
 
 async function _setHiddenInstr(name, hide){
   if(hide) _hiddenInstrs.add(name); else _hiddenInstrs.delete(name);
@@ -6951,14 +6940,21 @@ async function _setHiddenMentor(name, hide){
   try{_populateSiMentors();}catch(e){}
 }
 
+function _visibleNameInput(id1,id2){
+  const a=document.getElementById(id1), b=document.getElementById(id2);
+  if(a&&a.offsetParent!==null)return a;
+  if(b&&b.offsetParent!==null)return b;
+  return a||b;
+}
 async function addMentorFromSettings(){
-  const input=document.getElementById('newMentorName');
+  const input=_visibleNameInput('newMentorName','si_newMentorName');
   if(!input)return;
   const name=input.value.trim();
   if(!name){showToast('יש להזין שם חונך','warning');input.focus();return;}
   if(_mentorNames.includes(name)){showToast(`"${name}" כבר קיים ברשימה`,'warning');return;}
   await saveMentor(name);
-  input.value='';input.focus();
+  ['newMentorName','si_newMentorName'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  input.focus();
   showToast(`✅ החונך "${name}" נוסף בהצלחה`,'success');
 }
 
@@ -11693,7 +11689,7 @@ function applyFavoriteRouteToPlanner(i){
 
 async function addInstructorFromSettings(){
 
-  const input=document.getElementById('newInstrName');
+  const input=_visibleNameInput('newInstrName','si_newInstrName');
 
   if(!input){showToast('שגיאה: שדה שם חסר','warning');return;}
 
@@ -11716,7 +11712,7 @@ async function addInstructorFromSettings(){
 
   }
 
-  input.value='';
+  ['newInstrName','si_newInstrName'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
 
   input.focus();
 
@@ -11871,13 +11867,16 @@ function renderSettingsInstrList(){
           style="background:#eaf4fd;border:1.5px solid var(--secondary);border-radius:6px;width:32px;height:32px;padding:0;cursor:pointer;font-size:16px;color:var(--secondary);display:flex;align-items:center;justify-content:center;margin:0;flex-shrink:0;">🔑</button>
 
         <button onclick="removeInstrByIndex(${i})"
-          title="מחק מדריך"
           style="background:#fdf2f2;border:1.5px solid #e74c3c;border-radius:6px;width:32px;height:32px;padding:0;cursor:pointer;font-size:18px;color:#e74c3c;display:flex;align-items:center;justify-content:center;margin:0;flex-shrink:0;">×</button>
 
       </div>
 
     </div>`;}).join('');
 
+  const siContainer=document.getElementById('si_settingsInstrList');
+  if(siContainer) siContainer.innerHTML=container.innerHTML;
+  const siTitle=document.getElementById('si_instrListTitle');
+  if(siTitle&&titleEl) siTitle.textContent=titleEl.textContent;
 }
 
 
