@@ -771,6 +771,7 @@ body.dark-mode .login-input{background:#2d3348;border-color:#3a4060;color:#e0e6f
 
 /* Visual warning: instructor/mentor assigned to a shift with no task selected */
 select.task-missing{border:2px solid #e74c3c !important;background:#fdf2f2 !important;box-shadow:0 0 0 2px rgba(231,76,60,.15);}
+select.task-locked-vacation{background:#f0f0f0 !important;border:1.5px solid #ddd !important;color:#aaa !important;cursor:not-allowed;box-shadow:none;}
 
 .settings-body{padding:20px 24px;}
 
@@ -1022,7 +1023,7 @@ body.dark-mode .cal-cell.today{background:#1e3a5a;}
 
 .cal-cell.past{opacity:.85;}
 
-.cal-day-num{font-size:12px;font-weight:bold;color:#555;margin-bottom:3px;}
+.cal-day-num{font-size:12px;font-weight:bold;color:#555;margin-bottom:3px;position:relative;z-index:2;}
 
 body.dark-mode .cal-day-num{color:#8ab4d8;}
 
@@ -1206,6 +1207,16 @@ body.dark-mode .assign-footer{border-color:#3a4060;}
 .wsched-table th{background:#f0f5ff;color:var(--primary);padding:8px 6px;text-align:center;border:1px solid #dde8f5;font-size:12px;font-weight:700;white-space:nowrap;position:sticky;top:0;z-index:2;}
 
 .wsched-table th.wsched-instr-col{text-align:right;min-width:110px;background:#eaf0ff;}
+.wsched-table th.wsched-day-header{border-left:3px solid #9fb2d1;}
+.wsched-table th.wsched-day-header:nth-child(even){background:#dbe6fa;}
+.wsched-table td:nth-child(4n+2):not(.wsched-instr-name):not(.wsched-cell-has-entry),
+.wsched-table td:nth-child(4n+3):not(.wsched-instr-name):not(.wsched-cell-has-entry){background:#e7edf9;}
+.wsched-table td:nth-child(2n){border-left:3px solid #9fb2d1;}
+.wsched-table tbody tr.wsched-instr-row td{border-bottom:2px solid #cdd8ea;}
+body.dark-mode .wsched-table td:nth-child(4n+2):not(.wsched-instr-name):not(.wsched-cell-has-entry),
+body.dark-mode .wsched-table td:nth-child(4n+3):not(.wsched-instr-name):not(.wsched-cell-has-entry){background:#232842;}
+body.dark-mode .wsched-table th.wsched-day-header:nth-child(even){background:#232842;}
+body.dark-mode .wsched-table tbody tr.wsched-instr-row td{border-bottom:2px solid #3a4060;}
 
 .wsched-table td{padding:3px 4px;border:1px solid #eef2f8;vertical-align:middle;}
 
@@ -2320,7 +2331,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
     <!-- ══ TODAY TASKS AREA ══════════════════════════════ -->
     <div id="todayTasksCard" style="background:white;border-radius:12px;border:1px solid #dce3ec;padding:14px 16px;margin-bottom:12px;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-        <h3 style="margin:0;font-size:15px;color:var(--primary);">📅 היום</h3>
+        <h3 id="todayTasksTitle" style="margin:0;font-size:15px;color:var(--primary);">📅 היום</h3>
         <div style="display:flex;align-items:center;gap:8px;">
           <span id="todayTasksDate" style="font-size:12px;color:#888;"></span>
           <button onclick="openInstrAddTask()" style="width:auto !important;padding:4px 10px;background:#f0f8ff;border:1.5px solid #3498db;color:#2980b9;border-radius:7px;cursor:pointer;font-size:12px;font-weight:600;">+ משימה</button>
@@ -2350,6 +2361,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
           <button onclick="changeDate(-1)" style="background:#f0f4f8;border:1px solid #dde;border-radius:6px;padding:5px 10px;cursor:pointer;font-size:16px;touch-action:manipulation;">‹</button>
           <span id="instrDateLabel" style="font-size:13px;font-weight:bold;color:var(--primary);white-space:nowrap;"></span>
           <button onclick="changeDate(1)" style="background:#f0f4f8;border:1px solid #dde;border-radius:6px;padding:5px 10px;cursor:pointer;font-size:16px;touch-action:manipulation;">›</button>
+          <button id="instrBackToTodayBtn" onclick="jumpToToday()" style="display:none;width:auto !important;background:#fff3cd;border:1.5px solid #f0c674;color:#8a6d1a;border-radius:6px;padding:5px 10px;cursor:pointer;font-size:12px;font-weight:bold;white-space:nowrap;margin:0;">⤺ חזרה להיום</button>
         </div>
             </div>
       <div style="overflow-x:auto;">
@@ -2377,6 +2389,8 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
     <!-- Instructor schedule view -->
 
     <div class="schedule-section" id="instrScheduleSection">
+
+      <div id="recurringTaskWarningsInstr"></div>
 
       <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px;">
 
@@ -2516,6 +2530,8 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
       
     </div>
 
+    <div id="recurringTaskWarnings"></div>
+
     <div class="kpi-grid" id="kpiGrid"><div style="color:#aaa;font-size:13px;">אין נסיעות להיום</div></div>
 
     <div id="dashBarsWrap"></div>
@@ -2614,7 +2630,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 
 <div class="assign-overlay" id="weeklySchedModal" style="z-index:500;">
 
-  <div class="assign-box" style="width:min(98vw,1200px);max-height:92vh;overflow-y:auto;">
+  <div class="assign-box" style="width:min(99vw,1650px);max-height:95vh;overflow-y:auto;">
 
     <div class="assign-head" style="position:relative;">
 
@@ -2641,12 +2657,12 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
     <div style="padding:0 18px 8px;">
 
       <!-- Mode toggle: instructors / mentors -->
-      <div style="display:flex;gap:6px;margin-bottom:10px;align-items:center;flex-wrap:wrap;">
-        <span style="font-size:12px;color:#888;font-weight:bold;">שיבוץ:</span>
+      <div style="display:flex;gap:6px;margin-bottom:8px;align-items:center;flex-wrap:wrap;">
+        <span style="font-size:11px;color:#888;font-weight:bold;">שיבוץ:</span>
         <button id="weeklyModeInstrBtn" onclick="setWeeklyTableMode('instructors')"
-          style="padding:6px 14px;border-radius:7px;border:2px solid var(--secondary);background:var(--secondary);color:white;cursor:pointer;font-size:12px;font-weight:bold;">👨‍🏫 מדריכים</button>
+          style="padding:3px 10px;border-radius:6px;border:1.5px solid var(--secondary);background:var(--secondary);color:white;cursor:pointer;font-size:11px;font-weight:bold;width:auto !important;margin:0;">👨‍🏫 מדריכים</button>
         <button id="weeklyModeMentorBtn" onclick="setWeeklyTableMode('mentors')"
-          style="padding:6px 14px;border-radius:7px;border:2px solid #8e44ad;background:white;color:#8e44ad;cursor:pointer;font-size:12px;font-weight:bold;">🎓 חונכים</button>
+          style="padding:3px 10px;border-radius:6px;border:1.5px solid #8e44ad;background:white;color:#8e44ad;cursor:pointer;font-size:11px;font-weight:bold;width:auto !important;margin:0;">🎓 חונכים</button>
       </div>
 
       <div id="weeklySchedTable" style="overflow-x:auto;"></div>
@@ -7964,6 +7980,7 @@ function _initBusListeners(){
 function enterApp(role,name){
   _migrateLocalStorage();
   _initBusListeners();
+  currentDate=_localDateStr(new Date()); // always start a fresh session on today, not a stale navigated date
 
   currentRole=role; currentUserName=name;
   _updateDemoBtnVisibility();
@@ -11336,6 +11353,7 @@ async function loadSettings(){
 
   applySettings();
   await loadTaskDefs();
+  try{await _loadRecurringTaskTracking();}catch(e){}
   // Load custom shift definitions too
   try{await _loadShiftsFromStorage();}catch(e){console.warn('shift load failed:',e);}
 
@@ -12182,6 +12200,7 @@ function renderTaskDefsList(){
     const tripBadge=t.isTrip?`<span class="trip-link-badge">🚇 מקושר לנסיעות</span>`:'';
     const mentorHiddenBadge=t.mentorHidden?`<span style="background:#f0f4f8;border:1px solid #c5d0de;border-radius:4px;padding:1px 6px;font-size:10px;color:#7f8c8d;">👁 מוסתר לחונכים</span>`:'';
     const hiddenBadge=t.hidden?`<span style="background:#fdf2f2;border:1px solid #e74c3c;border-radius:4px;padding:1px 6px;font-size:10px;color:#e74c3c;">🙈 מוסתר מהבחירה</span>`:'';
+    const recurringBadge=t.recurring?`<span style="background:#eaf2fb;border:1px solid #b8d4f0;border-radius:4px;padding:1px 6px;font-size:10px;color:#2980b9;">🔁 כל ${t.recurrenceDays||30} ימים</span>`:'';
 
     return`<div class="task-def-card ${t.isTrip?'is-trip':''}" id="tdef_${i}" style="${t.hidden?'opacity:0.55;':''}">
 
@@ -12217,7 +12236,21 @@ function renderTaskDefsList(){
 
         </label>
 
-        ${tripBadge}${mentorHiddenBadge}${hiddenBadge}
+        <label class="task-def-trip-toggle" title="להתריע כשעובר יותר מדי זמן בלי שיבוץ חוזר של משימה זו" style="font-size:11px;color:#2980b9;">
+
+          <input type="checkbox" ${t.recurring?'checked':''} onchange="updateTaskDefField(${i},'recurring',this.checked);renderTaskDefsList();">
+
+          משימה חוזרת
+
+        </label>
+
+        ${t.recurring?`<span style="display:flex;align-items:center;gap:4px;font-size:11px;color:#555;">
+          כל
+          <input type="number" min="1" max="365" value="${t.recurrenceDays||30}" onchange="updateTaskDefField(${i},'recurrenceDays',parseInt(this.value)||30)" style="width:52px;padding:3px 5px;border:1.5px solid #ddd;border-radius:5px;font-size:12px;text-align:center;">
+          ימים
+        </span>`:''}
+
+        ${tripBadge}${mentorHiddenBadge}${hiddenBadge}${recurringBadge}
 
 
         <button class="task-def-del-btn" onclick="removeTaskDef(${i})" title="מחק משימה">×</button>
@@ -12398,7 +12431,34 @@ function renderDailyScheduleSummary(){
 
   const SHIFT_ICO={morning:'🌅',afternoon:'☀️',evening:'🌙',custom:'⏰'};
 
-  const rows=Object.entries(byInstr).map(([name,entries])=>{
+  // Sort + group instructors by their primary shift's start time (day-order: morning → afternoon → evening → ...).
+  // Anyone whose primary shift has no defined start time sorts to the very end, under "ללא שעה מוגדרת".
+  const _primaryEntry=(entries)=>entries.find(e=>!e._extraTask)||entries[0];
+  const _primaryStart=(entries)=>{
+    const p=_primaryEntry(entries);
+    if(!p)return '99:99';
+    if(p.shift==='custom')return p.startTime||'99:99';
+    return SHIFT_HOURS[p.shift]?.s||'99:99';
+  };
+  const _groupLabel=(entries)=>{
+    const p=_primaryEntry(entries);
+    if(!p)return 'ללא שעה מוגדרת';
+    const start=p.shift==='custom'?p.startTime:SHIFT_HOURS[p.shift]?.s;
+    if(!start)return 'ללא שעה מוגדרת';
+    return `${SHIFT_ICO[p.shift]||'⏰'} ${SHIFT_LABELS[p.shift]||p.shift} (${start})`;
+  };
+  const sortedInstrNames=Object.keys(byInstr).sort((a,b)=>{
+    const sa=_primaryStart(byInstr[a]), sb=_primaryStart(byInstr[b]);
+    if(sa!==sb)return sa<sb?-1:1;
+    return a.localeCompare(b,'he');
+  });
+
+  let _lastGroup=null;
+  const rows=sortedInstrNames.map(name=>{
+    const entries=byInstr[name];
+    const grp=_groupLabel(entries);
+    const groupHeaderRow=(grp!==_lastGroup)?`<tr><td colspan="2" style="background:#eaf1fb;color:#4a6fa5;font-size:11px;font-weight:bold;padding:5px 10px;">${grp}</td></tr>`:'';
+    _lastGroup=grp;
     const cells=entries.map(e=>{
       const tDef=taskDefs.find(t=>t.id===e.task)||{label:e.task||'?',icon:'📋'};
       const sh=SHIFT_HOURS[e.shift]||{s:e.startTime||'',e:e.endTime||''};
@@ -12411,7 +12471,7 @@ function renderDailyScheduleSummary(){
         ${noteTag}
       </span>`;
     }).join('');
-    return`<tr>
+    return`${groupHeaderRow}<tr>
       <td style="font-weight:bold;font-size:13px;padding:6px 10px;white-space:nowrap;border-bottom:1px solid #eee;">${_esc(name)}</td>
       <td style="padding:6px 10px;border-bottom:1px solid #eee;">${cells}</td>
     </tr>`;
@@ -12702,7 +12762,86 @@ function startSchedSync(){
 }
 
 
+// ══ Recurring task tracking (last-assigned date per instructor per task) ══
+let _recurringLastDate={}; // {name: {taskId: 'YYYY-MM-DD'}}
+function _rtKey(name){return btoa(unescape(encodeURIComponent(name))).replace(/[^a-zA-Z0-9]/g,'');}
+async function _updateRecurringTaskTracking(date,entry){
+  try{
+    const tDef=(typeof taskDefs!=='undefined'?taskDefs:[]).find(t=>t.id===entry.task);
+    if(!tDef||!tDef.recurring||!entry.name)return;
+    if(!_recurringLastDate[entry.name])_recurringLastDate[entry.name]={};
+    const prev=_recurringLastDate[entry.name][entry.task];
+    if(prev&&prev>=date)return; // only track the most recent occurrence
+    _recurringLastDate[entry.name][entry.task]=date;
+    try{localStorage.setItem('v100_recurringLastDate',JSON.stringify(_recurringLastDate));}catch(e){}
+    if(window._fbDb){
+      try{await _fbSet(_fbRef(_db,'recurringTracking/'+entry.task+'/'+_rtKey(entry.name)),{name:entry.name,date});}catch(e){}
+    }
+  }catch(e){console.warn('_updateRecurringTaskTracking:',e);}
+}
+async function _loadRecurringTaskTracking(){
+  _recurringLastDate={};
+  try{
+    const raw=localStorage.getItem('v100_recurringLastDate');
+    if(raw)_recurringLastDate=JSON.parse(raw);
+  }catch(e){_recurringLastDate={};}
+  if(!window._fbDb)return;
+  try{
+    const snap=await _fbGet(_fbRef(_db,'recurringTracking'));
+    if(snap.exists()){
+      const all=snap.val();
+      Object.keys(all).forEach(taskId=>{
+        Object.values(all[taskId]||{}).forEach(v=>{
+          if(!v||!v.name||!v.date)return;
+          if(!_recurringLastDate[v.name])_recurringLastDate[v.name]={};
+          const prev=_recurringLastDate[v.name][taskId];
+          if(!prev||v.date>prev)_recurringLastDate[v.name][taskId]=v.date;
+        });
+      });
+      try{localStorage.setItem('v100_recurringLastDate',JSON.stringify(_recurringLastDate));}catch(e){}
+    }
+  }catch(e){console.warn('_loadRecurringTaskTracking:',e);}
+}
+// Compute overdue/soon-due recurring-task warnings for one instructor (or all, if name omitted)
+function _getRecurringTaskWarnings(forName){
+  const warnings=[];
+  const today=_localDateStr(new Date());
+  const names=forName?[forName]:(typeof _instrNames!=='undefined'?_instrNames:[]);
+  const recurringDefs=(typeof taskDefs!=='undefined'?taskDefs:[]).filter(t=>t.recurring&&t.recurrenceDays);
+  names.forEach(name=>{
+    recurringDefs.forEach(tDef=>{
+      const lastDate=_recurringLastDate[name]?.[tDef.id];
+      if(!lastDate)return; // never assigned yet — nothing to compare against
+      const daysSince=Math.floor((new Date(today+'T12:00:00')-new Date(lastDate+'T12:00:00'))/86400000);
+      if(daysSince<tDef.recurrenceDays-1)return; // not due yet (warn from 1 day before the full period elapses)
+      // Check today's schedule for a conflict (already has a shift, or on vacation)
+      const todaysEntries=(schedData[today]||[]).filter(e=>e.name===name);
+      let conflict=null;
+      if(todaysEntries.some(e=>_isVacationShiftKey(e.shift))) conflict='בחופש';
+      else if(todaysEntries.length) conflict='תפוס ביום זה';
+      warnings.push({name,taskId:tDef.id,taskLabel:tDef.label,taskIcon:tDef.icon,daysSince,frequency:tDef.recurrenceDays,conflict});
+    });
+  });
+  return warnings;
+}
+function _renderRecurringTaskWarnings(){
+  const fmtRow=(w)=>{
+    const conflictNote=w.conflict?` <span style="color:#e74c3c;font-weight:bold;">(${w.conflict})</span>`:'';
+    return `<div style="padding:6px 10px;font-size:12.5px;">⚠️ <b>${_esc(w.name)}</b> — ${w.daysSince} ימים בלי ${_esc(w.taskIcon||'')} ${_esc(w.taskLabel)} (תדירות: כל ${w.frequency} ימים)${conflictNote}</div>`;
+  };
+  const adminEl=document.getElementById('recurringTaskWarnings');
+  if(adminEl){
+    const warnings=_getRecurringTaskWarnings();
+    adminEl.innerHTML=warnings.length?`<div style="background:#fff9e6;border:1px solid #f0d98c;border-radius:8px;margin-bottom:12px;overflow:hidden;">${warnings.map(fmtRow).join('<div style="border-top:1px solid #f5e9c0;"></div>')}</div>`:'';
+  }
+  const instrEl=document.getElementById('recurringTaskWarningsInstr');
+  if(instrEl){
+    const warnings=(typeof currentUserName!=='undefined'&&currentRole!=='admin')?_getRecurringTaskWarnings(currentUserName):[];
+    instrEl.innerHTML=warnings.length?`<div style="background:#fff9e6;border:1px solid #f0d98c;border-radius:8px;margin-bottom:10px;overflow:hidden;">${warnings.map(fmtRow).join('<div style="border-top:1px solid #f5e9c0;"></div>')}</div>`:'';
+  }
+}
 async function saveSchedEntry(date,entry){
+  _updateRecurringTaskTracking(date,entry); // fire-and-forget, cheap tracking update
   // 1. Update in-memory
   if(!schedData[date])schedData[date]=[];
   const idx=schedData[date].findIndex(e=>e.id===entry.id);
@@ -12782,6 +12921,7 @@ function renderCalendar(){
   // Update approval badge count
   try{updateApprovalBadge();}catch(e){}
   try{checkCoverageAlerts();}catch(e){}
+  try{_renderRecurringTaskWarnings();}catch(e){}
 
   const managerCal=document.getElementById('calGrid');
 
@@ -12863,7 +13003,7 @@ function renderCalendar(){
     const useInstructorLayout = forInstructor && !isAdmin;
     if(useInstructorLayout&&_sorted.length>=1){
       // Instructor: position entry vertically by shift
-      const shiftTopMap={morning:'4px',afternoon:'28%',evening:'55%'};
+      const shiftTopMap={morning:'22px',afternoon:'42%',evening:'66%'};
       const shiftLblMap={morning:'🌅 בוקר',afternoon:'☀️ צהריים',evening:'🌙 ערב'};
       _entryHtml=_sorted.map(e=>{
         const sk=e.shift||'morning';
@@ -13764,15 +13904,44 @@ function switchSchedDayTab(date){
 }
 
 // ══ Visual warning: flag shift rows with no task selected (red border) ══
+// ══ + lock task selection entirely when the shift is a "vacation" type ══
+function _isVacationShiftKey(key){
+  return /חופש/.test((typeof SHIFT_LABELS!=='undefined'&&SHIFT_LABELS[key])||'');
+}
+function _applyTaskCellState(shiftVal, taskSel){
+  if(!taskSel)return;
+  const noShift=(!shiftVal||shiftVal==='none');
+  const vac=_isVacationShiftKey(shiftVal);
+  taskSel.disabled=vac;
+  taskSel.title=vac?'לא רלוונטי — המדריך/חונך משובץ ל"חופש"':'';
+  taskSel.classList.toggle('task-locked-vacation',vac);
+  if(vac){taskSel.value='';taskSel.classList.remove('task-missing');}
+  else if(noShift){taskSel.classList.remove('task-missing');} // no shift assigned at all → nothing to warn about
+  else{taskSel.classList.toggle('task-missing', taskSel.value==='');}
+}
 function _sweepTaskMissing(root){
-  (root||document).querySelectorAll('select.sched-row-task, select.sched-extra-task, select.wsched-task-sel').forEach(sel=>{
-    sel.classList.toggle('task-missing', sel.value==='');
+  root=root||document;
+  // Daily table: main row (shift + task in same <tr>)
+  root.querySelectorAll('tr.sched-assign-row').forEach(row=>{
+    _applyTaskCellState(row.querySelector('.sched-row-shift')?.value, row.querySelector('.sched-row-task'));
+  });
+  // Daily table: extra-task rows follow the main row's shift for that instructor
+  root.querySelectorAll('tr.sched-extra-task-row').forEach(row=>{
+    const name=row.dataset.extraName;
+    const mainRow=name&&document.querySelector(`#schedAssignBody tr.sched-assign-row[data-name="${CSS.escape(name)}"]`);
+    if(mainRow) _applyTaskCellState(mainRow.querySelector('.sched-row-shift')?.value, row.querySelector('.sched-extra-task'));
+  });
+  // Weekly table: shift <td> and its next-sibling task <td>
+  root.querySelectorAll('select.wsched-shift-sel').forEach(shiftSel=>{
+    const taskSel=shiftSel.closest('td')?.nextElementSibling?.querySelector('.wsched-task-sel');
+    _applyTaskCellState(shiftSel.value, taskSel);
   });
 }
 document.addEventListener('change',e=>{
   const sel=e.target;
-  if(sel&&sel.matches&&sel.matches('select.sched-row-task, select.sched-extra-task, select.wsched-task-sel')){
-    sel.classList.toggle('task-missing', sel.value==='');
+  if(!sel||!sel.matches)return;
+  if(sel.matches('select.sched-row-task, select.sched-extra-task, select.wsched-task-sel, .sched-row-shift, .wsched-shift-sel')){
+    _sweepTaskMissing(sel.closest('table')||document);
   }
 });
 document.addEventListener('DOMContentLoaded',()=>{
@@ -15721,6 +15890,14 @@ function buildShiftOptions(currentVal){
   return `<option value="none">—</option>${baseOpts}${customOpt}`;
 }
 
+function jumpToToday(){
+  currentDate=_localDateStr(new Date());
+  window._taskReportsCache={};window._taskReportsCacheDate=null;
+  try{updateDateLabel();}catch(e){}
+  try{renderInstrTripJournal();}catch(e){}
+  try{loadTaskReportsForDate(currentDate).then(()=>renderTodayTasks()).catch(()=>renderTodayTasks());}catch(e){renderTodayTasks();}
+  try{renderCalendar();}catch(e){}
+}
 // ─── FIX 4+5: Instructor trip journal ────────────────────
 
 function renderInstrTripJournal(){
@@ -15729,9 +15906,14 @@ function renderInstrTripJournal(){
 
   // Update date label
   const lblEl=document.getElementById('instrDateLabel');
+  const isToday=(currentDate===_localDateStr(new Date()));
+  const backBtn=document.getElementById('instrBackToTodayBtn');
+  if(backBtn)backBtn.style.display=isToday?'none':'inline-block';
   if(lblEl){
     const d=new Date(currentDate+'T12:00:00');
-    lblEl.textContent=d.toLocaleDateString('he-IL',{weekday:'short',day:'numeric',month:'long',year:'numeric'});
+    const dStr=d.toLocaleDateString('he-IL',{weekday:'short',day:'numeric',month:'long',year:'numeric'});
+    lblEl.innerHTML=isToday?dStr:`${dStr} <span style="background:#fff3cd;color:#8a6d1a;border-radius:5px;padding:1px 6px;font-size:11px;font-weight:bold;margin-right:4px;">לא היום</span>`;
+    lblEl.style.color=isToday?'var(--primary)':'#b8860b';
   }
 
   // Filter trips for this instructor
@@ -18307,10 +18489,14 @@ function renderTodayTasks(){
 
   // Use currentDate (tracks admin date-navigation; for instructors currentDate == real today)
   const today=currentDate||_localDateStr(new Date());
+  const isReallyToday=(today===_localDateStr(new Date()));
   if(dateLbl){
     const d=new Date(today+'T12:00:00');
-    dateLbl.textContent=d.toLocaleDateString('he-IL',{weekday:'short',day:'numeric',month:'long'});
+    const dStr=d.toLocaleDateString('he-IL',{weekday:'short',day:'numeric',month:'long'});
+    dateLbl.innerHTML=isReallyToday?dStr:`${dStr} <span style="background:#fff3cd;color:#8a6d1a;border-radius:5px;padding:1px 6px;font-size:10px;font-weight:bold;">לא היום</span>`;
   }
+  const titleEl=document.getElementById('todayTasksTitle');
+  if(titleEl)titleEl.style.color=isReallyToday?'var(--primary)':'#b8860b';
 
   const entries=(schedData[today]||[]).filter(e=>e.name===currentUserName);
   if(!entries.length){
