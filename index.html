@@ -4010,7 +4010,7 @@ window.TraineeSystem = {
       <button class="ts-stab" data-ts-tab="instructors">👨‍🏫 מדריכים</button>
       <button class="ts-stab" data-ts-tab="courses">📚 קורסים</button>
       <button class="ts-stab" data-ts-tab="reportfields">📋 שדות דיווח</button>
-      <button class="ts-stab" data-ts-tab="milestones">🏁 מיילסטונים</button>
+      <button class="ts-stab" data-ts-tab="milestones">🏁 אבני דרך</button>
       <button class="ts-stab" data-ts-tab="mentors">🎓 חונכים</button>
       <button class="ts-stab" data-ts-tab="highlights" id="ts-tab-highlights-btn" style="display:none;">📌 דגשי ביצוע</button>
     </div>
@@ -6343,6 +6343,9 @@ window.TraineeSystem = {
         this.renderList();
         this.renderInsTags();
         this._updateCourseSelector();
+        // Refresh the analytics dashboard (risk/inactive/scores) to reflect the newly selected course
+        window._traineeSummaryCache = null;
+        try{_renderTraineeSummaryPanel();}catch(e){}
         const isArchived = course.status === 'archived';
         // Disable add-trainee button for archived courses
         const addBtn = this.$('ts-add-trainee-btn');
@@ -21766,7 +21769,7 @@ function _renderTraineeSummaryPanel() {
   if(summary.milestoneStats){
     var ms=summary.milestoneStats;var tot=summary.activeTrainees||1;
     var msDefs=[['טסט 10',ms.test10,'#3498db'],['טסט 30',ms.test30,'#f39c12'],['טסט 50',ms.test50,'#8e44ad'],['תנאי חניכה',ms.chinuchMs,'#e67e22']];
-    h.push('<div style="background:white;border:1px solid #e8edf5;border-radius:10px;padding:12px 16px;margin-bottom:12px;direction:rtl;"><div style="font-size:13px;font-weight:bold;color:#2c3e50;margin-bottom:8px;">🏆 מיילסטונים</div><div style="display:flex;flex-direction:column;gap:6px;">');
+    h.push('<div style="background:white;border:1px solid #e8edf5;border-radius:10px;padding:12px 16px;margin-bottom:12px;direction:rtl;"><div style="font-size:13px;font-weight:bold;color:#2c3e50;margin-bottom:8px;">🏆 אבני דרך</div><div style="display:flex;flex-direction:column;gap:6px;">');
     msDefs.forEach(function(m){var p=tot>0?Math.round((m[1]/tot)*100):0;h.push('<div style="display:flex;align-items:center;gap:10px;"><div style="width:80px;font-size:12px;color:#555;text-align:right;">'+m[0]+'</div><div style="flex:1;background:#f0f4f8;border-radius:6px;height:12px;overflow:hidden;"><div style="height:100%;border-radius:6px;background:'+m[2]+';width:'+p+'%;"></div></div><div style="width:50px;font-size:12px;color:#555;text-align:center;">'+m[1]+'/'+tot+'</div></div>');});
     h.push('</div></div>');
   }
