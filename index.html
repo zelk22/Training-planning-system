@@ -12609,7 +12609,7 @@ async function executeCopyDay(){
 
 let TASK_LABELS={training:'🚇 הדרכה',orbus:'🚌 קורס מעשי אורבוס',maintenance:'🔧 אחזקה',drivers:'🚌 הדרכת נהגים',passengers:'👥 הדרכת נוסעים',rest:'💤 מנוחה',other:'📋 אחר'};
 
-const SHIFT_LABELS={morning:'🌅 בוקר',afternoon:'☀️ צהריים',evening:'🌙 ערב',custom:'⏰ הגדר שעות'};
+const SHIFT_LABELS={morning:'🌅 בוקר',afternoon:'☀️ צהריים',evening:'🌙 ערב',custom:'⏰ משמרת מותאמת'};
 
 let SHIFT_HOURS={morning:{s:'06:00',e:'14:00'},afternoon:{s:'14:00',e:'22:00'},evening:{s:'22:00',e:'06:00'},custom:{s:'07:00',e:'15:30'}};
 
@@ -13091,7 +13091,7 @@ function openSchedModal(date){
       shiftInstr.innerHTML = Object.keys(SHIFT_HOURS)
         .filter(k=>k!=='custom'&&!SHIFT_HOURS[k].hidden)
         .map(k=>`<option value="${k}">${(typeof SHIFT_LABELS!=='undefined'&&SHIFT_LABELS[k])||k}</option>`)
-        .join('') + '<option value="custom">⏰ הגדר שעות</option>';
+        .join('') + '<option value="custom">⏰ משמרת מותאמת</option>';
       shiftInstr.value = Object.keys(SHIFT_HOURS).filter(k=>k!=='custom'&&!SHIFT_HOURS[k].hidden)[0] || 'morning';
     }
     const noteInstr = document.getElementById('schedNoteInstr');
@@ -13154,7 +13154,7 @@ function renderSchedAssignTable(date){
     Object.keys(SHIFT_HOURS).filter(k=>k!=='custom'&&!SHIFT_HOURS[k].hidden)
       .map(k=>`<option value="${k}"${sel===k?' selected':''}>${(typeof SHIFT_LABELS!=='undefined'&&SHIFT_LABELS[k])||k}</option>`)
       .join('')+
-    `<option value="custom"${sel==='custom'?' selected':''}>⏰ הגדר שעות</option>`;
+    `<option value="custom"${sel==='custom'?' selected':''}>⏰ משמרת מותאמת</option>`;
 
   const taskOpts=(selTask)=>'<option value=""'+((!selTask||selTask===''||selTask==='_none_')?' selected':'')+'>— ללא משימה —</option>'
     +(taskDefs.length
@@ -13185,6 +13185,8 @@ function renderSchedAssignTable(date){
     const shift=pendingEntry?pendingEntry.shift:(entry?entry.shift:'none');
     const task=pendingEntry?pendingEntry.task:(entry?entry.task:'');
     const note=pendingEntry?pendingEntry.note:(entry?entry.note||'':'');
+    const savedStart=pendingEntry?pendingEntry.startTime:(entry?entry.startTime:'');
+    const savedEnd=pendingEntry?pendingEntry.endTime:(entry?entry.endTime:'');
     const hasShift=shift&&shift!=='none';
     const encodedName=name.replace(/"/g,'&quot;');
 
@@ -13204,7 +13206,7 @@ function renderSchedAssignTable(date){
     return`<tr class="sched-assign-row" data-name="${encodedName}" data-sched-role="${role}"
       style="${bgStyle} ${displayStyle}">
       <td class="sched-assign-name">${prefix}${_esc(name)}</td>
-      <td><select class="sched-row-shift" onchange="handleSchedRowShiftChange(this)">${shiftOpts(shift)}</select></td>
+      <td><select class="sched-row-shift" data-start="${savedStart||''}" data-end="${savedEnd||''}" onchange="handleSchedRowShiftChange(this)">${shiftOpts(shift)}</select></td>
       <td><select class="sched-row-task" onchange="onWeeklyTaskChange(this)">${taskOpts(task)}</select></td>
       <td><input type="text" class="sched-row-note" placeholder="הערה..." value="${note.replace(/"/g,'&quot;')}"></td>
       <td><button class="sched-add-task-btn" onclick="_schedAddExtraTask(this,'${encodedName}')" title="הוסף משימה נוספת">+ משימה</button></td>
@@ -13382,9 +13384,11 @@ function handleSchedRowShiftChange(sel){
       customCell = document.createElement('td');
       customCell.className = 'sched-row-custom-times';
       customCell.style.cssText = 'padding:4px;white-space:nowrap;';
-      customCell.innerHTML = `<input type="time" class="sched-row-start-time" value="07:00" style="width:76px;padding:4px;border:1.5px solid #ddd;border-radius:6px;font-size:13px;">
+      const startVal=sel.dataset.start||'07:00';
+      const endVal=sel.dataset.end||'15:30';
+      customCell.innerHTML = `<input type="time" class="sched-row-start-time" value="${startVal}" style="width:76px;padding:4px;border:1.5px solid #ddd;border-radius:6px;font-size:13px;">
         <span style="color:#888;font-size:11px;margin:0 2px;">–</span>
-        <input type="time" class="sched-row-end-time" value="15:30" style="width:76px;padding:4px;border:1.5px solid #ddd;border-radius:6px;font-size:13px;">`;
+        <input type="time" class="sched-row-end-time" value="${endVal}" style="width:76px;padding:4px;border:1.5px solid #ddd;border-radius:6px;font-size:13px;">`;
       shiftCell.after(customCell);
     }
     customCell.style.display='';
@@ -13679,7 +13683,7 @@ function addCustomSchedRow(){
 
   if(!tbody)return;
 
-  const shiftOpts=`${Object.keys(SHIFT_HOURS).filter(k=>k!=='custom'&&!SHIFT_HOURS[k].hidden).map(k=>`<option value="${k}">${(typeof SHIFT_LABELS!=='undefined'&&SHIFT_LABELS[k])||('⏰ '+k)}</option>`).join('')}<option value="custom">⏰ הגדר שעות</option><option value="custom">⏰ מותאם</option>`;
+  const shiftOpts=`${Object.keys(SHIFT_HOURS).filter(k=>k!=='custom'&&!SHIFT_HOURS[k].hidden).map(k=>`<option value="${k}">${(typeof SHIFT_LABELS!=='undefined'&&SHIFT_LABELS[k])||('⏰ '+k)}</option>`).join('')}<option value="custom">⏰ משמרת מותאמת</option>`;
 
   const taskOpts='<option value="" selected>— ללא משימה —</option>'
     +(taskDefs.length
@@ -13927,6 +13931,10 @@ function _sweepTaskMissing(root){
   // Daily table: main row (shift + task in same <tr>)
   root.querySelectorAll('tr.sched-assign-row').forEach(row=>{
     _applyTaskCellState(row.querySelector('.sched-row-shift')?.value, row.querySelector('.sched-row-task'));
+    const shiftSel=row.querySelector('.sched-row-shift');
+    if(shiftSel&&shiftSel.value==='custom'&&!row.querySelector('.sched-row-custom-times')){
+      handleSchedRowShiftChange(shiftSel);
+    }
   });
   // Daily table: extra-task rows follow the main row's shift for that instructor
   root.querySelectorAll('tr.sched-extra-task-row').forEach(row=>{
@@ -14525,7 +14533,7 @@ function renderWeeklySchedTable(){
 
     last.toLocaleDateString('he-IL',{day:'numeric',month:'long',year:'numeric'});
 
-  const shiftOpts=`<option value="none">—</option>${Object.keys(SHIFT_HOURS).filter(k=>k!=='custom'&&!SHIFT_HOURS[k].hidden).map(k=>`<option value="${k}">${(typeof SHIFT_LABELS!=='undefined'&&SHIFT_LABELS[k])||('⏰ '+k)}</option>`).join('')}<option value="custom">⏰ הגדר שעות</option>`;
+  const shiftOpts=`<option value="none">—</option>${Object.keys(SHIFT_HOURS).filter(k=>k!=='custom'&&!SHIFT_HOURS[k].hidden).map(k=>`<option value="${k}">${(typeof SHIFT_LABELS!=='undefined'&&SHIFT_LABELS[k])||('⏰ '+k)}</option>`).join('')}<option value="custom">⏰ משמרת מותאמת</option>`;
 
   const taskOpts=(selTask='')=>'<option value=""'+((!selTask||selTask==='')?' selected':'')+'>— ללא משימה —</option>'
     +(taskDefs.length
@@ -14674,7 +14682,7 @@ function addWeeklyCustomRow(){
 
   const days=getWeekDays(_weeklySchedStartDate);
 
-  const shiftOpts=`<option value="none">—</option>${Object.keys(SHIFT_HOURS).filter(k=>k!=='custom'&&!SHIFT_HOURS[k].hidden).map(k=>`<option value="${k}">${(typeof SHIFT_LABELS!=='undefined'&&SHIFT_LABELS[k])||('⏰ '+k)}</option>`).join('')}<option value="custom">⏰ הגדר שעות</option>`;
+  const shiftOpts=`<option value="none">—</option>${Object.keys(SHIFT_HOURS).filter(k=>k!=='custom'&&!SHIFT_HOURS[k].hidden).map(k=>`<option value="${k}">${(typeof SHIFT_LABELS!=='undefined'&&SHIFT_LABELS[k])||('⏰ '+k)}</option>`).join('')}<option value="custom">⏰ משמרת מותאמת</option>`;
 
   // Define taskOpts locally (was missing — caused silent failure)
   const taskOpts='<option value="" selected>— ללא משימה —</option>'+(taskDefs.length
@@ -15889,7 +15897,7 @@ function buildShiftOptions(currentVal){
     .filter(k=>k!=='custom'&&!SHIFT_HOURS[k].hidden)
     .map(k=>`<option value="${k}"${currentVal===k?' selected':''}>${SHIFT_LABELS[k]||k}</option>`)
     .join('');
-  const customOpt=`<option value="custom"${currentVal==='custom'?' selected':''}>⏰ הגדר שעות</option>`;
+  const customOpt=`<option value="custom"${currentVal==='custom'?' selected':''}>⏰ משמרת מותאמת</option>`;
   return `<option value="none">—</option>${baseOpts}${customOpt}`;
 }
 
@@ -16623,7 +16631,7 @@ function openInstrWeeklyModalFromDate(baseDateStr,deltaDays){
   const shiftOpts=Object.keys(SHIFT_HOURS)
     .filter(k=>k!=='custom'&&!SHIFT_HOURS[k].hidden)
     .map(k=>`<option value="${k}">${(typeof SHIFT_LABELS!=='undefined'&&SHIFT_LABELS[k])||k}</option>`)
-    .join('')+'<option value="custom">⏰ הגדר שעות</option>';
+    .join('')+'<option value="custom">⏰ משמרת מותאמת</option>';
 
   const dayRows=days.map((d,i)=>{
     const dateStr=d.toISOString().slice(0,10);
