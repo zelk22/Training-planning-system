@@ -159,6 +159,22 @@ body{font-family:'Segoe UI',Tahoma,sans-serif;background:var(--bg);margin:0 auto
 .v100-tab-icon{font-size:14px;line-height:1;}
 .v100-tab-label{line-height:1;}
 
+/* ── Instructor/mentor nav — slightly more prominent card style ── */
+#v100InstrNav{
+  background:white;border:1px solid #dde4ee;border-radius:12px;
+  box-shadow:0 1px 4px rgba(0,0,0,.06);margin-bottom:14px;
+}
+#v100InstrNav .v100-nav{padding:5px 8px;}
+#v100InstrNav .v100-nav-tab{border-radius:8px;padding:9px 14px;border-bottom:none;margin-bottom:0;}
+#v100InstrNav .v100-nav-tab:hover{background:#f0f4f8;color:#1a2332;}
+#v100InstrNav .v100-nav-tab.v100-nav-active{
+  background:#eaf3fc;color:#1a5276;box-shadow:inset 0 0 0 1px #cfe3f5;
+}
+body.dark-mode #v100InstrNav{background:#1e2535;border-color:#2d3a50;}
+body.dark-mode #v100InstrNav .v100-nav-tab.v100-nav-active{
+  background:#243447;color:#5ba8d4;box-shadow:inset 0 0 0 1px #2d4a68;
+}
+
 /* dark mode */
 body.dark-mode .v100-topbar{background:#111827;}
 body.dark-mode .v100-nav-wrapper{background:#1e2535;border-color:#2d3a50;}
@@ -12448,9 +12464,14 @@ function toggleDarkMode(){
 
   const isDark=document.body.classList.contains('dark-mode');
 
-  document.getElementById('darkBtn').textContent=isDark?'☀️ Light':'🌙 Dark';
+  const _dbtn=document.getElementById('darkBtn');
+  if(_dbtn){_dbtn.textContent=isDark?'☀':'☽';_dbtn.title=isDark?'מצב יום':'מצב לילה';}
 
   localStorage.setItem('darkMode',isDark?'1':'0');
+
+  // Re-render color-sensitive views immediately so shift-category colors match the new mode
+  try{renderCalendar();}catch(e){}
+  try{renderDailyScheduleSummary();}catch(e){}
 
 }
 
@@ -12462,7 +12483,7 @@ function initDarkMode(){
 
     const btn=document.getElementById('darkBtn');
 
-    if(btn)btn.textContent='☀️ Light';
+    if(btn){btn.textContent='☀';btn.title='מצב יום';}
 
   }
 
@@ -12567,11 +12588,21 @@ function renderDailyScheduleSummary(){
     if(!p)return null;
     return p.shift==='custom'?(p.startTime||null):(SHIFT_HOURS[p.shift]?.s||null);
   };
+  const _CS=_catStyleMap();
+  const _isDark=document.body.classList.contains('dark-mode');
+  const _cardBg=_isDark?'#242938':'white';
+  const _headBg=_isDark?'#2d3348':'#f0f4f8';
+  const _headTxt=_isDark?'#8ab4d8':'#555';
+  const _rowBorder=_isDark?'#3a4060':'#eee';
+  const _headBorder=_isDark?'#3a4060':'#dde';
+  const _chipBg1=_isDark?'#2d3348':'#f7f7f7';
+  const _chipBg2=_isDark?'#2a3f52':'#f0f4f8';
+  const _muted=_isDark?'#9aa8bc':'#888';
   const BUCKETS=[
-    {key:'morning',label:'🌅 בוקר',...SHIFT_CATEGORY_STYLE.morning},
-    {key:'evening',label:'🌆 ערב',...SHIFT_CATEGORY_STYLE.evening},
-    {key:'night',label:'🌙 לילה',...SHIFT_CATEGORY_STYLE.night},
-    {key:'other',label:'⏳ אחר',...SHIFT_CATEGORY_STYLE.other}
+    {key:'morning',label:'🌅 בוקר',..._CS.morning},
+    {key:'evening',label:'🌆 ערב',..._CS.evening},
+    {key:'night',label:'🌙 לילה',..._CS.night},
+    {key:'other',label:'⏳ אחר',..._CS.other}
   ];
   const grouped={morning:[],evening:[],night:[],other:[]};
   Object.keys(byInstr).forEach(name=>grouped[_entryShiftCategory(_primaryEntry(byInstr[name]))].push(name));
@@ -12593,20 +12624,20 @@ function renderDailyScheduleSummary(){
       if(!e.task){ // no task assigned (e.g. vacation/flex, or genuinely unset) — show which shift-type (+time, unless it's a flex/vacation type where hours are meaningless)
         const noteTag=e.note?` <span title="${_esc(e.note)}" style="color:#e67e22;">💬 ${_esc(e.note)}</span>`:'';
         const timeSuffix=_isFlexShift(e.shift)?'':` <span style="font-size:11px;">(${timeStr})</span>`;
-        return`<span style="display:inline-flex;align-items:center;gap:4px;background:#f7f7f7;border-radius:6px;padding:3px 8px;margin:2px;font-size:12px;color:#888;white-space:nowrap;">${shiftIco} ${_esc(shiftName)}${timeSuffix}${noteTag}</span>`;
+        return`<span style="display:inline-flex;align-items:center;gap:4px;background:${_chipBg1};border-radius:6px;padding:3px 8px;margin:2px;font-size:12px;color:${_muted};white-space:nowrap;">${shiftIco} ${_esc(shiftName)}${timeSuffix}${noteTag}</span>`;
       }
       const tDef=taskDefs.find(t=>t.id===e.task)||{label:e.task,icon:'📋'};
       const noteTag=e.note?`<span title="${_esc(e.note)}" style="font-size:11px;color:#e67e22;margin-right:4px;">💬</span>`:'';
-      return`<span style="display:inline-flex;align-items:center;gap:4px;background:#f0f4f8;border-radius:6px;padding:3px 8px;margin:2px;font-size:12px;white-space:nowrap;">
+      return`<span style="display:inline-flex;align-items:center;gap:4px;background:${_chipBg2};border-radius:6px;padding:3px 8px;margin:2px;font-size:12px;white-space:nowrap;">
         ${tDef.icon} <b>${_esc(tDef.label)}</b>
-        <span style="color:#888;font-size:11px;">${shiftIco} ${timeStr}</span>
+        <span style="color:${_muted};font-size:11px;">${shiftIco} ${timeStr}</span>
         ${noteTag}
       </span>`;
     }).join('');
     const safeName=name.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
     return`<tr class="dash-sched-row" onclick="openSchedModalForName(currentDate,'${safeName}')" style="cursor:pointer;" title="לחץ לעריכת השיבוץ">
-      <td style="font-weight:bold;font-size:13px;padding:6px 10px;white-space:nowrap;border-bottom:1px solid #eee;background:white;">${_esc(name)}</td>
-      <td style="padding:6px 10px;border-bottom:1px solid #eee;background:white;">${cells}</td>
+      <td style="font-weight:bold;font-size:13px;padding:6px 10px;white-space:nowrap;border-bottom:1px solid ${_rowBorder};background:${_cardBg};">${_esc(name)}</td>
+      <td style="padding:6px 10px;border-bottom:1px solid ${_rowBorder};background:${_cardBg};">${cells}</td>
     </tr>`;
   };
 
@@ -12619,11 +12650,11 @@ function renderDailyScheduleSummary(){
   }).join('');
 
   wrap.innerHTML=`
-    <div style="font-size:12px;font-weight:bold;color:#888;margin:12px 0 8px;letter-spacing:.3px;">📋 לוז יומי — כל המדריכים</div>
-    <table style="width:100%;border-collapse:collapse;background:white;border-radius:10px;overflow:hidden;box-shadow:0 1px 6px rgba(0,0,0,.06);">
-      <thead><tr style="background:#f0f4f8;">
-        <th style="text-align:right;padding:8px 10px;font-size:12px;color:#555;border-bottom:2px solid #dde;">מדריך</th>
-        <th style="text-align:right;padding:8px 10px;font-size:12px;color:#555;border-bottom:2px solid #dde;">משימות</th>
+    <div style="font-size:12px;font-weight:bold;color:${_muted};margin:12px 0 8px;letter-spacing:.3px;">📋 לוז יומי — כל המדריכים</div>
+    <table style="width:100%;border-collapse:collapse;background:${_cardBg};border-radius:10px;overflow:hidden;box-shadow:0 1px 6px rgba(0,0,0,.06);">
+      <thead><tr style="background:${_headBg};">
+        <th style="text-align:right;padding:8px 10px;font-size:12px;color:${_headTxt};border-bottom:2px solid ${_headBorder};">מדריך</th>
+        <th style="text-align:right;padding:8px 10px;font-size:12px;color:${_headTxt};border-bottom:2px solid ${_headBorder};">משימות</th>
       </tr></thead>
       <tbody>${rows}</tbody>
     </table>`;
@@ -12777,7 +12808,14 @@ const SHIFT_CATEGORY_STYLE={
   night:{bg:'#e3f5e8',border:'#7fc99a',text:'#1e7a45'},
   other:{bg:'#f2f2f2',border:'#cfcfcf',text:'#666'}
 };
-function _shiftColorStyle(key){return SHIFT_CATEGORY_STYLE[_shiftCategory(key)];}
+const SHIFT_CATEGORY_STYLE_DARK={
+  morning:{bg:'#4a3f18',border:'#e8c94a',text:'#f3dd8f'},
+  evening:{bg:'#20304c',border:'#6a8bc2',text:'#bcd2f5'},
+  night:{bg:'#193a28',border:'#5fae7a',text:'#a8e0bc'},
+  other:{bg:'#333338',border:'#5a5a62',text:'#c8c8ce'}
+};
+function _catStyleMap(){return document.body.classList.contains('dark-mode')?SHIFT_CATEGORY_STYLE_DARK:SHIFT_CATEGORY_STYLE;}
+function _shiftColorStyle(key){return _catStyleMap()[_shiftCategory(key)];}
 // Entry-level variant: same categorization, but for a schedule ENTRY object (handles shift==='custom',
 // whose actual hours live on the entry itself — e.startTime/e.endTime — not on a shared SHIFT_HOURS key).
 function _entryShiftCategory(entry){
@@ -12791,7 +12829,7 @@ function _entryShiftCategory(entry){
   if(eh>=18)return 'evening';
   return 'morning';
 }
-function _entryShiftColorStyle(entry){return SHIFT_CATEGORY_STYLE[_entryShiftCategory(entry)];}
+function _entryShiftColorStyle(entry){return _catStyleMap()[_entryShiftCategory(entry)];}
 function _colorShiftSelect(sel){
   if(!sel)return;
   const val=sel.value;
