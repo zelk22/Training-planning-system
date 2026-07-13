@@ -769,6 +769,9 @@ body.dark-mode .login-input{background:#2d3348;border-color:#3a4060;color:#e0e6f
 
 .stab:hover{color:var(--primary);}
 tr.dash-sched-row:hover td{background:#f5f8fc !important;}
+input[name="noteColor"]:checked + .note-color-swatch{box-shadow:0 0 0 3px var(--secondary),2px 2px 5px rgba(0,0,0,.2) !important;transform:scale(1.12);}
+.cal-note{position:relative;}
+.cal-note::before{content:'📌';position:absolute;top:-7px;left:2px;font-size:12px;line-height:1;z-index:3;filter:drop-shadow(0 1px 1px rgba(0,0,0,.35));pointer-events:none;transform:rotate(-18deg);}
 
 /* Visual warning: instructor/mentor assigned to a shift with no task selected */
 select.task-missing{border:2px solid #e74c3c !important;background:#fdf2f2 !important;box-shadow:0 0 0 2px rgba(231,76,60,.15);}
@@ -1764,7 +1767,12 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 
       <!-- Existing entries for this day -->
 
-      <div id="schedEntriesList" class="sched-entries-list"></div>
+      <div id="schedEntriesToggle" onclick="toggleSchedEntriesList()" style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:6px 2px;font-size:12px;font-weight:bold;color:#888;user-select:none;">
+        <span id="schedEntriesArrow">▸</span>
+        <span>נסיעות/דיווחים קיימים ליום</span>
+        <span id="schedEntriesCount" style="color:#aaa;font-weight:normal;"></span>
+      </div>
+      <div id="schedEntriesList" class="sched-entries-list" style="display:none;"></div>
 
       <!-- Add new entry form (shown to instructor or manager) -->
 
@@ -2406,8 +2414,9 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
         </div>
 
         <!-- Weekly button centered -->
-        <div style="display:flex;justify-content:center;">
+        <div style="display:flex;justify-content:center;gap:8px;flex-wrap:wrap;">
           <button onclick="openInstrWeeklyModal()" style="padding:9px 28px;background:#27ae60;color:white;border:none;border-radius:9px;cursor:pointer;font-size:13px;font-weight:bold;white-space:nowrap;">📅 שיבוץ שבועי</button>
+          <button onclick="openNotesModal()" style="padding:9px 20px;background:#fef08a;border:1px solid #eab308;color:#713f12;border-radius:9px;cursor:pointer;font-size:13px;font-weight:bold;white-space:nowrap;">📌 הפתקים שלי</button>
         </div>
 
       </div>
@@ -2618,11 +2627,13 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 
       <div class="sleg"><div class="sleg-dot" style="background:#c0392b;"></div>נדחה</div>
 
-      <div class="sleg"><div class="sleg-dot" style="border-right:3px solid #f1c40f;background:#eee;"></div>בוקר</div>
+      <div class="sleg"><div class="sleg-dot" style="border-right:3px solid #e8c94a;background:#fff8dd;"></div>בוקר</div>
 
-      <div class="sleg"><div class="sleg-dot" style="border-right:3px solid #3498db;background:#eee;"></div>צהריים</div>
+      <div class="sleg"><div class="sleg-dot" style="border-right:3px solid #a9c2ea;background:#eaf0fb;"></div>ערב</div>
 
-      <div class="sleg"><div class="sleg-dot" style="border-right:3px solid #9b59b6;background:#eee;"></div>ערב</div>
+      <div class="sleg"><div class="sleg-dot" style="border-right:3px solid #7fc99a;background:#e3f5e8;"></div>לילה</div>
+
+      <div class="sleg"><div class="sleg-dot" style="border-right:3px solid #cfcfcf;background:#f2f2f2;"></div>אחר / חופש</div>
 
     </div>
 
@@ -12464,41 +12475,22 @@ function renderDailyScheduleSummary(){
     byInstr[e.name].push(e);
   });
 
-  // Group instructors into 3 broad buckets by time-of-day: morning / evening / other (flex/vacation-type shifts
-  // like "חופש"/"גמיש" always land in "other" regardless of their configured hour). Within each bucket,
-  // instructors are still sorted by their exact shift start time — but everyone with a morning-ish shift
-  // (regardless of which specific shift type: "בוקר", "בוקר 2", etc.) sits together under one header.
+  // Group instructors into broad buckets by shift category: morning / evening / night / other (flex/vacation).
+  // Within each bucket, instructors are still sorted by their exact shift start time — but everyone with a
+  // morning-ish shift (regardless of which specific shift type: "בוקר", "בוקר 2", etc.) sits together under one header.
   const _primaryEntry=(entries)=>entries.find(e=>!e._extraTask)||entries[0];
-  const _isFlexShift=(key)=>/חופש|גמיש/.test((typeof SHIFT_LABELS!=='undefined'&&SHIFT_LABELS[key])||key||'');
   const _shiftStart=(p)=>{
     if(!p)return null;
     return p.shift==='custom'?(p.startTime||null):(SHIFT_HOURS[p.shift]?.s||null);
   };
-  const _shiftEnd=(p)=>{
-    if(!p)return null;
-    return p.shift==='custom'?(p.endTime||null):(SHIFT_HOURS[p.shift]?.e||null);
-  };
   const BUCKETS=[
-    {key:'morning',label:'🌅 בוקר',bg:'#fff8dd',border:'#e8c94a',text:'#8a6d0a'},
-    {key:'evening',label:'🌙 ערב',bg:'#eaf0fb',border:'#a9c2ea',text:'#2c4f8a'},
-    {key:'other',label:'⏳ אחר',bg:'#f2f2f2',border:'#cfcfcf',text:'#666'}
+    {key:'morning',label:'🌅 בוקר',...SHIFT_CATEGORY_STYLE.morning},
+    {key:'evening',label:'🌆 ערב',...SHIFT_CATEGORY_STYLE.evening},
+    {key:'night',label:'🌙 לילה',...SHIFT_CATEGORY_STYLE.night},
+    {key:'other',label:'⏳ אחר',...SHIFT_CATEGORY_STYLE.other}
   ];
-  const _bucketFor=(entries)=>{
-    const p=_primaryEntry(entries);
-    if(!p)return 'other';
-    if(_isFlexShift(p.shift))return 'other';
-    const end=_shiftEnd(p);
-    if(!end)return 'other';
-    const hour=parseInt(end.split(':')[0],10);
-    // A shift ending at/after 18:00 counts as evening, regardless of when it started.
-    // Overnight shifts (end hour smaller than start hour, e.g. 22:00–06:00) are also evening.
-    const start=_shiftStart(p);
-    const startHour=start?parseInt(start.split(':')[0],10):0;
-    const overnight=hour<startHour;
-    return (hour>=18||overnight)?'evening':'morning';
-  };
-  const grouped={morning:[],evening:[],other:[]};
-  Object.keys(byInstr).forEach(name=>grouped[_bucketFor(byInstr[name])].push(name));
+  const grouped={morning:[],evening:[],night:[],other:[]};
+  Object.keys(byInstr).forEach(name=>grouped[_entryShiftCategory(_primaryEntry(byInstr[name]))].push(name));
   Object.keys(grouped).forEach(b=>{
     grouped[b].sort((a,c)=>{
       const sa=_shiftStart(_primaryEntry(byInstr[a]))||'99:99', sc=_shiftStart(_primaryEntry(byInstr[c]))||'99:99';
@@ -12681,6 +12673,57 @@ function _shiftBaseIcon(key){return {morning:'🌅',afternoon:'☀️',evening:'
 function _shiftIcon(key){return (SHIFT_HOURS[key]&&SHIFT_HOURS[key].icon)||_shiftBaseIcon(key);}
 function _shiftName(key){return (SHIFT_LABELS[key]||key||'').replace(/^[^\wא-ת]*/,'').trim()||key;}
 function _shiftFullLabel(key){return `${_shiftIcon(key)} ${_shiftName(key)}`;}
+
+// ══ Unified shift color-coding: morning=yellow, evening=blue, night(overnight)=green, other(flex/vacation)=grey ══
+function _isFlexShift(key){return /חופש|גמיש/.test((typeof SHIFT_LABELS!=='undefined'&&SHIFT_LABELS[key])||key||'');}
+function _shiftStartOf(key){return key==='custom'?null:(SHIFT_HOURS[key]?.s||null);}
+function _shiftEndOf(key){return key==='custom'?null:(SHIFT_HOURS[key]?.e||null);}
+function _shiftCategory(key){
+  if(_isFlexShift(key))return 'other';
+  const s=_shiftStartOf(key), e=_shiftEndOf(key);
+  if(!s||!e)return 'other';
+  const sh=parseInt(s.split(':')[0],10), eh=parseInt(e.split(':')[0],10);
+  if(eh<sh)return 'night'; // wraps past midnight — ends "after midnight"
+  if(eh>=18)return 'evening';
+  return 'morning';
+}
+const SHIFT_CATEGORY_STYLE={
+  morning:{bg:'#fff8dd',border:'#e8c94a',text:'#8a6d0a'},
+  evening:{bg:'#eaf0fb',border:'#a9c2ea',text:'#2c4f8a'},
+  night:{bg:'#e3f5e8',border:'#7fc99a',text:'#1e7a45'},
+  other:{bg:'#f2f2f2',border:'#cfcfcf',text:'#666'}
+};
+function _shiftColorStyle(key){return SHIFT_CATEGORY_STYLE[_shiftCategory(key)];}
+// Entry-level variant: same categorization, but for a schedule ENTRY object (handles shift==='custom',
+// whose actual hours live on the entry itself — e.startTime/e.endTime — not on a shared SHIFT_HOURS key).
+function _entryShiftCategory(entry){
+  if(!entry)return 'other';
+  if(entry.shift!=='custom')return _shiftCategory(entry.shift);
+  if(_isFlexShift(entry.shift))return 'other';
+  const s=entry.startTime, e=entry.endTime;
+  if(!s||!e)return 'other';
+  const sh=parseInt(s.split(':')[0],10), eh=parseInt(e.split(':')[0],10);
+  if(eh<sh)return 'night';
+  if(eh>=18)return 'evening';
+  return 'morning';
+}
+function _entryShiftColorStyle(entry){return SHIFT_CATEGORY_STYLE[_entryShiftCategory(entry)];}
+function _colorShiftSelect(sel){
+  if(!sel)return;
+  const val=sel.value;
+  if(!val||val==='none'){sel.style.background='';sel.style.borderColor='';sel.style.color='';return;}
+  let cat;
+  if(val==='custom'){
+    const s=sel.dataset.customStart||sel.dataset.start||'07:00';
+    const e=sel.dataset.customEnd||sel.dataset.end||'15:30';
+    const sh=parseInt(s.split(':')[0],10), eh=parseInt(e.split(':')[0],10);
+    cat=(eh<sh)?'night':(eh>=18?'evening':'morning');
+  } else {
+    cat=_shiftCategory(val);
+  }
+  const st=SHIFT_CATEGORY_STYLE[cat];
+  sel.style.background=st.bg;sel.style.borderColor=st.border;sel.style.color=st.text;
+}
 
 let taskDefs=[
 
@@ -13073,25 +13116,38 @@ function renderCalendar(){
 
     let _entryHtml='';
     const useInstructorLayout = forInstructor && !isAdmin;
+    // Sticky notes for this cell (computed early — needed to decide entry-pill layout below)
+    const cellNotesEarly=cell.otherMonth?[]:_getNotesForCell(cell.date,forInstructor);
+    const hasNotesEarly=cellNotesEarly.length>0;
     if(useInstructorLayout&&_sorted.length>=1){
-      // Instructor: position entry vertically by shift
-      const shiftTopMap={morning:'22px',afternoon:'42%',evening:'66%'};
-      const shiftLblMap={morning:'🌅 בוקר',afternoon:'☀️ צהריים',evening:'🌙 ערב'};
+      // Instructor: normally position entry vertically by shift category (absolute, staggered by time-of-day).
+      // But when a note is ALSO present, stack everything in normal flow instead — absolute positioning plus
+      // a note fighting for the same space is what caused entries/notes to overlap and hide each other.
+      const topMap={morning:'22px',evening:'42%',night:'66%',other:'42%'};
       _entryHtml=_sorted.map(e=>{
-        const sk=e.shift||'morning';
-        const col=SHIFT_COLORS[sk]||'#eee';
-        const bdr=SHIFT_BORDERS[sk]||'#ccc';
+        const catStyle=_entryShiftColorStyle(e);
+        const col=catStyle.bg, bdr=catStyle.border;
         const ico={approved:'✅',pending:'⏳',rejected:'❌'}[e.status||'pending']||'❓';
-        const top=shiftTopMap[sk]||'4px';
-        return `<div style="position:absolute;top:${top};left:3px;right:3px;z-index:1;"><div class="cal-entry" style="background:${col};border-right:3px solid ${bdr};font-size:10px;padding:2px 4px;border-radius:3px;font-weight:600;">${ico} ${e.name||''}</div><div style="font-size:8px;color:#aaa;text-align:center;">${shiftLblMap[sk]||''}</div></div>`;
+        const cat=_entryShiftCategory(e);
+        const top=topMap[cat]||'22px';
+        const s=e.shift==='custom'?e.startTime:SHIFT_HOURS[e.shift]?.s;
+        const en=e.shift==='custom'?e.endTime:SHIFT_HOURS[e.shift]?.e;
+        const hoursLbl=(s&&en)?`${s}–${en}`:'';
+        const wrapStyle=hasNotesEarly?'margin-bottom:3px;':`position:absolute;top:${top};left:3px;right:3px;z-index:1;`;
+        return `<div style="${wrapStyle}">
+          <div class="cal-entry" style="background:${col};border-right:4px solid ${bdr};font-size:11px;padding:3px 5px;border-radius:4px;font-weight:700;color:${catStyle.text};line-height:1.35;">
+            <div>${_shiftIcon(e.shift)} ${_shiftName(e.shift)} ${ico}</div>
+            ${hoursLbl?`<div style="font-size:10px;font-weight:600;">${hoursLbl}</div>`:''}
+          </div>
+        </div>`;
       }).join('');
     } else {
       // Manager: sorted pills with dashed separator between shift groups
       let _lastShift=null;
       _entryHtml=_sorted.slice(0,4).map(e=>{
         const sk=e.shift||'morning';
-        const col=SHIFT_COLORS[sk]||'#eee';
-        const bdr=SHIFT_BORDERS[sk]||'#ccc';
+        const catStyle=_entryShiftColorStyle(e);
+        const col=catStyle.bg, bdr=catStyle.border;
         const ico={approved:'✅',pending:'⏳',rejected:'❌'}[e.status||'pending']||'❓';
         const sep=(_lastShift!==null&&_lastShift!==sk)?'<div style="border-top:1px dashed #dde;margin:2px 0;"></div>':'';
         _lastShift=sk;
@@ -13101,16 +13157,22 @@ function renderCalendar(){
 
     const moreHtml=_sorted.length>4?`<div class="cal-more">+${_sorted.length-4} עוד</div>`:'';
     // Sticky notes for this cell
-    const cellNotes=cell.otherMonth?[]:_getNotesForCell(cell.date,forInstructor);
+    const cellNotes=cellNotesEarly;
     const _noteColors={'#fef08a':['#713f12','#ca8a04'],'#fce7f3':['#831843','#db2777'],'#dcfce7':['#14532d','#16a34a'],'#dbeafe':['#1e3a8a','#2563eb'],'#ffedd5':['#7c2d12','#ea580c'],'#f3e8ff':['#581c87','#9333ea']};
+    const hasEntryPill=useInstructorLayout&&_sorted.length>=1;
     const notesHtml=cellNotes.map(n=>{
       const bg=n.color||'#fef08a';
       const [tc,bc]=_noteColors[bg]||['#444','#888'];
-      return`<div class="cal-note" style="background:${bg};border-left:3px solid ${bc};color:${tc};box-shadow:2px 3px 8px rgba(0,0,0,.22),inset 3px 0 0 rgba(0,0,0,.1);" onclick="event.stopPropagation();openNotesModal('${n.date}')" title="${n.text}"><span class="cal-note-text">${n.text}</span></div>`;
+      // If there's a shift pill above AND it's using absolute positioning (i.e. no note was detected — shouldn't
+      // normally happen since cellNotes is non-empty here, but kept as a safe default), pin to bottom.
+      // In the normal (note-present) case above, the pill already switched to flow layout, so the note
+      // just continues in flow too — truncated so a long note can't grow the cell indefinitely.
+      const textStyle=hasEntryPill?'display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;':'';
+      return`<div class="cal-note" style="margin-top:2px;background:${bg};border-left:3px solid ${bc};color:${tc};box-shadow:2px 3px 8px rgba(0,0,0,.22),inset 3px 0 0 rgba(0,0,0,.1);" onclick="event.stopPropagation();openNotesModal('${n.date}')" title="${n.text}"><span class="cal-note-text" style="${textStyle}">${n.text}</span></div>`;
     }).join('');
     const cellClass=['cal-cell',cell.otherMonth?'other-month':'',_isPast&&!_isToday?'past':'',_isToday?'today':''].filter(Boolean).join(' ');
     const hasNotes=cellNotes.length>0;
-    const posStyle=(forInstructor&&_sorted.length>=1)||hasNotes?'position:relative;min-height:90px;':'';
+    const posStyle=(forInstructor&&_sorted.length>=1)||hasNotes?`position:relative;min-height:${(useInstructorLayout&&hasEntryPill&&hasNotes)?125:90}px;`:'';
     const canClick=!cell.otherMonth;
     return`<div class="${cellClass}" style="${posStyle}" ${canClick?`onclick="openSchedModal('${cell.date}')"`:''}><div class="cal-day-num">${cell.otherMonth?'':_dayNum}</div>${_entryHtml}${moreHtml}${notesHtml}</div>`;
   }
@@ -13348,6 +13410,16 @@ function _initSchedRowHighlight(){
   tb.addEventListener('mouseleave',()=>{
     tb.querySelectorAll('tr.sched-row-hover').forEach(r=>r.classList.remove('sched-row-hover'));
   });
+
+  // The clone+replace above orphans any MutationObserver that was watching the old tbody node,
+  // which is what keeps shift-select colors (and the task-missing warning) applied after every
+  // re-render. Re-sweep explicitly now, and re-attach a fresh observer on the new node.
+  try{_sweepTaskMissing(tb);}catch(e){}
+  try{
+    if(window._schedRowObserver)window._schedRowObserver.disconnect();
+    window._schedRowObserver=new MutationObserver(()=>{try{_sweepTaskMissing(tb);}catch(e){}});
+    window._schedRowObserver.observe(tb,{childList:true,subtree:true});
+  }catch(e){}
 }
 
 function _initWeeklyRowHighlight(){
@@ -13458,9 +13530,14 @@ function handleSchedRowShiftChange(sel){
   const row = sel.closest('tr');
   if(!row) return;
   if(sel.value && sel.value !== 'none'){
-    row.style.background='#f0fff6';
+    const catStyle=_shiftColorStyle(sel.value);
+    sel.style.background=catStyle.bg;
+    sel.style.borderColor=catStyle.border;
+    sel.style.color=catStyle.text;
   } else {
-    row.style.background='';
+    sel.style.background='';
+    sel.style.borderColor='';
+    sel.style.color='';
   }
 
   // Show/hide custom time inputs in same row
@@ -13474,16 +13551,30 @@ function handleSchedRowShiftChange(sel){
       customCell.style.cssText = 'padding:4px;white-space:nowrap;';
       const startVal=sel.dataset.start||'07:00';
       const endVal=sel.dataset.end||'15:30';
-      customCell.innerHTML = `<input type="time" class="sched-row-start-time" value="${startVal}" style="width:76px;padding:4px;border:1.5px solid #ddd;border-radius:6px;font-size:13px;">
+      customCell.innerHTML = `<input type="time" class="sched-row-start-time" value="${startVal}" onchange="_recolorCustomShiftSelect(this)" style="width:76px;padding:4px;border:1.5px solid #ddd;border-radius:6px;font-size:13px;">
         <span style="color:#888;font-size:11px;margin:0 2px;">–</span>
-        <input type="time" class="sched-row-end-time" value="${endVal}" style="width:76px;padding:4px;border:1.5px solid #ddd;border-radius:6px;font-size:13px;">`;
+        <input type="time" class="sched-row-end-time" value="${endVal}" onchange="_recolorCustomShiftSelect(this)" style="width:76px;padding:4px;border:1.5px solid #ddd;border-radius:6px;font-size:13px;">`;
       shiftCell.after(customCell);
     }
     customCell.style.display='';
+    // Color immediately using whatever custom times are currently shown
+    _recolorCustomShiftSelect(customCell.querySelector('.sched-row-start-time'));
   } else {
     if(customCell) customCell.style.display='none';
   }
 
+}
+function _recolorCustomShiftSelect(timeInput){
+  const cell=timeInput.closest('.sched-row-custom-times');
+  const sel=cell?.previousElementSibling?.querySelector('.sched-row-shift');
+  if(!sel)return;
+  const s=cell.querySelector('.sched-row-start-time')?.value;
+  const e=cell.querySelector('.sched-row-end-time')?.value;
+  if(!s||!e)return;
+  const sh=parseInt(s.split(':')[0],10), eh=parseInt(e.split(':')[0],10);
+  const cat=(eh<sh)?'night':(eh>=18?'evening':'morning');
+  const st=SHIFT_CATEGORY_STYLE[cat];
+  sel.style.background=st.bg;sel.style.borderColor=st.border;sel.style.color=st.text;
 }
 
 function closeSchedModal(){
@@ -13500,9 +13591,22 @@ function closeSchedModal(){
 
 }
 
+function toggleSchedEntriesList(){
+  const list=document.getElementById('schedEntriesList');
+  const arrow=document.getElementById('schedEntriesArrow');
+  if(!list)return;
+  const isOpen=list.style.display!=='none';
+  list.style.display=isOpen?'none':'';
+  if(arrow)arrow.textContent=isOpen?'▸':'▾';
+}
 function renderSchedEntriesList(date){
 
   const list=document.getElementById('schedEntriesList');
+
+  // Collapsed by default every time the day changes — this area is used rarely
+  list.style.display='none';
+  const arrow=document.getElementById('schedEntriesArrow');
+  if(arrow)arrow.textContent='▸';
 
   let entries=schedData[date]||[];
 
@@ -13510,6 +13614,9 @@ function renderSchedEntriesList(date){
   if(currentRole !== 'admin'){
     entries = entries.filter(e=>e.name===currentUserName);
   }
+
+  const countEl=document.getElementById('schedEntriesCount');
+  if(countEl)countEl.textContent=entries.length?`(${entries.length})`:'(0)';
 
   if(!entries.length){list.innerHTML='<div style="color:#aaa;font-size:13px;padding:6px 0;margin-bottom:8px;">אין שיבוצים ביום זה</div>';return;}
 
@@ -14020,6 +14127,7 @@ function _sweepTaskMissing(root){
   root.querySelectorAll('tr.sched-assign-row').forEach(row=>{
     _applyTaskCellState(row.querySelector('.sched-row-shift')?.value, row.querySelector('.sched-row-task'));
     const shiftSel=row.querySelector('.sched-row-shift');
+    _colorShiftSelect(shiftSel);
     if(shiftSel&&shiftSel.value==='custom'&&!row.querySelector('.sched-row-custom-times')){
       handleSchedRowShiftChange(shiftSel);
     }
@@ -14034,6 +14142,7 @@ function _sweepTaskMissing(root){
   root.querySelectorAll('select.wsched-shift-sel').forEach(shiftSel=>{
     const taskSel=shiftSel.closest('td')?.nextElementSibling?.querySelector('.wsched-task-sel');
     _applyTaskCellState(shiftSel.value, taskSel);
+    _colorShiftSelect(shiftSel);
   });
 }
 document.addEventListener('change',e=>{
@@ -14757,6 +14866,7 @@ function onWeeklyCellChange(sel){
       td.classList.remove('wsched-cell-has-entry');
     }
   }
+  _colorShiftSelect(sel);
   // Custom hours popup
   if(sel.value==='custom'){
     const existing=sel.dataset.customStart||'07:00';
@@ -15868,18 +15978,19 @@ function renderShiftsDefList(){
   const shiftKeys=Object.keys(SHIFT_HOURS).filter(k=>k!=='custom');
   container.innerHTML=shiftKeys.map(key=>{
     const sh=SHIFT_HOURS[key];
-    const bg=SHIFT_COLORS[key]||'#f0f0f0';
-    const border=SHIFT_BORDERS[key]||'#ccc';
+    const catStyle=_shiftColorStyle(key);
+    const bg=catStyle.bg, border=catStyle.border;
     const isHidden=!!sh.hidden;
     return`<div style="background:${bg};border-radius:10px;padding:12px 14px;border:1px solid ${border};position:relative;${isHidden?'opacity:0.55;':''}">
       <button onclick="deleteShiftDef('${key}')" style="position:absolute;top:6px;left:6px;background:#fdf2f2;border:1.5px solid #e74c3c;border-radius:50%;width:26px;height:26px;cursor:pointer;font-size:14px;color:#e74c3c;padding:0;line-height:1;display:flex;align-items:center;justify-content:center;font-weight:bold;">×</button>
       <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">
         <input type="text" value="${_shiftIcon(key)}" maxlength="8" title="סמל" onchange="updateShiftTime('${key}','icon',this.value);renderShiftsDefList();" style="width:34px;padding:4px;border:1.5px solid #ddd;border-radius:6px;font-size:15px;text-align:center;">
-        <span style="font-size:13px;font-weight:bold;">${_esc(_shiftName(key))}${isHidden?' <span style="font-size:10px;color:#e74c3c;font-weight:normal;">🙈 מוסתר מהבחירה</span>':''}</span>
+        <input type="text" value="${_esc(_shiftName(key))}" onchange="updateShiftName('${key}',this.value);renderShiftsDefList();" style="flex:1;min-width:80px;padding:5px 8px;border:1.5px solid #ddd;border-radius:6px;font-size:13px;font-weight:bold;color:${catStyle.text};background:white;">
+        ${isHidden?'<span style="font-size:10px;color:#e74c3c;font-weight:normal;">🙈 מוסתר</span>':''}
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-        <div class="sfield"><label>התחלה</label><input type="time" id="sh_${key}_s" value="${sh.s}" onchange="updateShiftTime('${key}','s',this.value)"></div>
-        <div class="sfield"><label>סיום</label><input type="time" id="sh_${key}_e" value="${sh.e}" onchange="updateShiftTime('${key}','e',this.value)"></div>
+        <div class="sfield"><label>התחלה</label><input type="time" id="sh_${key}_s" value="${sh.s}" onchange="updateShiftTime('${key}','s',this.value);renderShiftsDefList();"></div>
+        <div class="sfield"><label>סיום</label><input type="time" id="sh_${key}_e" value="${sh.e}" onchange="updateShiftTime('${key}','e',this.value);renderShiftsDefList();"></div>
       </div>
       <label style="display:flex;align-items:center;gap:6px;margin-top:8px;font-size:11px;color:#e74c3c;cursor:pointer;">
         <input type="checkbox" ${isHidden?'checked':''} onchange="updateShiftTime('${key}','hidden',this.checked);renderShiftsDefList();" style="width:14px;height:14px;cursor:pointer;">
@@ -15954,6 +16065,13 @@ async function updateShiftTime(key,field,val){
     SHIFT_HOURS[key][field]=val;
     try{await _saveShiftsToStorage();}catch(e){}
   }
+}
+
+async function updateShiftName(key,newName){
+  const name=(newName||'').trim();
+  if(!name)return; // don't allow blanking the name entirely
+  SHIFT_LABELS[key]=`${_shiftIcon(key)} ${name}`;
+  try{await _saveShiftsToStorage();}catch(e){}
 }
 
 async function deleteShiftDef(key){
@@ -16979,7 +17097,8 @@ function _openCustomHoursPopup(sel, defaultStart, defaultEnd){
     <div style="display:flex;gap:8px;">
       <button onclick="_applyCustomHours()" style="width:auto;flex:1;padding:8px;background:var(--secondary);color:white;border:none;border-radius:8px;font-size:13px;font-weight:bold;cursor:pointer;">✅ אשר</button>
       <button onclick="document.getElementById('_customHoursPopup')?.remove();
-        document.getElementById('_chsSel')&&(document.getElementById('_chsSel').value='none')" 
+        document.getElementById('_chsSel')&&(document.getElementById('_chsSel').value='none');
+        window._chsSel&&_colorShiftSelect(window._chsSel);" 
         style="width:auto;padding:8px 12px;background:#f5f5f5;border:none;border-radius:8px;font-size:13px;cursor:pointer;">ביטול</button>
     </div>`;
   document.body.appendChild(popup);
@@ -17009,6 +17128,7 @@ function _applyCustomHours(){
     const opt=sel.querySelector('option[value="custom"]');
     if(opt)opt.textContent=`⏰ ${start}–${end}`;
     sel.closest('td')?.classList.add('wsched-cell-has-entry');
+    _colorShiftSelect(sel);
   }
   document.getElementById('_customHoursPopup')?.remove();
   document.removeEventListener('click',_closeCustomHoursOnOutside);
@@ -20701,8 +20821,22 @@ function exitDemoMode(){
 
 function clearDemoData(){
   if(!confirm('למחוק את כל נתוני הדמו?'))return;
+  // Restore the real data backup FIRST — this button must never leave the real
+  // v100_sched_all/instructors/taskDefs/etc. keys sitting overwritten with demo content.
+  DEMO_LS_KEYS.forEach(k=>{
+    const v=localStorage.getItem(DEMO_BACKUP_PREFIX+k);
+    if(v)localStorage.setItem(k,v);
+  });
   const keys=Object.keys(localStorage).filter(k=>k.startsWith(DEMO_PREFIX)||k.startsWith(DEMO_BACKUP_PREFIX));
   keys.forEach(k=>localStorage.removeItem(k));
+  // Reload in-memory state from the now-restored real data (not just fix localStorage silently)
+  try{schedData={};}catch(e){}
+  try{lsLoadSched();}catch(e){}
+  try{normalizeTaskDefs();}catch(e){}
+  try{if(typeof startSchedSync==='function')startSchedSync();}catch(e){}
+  try{renderCalendar();}catch(e){}
+  try{renderDashboard();}catch(e){}
+  try{renderDailyScheduleSummary();}catch(e){}
   localStorage.removeItem('demo_active');
   localStorage.removeItem('demo_days');
   localStorage.removeItem('trainee_courses'); // force reload from Firebase on next init
@@ -21147,39 +21281,53 @@ function _getNotesForCell(date,isInstructor){
     const myName=currentUserName||'';
     return allNotes.filter(n=>{
       if(n.date!==date)return false;
-      const vis=n.visibility||'all';
-      if(!isInstructor) return true;            // admin רואה הכל
-      if(vis==='admin') return false;            // מנהל בלבד
-      if(vis==='all') return true;               // כולם
-      if(vis==='instr_only') return !isMentor;   // מדריכים בלבד
-      if(vis==='mentors_all') return isMentor;   // חונכים בלבד
-      if(vis==='mentors_specific') return isMentor&&(n.specificMentors||[]).includes(myName);
-      if(vis==='instr_specific') return !isMentor&&(n.specificInstrs||[]).includes(myName);
-      return false;
+      const visList=Array.isArray(n.visibility)?n.visibility:[n.visibility||'all'];
+      if(visList.includes('self')&&n.authorName!==myName)return false; // private note — only its author sees it, admin included
+      if(!isInstructor) return true;            // admin רואה הכל (חוץ מפתקים פרטיים של אחרים, כבר סוננו למעלה)
+      if(visList.includes('admin'))return false; // מנהל בלבד — but if combined with another mode, that mode still grants access below
+      // Visible if ANY selected mode matches this person
+      return visList.some(vis=>{
+        if(vis==='all') return true;
+        if(vis==='instr_only') return !isMentor;
+        if(vis==='mentors_all') return isMentor;
+        if(vis==='mentors_specific') return isMentor&&(n.specificMentors||[]).includes(myName);
+        if(vis==='instr_specific') return !isMentor&&(n.specificInstrs||[]).includes(myName);
+        if(vis==='self') return n.authorName===myName;
+        return false; // 'admin' handled above, doesn't grant instructor/mentor visibility
+      });
     });
   }catch(e){return[];}
 }
 function _noteVisibilityChanged(){
-  const vis=(document.querySelector('input[name="noteVisibility"]:checked')||{}).value||'all';
+  const boxes=[...document.querySelectorAll('input.noteVisibility')];
+  const changed=event&&event.target;
+  // "כולם" and "מנהל בלבד" are exclusive — checking either clears everything else, and vice versa
+  if(changed&&(changed.value==='all'||changed.value==='admin')&&changed.checked){
+    boxes.forEach(b=>{if(b!==changed)b.checked=false;});
+  } else if(changed&&changed.value!=='all'&&changed.value!=='admin'&&changed.checked){
+    boxes.forEach(b=>{if(b.value==='all'||b.value==='admin')b.checked=false;});
+  }
+  const selected=boxes.filter(b=>b.checked).map(b=>b.value);
   const picker=document.getElementById('noteSpecificPicker');
   if(!picker)return;
-  if(vis==='mentors_specific'){
+  let html='';
+  if(selected.includes('mentors_specific')){
     const names=(typeof _mentorNames!=='undefined'&&_mentorNames)||[];
-    picker.style.display='block';
-    picker.innerHTML='<div style="font-size:11px;color:#888;margin-bottom:5px;">בחר חונכים שיראו את הפתק:</div>'+
+    html+='<div style="font-size:11px;color:#888;margin-bottom:5px;">בחר חונכים שיראו את הפתק:</div>'+
       (names.length?names.map(n=>`<label style="display:flex;align-items:center;gap:6px;margin-bottom:3px;cursor:pointer;">
-        <input type="checkbox" class="noteSpecificChk" data-person="${_esc(n)}" style="accent-color:#8e44ad;"> ${_esc(n)}
+        <input type="checkbox" class="noteSpecificChk-mentor" data-person="${_esc(n)}" style="accent-color:#8e44ad;"> ${_esc(n)}
       </label>`).join(''):'<div style="color:#aaa;font-size:12px;">אין חונכים מוגדרים</div>');
-  } else if(vis==='instr_specific'){
-    const names=(typeof _instrNames!=='undefined'&&_instrNames)||[];
-    picker.style.display='block';
-    picker.innerHTML='<div style="font-size:11px;color:#888;margin-bottom:5px;">בחר מדריכים שיראו את הפתק:</div>'+
-      (names.length?names.map(n=>`<label style="display:flex;align-items:center;gap:6px;margin-bottom:3px;cursor:pointer;">
-        <input type="checkbox" class="noteSpecificChk" data-person="${_esc(n)}" style="accent-color:var(--secondary);"> ${_esc(n)}
-      </label>`).join(''):'<div style="color:#aaa;font-size:12px;">אין מדריכים מוגדרים</div>');
-  } else {
-    picker.style.display='none';
   }
+  if(selected.includes('instr_specific')){
+    const names=(typeof _instrNames!=='undefined'&&_instrNames)||[];
+    if(html)html+='<div style="border-top:1px solid #eee;margin:8px 0;"></div>';
+    html+='<div style="font-size:11px;color:#888;margin-bottom:5px;">בחר מדריכים שיראו את הפתק:</div>'+
+      (names.length?names.map(n=>`<label style="display:flex;align-items:center;gap:6px;margin-bottom:3px;cursor:pointer;">
+        <input type="checkbox" class="noteSpecificChk-instr" data-person="${_esc(n)}" style="accent-color:var(--secondary);"> ${_esc(n)}
+      </label>`).join(''):'<div style="color:#aaa;font-size:12px;">אין מדריכים מוגדרים</div>');
+  }
+  picker.innerHTML=html;
+  picker.style.display=html?'block':'none';
 }
 
 function openNotesModal(date){
@@ -21189,13 +21337,53 @@ function openNotesModal(date){
   if(date)dateInput.value=date;
   else if(currentDate)dateInput.value=currentDate;
   document.getElementById('noteText').value='';
-  const r=document.querySelector('input[name="noteVisibility"][value="all"]');
-  if(r)r.checked=true;
+  document.querySelectorAll('input.noteVisibility').forEach(b=>{b.checked=(b.value==='all');});
   const picker=document.getElementById('noteSpecificPicker');
   if(picker){picker.style.display='none';picker.innerHTML='';}
-  _renderNotesList();
+
+  const isAdminView=(currentRole==='admin');
+  const adminFields=document.getElementById('noteAdminOnlyFields');
+  const selfHint=document.getElementById('noteSelfOnlyHint');
+  const titleEl=document.getElementById('notesModalTitle');
+  if(adminFields)adminFields.style.display=isAdminView?'':'none';
+  if(selfHint)selfHint.style.display=isAdminView?'none':'block';
+  if(titleEl)titleEl.textContent=isAdminView?'📌 פתק על הלוח':'📌 הפתקים שלי ליום זה';
+  dateInput.disabled=!isAdminView;
+
+  if(isAdminView){
+    _renderNotesList();
+  } else {
+    document.getElementById('notesList').style.display='none';
+    _renderMyDayNotes(dateInput.value);
+  }
   el.style.display='flex';
   setTimeout(()=>{const t=document.getElementById('noteText');if(t)t.focus();},100);
+}
+// Instructor/mentor: read-only list of notes visible to them for this specific day (not the whole month,
+// and no editing controls for anyone else's notes — they can only delete their own private ones).
+function _renderMyDayNotes(date){
+  const wrap=document.getElementById('myDayNotesList');
+  if(!wrap)return;
+  const notes=_getNotesForCell(date,true).filter(n=>{
+    const visList=Array.isArray(n.visibility)?n.visibility:[n.visibility||'all'];
+    return !visList.includes('self')||n.authorName===currentUserName;
+  });
+  if(!notes.length){wrap.innerHTML='<div style="color:#aaa;font-size:13px;padding:6px 0;">אין פתקים ליום זה</div>';return;}
+  wrap.innerHTML=notes.map(n=>{
+    const mine=n.authorName===currentUserName;
+    const delBtn=mine?`<button onclick="deleteMyNote(${n.id})" style="background:none;border:none;color:#e74c3c;cursor:pointer;font-size:13px;padding:2px;">🗑️</button>`:'';
+    return`<div style="display:flex;align-items:start;gap:8px;background:${n.color||'#fef08a'};border-radius:8px;padding:8px 10px;margin-bottom:6px;">
+      <div style="flex:1;font-size:13px;color:#333;">${_esc(n.text)}${mine?'<span style="font-size:10px;color:#888;margin-right:6px;">🔒 פרטי</span>':''}</div>
+      ${delBtn}
+    </div>`;
+  }).join('');
+}
+function deleteMyNote(id){
+  const d=new Date((document.getElementById('noteDate').value||currentDate)+'T12:00:00');
+  const notes=_loadNotes(d.getFullYear(),d.getMonth()).filter(n=>!(n.id===id&&n.authorName===currentUserName));
+  _saveNotes(notes,d.getFullYear(),d.getMonth());
+  _renderMyDayNotes(document.getElementById('noteDate').value);
+  renderCalendar();
 }
 function closeNotesModal(){
   const el=document.getElementById('notesModal');
@@ -21204,21 +21392,26 @@ function closeNotesModal(){
 function saveNote(){
   const date=document.getElementById('noteDate').value;
   const text=(document.getElementById('noteText').value||'').trim();
-  const vis=(document.querySelector('input[name="noteVisibility"]:checked')||{}).value||'all';
+  const isAdminView=(currentRole==='admin');
+  const visibility=isAdminView
+    ?(()=>{const v=[...document.querySelectorAll('input.noteVisibility:checked')].map(b=>b.value);return v.length?v:['all'];})()
+    :['self'];
   const color=(document.querySelector('input[name="noteColor"]:checked')||{}).value||'#fef08a';
   if(!date||!text){showToast('יש להזין תאריך ותוכן לפתק','warning');return;}
-  // Collect specific people for specific visibility modes
+  // Collect specific people for specific visibility modes (both lists can be active at once now)
   let specificMentors,specificInstrs;
-  if(vis==='mentors_specific'){
-    specificMentors=[...document.querySelectorAll('.noteSpecificChk:checked')].map(c=>c.dataset.person);
+  if(visibility.includes('mentors_specific')){
+    specificMentors=[...document.querySelectorAll('.noteSpecificChk-mentor:checked')].map(c=>c.dataset.person);
     if(!specificMentors.length){showToast('יש לבחור לפחות חונך אחד','warning');return;}
-  } else if(vis==='instr_specific'){
-    specificInstrs=[...document.querySelectorAll('.noteSpecificChk:checked')].map(c=>c.dataset.person);
+  }
+  if(visibility.includes('instr_specific')){
+    specificInstrs=[...document.querySelectorAll('.noteSpecificChk-instr:checked')].map(c=>c.dataset.person);
     if(!specificInstrs.length){showToast('יש לבחור לפחות מדריך אחד','warning');return;}
   }
   const d=new Date(date+'T12:00:00');
   const notes=_loadNotes(d.getFullYear(),d.getMonth());
-  const noteObj={id:Date.now(),date,text,visibility:vis,color};
+  const noteObj={id:Date.now(),date,text,visibility,color};
+  if(!isAdminView)noteObj.authorName=currentUserName;
   if(specificMentors) noteObj.specificMentors=specificMentors;
   if(specificInstrs) noteObj.specificInstrs=specificInstrs;
   notes.push(noteObj);
@@ -21227,7 +21420,8 @@ function saveNote(){
   document.getElementById('noteText').value='';
   const picker=document.getElementById('noteSpecificPicker');
   if(picker){picker.style.display='none';picker.innerHTML='';}
-  _renderNotesList();
+  if(isAdminView)_renderNotesList();
+  else _renderMyDayNotes(date);
   renderCalendar();
 }
 function deleteNote(id){
@@ -21256,7 +21450,8 @@ function _renderNotesList(){
   body.innerHTML=notes.map(n=>{
     const bg=n.color||'#fef08a';
     const dot='<span style="display:inline-block;width:12px;height:12px;background:'+bg+';border-radius:2px;margin-left:4px;vertical-align:middle;border:1px solid rgba(0,0,0,.15);"></span>';
-    const vtag=_visTag[n.visibility||'all']||_visTag['all'];
+    const visList=Array.isArray(n.visibility)?n.visibility:[n.visibility||'all'];
+    const vtag=visList.map(v=>_visTag[v]||'').join(' ')||_visTag['all'];
     return '<div style="display:flex;align-items:start;gap:8px;padding:6px 0;border-bottom:1px solid #f5f5f5;">'
       +'<div style="flex:1;">'+dot+'<span style="font-size:11px;color:#888;">'+n.date+'</span> '+vtag
       +'<div style="font-size:12px;color:#333;margin-top:2px;">'+_esc(n.text)+'</div></div>'
@@ -22115,13 +22310,14 @@ function _resetTraineeSummaryConfig() {
 <div id="notesModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:3000;display:none;align-items:center;justify-content:center;" onclick="if(event.target===this)closeNotesModal()">
   <div style="background:white;border-radius:14px;padding:24px;width:min(95vw,420px);box-shadow:0 10px 40px rgba(0,0,0,.25);direction:rtl;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-      <h3 style="margin:0;color:var(--primary);">📌 פתק על הלוח</h3>
+      <h3 id="notesModalTitle" style="margin:0;color:var(--primary);">📌 פתק על הלוח</h3>
       <button onclick="closeNotesModal()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#aaa;">✕</button>
     </div>
     <label style="font-size:13px;font-weight:bold;color:#555;display:block;margin-bottom:4px;">📅 תאריך</label>
     <input type="date" id="noteDate" style="width:100%;padding:8px 10px;border:1.5px solid #ddd;border-radius:8px;font-size:16px;margin-bottom:12px;box-sizing:border-box;direction:ltr;">
     <label style="font-size:13px;font-weight:bold;color:#555;display:block;margin-bottom:4px;">📝 תוכן הפתק</label>
     <textarea id="noteText" rows="3" placeholder="כתוב תזכורת, אירוע, הערה..." style="width:100%;padding:8px 10px;border:1.5px solid #ddd;border-radius:8px;font-size:16px;resize:vertical;box-sizing:border-box;margin-bottom:12px;"></textarea>
+    <div id="noteAdminOnlyFields">
     <label style="font-size:13px;font-weight:bold;color:#555;display:block;margin-bottom:8px;">🎨 צבע פתק</label>
     <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;">
       <label title="צהוב" style="cursor:pointer;"><input type="radio" name="noteColor" value="#fef08a" checked style="display:none;"><span class="note-color-swatch" style="background:#fef08a;border-left:4px solid #ca8a04;box-shadow:2px 2px 5px rgba(0,0,0,.2);display:inline-block;width:28px;height:28px;border-radius:3px;transition:.15s;"></span></label>
@@ -22131,20 +22327,25 @@ function _resetTraineeSummaryConfig() {
       <label title="כתום" style="cursor:pointer;"><input type="radio" name="noteColor" value="#ffedd5" style="display:none;"><span class="note-color-swatch" style="background:#ffedd5;border-left:4px solid #ea580c;box-shadow:2px 2px 5px rgba(0,0,0,.2);display:inline-block;width:28px;height:28px;border-radius:3px;transition:.15s;"></span></label>
       <label title="סגול" style="cursor:pointer;"><input type="radio" name="noteColor" value="#f3e8ff" style="display:none;"><span class="note-color-swatch" style="background:#f3e8ff;border-left:4px solid #9333ea;box-shadow:2px 2px 5px rgba(0,0,0,.2);display:inline-block;width:28px;height:28px;border-radius:3px;transition:.15s;"></span></label>
     </div>
-    <label style="font-size:13px;font-weight:bold;color:#555;display:block;margin-bottom:8px;">👁️ נראות</label>
+    <label style="font-size:13px;font-weight:bold;color:#555;display:block;margin-bottom:8px;">👁️ נראות <span style="font-size:11px;color:#aaa;font-weight:normal;">(אפשר לבחור כמה)</span></label>
     <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
-      <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:12px;"><input type="radio" name="noteVisibility" value="all" checked onchange="_noteVisibilityChanged()"> 🌐 כולם</label>
-      <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:12px;"><input type="radio" name="noteVisibility" value="instr_only" onchange="_noteVisibilityChanged()"> 👨‍🏫 מדריכים בלבד</label>
-      <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:12px;"><input type="radio" name="noteVisibility" value="mentors_all" onchange="_noteVisibilityChanged()"> 🎓 חונכים בלבד</label>
-      <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:12px;"><input type="radio" name="noteVisibility" value="mentors_specific" onchange="_noteVisibilityChanged()"> 🎓 חונכים ספציפיים</label>
-      <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:12px;"><input type="radio" name="noteVisibility" value="instr_specific" onchange="_noteVisibilityChanged()"> 👨‍🏫 מדריכים ספציפיים</label>
-      <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:12px;"><input type="radio" name="noteVisibility" value="admin" onchange="_noteVisibilityChanged()"> 🔒 מנהל בלבד</label>
+      <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:12px;"><input type="checkbox" class="noteVisibility" value="all" checked onchange="_noteVisibilityChanged()"> 🌐 כולם</label>
+      <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:12px;"><input type="checkbox" class="noteVisibility" value="instr_only" onchange="_noteVisibilityChanged()"> 👨‍🏫 מדריכים בלבד</label>
+      <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:12px;"><input type="checkbox" class="noteVisibility" value="mentors_all" onchange="_noteVisibilityChanged()"> 🎓 חונכים בלבד</label>
+      <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:12px;"><input type="checkbox" class="noteVisibility" value="mentors_specific" onchange="_noteVisibilityChanged()"> 🎓 חונכים ספציפיים</label>
+      <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:12px;"><input type="checkbox" class="noteVisibility" value="instr_specific" onchange="_noteVisibilityChanged()"> 👨‍🏫 מדריכים ספציפיים</label>
+      <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:12px;"><input type="checkbox" class="noteVisibility" value="admin" onchange="_noteVisibilityChanged()"> 🔒 מנהל בלבד</label>
     </div>
-    <div id="noteSpecificPicker" style="display:none;margin-bottom:10px;border:1.5px solid #ddd;border-radius:8px;padding:8px 10px;max-height:140px;overflow-y:auto;font-size:13px;"></div>
+    </div>
+    <div id="noteSelfOnlyHint" style="display:none;font-size:12px;color:#888;background:#f8faff;border:1px dashed #c5d8f0;border-radius:8px;padding:8px 10px;margin-bottom:12px;">
+      🔒 פתק זה יהיה פרטי — רק אתה תוכל לראות אותו.
+    </div>
+    <div id="noteSpecificPicker" style="display:none;margin-bottom:10px;border:1.5px solid #ddd;border-radius:8px;padding:8px 10px;max-height:220px;overflow-y:auto;font-size:13px;"></div>
     <div style="display:flex;gap:8px;">
       <button onclick="saveNote()" style="flex:1;padding:10px;background:var(--primary);color:white;border:none;border-radius:8px;font-size:14px;font-weight:bold;cursor:pointer;">💾 שמור פתק</button>
       <button onclick="closeNotesModal()" style="padding:10px 16px;background:#f0f4f8;color:#555;border:none;border-radius:8px;font-size:14px;cursor:pointer;">ביטול</button>
     </div>
+    <div id="myDayNotesList" style="margin-bottom:10px;"></div>
     <div id="notesList" style="margin-top:16px;border-top:1px solid #eee;padding-top:12px;display:none;">
       <div style="font-size:12px;font-weight:bold;color:#888;margin-bottom:8px;">📋 פתקים קיימים לחודש זה</div>
       <div id="notesListBody"></div>
@@ -22229,7 +22430,7 @@ function _resetTraineeSummaryConfig() {
 
     <!-- Section B: Trainee Feedback -->
     <div class="unified-report-section">
-      <h4>🎓 משוב חניכים <span style="font-size:11px;font-weight:400;color:#888;">(מלא רק עבור קורס מעשי סיטאדיס)</span></h4>
+      <h4>🎓 משוב חניכים</h4>
       <div id="ur-feedback-blocks"></div>
       <button class="ur-add-feedback-btn" onclick="_urAddFeedbackBlock()">➕ הוסף משוב חניך נוסף</button>
     </div>
