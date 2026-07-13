@@ -2525,9 +2525,16 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 
     <div class="dash-title">
 
-      <h4>📊 דשבורד יומי <span id="dashDateLbl" style="font-weight:400;font-size:13px;color:#888;"></span></h4>
+      <h4 style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        📊 דשבורד יומי <span id="dashDateLbl" style="font-weight:400;font-size:13px;color:#888;"></span>
+        <span style="display:inline-flex;align-items:center;gap:4px;">
+          <button onclick="changeDate(-1)" style="background:#f0f4f8;border:1px solid #dde;border-radius:5px;padding:1px 7px;cursor:pointer;font-size:13px;line-height:1.6;touch-action:manipulation;width:auto !important;margin:0;">‹</button>
+          <span id="dashNavDateLbl" style="font-size:12px;font-weight:bold;color:var(--primary);white-space:nowrap;"></span>
+          <button onclick="changeDate(1)" style="background:#f0f4f8;border:1px solid #dde;border-radius:5px;padding:1px 7px;cursor:pointer;font-size:13px;line-height:1.6;touch-action:manipulation;width:auto !important;margin:0;">›</button>
+          <button id="dashBackToTodayBtn" onclick="jumpToToday()" style="display:none;width:auto !important;background:#fff3cd;border:1px solid #f0c674;color:#8a6d1a;border-radius:5px;padding:1px 7px;cursor:pointer;font-size:11px;font-weight:bold;white-space:nowrap;margin:0;">⤺ חזור להיום</button>
+        </span>
+      </h4>
 
-      
     </div>
 
     <div id="recurringTaskWarnings"></div>
@@ -9130,7 +9137,16 @@ function updateDateLabel(){
 
   const dl=document.getElementById('dashDateLbl');
 
-  if(dl)dl.textContent=d.toLocaleDateString('he-IL',{weekday:'long',day:'numeric',month:'long'});
+  if(dl)dl.textContent=d.toLocaleDateString('he-IL',{weekday:'long'});
+
+  const isReallyToday=(currentDate===_localDateStr(new Date()));
+  const navLbl=document.getElementById('dashNavDateLbl');
+  const backBtn=document.getElementById('dashBackToTodayBtn');
+  if(navLbl){
+    navLbl.textContent=d.toLocaleDateString('he-IL',{day:'numeric',month:'numeric',year:'numeric'});
+    navLbl.style.color=isReallyToday?'var(--primary)':'#b8860b';
+  }
+  if(backBtn)backBtn.style.display=isReallyToday?'none':'inline-block';
 
 }
 
@@ -9148,6 +9164,11 @@ function changeDate(delta){
   resubscribeTripsListener();
 
   hidePlannerPreview();
+  // Explicitly refresh dashboard content for the newly selected date
+  // (schedData for this date may already be cached locally, so the EV_SCHED/EV_TRIPS
+  // events that normally drive these renders might not fire on their own).
+  try{renderDashboard();}catch(e){}
+  try{renderDailyScheduleSummary();}catch(e){}
   // Refresh today tasks after date change
   try{
     loadTaskReportsForDate(currentDate).then(()=>renderTodayTasks()).catch(()=>renderTodayTasks());
@@ -12209,7 +12230,7 @@ function renderTaskDefsList(){
 
       <div class="task-def-header">
 
-        <input class="task-def-icon-input" type="text" value="${t.icon||'📋'}" maxlength="2" title="סמל (אימוג'י)" oninput="updateTaskDefField(${i},'icon',this.value)">
+        <input class="task-def-icon-input" type="text" value="${t.icon||'📋'}" maxlength="8" title="סמל (אימוג'י)" oninput="updateTaskDefField(${i},'icon',this.value)">
 
         <input class="task-def-name-input" type="text" value="${_esc(t.label)}" placeholder="שם המשימה" oninput="updateTaskDefField(${i},'label',this.value)">
 
@@ -12359,7 +12380,17 @@ function initDarkMode(){
 
 function renderDashboard(){
   const lbl=document.getElementById('dashDateLbl');
-  if(lbl){const d=new Date(currentDate+'T12:00:00');lbl.textContent=d.toLocaleDateString('he-IL',{weekday:'long',day:'numeric',month:'long'});}
+  if(lbl){const d=new Date(currentDate+'T12:00:00');lbl.textContent=d.toLocaleDateString('he-IL',{weekday:'long'});}
+
+  const isReallyToday=(currentDate===_localDateStr(new Date()));
+  const navLbl=document.getElementById('dashNavDateLbl');
+  const backBtn=document.getElementById('dashBackToTodayBtn');
+  if(navLbl){
+    const d2=new Date(currentDate+'T12:00:00');
+    navLbl.textContent=d2.toLocaleDateString('he-IL',{day:'numeric',month:'numeric',year:'numeric'});
+    navLbl.style.color=isReallyToday?'var(--primary)':'#b8860b';
+  }
+  if(backBtn)backBtn.style.display=isReallyToday?'none':'inline-block';
 
   const kpiGrid=document.getElementById('kpiGrid');
   const barsWrap=document.getElementById('dashBarsWrap');
@@ -12432,41 +12463,62 @@ function renderDailyScheduleSummary(){
     byInstr[e.name].push(e);
   });
 
-  const SHIFT_ICO={morning:'🌅',afternoon:'☀️',evening:'🌙',custom:'⏰'};
-
-  // Sort + group instructors by their primary shift's start time (day-order: morning → afternoon → evening → ...).
-  // Anyone whose primary shift has no defined start time sorts to the very end, under "ללא שעה מוגדרת".
+  // Group instructors into 3 broad buckets by time-of-day: morning / evening / other (flex/vacation-type shifts
+  // like "חופש"/"גמיש" always land in "other" regardless of their configured hour). Within each bucket,
+  // instructors are still sorted by their exact shift start time — but everyone with a morning-ish shift
+  // (regardless of which specific shift type: "בוקר", "בוקר 2", etc.) sits together under one header.
   const _primaryEntry=(entries)=>entries.find(e=>!e._extraTask)||entries[0];
-  const _primaryStart=(entries)=>{
-    const p=_primaryEntry(entries);
-    if(!p)return '99:99';
-    if(p.shift==='custom')return p.startTime||'99:99';
-    return SHIFT_HOURS[p.shift]?.s||'99:99';
+  const _isFlexShift=(key)=>/חופש|גמיש/.test((typeof SHIFT_LABELS!=='undefined'&&SHIFT_LABELS[key])||key||'');
+  const _shiftStart=(p)=>{
+    if(!p)return null;
+    return p.shift==='custom'?(p.startTime||null):(SHIFT_HOURS[p.shift]?.s||null);
   };
-  const _groupLabel=(entries)=>{
-    const p=_primaryEntry(entries);
-    if(!p)return 'ללא שעה מוגדרת';
-    const start=p.shift==='custom'?p.startTime:SHIFT_HOURS[p.shift]?.s;
-    if(!start)return 'ללא שעה מוגדרת';
-    return `${SHIFT_ICO[p.shift]||'⏰'} ${SHIFT_LABELS[p.shift]||p.shift} (${start})`;
+  const _shiftEnd=(p)=>{
+    if(!p)return null;
+    return p.shift==='custom'?(p.endTime||null):(SHIFT_HOURS[p.shift]?.e||null);
   };
-  const sortedInstrNames=Object.keys(byInstr).sort((a,b)=>{
-    const sa=_primaryStart(byInstr[a]), sb=_primaryStart(byInstr[b]);
-    if(sa!==sb)return sa<sb?-1:1;
-    return a.localeCompare(b,'he');
+  const BUCKETS=[
+    {key:'morning',label:'🌅 בוקר',bg:'#fff8dd',border:'#e8c94a',text:'#8a6d0a'},
+    {key:'evening',label:'🌙 ערב',bg:'#eaf0fb',border:'#a9c2ea',text:'#2c4f8a'},
+    {key:'other',label:'⏳ אחר',bg:'#f2f2f2',border:'#cfcfcf',text:'#666'}
+  ];
+  const _bucketFor=(entries)=>{
+    const p=_primaryEntry(entries);
+    if(!p)return 'other';
+    if(_isFlexShift(p.shift))return 'other';
+    const end=_shiftEnd(p);
+    if(!end)return 'other';
+    const hour=parseInt(end.split(':')[0],10);
+    // A shift ending at/after 18:00 counts as evening, regardless of when it started.
+    // Overnight shifts (end hour smaller than start hour, e.g. 22:00–06:00) are also evening.
+    const start=_shiftStart(p);
+    const startHour=start?parseInt(start.split(':')[0],10):0;
+    const overnight=hour<startHour;
+    return (hour>=18||overnight)?'evening':'morning';
+  };
+  const grouped={morning:[],evening:[],other:[]};
+  Object.keys(byInstr).forEach(name=>grouped[_bucketFor(byInstr[name])].push(name));
+  Object.keys(grouped).forEach(b=>{
+    grouped[b].sort((a,c)=>{
+      const sa=_shiftStart(_primaryEntry(byInstr[a]))||'99:99', sc=_shiftStart(_primaryEntry(byInstr[c]))||'99:99';
+      if(sa!==sc)return sa<sc?-1:1;
+      return a.localeCompare(c,'he');
+    });
   });
 
-  let _lastGroup=null;
-  const rows=sortedInstrNames.map(name=>{
+  const rowHtml=(name)=>{
     const entries=byInstr[name];
-    const grp=_groupLabel(entries);
-    const groupHeaderRow=(grp!==_lastGroup)?`<tr><td colspan="2" style="background:#eaf1fb;color:#4a6fa5;font-size:11px;font-weight:bold;padding:5px 10px;">${grp}</td></tr>`:'';
-    _lastGroup=grp;
     const cells=entries.map(e=>{
-      const tDef=taskDefs.find(t=>t.id===e.task)||{label:e.task||'?',icon:'📋'};
+      const shiftIco=_shiftIcon(e.shift);
       const sh=SHIFT_HOURS[e.shift]||{s:e.startTime||'',e:e.endTime||''};
       const timeStr=e.shift==='custom'?`${e.startTime||''}–${e.endTime||''}`:`${sh.s}–${sh.e}`;
-      const shiftIco=SHIFT_ICO[e.shift]||'';
+      const shiftName=_shiftName(e.shift);
+      if(!e.task){ // no task assigned (e.g. vacation/flex, or genuinely unset) — show which shift-type (+time, unless it's a flex/vacation type where hours are meaningless)
+        const noteTag=e.note?` <span title="${_esc(e.note)}" style="color:#e67e22;">💬 ${_esc(e.note)}</span>`:'';
+        const timeSuffix=_isFlexShift(e.shift)?'':` <span style="font-size:11px;">(${timeStr})</span>`;
+        return`<span style="display:inline-flex;align-items:center;gap:4px;background:#f7f7f7;border-radius:6px;padding:3px 8px;margin:2px;font-size:12px;color:#888;white-space:nowrap;">${shiftIco} ${_esc(shiftName)}${timeSuffix}${noteTag}</span>`;
+      }
+      const tDef=taskDefs.find(t=>t.id===e.task)||{label:e.task,icon:'📋'};
       const noteTag=e.note?`<span title="${_esc(e.note)}" style="font-size:11px;color:#e67e22;margin-right:4px;">💬</span>`:'';
       return`<span style="display:inline-flex;align-items:center;gap:4px;background:#f0f4f8;border-radius:6px;padding:3px 8px;margin:2px;font-size:12px;white-space:nowrap;">
         ${tDef.icon} <b>${_esc(tDef.label)}</b>
@@ -12474,10 +12526,18 @@ function renderDailyScheduleSummary(){
         ${noteTag}
       </span>`;
     }).join('');
-    return`${groupHeaderRow}<tr>
-      <td style="font-weight:bold;font-size:13px;padding:6px 10px;white-space:nowrap;border-bottom:1px solid #eee;">${_esc(name)}</td>
-      <td style="padding:6px 10px;border-bottom:1px solid #eee;">${cells}</td>
+    return`<tr>
+      <td style="font-weight:bold;font-size:13px;padding:6px 10px;white-space:nowrap;border-bottom:1px solid #eee;background:white;">${_esc(name)}</td>
+      <td style="padding:6px 10px;border-bottom:1px solid #eee;background:white;">${cells}</td>
     </tr>`;
+  };
+
+  let _isFirstGroup=true;
+  const rows=BUCKETS.filter(b=>grouped[b.key].length).map(b=>{
+    const spacerRow=_isFirstGroup?'':'<tr><td colspan="2" style="height:10px;padding:0;border:none;"></td></tr>';
+    _isFirstGroup=false;
+    const headerRow=`<tr><td colspan="2" style="background:${b.bg};color:${b.text};border-right:6px solid ${b.border};font-size:14px;font-weight:bold;padding:8px 12px;">${b.label} <span style="opacity:.8;font-weight:normal;font-size:11.5px;">· ${grouped[b.key].length} מדריכים</span></td></tr>`;
+    return spacerRow+headerRow+grouped[b.key].map(rowHtml).join('');
   }).join('');
 
   wrap.innerHTML=`
@@ -12612,6 +12672,13 @@ let TASK_LABELS={training:'🚇 הדרכה',orbus:'🚌 קורס מעשי אור
 const SHIFT_LABELS={morning:'🌅 בוקר',afternoon:'☀️ צהריים',evening:'🌙 ערב',custom:'⏰ משמרת מותאמת'};
 
 let SHIFT_HOURS={morning:{s:'06:00',e:'14:00'},afternoon:{s:'14:00',e:'22:00'},evening:{s:'22:00',e:'06:00'},custom:{s:'07:00',e:'15:30'}};
+
+// A shift's icon can be customized per-shift (stored on SHIFT_HOURS[key].icon); falls back to the
+// built-in icon for morning/afternoon/evening, or the generic ⏰ for any custom shift without one set.
+function _shiftBaseIcon(key){return {morning:'🌅',afternoon:'☀️',evening:'🌙'}[key]||'⏰';}
+function _shiftIcon(key){return (SHIFT_HOURS[key]&&SHIFT_HOURS[key].icon)||_shiftBaseIcon(key);}
+function _shiftName(key){return (SHIFT_LABELS[key]||key||'').replace(/^[^\wא-ת]*/,'').trim()||key;}
+function _shiftFullLabel(key){return `${_shiftIcon(key)} ${_shiftName(key)}`;}
 
 let taskDefs=[
 
@@ -13683,7 +13750,7 @@ function addCustomSchedRow(){
 
   if(!tbody)return;
 
-  const shiftOpts=`${Object.keys(SHIFT_HOURS).filter(k=>k!=='custom'&&!SHIFT_HOURS[k].hidden).map(k=>`<option value="${k}">${(typeof SHIFT_LABELS!=='undefined'&&SHIFT_LABELS[k])||('⏰ '+k)}</option>`).join('')}<option value="custom">⏰ משמרת מותאמת</option>`;
+  const shiftOpts=`${Object.keys(SHIFT_HOURS).filter(k=>k!=='custom'&&!SHIFT_HOURS[k].hidden).map(k=>`<option value="${k}">${_shiftFullLabel(k)}</option>`).join('')}<option value="custom">⏰ משמרת מותאמת</option>`;
 
   const taskOpts='<option value="" selected>— ללא משימה —</option>'
     +(taskDefs.length
@@ -14533,7 +14600,7 @@ function renderWeeklySchedTable(){
 
     last.toLocaleDateString('he-IL',{day:'numeric',month:'long',year:'numeric'});
 
-  const shiftOpts=`<option value="none">—</option>${Object.keys(SHIFT_HOURS).filter(k=>k!=='custom'&&!SHIFT_HOURS[k].hidden).map(k=>`<option value="${k}">${(typeof SHIFT_LABELS!=='undefined'&&SHIFT_LABELS[k])||('⏰ '+k)}</option>`).join('')}<option value="custom">⏰ משמרת מותאמת</option>`;
+  const shiftOpts=`<option value="none">—</option>${Object.keys(SHIFT_HOURS).filter(k=>k!=='custom'&&!SHIFT_HOURS[k].hidden).map(k=>`<option value="${k}">${_shiftFullLabel(k)}</option>`).join('')}<option value="custom">⏰ משמרת מותאמת</option>`;
 
   const taskOpts=(selTask='')=>'<option value=""'+((!selTask||selTask==='')?' selected':'')+'>— ללא משימה —</option>'
     +(taskDefs.length
@@ -14682,7 +14749,7 @@ function addWeeklyCustomRow(){
 
   const days=getWeekDays(_weeklySchedStartDate);
 
-  const shiftOpts=`<option value="none">—</option>${Object.keys(SHIFT_HOURS).filter(k=>k!=='custom'&&!SHIFT_HOURS[k].hidden).map(k=>`<option value="${k}">${(typeof SHIFT_LABELS!=='undefined'&&SHIFT_LABELS[k])||('⏰ '+k)}</option>`).join('')}<option value="custom">⏰ משמרת מותאמת</option>`;
+  const shiftOpts=`<option value="none">—</option>${Object.keys(SHIFT_HOURS).filter(k=>k!=='custom'&&!SHIFT_HOURS[k].hidden).map(k=>`<option value="${k}">${_shiftFullLabel(k)}</option>`).join('')}<option value="custom">⏰ משמרת מותאמת</option>`;
 
   // Define taskOpts locally (was missing — caused silent failure)
   const taskOpts='<option value="" selected>— ללא משימה —</option>'+(taskDefs.length
@@ -15780,13 +15847,15 @@ function renderShiftsDefList(){
   const shiftKeys=Object.keys(SHIFT_HOURS).filter(k=>k!=='custom');
   container.innerHTML=shiftKeys.map(key=>{
     const sh=SHIFT_HOURS[key];
-    const label=SHIFT_LABELS[key]||('⏰ '+key);
     const bg=SHIFT_COLORS[key]||'#f0f0f0';
     const border=SHIFT_BORDERS[key]||'#ccc';
     const isHidden=!!sh.hidden;
     return`<div style="background:${bg};border-radius:10px;padding:12px 14px;border:1px solid ${border};position:relative;${isHidden?'opacity:0.55;':''}">
       <button onclick="deleteShiftDef('${key}')" style="position:absolute;top:6px;left:6px;background:#fdf2f2;border:1.5px solid #e74c3c;border-radius:50%;width:26px;height:26px;cursor:pointer;font-size:14px;color:#e74c3c;padding:0;line-height:1;display:flex;align-items:center;justify-content:center;font-weight:bold;">×</button>
-      <div style="font-size:13px;font-weight:bold;margin-bottom:8px;">${label}${isHidden?' <span style="font-size:10px;color:#e74c3c;font-weight:normal;">🙈 מוסתר מהבחירה</span>':''}</div>
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">
+        <input type="text" value="${_shiftIcon(key)}" maxlength="8" title="סמל" onchange="updateShiftTime('${key}','icon',this.value);renderShiftsDefList();" style="width:34px;padding:4px;border:1.5px solid #ddd;border-radius:6px;font-size:15px;text-align:center;">
+        <span style="font-size:13px;font-weight:bold;">${_esc(_shiftName(key))}${isHidden?' <span style="font-size:10px;color:#e74c3c;font-weight:normal;">🙈 מוסתר מהבחירה</span>':''}</span>
+      </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
         <div class="sfield"><label>התחלה</label><input type="time" id="sh_${key}_s" value="${sh.s}" onchange="updateShiftTime('${key}','s',this.value)"></div>
         <div class="sfield"><label>סיום</label><input type="time" id="sh_${key}_e" value="${sh.e}" onchange="updateShiftTime('${key}','e',this.value)"></div>
@@ -15908,6 +15977,8 @@ function jumpToToday(){
   try{renderInstrTripJournal();}catch(e){}
   try{loadTaskReportsForDate(currentDate).then(()=>renderTodayTasks()).catch(()=>renderTodayTasks());}catch(e){renderTodayTasks();}
   try{renderCalendar();}catch(e){}
+  try{renderDashboard();}catch(e){}
+  try{renderDailyScheduleSummary();}catch(e){}
 }
 // ─── FIX 4+5: Instructor trip journal ────────────────────
 
