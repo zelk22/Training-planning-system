@@ -768,6 +768,7 @@ body.dark-mode .login-input{background:#2d3348;border-color:#3a4060;color:#e0e6f
 .stab.active{color:var(--primary);border-bottom-color:var(--secondary);font-weight:bold;}
 
 .stab:hover{color:var(--primary);}
+tr.dash-sched-row:hover td{background:#f5f8fc !important;}
 
 /* Visual warning: instructor/mentor assigned to a shift with no task selected */
 select.task-missing{border:2px solid #e74c3c !important;background:#fdf2f2 !important;box-shadow:0 0 0 2px rgba(231,76,60,.15);}
@@ -12526,7 +12527,8 @@ function renderDailyScheduleSummary(){
         ${noteTag}
       </span>`;
     }).join('');
-    return`<tr>
+    const safeName=name.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    return`<tr class="dash-sched-row" onclick="openSchedModalForName(currentDate,'${safeName}')" style="cursor:pointer;" title="לחץ לעריכת השיבוץ">
       <td style="font-weight:bold;font-size:13px;padding:6px 10px;white-space:nowrap;border-bottom:1px solid #eee;background:white;">${_esc(name)}</td>
       <td style="padding:6px 10px;border-bottom:1px solid #eee;background:white;">${cells}</td>
     </tr>`;
@@ -13129,6 +13131,25 @@ function renderCalendar(){
 
 // ═══════════════════════════════════════════════════════════
 
+function openSchedModalForName(date,name){
+  openSchedModal(date);
+  setTimeout(()=>{
+    const findRow=()=>[...document.querySelectorAll('#schedAssignBody tr.sched-assign-row')].find(r=>r.dataset.name===name);
+    let row=findRow();
+    if(row&&row.style.display==='none'){
+      // Row exists but is filtered out by the current instructor/mentor toggle — switch to the right mode
+      setSchedTableMode(row.dataset.schedRole||'instructor');
+      row=findRow();
+    }
+    if(row){
+      row.scrollIntoView({behavior:'smooth',block:'center'});
+      const origBg=row.style.background;
+      row.style.transition='background 0.3s';
+      row.style.background='#fff3cd';
+      setTimeout(()=>{row.style.background=origBg;},1500);
+    }
+  },80);
+}
 function openSchedModal(date){
 
   schedEditDate=date;
