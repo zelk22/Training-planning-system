@@ -960,7 +960,9 @@ body.dark-mode .msg-card{background:#1e2d42;border-color:#2a3a52;}
 .mentor-mode #timelineSectionInstr,
 .mentor-mode #manualSectionPlaceholder,
 .mentor-mode #manualSection,
-.mentor-mode #instrNavBar { display:none !important; }
+.mentor-mode #instrNavBar,
+.mentor-mode #navInstrTabTrips,
+.mentor-mode #navInstrTabTeam { display:none !important; }
 
 /* Mentor mode: show a mentor header bar */
 #mentorInstrBar { display:none; }
@@ -2337,6 +2339,28 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
     <!-- Friendly greeting (real login only, hidden during admin preview) -->
     <div id="userGreeting" style="display:none;background:linear-gradient(135deg,#eef6ff,#f5f0ff);border:1.5px solid #cfe0f5;border-radius:10px;padding:12px 16px;margin-bottom:12px;font-size:15px;font-weight:bold;color:var(--primary);text-align:center;"></div>
 
+    <!-- Instructor/mentor tab navigation -->
+    <div class="v100-nav-wrapper" id="v100InstrNav">
+      <div class="v100-nav">
+        <button class="v100-nav-tab v100-nav-active" onclick="v100InstrNavTo('home')" id="navInstrTabHome">
+          <span class="v100-tab-icon">🏠</span><span class="v100-tab-label">היום</span>
+        </button>
+        <button class="v100-nav-tab" onclick="v100InstrNavTo('trips')" id="navInstrTabTrips">
+          <span class="v100-tab-icon">📋</span><span class="v100-tab-label">יומן נסיעות</span>
+        </button>
+        <button class="v100-nav-tab" onclick="v100InstrNavTo('sched')" id="navInstrTabSched">
+          <span class="v100-tab-icon">🗓️</span><span class="v100-tab-label">שיבוצים</span>
+        </button>
+        <button class="v100-nav-tab" onclick="v100InstrNavTo('team')" id="navInstrTabTeam">
+          <span class="v100-tab-icon">👥</span><span class="v100-tab-label">צוות</span>
+        </button>
+        <button class="v100-nav-tab" onclick="v100InstrNavTo('trainees')" id="navInstrTabTrainees">
+          <span class="v100-tab-icon">🎓</span><span class="v100-tab-label">חניכים</span>
+        </button>
+      </div>
+    </div>
+
+
     <!-- ══ TODAY TASKS AREA ══════════════════════════════ -->
     <div id="todayTasksCard" style="background:white;border-radius:12px;border:1px solid #dce3ec;padding:14px 16px;margin-bottom:12px;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
@@ -2363,7 +2387,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
     <!-- Placeholder for manualSection — moved here dynamically for instructor -->
     <div id="manualSectionPlaceholder"></div>
 
-    <div class="mgmt-section">
+    <div class="mgmt-section" id="instrTripLogSection">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:10px;">
         <h4 style="margin:0;color:var(--primary);">📋 יומן הנסיעות שלי</h4>
         <div style="display:flex;align-items:center;gap:6px;">
@@ -2383,7 +2407,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
       </div>
     </div>
 
-    <div class="team-sec"><h4>👥 סטטוס הצוות</h4><div class="tgrid" id="teamGrid"></div></div>
+    <div class="team-sec" id="instrTeamSection"><h4>👥 סטטוס הצוות</h4><div class="tgrid" id="teamGrid"></div></div>
 
     <details id="timelineSectionInstr" class="timeline-section" style="padding:0;">
       <summary style="display:flex;justify-content:space-between;align-items:center;padding:14px 20px;cursor:pointer;list-style:none;user-select:none;" onclick="setTimeout(()=>{if(document.getElementById('timelineSectionInstr').open)renderGanttInto('ganttGridInstr');},0)">
@@ -7726,6 +7750,8 @@ function enterMentorView(name){
   }
   // Move traineeSection into instrView so mentor can use it
   try{moveManualSectionToInstr();}catch(e){}
+  // Reset instructor tab to 'home' — prevent leaked state from prior role/preview
+  try{v100InstrNavTo('home');}catch(e){}
   // Refresh TraineeSystem dropdown for mentor role
   try{
     if(typeof TraineeSystem!=='undefined'){
@@ -8092,6 +8118,8 @@ function enterApp(role,name){
     if(iss){iss.style.display='block';iss.style.visibility='visible';}
 
     startInstrSync();
+    // Reset instructor tab to 'home' — prevent leaked state from prior session
+    try{v100InstrNavTo('home');}catch(e){}
     // Show messages button and start listener for instructors
     const _mdbI=document.getElementById('msgDrawerBtn');if(_mdbI)_mdbI.style.display='inline-flex';
     try{const raw=localStorage.getItem('v100_msgSettings');if(raw)_msgSettings={..._msgSettings,...JSON.parse(raw)};}catch(e){}
@@ -8335,9 +8363,65 @@ function v100NavTo(tab){
   if(actions[tab])actions[tab]();
 }
 
-function populateInstrSelect(){
+// ══ Instructor/Mentor tab navigation (mirrors admin v100NavTo pattern) ══
+let _v100InstrActiveTab='home';
 
-  // Ensure we have instructors — try loading from localStorage if empty
+function _refreshInstrTabVisibility(){
+  const iv=document.getElementById('instrView');
+  const tab=(typeof _v100InstrActiveTab!=='undefined')?_v100InstrActiveTab:'home';
+
+  const home1=document.getElementById('todayTasksCard');
+  const home2=document.getElementById('nextTripCard');
+  if(home1)home1.style.display=(tab==='home')?'':'none';
+  if(home2)home2.style.display=(tab==='home')?'':'none';
+
+  const manual=document.getElementById('manualSection');
+  if(manual&&iv&&iv.contains(manual)){
+    manual.style.display=(tab==='trips')?'':'none';
+  }
+  const tripLog=document.getElementById('instrTripLogSection');
+  if(tripLog)tripLog.style.display=(tab==='trips')?'':'none';
+  const timeline=document.getElementById('timelineSectionInstr');
+  if(timeline)timeline.style.display=(tab==='trips')?'':'none';
+
+  const sched=document.getElementById('instrScheduleSection');
+  if(sched)sched.style.display=(tab==='sched')?'':'none';
+
+  const team=document.getElementById('instrTeamSection');
+  if(team)team.style.display=(tab==='team')?'':'none';
+
+  const trainee=document.getElementById('traineeSection');
+  if(trainee&&iv&&iv.contains(trainee)){
+    trainee.style.display=(tab==='trainees')?'':'none';
+    if(trainee.tagName==='DETAILS'&&tab==='trainees')trainee.open=true;
+  }
+}
+
+function v100InstrNavTo(tab){
+  _v100InstrActiveTab=tab;
+  document.querySelectorAll('#v100InstrNav .v100-nav-tab').forEach(b=>b.classList.remove('v100-nav-active'));
+  const tabIdMap={home:'navInstrTabHome',trips:'navInstrTabTrips',sched:'navInstrTabSched',team:'navInstrTabTeam',trainees:'navInstrTabTrainees'};
+  const btn=document.getElementById(tabIdMap[tab]);
+  if(btn)btn.classList.add('v100-nav-active');
+
+  _refreshInstrTabVisibility();
+
+  const sectionIdMap={home:'todayTasksCard',trips:'instrTripLogSection',sched:'instrScheduleSection',team:'instrTeamSection',trainees:'traineeSection'};
+  const secId=sectionIdMap[tab];
+  if(secId){
+    const el=document.getElementById(secId);
+    if(el){try{el.scrollIntoView({behavior:'smooth',block:'start'});}catch(e){}}
+  }
+
+  const instrActions={
+    trips:()=>{setTimeout(()=>{try{renderLog();}catch(e){}},100);},
+    sched:()=>{setTimeout(()=>{try{renderCalendar();}catch(e){}},100);},
+    trainees:()=>{try{_initTraineeIfNeeded();}catch(e){}}
+  };
+  if(instrActions[tab])instrActions[tab]();
+}
+
+function populateInstrSelect(){
 
   if(!_instrNames.length){
 
@@ -16999,6 +17083,7 @@ function moveManualSectionToInstr(){
 
   // Sync visibility AFTER move
   if (typeof _refreshTabVisibility === 'function') _refreshTabVisibility();
+  if (typeof _refreshInstrTabVisibility === 'function') _refreshInstrTabVisibility();
 }
 
 function _placeTraineeSectionInManager(){
@@ -18568,6 +18653,7 @@ function switchToInstructorView(previewName){
   // Reset open sections — prevent admin's open panels from leaking into instructor view
   try{const _tsR=document.getElementById('traineeSection');if(_tsR)_tsR.removeAttribute('open');}catch(e){}
   try{const _msR=document.getElementById('manualSection');if(_msR)_msR.removeAttribute('open');}catch(e){}
+  try{v100InstrNavTo('home');}catch(e){}
 
   // Move manualSection to instructor view
   try{moveManualSectionToInstr();}catch(e){}
