@@ -13307,9 +13307,11 @@ function renderCalendar(){
     const isAdmin = (currentRole === 'admin');
     const filtered = isAdmin ? entries : entries.filter(e=>e.name===currentUserName);
 
-    // Sort by shift: morning=0, afternoon=1, evening=2
-    const _so={morning:0,afternoon:1,evening:2};
-    const _sorted=[...filtered].sort((a,b)=>(_so[a.shift||'morning']||0)-(_so[b.shift||'morning']||0));
+    // Sort by actual shift CATEGORY (same categorization used for the color/badge) — not by the raw
+    // shift key. The raw key ('custom', named variants, etc.) doesn't reliably map to morning/evening/
+    // night, which is why entries used to interleave with mismatched colors.
+    const _so={morning:0,evening:1,night:2,other:3};
+    const _sorted=[...filtered].sort((a,b)=>(_so[_entryShiftCategory(a)]??3)-(_so[_entryShiftCategory(b)]??3));
 
     const cellD=new Date(cell.date+'T12:00:00');
     const _isToday=cell.date===today;
@@ -13347,15 +13349,15 @@ function renderCalendar(){
       // Manager: sorted pills with dashed separator between shift groups.
       // In week view there's a whole row's worth of vertical room per cell (only 7 cells shown,
       // not 5-6 rows), so show every entry in full — no cap, no "+N עוד".
-      let _lastShift=null;
+      let _lastCat=null;
       const _visible=isWeek?_sorted:_sorted.slice(0,4);
       _entryHtml=_visible.map(e=>{
-        const sk=e.shift||'morning';
+        const cat=_entryShiftCategory(e);
         const catStyle=_entryShiftColorStyle(e);
         const col=catStyle.bg, bdr=catStyle.border;
         const ico={approved:'✅',pending:'⏳',rejected:'❌'}[e.status||'pending']||'❓';
-        const sep=(_lastShift!==null&&_lastShift!==sk)?'<div style="border-top:1px dashed #dde;margin:2px 0;"></div>':'';
-        _lastShift=sk;
+        const sep=(_lastCat!==null&&_lastCat!==cat)?'<div style="border-top:1px dashed #dde;margin:2px 0;"></div>':'';
+        _lastCat=cat;
         return sep+`<div class="cal-entry status-${e.status||'pending'}" style="background:${col};border-right:3px solid ${bdr};padding:2px 5px;margin:1px 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${ico} ${e.name||''}</div>`;
       }).join('');
     }
