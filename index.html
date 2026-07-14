@@ -1067,6 +1067,15 @@ body.dark-mode .cal-day-num{color:#8ab4d8;}
 
 .cal-more{font-size:10px;color:#888;padding:1px 4px;}
 
+.cal-view-toggle{display:inline-flex;border:1px solid #dde4ee;border-radius:8px;overflow:hidden;}
+.cal-view-toggle button{background:white;border:none;padding:6px 14px;font-size:12px;font-weight:600;color:#5a6e84;cursor:pointer;width:auto;margin:0;border-radius:0;}
+.cal-view-toggle button+button{border-right:1px solid #dde4ee;}
+.cal-view-toggle button.active{background:var(--secondary);color:white;}
+body.dark-mode .cal-view-toggle{border-color:#3a4060;}
+body.dark-mode .cal-view-toggle button{background:#2d3348;color:#8a9cb0;}
+body.dark-mode .cal-view-toggle button+button{border-color:#3a4060;}
+body.dark-mode .cal-view-toggle button.active{background:#2980b9;color:white;}
+
 /* ── SCHEDULE MODAL ──────────────────────────────── */
 
 .sched-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:300;display:none;align-items:flex-start;justify-content:center;padding-top:30px;overflow-y:auto;}
@@ -2446,10 +2455,16 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
         <!-- Title + month nav -->
         <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
           <h4 style="margin:0;">🗓️ השיבוצים שלי</h4>
-          <div class="month-nav">
-            <button onclick="changeSchedMonth(-1)">&#8249;</button>
-            <span id="schedMonthLabelInstr"></span>
-            <button onclick="changeSchedMonth(1)">&#8250;</button>
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+            <div class="cal-view-toggle" id="calViewToggleInstr">
+              <button data-mode="month" class="active" onclick="setCalViewMode('month')">חודשי</button>
+              <button data-mode="week" onclick="setCalViewMode('week')">שבועי</button>
+            </div>
+            <div class="month-nav">
+              <button onclick="navCal(-1)">&#8249;</button>
+              <span id="schedMonthLabelInstr"></span>
+              <button onclick="navCal(1)">&#8250;</button>
+            </div>
           </div>
         </div>
 
@@ -2636,10 +2651,16 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
     <table style="width:100%;margin-bottom:8px;"><tr>
       <td><h4 style="margin:0;color:var(--primary);">🗓️ לוח שיבוצים</h4></td>
       <td style="text-align:center;">
-        <div class="month-nav" style="display:inline-flex;">
-          <button onclick="changeSchedMonth(-1)">&#8249;</button>
-          <span id="schedMonthLabel"></span>
-          <button onclick="changeSchedMonth(1)">&#8250;</button>
+        <div style="display:inline-flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <div class="cal-view-toggle" id="calViewToggle">
+            <button data-mode="month" class="active" onclick="setCalViewMode('month')">חודשי</button>
+            <button data-mode="week" onclick="setCalViewMode('week')">שבועי</button>
+          </div>
+          <div class="month-nav" style="display:inline-flex;">
+            <button onclick="navCal(-1)">&#8249;</button>
+            <span id="schedMonthLabel"></span>
+            <button onclick="navCal(1)">&#8250;</button>
+          </div>
         </div>
       </td>
       <td style="text-align:left;white-space:nowrap;">
@@ -12871,6 +12892,10 @@ let schedYear=new Date().getFullYear();
 
 let schedMonth=new Date().getMonth();
 
+let _calViewMode='month'; // 'month' | 'week'
+
+let _weekAnchorDate=null; // date string (YYYY-MM-DD) inside the currently-shown week
+
 let schedData={};
 
 let schedEditId=null;
@@ -13137,6 +13162,36 @@ async function updateSchedStatus(date,id,status){
 
 }
 
+function setCalViewMode(mode){
+
+  _calViewMode=mode;
+
+  if(mode==='week'&&!_weekAnchorDate){
+    _weekAnchorDate=(typeof currentDate!=='undefined'&&currentDate)?currentDate:_localDateStr(new Date());
+  }
+
+  document.querySelectorAll('.cal-view-toggle button').forEach(b=>{
+    b.classList.toggle('active',b.dataset.mode===mode);
+  });
+
+  renderCalendar();
+
+}
+
+function navCal(delta){
+
+  if(_calViewMode==='week'){
+    const base=_weekAnchorDate||_localDateStr(new Date());
+    const d=new Date(base+'T12:00:00');
+    d.setDate(d.getDate()+delta*7);
+    _weekAnchorDate=_localDateStr(d);
+    renderCalendar();
+  } else {
+    changeSchedMonth(delta);
+  }
+
+}
+
 function changeSchedMonth(delta){
 
   schedMonth+=delta;
@@ -13164,9 +13219,21 @@ function renderCalendar(){
 
   const instrCal=document.getElementById('calGridInstr');
 
-  const monthLabel=new Date(schedYear,schedMonth,1).toLocaleDateString('he-IL',{month:'long',year:'numeric'});
+  const isWeek=_calViewMode==='week';
 
-  ['schedMonthLabel','schedMonthLabelInstr'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=monthLabel;});
+  const monthLabel=isWeek?'':new Date(schedYear,schedMonth,1).toLocaleDateString('he-IL',{month:'long',year:'numeric'});
+
+  const weekAnchor=_weekAnchorDate||_localDateStr(new Date());
+
+  const _waD=new Date(weekAnchor+'T12:00:00');
+
+  const weekStart=new Date(_waD);weekStart.setDate(_waD.getDate()-_waD.getDay());
+
+  const weekEnd=new Date(weekStart);weekEnd.setDate(weekStart.getDate()+6);
+
+  const weekLabel=isWeek?`${weekStart.getDate()}.${weekStart.getMonth()+1}–${weekEnd.getDate()}.${weekEnd.getMonth()+1}.${weekEnd.getFullYear()}`:'';
+
+  ['schedMonthLabel','schedMonthLabelInstr'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=isWeek?weekLabel:monthLabel;});
 
   // Force display:grid (fixes CodePen iframe CSS inheritance issues)
   ['calHeader','calHeaderInstr','calGrid','calGridInstr'].forEach(id=>{
@@ -13185,39 +13252,52 @@ function renderCalendar(){
 
   const today=_localDateStr(new Date());
 
-  const firstDay=new Date(schedYear,schedMonth,1);
-
-  const lastDay=new Date(schedYear,schedMonth+1,0);
-
-  // Israel: Sunday=0 is first day of week — getDay() already gives 0 for Sunday
-
-  const startOffset=firstDay.getDay(); // 0=Sun, 1=Mon ... 6=Sat
-
   const cells=[];
 
-  for(let i=0;i<startOffset;i++){
+  if(isWeek){
 
-    const d=new Date(firstDay);d.setDate(d.getDate()-(startOffset-i));
+    // Week view: exactly 7 days (Sun→Sat) around the anchor date — plenty of vertical room, so
+    // buildCell() below is told (via weekMode) to skip the 4-entry cap and "+N עוד" truncation.
+    for(let i=0;i<7;i++){
+      const d=new Date(weekStart);d.setDate(weekStart.getDate()+i);
+      cells.push({date:_localDateStr(d),otherMonth:false});
+    }
 
-    cells.push({date:_localDateStr(d),otherMonth:true});
+  } else {
 
-  }
+    const firstDay=new Date(schedYear,schedMonth,1);
 
-  for(let d=1;d<=lastDay.getDate();d++){
+    const lastDay=new Date(schedYear,schedMonth+1,0);
 
-    const dt=new Date(schedYear,schedMonth,d);
+    // Israel: Sunday=0 is first day of week — getDay() already gives 0 for Sunday
 
-    cells.push({date:_localDateStr(dt),otherMonth:false});
+    const startOffset=firstDay.getDay(); // 0=Sun, 1=Mon ... 6=Sat
 
-  }
+    for(let i=0;i<startOffset;i++){
 
-  while(cells.length%7!==0){
+      const d=new Date(firstDay);d.setDate(d.getDate()-(startOffset-i));
 
-    const last=new Date(cells[cells.length-1].date+'T12:00:00');
+      cells.push({date:_localDateStr(d),otherMonth:true});
 
-    last.setDate(last.getDate()+1);
+    }
 
-    cells.push({date:_localDateStr(last),otherMonth:true});
+    for(let d=1;d<=lastDay.getDate();d++){
+
+      const dt=new Date(schedYear,schedMonth,d);
+
+      cells.push({date:_localDateStr(dt),otherMonth:false});
+
+    }
+
+    while(cells.length%7!==0){
+
+      const last=new Date(cells[cells.length-1].date+'T12:00:00');
+
+      last.setDate(last.getDate()+1);
+
+      cells.push({date:_localDateStr(last),otherMonth:true});
+
+    }
 
   }
 
@@ -13255,7 +13335,7 @@ function renderCalendar(){
         const s=e.shift==='custom'?e.startTime:SHIFT_HOURS[e.shift]?.s;
         const en=e.shift==='custom'?e.endTime:SHIFT_HOURS[e.shift]?.e;
         const hoursLbl=(s&&en)?`${s}–${en}`:'';
-        const wrapStyle=hasNotesEarly?'margin-bottom:3px;':`position:absolute;top:${top};left:3px;right:3px;z-index:1;`;
+        const wrapStyle=(hasNotesEarly||isWeek)?'margin-bottom:3px;':`position:absolute;top:${top};left:3px;right:3px;z-index:1;`;
         return `<div style="${wrapStyle}">
           <div class="cal-entry" style="background:${col};border-right:4px solid ${bdr};font-size:11px;padding:3px 5px;border-radius:4px;font-weight:700;color:${catStyle.text};line-height:1.35;">
             <div>${_shiftIcon(e.shift)} ${_shiftName(e.shift)} ${ico}</div>
@@ -13264,9 +13344,12 @@ function renderCalendar(){
         </div>`;
       }).join('');
     } else {
-      // Manager: sorted pills with dashed separator between shift groups
+      // Manager: sorted pills with dashed separator between shift groups.
+      // In week view there's a whole row's worth of vertical room per cell (only 7 cells shown,
+      // not 5-6 rows), so show every entry in full — no cap, no "+N עוד".
       let _lastShift=null;
-      _entryHtml=_sorted.slice(0,4).map(e=>{
+      const _visible=isWeek?_sorted:_sorted.slice(0,4);
+      _entryHtml=_visible.map(e=>{
         const sk=e.shift||'morning';
         const catStyle=_entryShiftColorStyle(e);
         const col=catStyle.bg, bdr=catStyle.border;
@@ -13277,7 +13360,7 @@ function renderCalendar(){
       }).join('');
     }
 
-    const moreHtml=_sorted.length>4?`<div class="cal-more">+${_sorted.length-4} עוד</div>`:'';
+    const moreHtml=(!isWeek&&_sorted.length>4)?`<div class="cal-more">+${_sorted.length-4} עוד</div>`:'';
     // Sticky notes for this cell
     const cellNotes=cellNotesEarly;
     const _noteColors={'#fef08a':['#713f12','#ca8a04'],'#fce7f3':['#831843','#db2777'],'#dcfce7':['#14532d','#16a34a'],'#dbeafe':['#1e3a8a','#2563eb'],'#ffedd5':['#7c2d12','#ea580c'],'#f3e8ff':['#581c87','#9333ea']};
