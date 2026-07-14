@@ -12989,6 +12989,7 @@ function lsLoadSched(){
 // ─────────────────────────────────────────────────────────
 
 function startSchedSync(){
+  try{startNotesSync();}catch(e){}
   setTimeout(()=>{try{checkCoverageAlerts();}catch(e){}},2000);
 
   // In demo mode: always use localStorage schedule data
@@ -21473,14 +21474,81 @@ async function exportDashboardXLSX(){
   }catch(e){console.error(e);showToast('שגיאה ביצוא: '+e.message,'warning');}
 }
 // ══ STICKY NOTES ═══════════════════════════════════════════
+// Synced via Firebase (path: notes/{YYYY-MM}/{noteId}) so a note created on one device/browser
+// is visible on every other device — same pattern as schedule sync. In demo mode we keep the old
+// localStorage-only behavior (demo data is intentionally device-local, never touches Firebase).
+let notesData={}; // { 'YYYY-MM': { noteId: noteObj, ... } } — live cache, kept in sync by startNotesSync()
+
+function _notesMonthKey(yr,mo){return yr+'-'+String(mo+1).padStart(2,'0');}
+
+let _notesMigrated=false;
+function startNotesSync(){
+  if(_isDemoMode()||!window._fbDb)return; // demo mode stays on localStorage, like schedule sync
+  if(!_notesMigrated){
+    _notesMigrated=true;
+    _migrateLocalNotesToFirebase();
+  }
+  try{
+    _fbRef(_db,'notes').on('value',snap=>{
+      try{
+        notesData=snap.exists()?(snap.val()||{}):{};
+        renderCalendar();
+        try{_renderNotesList();}catch(e){}
+      }catch(e){console.warn('notesSync handler:',e);}
+    });
+  }catch(e){console.warn('startNotesSync:',e);}
+}
+// One-time: any notes this device already saved locally (from before the Firebase migration)
+// get pushed up so they don't silently disappear now that notes read from Firebase.
+async function _migrateLocalNotesToFirebase(){
+  try{
+    const localKeys=Object.keys(localStorage).filter(k=>k.startsWith('cal_notes_'));
+    for(const k of localKeys){
+      let localNotes=[];
+      try{localNotes=JSON.parse(localStorage.getItem(k)||'[]');}catch(e){continue;}
+      if(!localNotes.length){localStorage.removeItem(k);continue;}
+      const ym=k.replace('cal_notes_','').replace('_','-'); // cal_notes_2026_07 → 2026-07
+      try{
+        const snap=await _fbGet(_fbRef(_db,'notes/'+ym));
+        const existing=snap.exists()?(snap.val()||{}):{};
+        let changed=false;
+        localNotes.forEach(n=>{if(n&&n.id!=null&&!existing[n.id]){existing[n.id]=n;changed=true;}});
+        if(changed)await _fbSet(_fbRef(_db,'notes/'+ym),existing);
+        localStorage.removeItem(k); // migrated — don't re-migrate on next load
+      }catch(e){console.warn('note migration failed for',k,e);}
+    }
+  }catch(e){console.warn('_migrateLocalNotesToFirebase:',e);}
+}
+
 function _getNotesKey(yr,mo){
   const d=_monthlyDashDate||new Date();
   const _yr=yr!=null?yr:d.getFullYear();
   const _mo=mo!=null?mo:d.getMonth();
   return 'cal_notes_'+_yr+'_'+String(_mo+1).padStart(2,'0');
 }
-function _loadNotes(yr,mo){try{return JSON.parse(localStorage.getItem(_getNotesKey(yr,mo))||'[]');}catch(e){return[];}}
-function _saveNotes(notes,yr,mo){localStorage.setItem(_getNotesKey(yr,mo),JSON.stringify(notes));}
+function _loadNotes(yr,mo){
+  const d=_monthlyDashDate||new Date();
+  const _yr=yr!=null?yr:d.getFullYear();
+  const _mo=mo!=null?mo:d.getMonth();
+  if(_isDemoMode()||!window._fbDb){
+    try{return JSON.parse(localStorage.getItem(_getNotesKey(_yr,_mo))||'[]');}catch(e){return[];}
+  }
+  try{return Object.values(notesData[_notesMonthKey(_yr,_mo)]||{});}catch(e){return[];}
+}
+function _saveNotes(notes,yr,mo){
+  const d=_monthlyDashDate||new Date();
+  const _yr=yr!=null?yr:d.getFullYear();
+  const _mo=mo!=null?mo:d.getMonth();
+  if(_isDemoMode()||!window._fbDb){
+    localStorage.setItem(_getNotesKey(_yr,_mo),JSON.stringify(notes));
+    return;
+  }
+  const key=_notesMonthKey(_yr,_mo);
+  const obj={};
+  notes.forEach(n=>{obj[n.id]=n;});
+  notesData[key]=obj; // optimistic local update — the Firebase listener will confirm it right after
+  try{_fbSet(_fbRef(_db,'notes/'+key),obj);}catch(e){console.warn('saveNotes:',e);}
+}
 function _getNotesForCell(date,isInstructor){
   if(!date)return[];
   try{
