@@ -677,6 +677,21 @@ body.dark-mode .login-input{background:#2d3348;border-color:#3a4060;color:#e0e6f
 
   /* Bars */
   .dash-bar-name{width:50px;min-width:50px;font-size:11px;}
+
+  /* Today card — enlarged for mobile legibility (Lavi feedback, Aug 2026) */
+  #todayTasksTitle{font-size:18px!important;}
+  #todayTasksDate{font-size:14px!important;}
+  .today-action-btn{font-size:14px!important;padding:6px 12px!important;}
+  .today-empty-msg{font-size:15px!important;padding:14px!important;}
+  .today-task-title{font-size:17px!important;}
+  .today-task-meta{font-size:14px!important;}
+  .today-task-badge{font-size:13px!important;}
+  .today-detail-label{font-size:13px!important;}
+  .today-detail-text{font-size:14px!important;}
+  .next-trip-card h3{font-size:16px!important;}
+  .next-route{font-size:14px!important;}
+  .sbtn{font-size:15px!important;padding:11px 16px!important;}
+  .no-trip-card{font-size:17px!important;}
 }.login-input:focus{outline:none;border-color:#2980b9;}
 
 .login-btn{width:100%;padding:13px;background:#2980b9;color:white;border:none;border-radius:10px;font-size:15px;font-weight:bold;cursor:pointer;margin:0;}
@@ -2393,12 +2408,12 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
         <h3 id="todayTasksTitle" style="margin:0;font-size:15px;color:var(--primary);">📅 היום</h3>
         <div style="display:flex;align-items:center;gap:8px;">
           <span id="todayTasksDate" style="font-size:12px;color:#888;"></span>
-          <button onclick="openInstrAddTask()" style="width:auto !important;padding:4px 10px;background:#f0f8ff;border:1.5px solid #3498db;color:#2980b9;border-radius:7px;cursor:pointer;font-size:12px;font-weight:600;">+ משימה</button>
-          <button onclick="openUnifiedReport()" style="width:auto !important;padding:4px 10px;background:#27ae60;color:white;border:none;border-radius:7px;cursor:pointer;font-size:12px;font-weight:600;">📝 סיכום יום</button>
+          <button class="today-action-btn" onclick="openInstrAddTask()" style="width:auto !important;padding:4px 10px;background:#f0f8ff;border:1.5px solid #3498db;color:#2980b9;border-radius:7px;cursor:pointer;font-size:12px;font-weight:600;">+ משימה</button>
+          <button class="today-action-btn" onclick="openUnifiedReport()" style="width:auto !important;padding:4px 10px;background:#27ae60;color:white;border:none;border-radius:7px;cursor:pointer;font-size:12px;font-weight:600;">📝 סיכום יום</button>
         </div>
       </div>
       <div id="todayTasksList" style="display:flex;flex-direction:column;gap:8px;">
-        <div style="color:#aaa;font-size:13px;text-align:center;padding:10px;">אין משימות מתוכננות להיום</div>
+        <div class="today-empty-msg" style="color:#aaa;font-size:13px;text-align:center;padding:10px;">אין משימות מתוכננות להיום</div>
       </div>
     </div>
 
@@ -18935,7 +18950,7 @@ function renderTodayTasks(){
 
   const entries=(schedData[today]||[]).filter(e=>e.name===currentUserName);
   if(!entries.length){
-    container.innerHTML='<div style="color:#aaa;font-size:13px;text-align:center;padding:10px;">אין משימות מתוכננות להיום</div>';
+    container.innerHTML='<div class="today-empty-msg" style="color:#aaa;font-size:13px;text-align:center;padding:10px;">אין משימות מתוכננות להיום</div>';
     return;
   }
 
@@ -18961,10 +18976,10 @@ function renderTodayTasks(){
       return`<div style="background:#eaf4fd;border-radius:10px;padding:12px 14px;border:1px solid #b5d4f4;">
         <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:${(taskDef.message||entry.note)?'10px':'0'};">
           <div>
-            <span style="font-size:15px;font-weight:bold;color:var(--primary);">${taskDef.icon||'🚇'} ${_esc(taskDef.label)}</span>
-            <span style="font-size:12px;color:#888;margin-right:8px;">${shiftName} ${timeStr}</span>
+            <span class="today-task-title" style="font-size:15px;font-weight:bold;color:var(--primary);">${taskDef.icon||'🚇'} ${_esc(taskDef.label)}</span>
+            <span class="today-task-meta" style="font-size:12px;color:#888;margin-right:8px;">${shiftName} ${timeStr}</span>
           </div>
-          <span style="font-size:11px;color:#2980b9;background:#ddeeff;padding:3px 8px;border-radius:5px;">${myTrips.length} נסיעות — ראה יומן למטה</span>
+          <span class="today-task-badge" style="font-size:11px;color:#2980b9;background:#ddeeff;padding:3px 8px;border-radius:5px;">${myTrips.length} נסיעות — ראה יומן למטה</span>
         </div>
         ${_buildTaskDetails(taskDef,entry)}
       </div>`;
@@ -18973,8 +18988,8 @@ function renderTodayTasks(){
     // ── All non-trip tasks render as regular cards (summary via unified form) ──
     return`<div style="background:#f8f8f8;border-radius:10px;padding:12px 14px;border:1px solid #e0e0e0;">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:${(taskDef.message||entry.note)?'10px':'0'};">
-        <span style="font-size:15px;font-weight:bold;color:var(--primary);">${taskDef.icon||'📋'} ${_esc(taskDef.label)}</span>
-        <span style="font-size:12px;color:#888;">${shiftName} ${timeStr}</span>
+        <span class="today-task-title" style="font-size:15px;font-weight:bold;color:var(--primary);">${taskDef.icon||'📋'} ${_esc(taskDef.label)}</span>
+        <span class="today-task-meta" style="font-size:12px;color:#888;">${shiftName} ${timeStr}</span>
       </div>
       ${_buildTaskDetails(taskDef,entry)}
     </div>`;
@@ -19850,8 +19865,8 @@ function _buildTaskDetails(taskDef,entry){
     parts.push(`<div style="display:flex;gap:6px;align-items:flex-start;">
       <span style="font-size:13px;flex-shrink:0;">📋</span>
       <div>
-        <span style="font-size:11px;font-weight:bold;color:#555;display:block;margin-bottom:2px;">פרטי משימה</span>
-        <span style="font-size:12px;color:#333;white-space:pre-wrap;">${taskDef.message.trim()}</span>
+        <span class="today-detail-label" style="font-size:11px;font-weight:bold;color:#555;display:block;margin-bottom:2px;">פרטי משימה</span>
+        <span class="today-detail-text" style="font-size:12px;color:#333;white-space:pre-wrap;">${taskDef.message.trim()}</span>
       </div>
     </div>`);
   }
@@ -19861,8 +19876,8 @@ function _buildTaskDetails(taskDef,entry){
     parts.push(`<div style="display:flex;gap:6px;align-items:flex-start;">
       <span style="font-size:13px;flex-shrink:0;">💬</span>
       <div>
-        <span style="font-size:11px;font-weight:bold;color:#555;display:block;margin-bottom:2px;">הערה מהמנהל</span>
-        <span style="font-size:12px;color:#333;">${entry.note.trim()}</span>
+        <span class="today-detail-label" style="font-size:11px;font-weight:bold;color:#555;display:block;margin-bottom:2px;">הערה מהמנהל</span>
+        <span class="today-detail-text" style="font-size:12px;color:#333;">${entry.note.trim()}</span>
       </div>
     </div>`);
   }
