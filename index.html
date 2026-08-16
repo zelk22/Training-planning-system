@@ -788,6 +788,7 @@ tr.dash-sched-row:hover td{background:#f5f8fc !important;}
 input[name="noteColor"]:checked + .note-color-swatch{box-shadow:0 0 0 3px var(--secondary),2px 2px 5px rgba(0,0,0,.2) !important;transform:scale(1.12);}
 .cal-note{position:relative;}
 .cal-note::before{content:'📌';position:absolute;top:-7px;left:2px;font-size:12px;line-height:1;z-index:3;filter:drop-shadow(0 1px 1px rgba(0,0,0,.35));pointer-events:none;transform:rotate(-18deg);}
+.cal-note-personal::before{content:'🔒';transform:none;}
 
 /* Visual warning: instructor/mentor assigned to a shift with no task selected */
 select.task-missing{border:2px solid #e74c3c !important;background:#fdf2f2 !important;box-shadow:0 0 0 2px rgba(231,76,60,.15);}
@@ -13371,12 +13372,13 @@ function renderCalendar(){
     const notesHtml=cellNotes.map(n=>{
       const bg=n.color||'#fef08a';
       const [tc,bc]=_noteColors[bg]||['#444','#888'];
+      const isMine=n.authorName===currentUserName&&currentUserName;
       // If there's a shift pill above AND it's using absolute positioning (i.e. no note was detected — shouldn't
       // normally happen since cellNotes is non-empty here, but kept as a safe default), pin to bottom.
       // In the normal (note-present) case above, the pill already switched to flow layout, so the note
       // just continues in flow too — truncated so a long note can't grow the cell indefinitely.
       const textStyle=hasEntryPill?'display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;':'';
-      return`<div class="cal-note" style="margin-top:2px;background:${bg};border-left:3px solid ${bc};color:${tc};box-shadow:2px 3px 8px rgba(0,0,0,.22),inset 3px 0 0 rgba(0,0,0,.1);" onclick="event.stopPropagation();openNotesModal('${n.date}')" title="${n.text}"><span class="cal-note-text" style="${textStyle}">${n.text}</span></div>`;
+      return`<div class="cal-note${isMine?' cal-note-personal':''}" style="margin-top:2px;background:${bg};border-left:3px solid ${bc};color:${tc};box-shadow:2px 3px 8px rgba(0,0,0,.22),inset 3px 0 0 rgba(0,0,0,.1);" onclick="event.stopPropagation();openNotesModal('${n.date}')" title="${n.text}"><span class="cal-note-text" style="${textStyle}">${n.text}</span></div>`;
     }).join('');
     const cellClass=['cal-cell',cell.otherMonth?'other-month':'',_isPast&&!_isToday?'past':'',_isToday?'today':''].filter(Boolean).join(' ');
     const hasNotes=cellNotes.length>0;
@@ -21556,11 +21558,17 @@ function _getNotesForCell(date,isInstructor){
     const allNotes=_loadNotes(d.getFullYear(),d.getMonth());
     const isMentor=(currentRole==='mentor');
     const myName=currentUserName||'';
+    // Admin previewing an instructor/mentor is still the admin underneath — personal notes must stay
+    // invisible even though the preview temporarily borrows that person's name/role for everything else.
+    const _isAdminPreview=(typeof _adminPreviewMode!=='undefined'&&_adminPreviewMode)||(typeof window!=='undefined'&&!!window._isMentorPreview);
     return allNotes.filter(n=>{
       if(n.date!==date)return false;
       const visList=Array.isArray(n.visibility)?n.visibility:[n.visibility||'all'];
-      if(visList.includes('self')&&n.authorName!==myName)return false; // private note — only its author sees it, admin included
-      if(!isInstructor) return true;            // admin רואה הכל (חוץ מפתקים פרטיים של אחרים, כבר סוננו למעלה)
+      if(visList.includes('self')){
+        if(_isAdminPreview)return false; // admin-in-preview never sees personal notes, even "their own" during preview
+        if(n.authorName!==myName)return false; // private note — only its real author sees it, admin included
+      }
+      if(!isInstructor) return true;            // admin רואה הכל (חוץ מפתקים פרטיים, כבר סוננו למעלה)
       if(visList.includes('admin'))return false; // מנהל בלבד — but if combined with another mode, that mode still grants access below
       // Visible if ANY selected mode matches this person
       return visList.some(vis=>{
@@ -21703,14 +21711,25 @@ function saveNote(){
 }
 function deleteNote(id){
   const d=_monthlyDashDate||new Date();
-  const notes=_loadNotes(d.getFullYear(),d.getMonth()).filter(n=>n.id!==id);
+  const all=_loadNotes(d.getFullYear(),d.getMonth());
+  const target=all.find(n=>n.id===id);
+  if(target){
+    const vl=Array.isArray(target.visibility)?target.visibility:[target.visibility||'all'];
+    if(vl.includes('self'))return; // personal notes are off-limits to the admin panel entirely
+  }
+  const notes=all.filter(n=>n.id!==id);
   _saveNotes(notes,d.getFullYear(),d.getMonth());
   _renderNotesList();
   renderCalendar();
 }
 function _renderNotesList(){
   const d=_monthlyDashDate||new Date();
-  const notes=_loadNotes(d.getFullYear(),d.getMonth());
+  // Personal ('self') notes are truly private — only their creator may ever see them, admin included.
+  // This list is the admin's management view, so private notes are excluded entirely (not just hidden text).
+  const notes=_loadNotes(d.getFullYear(),d.getMonth()).filter(n=>{
+    const vl=Array.isArray(n.visibility)?n.visibility:[n.visibility||'all'];
+    return !vl.includes('self');
+  });
   const listEl=document.getElementById('notesList');
   const body=document.getElementById('notesListBody');
   if(!notes.length){if(listEl)listEl.style.display='none';return;}
