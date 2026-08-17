@@ -6419,7 +6419,12 @@ window.TraineeSystem = {
                     (c.trainees || []).forEach(t => { tData[t.id] = t; });
                     cData[c.id] = { ...c, trainees: tData };
                 });
-                this.coursesRef.set(cData);
+                // .set() is async — a try/catch here only catches SYNCHRONOUS throws.
+                // .catch() below surfaces real write failures (offline/permission) to the user (fix #62).
+                this.coursesRef.set(cData).catch(err => {
+                    console.error('_saveCourses failed:', err);
+                    if (typeof showToast === 'function') showToast('❌ שמירת הקורסים נכשלה — בדוק חיבור אינטרנט', 'error');
+                });
             } catch(e) { console.warn('_saveCourses:', e); }
         }
     },
@@ -6583,8 +6588,10 @@ window.TraineeSystem = {
         this.courses.filter(c => c.id !== courseId).forEach((c,i) => { if(!c.isDefault) c.priority = i+2; });
         this.courses.sort((a,b) => (a.priority||99)-(b.priority||99));
         this._saveCourses();
+        // Fix #62: immediately load & display the new default course's trainees
+        // (previously only _updateCourseSelector() ran — dropdown updated but list/dashboard stayed on the old course).
+        this.switchCourse(courseId);
         this._renderTab_courses();
-        this._updateCourseSelector();
         showToast('⭐ קורס "' + def?.name + '" הוגדר כברירת מחדל', 'success');
     },
 
