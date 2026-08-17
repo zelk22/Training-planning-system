@@ -14,7 +14,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 5</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 6</title>
 
 <style>
 
@@ -1384,7 +1384,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 65;
+  const APP_VERSION = 66;
 
   function initFirebase() {
     try {
@@ -6461,6 +6461,12 @@ window.TraineeSystem = {
         if (!(typeof _isDemoMode === 'function' && _isDemoMode())) {
             try { localStorage.setItem('trainee_courses', JSON.stringify(coursesToSave)); } catch(e) {}
         }
+        // Fix #66: return a Promise so callers (e.g. _setDefaultCourse) can wait for a REAL
+        // server confirmation before showing a "success" toast. Previously the success toast
+        // fired unconditionally right after calling this — a synchronous throw here was only
+        // ever logged to console.warn (invisible to the user), so "success" could show even
+        // when the write never reached Firebase at all. Both failure paths (sync throw AND
+        // async .catch()) now surface a red toast, so a failed save is never silent again.
         if (this.coursesRef && !(typeof _isDemoMode === 'function' && _isDemoMode())) {
             try {
                 const cData = {};
@@ -6469,14 +6475,18 @@ window.TraineeSystem = {
                     (c.trainees || []).forEach(t => { tData[t.id] = t; });
                     cData[c.id] = { ...c, trainees: tData };
                 });
-                // .set() is async — a try/catch here only catches SYNCHRONOUS throws.
-                // .catch() below surfaces real write failures (offline/permission) to the user (fix #62).
-                this.coursesRef.set(cData).catch(err => {
+                return this.coursesRef.set(cData).then(() => true).catch(err => {
                     console.error('_saveCourses failed:', err);
-                    if (typeof showToast === 'function') showToast('❌ שמירת הקורסים נכשלה — בדוק חיבור אינטרנט', 'error');
+                    if (typeof showToast === 'function') showToast('❌ שמירת הקורסים נכשלה — בדוק חיבור אינטרנט (' + (err && err.message || err) + ')', 'error');
+                    return false;
                 });
-            } catch(e) { console.warn('_saveCourses:', e); }
+            } catch(e) {
+                console.warn('_saveCourses:', e);
+                if (typeof showToast === 'function') showToast('❌ שמירת הקורסים נכשלה (שגיאה מקומית: ' + (e && e.message || e) + ')', 'error');
+                return Promise.resolve(false);
+            }
         }
+        return Promise.resolve(true);
     },
 
     switchCourse(courseId) {
@@ -6637,12 +6647,15 @@ window.TraineeSystem = {
         if (def) def.priority = 1;
         this.courses.filter(c => c.id !== courseId).forEach((c,i) => { if(!c.isDefault) c.priority = i+2; });
         this.courses.sort((a,b) => (a.priority||99)-(b.priority||99));
-        this._saveCourses();
         // Fix #62: immediately load & display the new default course's trainees
         // (previously only _updateCourseSelector() ran — dropdown updated but list/dashboard stayed on the old course).
         this.switchCourse(courseId);
         this._renderTab_courses();
-        showToast('⭐ קורס "' + def?.name + '" הוגדר כברירת מחדל', 'success');
+        // Fix #66: only show "success" once the Firebase write is CONFIRMED — not just attempted.
+        // _saveCourses() now returns a Promise; if it resolves false, a red error toast already fired.
+        this._saveCourses().then(ok => {
+            if (ok && typeof showToast === 'function') showToast('⭐ קורס "' + def?.name + '" הוגדר כברירת מחדל', 'success');
+        });
     },
 
     _archiveCourse(courseId) {
