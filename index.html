@@ -4534,15 +4534,19 @@ window.TraineeSystem = {
         // Filter out temporary courses (created in day summary form but not yet confirmed)
         const coursesToSave = this.courses.filter(c => !c._temp);
 
-        // Save courses to Firebase
-        // NOTE: .set() is async — a try/catch here only catches SYNCHRONOUS throws.
-        // Real write failures (offline, permission denied) happen later and were
-        // previously silent. .catch() below surfaces them to the user via toast.
-        if (this.coursesRef) {
+        // Save ONLY the active course's trainees — never the whole courses_v20 tree (fix #64).
+        // A full .set(cData) here used the ENTIRE in-memory this.courses array, which is
+        // per-tab/per-device and can be stale relative to metadata changes made elsewhere
+        // (e.g. admin sets a new default course, then ANY other open session calls persist()
+        // via a lesson/report save with its stale copy — silently reverting isDefault/priority
+        // for every course. Same clobber pattern as the trainees_v20 bug fixed in AA #2,
+        // just one level up, in courses_v20's metadata instead of the flat trainee list.)
+        // .update() on the scoped path only ever touches this course's trainees subtree.
+        if (this.coursesRef && this.currentCourseId) {
             try {
-                const cData = {};
-                coursesToSave.forEach(c => { cData[c.id] = c; });
-                this.coursesRef.set(cData).catch(err => {
+                const tData = {};
+                (cur ? (cur.trainees || []) : (this.trainees || [])).forEach(t => { tData[t.id] = t; });
+                this.coursesRef.child(this.currentCourseId).child('trainees').set(tData).catch(err => {
                     console.error('persist courses failed:', err);
                     if (typeof showToast === 'function') showToast('❌ שמירת החניכים נכשלה — בדוק חיבור אינטרנט', 'error');
                 });
