@@ -14,7 +14,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 11</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 12</title>
 
 <style>
 
@@ -1058,9 +1058,9 @@ body.dark-mode .schedule-toolbar{border-color:#3a4060;}
 
 .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;}
 
-.cal-header{text-align:center;font-size:11px;font-weight:bold;color:#888;padding:4px 2px;}
+.cal-header{text-align:center;font-size:11px;font-weight:bold;color:#888;padding:4px 2px;min-width:0;}
 
-.cal-cell{min-height:80px;border:1px solid #eef2f8;border-radius:6px;padding:4px 5px;cursor:pointer;transition:.15s;background:white;position:relative;}
+.cal-cell{min-height:80px;border:1px solid #eef2f8;border-radius:6px;padding:4px 5px;cursor:pointer;transition:.15s;background:white;position:relative;min-width:0;overflow:hidden;}
 
 body.dark-mode .cal-cell{background:#2d3348;border-color:#3a4060;}
 
@@ -1393,7 +1393,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 71;
+  const APP_VERSION = 72;
 
   function initFirebase() {
     try {
