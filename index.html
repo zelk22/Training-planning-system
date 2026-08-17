@@ -14,7 +14,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 4</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 5</title>
 
 <style>
 
@@ -1382,6 +1382,10 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js" defer></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js" defer></script>
 <script>
+  // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
+  // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
+  const APP_VERSION = 65;
+
   function initFirebase() {
     try {
       const firebaseConfig = {
@@ -1408,11 +1412,41 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
         window._firebaseOK = true;
         
         console.log('✅ Firebase initialized successfully');
+        _watchAppVersion();
       }
     } catch(e) {
       console.error('Firebase init error:', e);
     }
     window.dispatchEvent(new Event('firebaseReady'));
+  }
+
+  // תיקון #65: טאב שנשאר פתוח שעות (מדריך/חונך שלא סוגר את הדפדפן) ממשיך להריץ את ה-JS הישן
+  // בזיכרון גם אחרי שהועלה קובץ חדש לאתר — תגי ה-no-cache (תיקון #63) עוזרים רק לטעינה חדשה,
+  // לא "דוחפים" רענון לטאב שכבר טעון. זה מה שאיפשר לגרסה ישנה לדרוס בשקט תיקונים (למשל #64)
+  // באמצעות persist()/שמירות ישנות מטאב שלא התעדכן. הפתרון: כל טאב מכריז את הגרסה שלו
+  // ב-Firebase (נתיב חדש, לא נוגע בנתוני אמת קיימים), ומאזין בזמן אמת לגרסאות חדשות מטאבים אחרים.
+  function _watchAppVersion() {
+    try {
+      const verRef = window._db.ref('systemVersion/current');
+      verRef.once('value').then(snap => {
+        const remote = snap.val();
+        if (!remote || remote < APP_VERSION) {
+          verRef.set(APP_VERSION).catch(()=>{});
+        } else if (remote > APP_VERSION) {
+          _showVersionBanner();
+        }
+      }).catch(()=>{});
+      // מאזין חי — תופס גרסה חדשה שהוכרזה ממכשיר אחר גם אם הטאב הזה נשאר פתוח שעות
+      verRef.on('value', snap => {
+        const remote = snap.val();
+        if (remote && remote > APP_VERSION) _showVersionBanner();
+      });
+    } catch(e) { console.warn('_watchAppVersion:', e); }
+  }
+
+  function _showVersionBanner() {
+    const b = document.getElementById('versionUpdateBanner');
+    if (b) b.style.display = 'flex';
   }
 
   window.addEventListener('load', initFirebase);
@@ -2286,6 +2320,12 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
         <button class="v100-action-btn v100-btn-ghost" onclick="doLogout()">התנתק</button>
       </div>
     </div>
+  </div>
+
+  <!-- New-version banner (global — fix #65: shown to any tab whose loaded code is older than the latest deploy) -->
+  <div id="versionUpdateBanner" style="display:none;background:#e8f4fd;border:1.5px solid #3498db;border-radius:8px;padding:8px 14px;margin:8px 16px 0;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+    <span style="font-size:13px;font-weight:bold;color:#1a5276;">🔄 גרסה חדשה של המערכת זמינה — יש לרענן כדי לקבל את התיקונים האחרונים</span>
+    <button onclick="location.reload()" style="width:auto;padding:5px 12px;background:#3498db;color:white;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:bold;">🔄 רענן עכשיו</button>
   </div>
 
   <!-- Demo mode banner (global — shown above tabs, in every section, when demo is active) -->
