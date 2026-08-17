@@ -14,7 +14,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 9</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 11</title>
 
 <style>
 
@@ -698,6 +698,14 @@ body.dark-mode .login-input{background:#2d3348;border-color:#3a4060;color:#e0e6f
   .next-route{font-size:14px!important;}
   .sbtn{font-size:15px!important;padding:11px 16px!important;}
   .no-trip-card{font-size:17px!important;}
+
+  /* Fix #84: topbar — wrap instead of clipping action buttons off-screen */
+  .v100-topbar{height:auto;flex-wrap:wrap;padding:8px 10px;overflow:visible;}
+  .v100-topbar-actions{flex-wrap:wrap;justify-content:flex-end;}
+
+  /* Fix #85: schedule tab header row — table cells don't wrap like flex, so stack them */
+  table.sched-header-row,table.sched-header-row tr,table.sched-header-row td{display:block;width:100%;text-align:center!important;white-space:normal!important;}
+  table.sched-header-row td{margin-bottom:6px;padding:0!important;}
 }.login-input:focus{outline:none;border-color:#2980b9;}
 
 .login-btn{width:100%;padding:13px;background:#2980b9;color:white;border:none;border-radius:10px;font-size:15px;font-weight:bold;cursor:pointer;margin:0;}
@@ -974,8 +982,8 @@ body.dark-mode .copy-day-box{background:#242938;color:#e0e6f0;}
 /* ── EXPORT PRINT STYLE ──────────────────────────── */
 
 /* ── Messages Drawer ─────────────────────────────── */
-#msgDrawer{position:fixed;top:0;right:-420px;width:min(420px,100vw);height:100vh;background:white;box-shadow:-4px 0 24px rgba(0,0,0,.15);z-index:8000;transition:right .28s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;direction:rtl;}
-#msgDrawer.open{right:0;}
+#msgDrawer{position:fixed;top:0;right:-420px;width:min(420px,100vw);height:100vh;background:white;box-shadow:-4px 0 24px rgba(0,0,0,.15);z-index:8000;transition:right .28s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;direction:rtl;visibility:hidden;pointer-events:none;}
+#msgDrawer.open{right:0;visibility:visible;pointer-events:auto;}
 #msgDrawerBackdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:7999;}
 #msgDrawerBackdrop.open{display:block;}
 .msg-drawer-header{background:var(--primary);color:white;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
@@ -1385,7 +1393,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 69;
+  const APP_VERSION = 71;
 
   function initFirebase() {
     try {
@@ -1866,6 +1874,10 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 
         <!-- Instructor-only view: single row simple form -->
         <div id="schedInstrSimpleForm" style="display:none;">
+          <!-- Fix #76: this form always adds a NEW shift request -- it never reflected an
+               existing assignment for the day, which made the default shift shown here look
+               like it contradicted whatever's already on the calendar for that day. -->
+          <div id="schedInstrExistingNotice" style="display:none;background:#fff3cd;border:1px solid #eab308;color:#8a6d1a;border-radius:8px;padding:8px 10px;margin-bottom:10px;font-size:12px;line-height:1.5;"></div>
           <div class="sched-row">
             <div class="sched-field">
               <label>משמרת</label>
@@ -2308,7 +2320,6 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
       <div class="v100-icon-group">
         <button onclick="reloadApp()" id="globalReloadBtn" class="v100-icon-btn" title="רענן" style="display:none;">↺</button>
         <button class="v100-icon-btn" onclick="toggleDarkMode()" id="darkBtn" title="מצב לילה">☽</button>
-        <button onclick="openDemoPanel()" id="demoBtnMain" class="v100-action-btn v100-btn-ghost" title="מצב דמו" style="border-color:#e0982a;color:#e0982a;">🎭 מצב דמו</button>
       </div>
 
       <div class="v100-icon-group">
@@ -2722,7 +2733,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
   <div class="schedule-section" id="scheduleSection">
 
     <!-- ── ROW 1: title + month nav ──────────────────────── -->
-    <table style="width:100%;margin-bottom:8px;"><tr>
+    <table class="sched-header-row" style="width:100%;margin-bottom:8px;"><tr>
       <td><h4 style="margin:0;color:var(--primary);">🗓️ לוח שיבוצים</h4></td>
       <td style="text-align:center;">
         <div style="display:inline-flex;align-items:center;gap:10px;flex-wrap:wrap;">
@@ -2852,7 +2863,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px;">
       <h4 style="margin:0;color:var(--primary);">📊 דשבורד חודשי</h4>
-      <div style="display:flex;align-items:center;gap:8px;">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
         <button onclick="changeMonthlyDash(-1)" style="width:auto;background:#f0f4f8;border:1px solid #ccc;border-radius:6px;padding:5px 10px;cursor:pointer;font-size:15px;">‹</button>
         <span id="monthlyDashLabel" style="font-weight:bold;color:var(--primary);font-size:14px;white-space:nowrap;"></span>
         <button onclick="changeMonthlyDash(1)" style="width:auto;background:#f0f4f8;border:1px solid #ccc;border-radius:6px;padding:5px 10px;cursor:pointer;font-size:15px;">›</button>
@@ -2895,7 +2906,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
     </div>
 
     <!-- ══ SUB-TABS for additional analytics ══ -->
-    <div style="display:flex;gap:6px;margin:16px 0 12px;border-bottom:2px solid #e8eef6;padding-bottom:0;">
+    <div style="display:flex;gap:6px;margin:16px 0 12px;border-bottom:2px solid #e8eef6;padding-bottom:0;flex-wrap:wrap;">
       <button onclick="switchDashTab('tasks')" id="tabTasks" style="width:auto;padding:8px 16px;background:#f0f4f8;color:#555;border:1px solid #dde;border-bottom:none;border-radius:8px 8px 0 0;cursor:pointer;font-size:12px;font-weight:bold;margin-bottom:-1px;">📋 משימות</button>
       
       <button onclick="switchDashTab('timesheet')" id="tabTime" style="width:auto;padding:8px 16px;background:#f0f4f8;color:#555;border:1px solid #dde;border-bottom:none;border-radius:8px 8px 0 0;cursor:pointer;font-size:12px;font-weight:bold;margin-bottom:-2px;">🕐 גיליון נוכחות</button>
@@ -3480,6 +3491,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
       <button class="stab" onclick="switchSettingsTab('instrs',this)">מדריכים</button>
       <button class="stab" onclick="switchSettingsTab('mentors',this)">חונכים</button>
       <button class="stab" onclick="switchSettingsTab('routes',this)">⭐ מסלולים שמורים</button>
+      <button class="stab" onclick="switchSettingsTab('general',this)">⚙️ כללי</button>
     </div>
 
     <!-- Settings body panels -->
@@ -3573,6 +3585,15 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
           <button onclick="addMentorFromSettings()" style="padding:9px 14px;background:#8e44ad;color:white;border:none;border-radius:8px;font-size:13px;font-weight:bold;cursor:pointer;margin:0;white-space:nowrap;">+ הוסף</button>
         </div>
         <!-- קורסים גלויים לחונכים הועבר לטאב "חונכים" בהגדרות חניכים ומשוב -->
+      </div>
+
+      <div id="si-general" class="si-panel" style="display:none;">
+        <div class="ssection-title">⚙️ כללי</div>
+        <div style="max-width:420px;">
+          <div style="font-size:13px;font-weight:bold;color:#6c3483;margin-bottom:6px;">🎭 מצב דמו</div>
+          <div style="font-size:12px;color:#888;margin-bottom:12px;">יצירת נתוני דמו לבדיקת המערכת או יציאה ממצב דמו פעיל. כשמצב דמו פעיל יוצג פס התראה מתחת לסרגל נווט.</div>
+          <button onclick="openDemoPanel()" id="demoBtnMain" class="v100-action-btn v100-btn-ghost" title="מצב דמו" style="width:auto;border-color:#e0982a;color:#e0982a;padding:9px 18px;font-size:13px;">🎭 ניהול מצב דמו</button>
+        </div>
       </div>
 
       <div id="si-routes" class="si-panel" style="display:none;">
@@ -3711,6 +3732,17 @@ window.TraineeSystem = {
     .trainee-module .trainee-card { background: white; border-radius: 16px; box-shadow: 0 5px 20px rgba(0,0,0,0.07); border-right: 8px solid var(--rail-blue); overflow: hidden; transition: 0.25s; cursor: pointer; }
     .trainee-module .trainee-card:hover { transform: translateY(-4px); box-shadow: 0 12px 28px rgba(0,0,0,0.12); }
     .trainee-module .card-top { background: linear-gradient(135deg, #1a2a3a, #2c4a6e); padding: 20px; }
+    /* Fix #79: trainee cards colored by their developing skill-rating average — green/yellow/red
+       instead of a uniform blue. No scored lessons yet keeps the original blue (no verdict yet). */
+    .trainee-module .trainee-card.level-green { border-right-color: #27ae60; }
+    .trainee-module .trainee-card.level-green .card-top { background: linear-gradient(135deg, #1e5631, #27ae60); }
+    .trainee-module .trainee-card.level-green .card-bar-fill { background: #27ae60; }
+    .trainee-module .trainee-card.level-yellow { border-right-color: #f39c12; }
+    .trainee-module .trainee-card.level-yellow .card-top { background: linear-gradient(135deg, #7a5c14, #f39c12); }
+    .trainee-module .trainee-card.level-yellow .card-bar-fill { background: #f39c12; }
+    .trainee-module .trainee-card.level-red { border-right-color: #e74c3c; }
+    .trainee-module .trainee-card.level-red .card-top { background: linear-gradient(135deg, #7b241c, #e74c3c); }
+    .trainee-module .trainee-card.level-red .card-bar-fill { background: #e74c3c; }
     .trainee-module .card-name { color: white; font-size: 1.2em; font-weight: 700; margin: 0 0 3px 0; }
     .trainee-module .card-sub  { color: #a0b4c8; font-size: 0.82em; }
     .trainee-module .card-bar  { height: 5px; background: rgba(255,255,255,0.15); border-radius: 3px; margin-top: 12px; }
@@ -4806,15 +4838,28 @@ window.TraineeSystem = {
             showToast('רק מנהל יכול למחוק חניך', 'warning');
             return;
         }
-        this.showConfirm(`למחוק את <b>${name}</b> ואת כל נתוני ההכשרה שלו לצמיתות?`, () => {
-            this.trainees = this.trainees.filter(t => t.id !== id);
+        // Fix #78: this used to permanently erase the trainee AND their training history —
+        // if they left the course (dropped out / training stopped), the manager still wants a
+        // record of what they did. Now it's a soft-delete: the trainee is hidden from the
+        // active list (and from new-feedback pickers) but their record + lesson history stays
+        // in Firebase untouched, so nothing is actually lost.
+        this.showConfirm(`להסיר את <b>${name}</b> מרשימת החניכים הפעילים?<br><span style="font-size:0.85em;color:#888;">ההיסטוריה וההכשרה שלו יישמרו במערכת לצורך תיעוד — הוא רק לא יוצג יותר ברשימה.</span>`, () => {
+            const t = this.trainees.find(x => x.id === id);
+            if (t) { t.archived = true; t.archivedAt = Date.now(); }
             this.persist();
             this.renderList();
+            if (typeof showToast === 'function') showToast('👤 החניך הוסר מהרשימה — הנתונים נשמרו', 'info');
         });
     },
 
     editName(id, curName, e) {
         e.stopPropagation();
+        // Fix #77: defense in depth -- the edit-name button itself is now admin-only
+        // (renderList()), but guard the function too in case it's ever triggered another way.
+        if (typeof currentRole !== 'undefined' && currentRole !== 'admin') {
+            showToast('רק מנהל יכול לערוך שם חניך', 'warning');
+            return;
+        }
         const el = e.target.closest('.trainee-card').querySelector('.card-name');
         el.contentEditable = true;
         el.style.cssText = 'background:rgba(255,255,255,0.18);border-radius:4px;padding:2px 6px;outline:none;';
@@ -4903,9 +4948,17 @@ window.TraineeSystem = {
         const l   = this.$('trainee-list');
         const emp = this.$('empty-msg');
         l.innerHTML = '';
-        if (!this.trainees.length) { emp.style.display = 'block'; return; }
+        // Fix #78: soft-deleted (archived) trainees stay in the data but never show in the
+        // active list.
+        const _visible = this.trainees.filter(t => !t.archived);
+        if (!_visible.length) { emp.style.display = 'block'; return; }
         emp.style.display = 'none';
-        this.trainees.forEach(t => {
+        // Fix #79: color-code cards by the trainee's developing skill-rating average, using the
+        // same red/orange thresholds already configurable in "הגדרות קריטריונים לחניכים מתקשים"
+        // (formerly the risk-criteria settings), so the two features stay in sync.
+        const _levelCfg = (typeof _getTraineeSummaryConfig === 'function')
+            ? _getTraineeSummaryConfig() : { lowScoreRed: 6.0, lowScoreOrange: 7.0 };
+        _visible.forEach(t => {
             const doneLessons = new Set();
             (t.lessons || []).forEach(ls => {
                 if (ls.mission === 'קורס מעשי סיטאדיס' || ls.mission === 'קורס מעשי' || ls.mission === 'קורס')
@@ -4915,15 +4968,25 @@ window.TraineeSystem = {
             const pct   = Math.min((maxL / 50) * 100, 100).toFixed(0);
             const phase = maxL < 10 ? 'שלב טכני' : maxL < 30 ? 'שלב תפעולי' : 'שלב מסחרי';
             const safeName = t.name.replace(/'/g, "\\'").replace(/"/g, '&quot;');
-            // Fix #75: only admin may delete a trainee from a course. Instructors could
-            // previously delete any trainee (and all their training history) permanently --
-            // the button is now admin-only; instructors still get the rename (✏️) action.
+            // Fix #75/#77: only admin may delete OR rename a trainee. Instructors could
+            // previously do either permanently -- both actions are now admin-only.
             const _isAdminForDelete = (typeof currentRole !== 'undefined' && currentRole === 'admin');
             const _delBtnHtml = _isAdminForDelete
                 ? `<button class="cab del" data-delete-trainee="${t.id}" data-name="${safeName}" title="מחיקה">🗑️</button>`
                 : '';
+            const _editBtnHtml = _isAdminForDelete
+                ? `<button class="cab" data-edit-name="${t.id}" data-name="${safeName}" title="עריכת שם">✏️</button>`
+                : '';
+            const _scoredLessons = (t.lessons || []).filter(l => l.s1 != null && l.s2 != null && l.s3 != null && l.s4 != null && l.s5 != null);
+            const _avgScore = _scoredLessons.length
+                ? _scoredLessons.reduce((sum, l) => sum + (l.s1 + l.s2 + l.s3 + l.s4 + l.s5) / 5, 0) / _scoredLessons.length
+                : null;
+            const _levelClass = _avgScore === null ? ''
+                : _avgScore < _levelCfg.lowScoreRed ? 'level-red'
+                : _avgScore < _levelCfg.lowScoreOrange ? 'level-yellow'
+                : 'level-green';
             l.innerHTML += `
-            <div class="trainee-card" data-id="${t.id}">
+            <div class="trainee-card ${_levelClass}" data-id="${t.id}">
                 <div class="card-top">
                     <div class="card-name">${_esc(t.name)}</div>
                     <div class="card-sub">${phase} • שיעור ${maxL}/50</div>
@@ -4932,7 +4995,7 @@ window.TraineeSystem = {
                 <div class="card-bottom">
                     <span class="card-count">${(t.lessons || []).length} דיווחים</span>
                     <div class="card-acts">
-                        <button class="cab" data-edit-name="${t.id}" data-name="${safeName}" title="עריכת שם">✏️</button>
+                        ${_editBtnHtml}
                         ${_delBtnHtml}
                     </div>
                 </div>
@@ -5945,6 +6008,10 @@ window.TraineeSystem = {
             btn.addEventListener('click', () => {
                 const idx = parseInt(btn.dataset.tsDelSkill, 10);
                 if (confirm('למחוק מיומנות זו?')) {
+                    // Fix #81: sync any not-yet-saved inline name edits from the OTHER rows
+                    // before removing this one -- otherwise re-rendering from the stale
+                    // in-memory array would silently discard them (same bug as addSkillRow()).
+                    this._syncSkillsFromDOM();
                     this.settings.skills.splice(idx, 1);
                     this._renderTab_skills();
                 }
@@ -5952,8 +6019,24 @@ window.TraineeSystem = {
         });
     },
 
+    // Fix #81: read the CURRENT (possibly unsaved) values straight out of the skill-name
+    // inputs and write them back into this.settings.skills, keyed by position -- matching
+    // exactly how _collectSettingsFromUI() finalizes skills at save time. Call this before
+    // ANY action that mutates this.settings.skills and re-renders the list (add/delete/drag
+    // reorder) so a re-render never overwrites text the user just typed but hasn't saved yet.
+    _syncSkillsFromDOM() {
+        if (!this.container) return;
+        const rows = this.container.querySelectorAll('[data-ts-skill-idx]');
+        if (!rows.length) return;
+        this.settings.skills = Array.from(rows).map((row, i) => ({
+            id: 's' + (i + 1),
+            name: row.querySelector('.ts-skill-name-input')?.value.trim() || ''
+        }));
+    },
+
     addSkillRow() {
         if (!this.settings) this.settings = this._defaultSettings();
+        this._syncSkillsFromDOM();
         this.settings.skills.push({id:'s'+(this.settings.skills.length+1), name:''});
         this._renderTab_skills();
         const inputs = this.container.querySelectorAll('.ts-skill-name-input');
@@ -5974,6 +6057,8 @@ window.TraineeSystem = {
                 const rows = [...list.querySelectorAll('.ts-skill-row')];
                 const fromIdx = rows.indexOf(dragging);
                 const toIdx   = rows.indexOf(row);
+                // Fix #81: same unsaved-edit-loss bug as add/delete -- sync first.
+                this._syncSkillsFromDOM();
                 const moved = this.settings.skills.splice(fromIdx, 1)[0];
                 this.settings.skills.splice(toIdx, 0, moved);
                 this._renderTab_skills();
@@ -13812,6 +13897,31 @@ function openSchedModal(date){
     const customTimesInstr = document.getElementById('schedCustomTimesInstr');
     if(customTimesInstr) customTimesInstr.style.display='none';
 
+    // Fix #76: this form always ADDS a new shift request — it never reflected whatever's
+    // already assigned to the instructor that day, so the default shown here (always the
+    // first shift type) could look completely unrelated to their real assignment on the
+    // calendar. Detect an existing entry for this user+date and mirror it, plus warn clearly
+    // that submitting still creates an ADDITIONAL request rather than editing the existing one.
+    const existingNotice = document.getElementById('schedInstrExistingNotice');
+    const myExisting = (schedData[date]||[]).filter(e=>e.name===currentUserName);
+    if(existingNotice && myExisting.length){
+      const statusLabel={pending:'ממתין לאישור',approved:'מאושר',rejected:'נדחה'};
+      const mine = myExisting.find(e=>e.status!=='rejected') || myExisting[0];
+      const mineSh = mine.shift==='custom' ? {s:mine.startTime,e:mine.endTime} : (SHIFT_HOURS[mine.shift]||{});
+      const mineLabel = (typeof SHIFT_LABELS!=='undefined'&&SHIFT_LABELS[mine.shift])||mine.shift||'';
+      existingNotice.innerHTML = `⚠️ יש לך כבר שיבוץ ליום זה: <b>${mineLabel}</b>`
+        + (mineSh.s&&mineSh.e?` (${mineSh.s}–${mineSh.e})`:'')
+        + ` — ${statusLabel[mine.status]||mine.status}`
+        + (myExisting.length>1?` וכן ${myExisting.length-1} רשומות נוספות`:'')
+        + `.<br>הטופס למטה מוסיף בקשת שיבוץ <b>נוספת</b> — הוא לא עורך את השיבוץ הקיים.`;
+      existingNotice.style.display='block';
+      if(shiftInstr && Object.prototype.hasOwnProperty.call(SHIFT_HOURS, mine.shift)){
+        shiftInstr.value = mine.shift;
+      }
+    } else if(existingNotice){
+      existingNotice.style.display='none';
+    }
+
   } else {
 
     if(instrForm) instrForm.style.display='none';
@@ -13863,9 +13973,16 @@ function renderSchedAssignTable(date){
 
   const existing=schedData[date]||[];
 
+  // Fix #80: show each shift's exact hours next to its name (e.g. "בוקר 2 (06:00–14:30)")
+  // so the admin doesn't have to open settings just to see the shift times.
   const shiftOpts=(sel)=>`<option value="none"${sel==='none'?' selected':''}>— לא משובץ —</option>`+
     Object.keys(SHIFT_HOURS).filter(k=>k!=='custom'&&!SHIFT_HOURS[k].hidden)
-      .map(k=>`<option value="${k}"${sel===k?' selected':''}>${(typeof SHIFT_LABELS!=='undefined'&&SHIFT_LABELS[k])||k}</option>`)
+      .map(k=>{
+        const _lbl=(typeof SHIFT_LABELS!=='undefined'&&SHIFT_LABELS[k])||k;
+        const _hrs=SHIFT_HOURS[k];
+        const _hrsTxt=(_hrs&&_hrs.s&&_hrs.e)?` (${_hrs.s}–${_hrs.e})`:'';
+        return `<option value="${k}"${sel===k?' selected':''}>${_lbl}${_hrsTxt}</option>`;
+      })
       .join('')+
     `<option value="custom"${sel==='custom'?' selected':''}>⏰ משמרת מותאמת</option>`;
 
@@ -19476,7 +19593,8 @@ function _urAddFeedbackBlock() {
       courseSelectEl.onchange = () => {
         const chosen = courses.find(cc => cc.id === courseSelectEl.value);
         // Fix #69: alphabetical (Hebrew collation) trainee order in the day-summary form.
-        const ts = chosen ? (chosen.trainees || []).slice().sort((a,b) => (a.name||'').localeCompare(b.name||'', 'he')) : [];
+        // Fix #78: archived (soft-deleted) trainees shouldn't be selectable for new feedback.
+        const ts = chosen ? (chosen.trainees || []).filter(t => !t.archived).sort((a,b) => (a.name||'').localeCompare(b.name||'', 'he')) : [];
         selectEl.innerHTML = '<option value="">— בחר חניך —</option>'
           + ts.map(t => `<option value="${t.id}">${_esc(t.name)}</option>`).join('');
         if (freeEl) { freeEl.value = ''; }
@@ -19486,7 +19604,8 @@ function _urAddFeedbackBlock() {
     // Default course trainees
     const defCourse = activeCourses.find(c => c.isDefault) || activeCourses[0];
     // Fix #69: alphabetical (Hebrew collation) trainee order in the day-summary form.
-    const defTrainees = defCourse ? (defCourse.trainees || []).slice().sort((a,b) => (a.name||'').localeCompare(b.name||'', 'he')) : [];
+    // Fix #78: archived (soft-deleted) trainees shouldn't be selectable for new feedback.
+    const defTrainees = defCourse ? (defCourse.trainees || []).filter(t => !t.archived).sort((a,b) => (a.name||'').localeCompare(b.name||'', 'he')) : [];
 
     selectEl.innerHTML = '<option value="">— בחר חניך —</option>'
       + defTrainees.map(t => `<option value="${t.id}">${_esc(t.name)}</option>`).join('');
@@ -22537,7 +22656,10 @@ function _generateTraineeSummary() {
   }
 
   const cfg      = _getTraineeSummaryConfig();
-  const trainees = TraineeSystem.trainees || [];
+  // Fix #78: archived (soft-deleted) trainees no longer count toward the dashboard/alerts --
+  // they've left the course, so they shouldn't show up as "active" or trigger risk alerts,
+  // even though their record is still preserved in Firebase for history/documentation.
+  const trainees = (TraineeSystem.trainees || []).filter(t => !t.archived);
   const passMap  = window._milestonePassMap || {};
   const now      = Date.now();
 
@@ -22664,10 +22786,29 @@ function _generateTraineeSummary() {
       riskReasons.push('לא עבר טסט 50, קיבל ' + extraHoursCount + ' שעות נוספות/כשירות');
     }
 
-    const riskLevel =
+    // Fix #83: a single skill rating of 1-2 in ANY lesson forces an alert, regardless of
+    // stage or overall average -- a trainee whose average looks fine can still have had one
+    // very bad lesson worth the manager's attention, and averaging would hide that.
+    const lowSkillHits = [];
+    lessons.forEach(l => {
+      [['s1',l.s1],['s2',l.s2],['s3',l.s3],['s4',l.s4],['s5',l.s5]].forEach(([k,v]) => {
+        if (v === 1 || v === 2) lowSkillHits.push({ date: l.date, skill: k, value: v });
+      });
+    });
+    const forcedAlert = lowSkillHits.length > 0;
+    if (forcedAlert) {
+      const worst = lowSkillHits[lowSkillHits.length - 1];
+      riskReasons.push(
+        'קיבל דירוג ' + worst.value + ' במיומנות בשיעור מתאריך ' + (worst.date || '—') +
+        (lowSkillHits.length > 1 ? (' (וב-' + (lowSkillHits.length - 1) + ' דירוגים נמוכים נוספים)') : '')
+      );
+    }
+
+    let riskLevel =
       riskScore >= 3  ? 'high'   :
       riskScore === 2 ? 'medium' :
       riskScore === 1 ? 'low'    : 'none';
+    if (forcedAlert && riskLevel === 'none') riskLevel = 'low';
 
     return {
       id:              t.id,
@@ -22686,7 +22827,7 @@ function _generateTraineeSummary() {
       riskScore,
       riskLevel,
       riskReasons,
-      atRisk:          riskScore >= cfg.riskThreshold,
+      atRisk:          riskScore >= cfg.riskThreshold || forcedAlert,
     };
   });
 
@@ -22779,7 +22920,7 @@ function _renderTraineeSummaryPanel() {
     ['🎓 חניכים',     String(summary.totalTrainees),  '#2c3e50'],
     ['⚡ פעילים',       String(summary.activeTrainees), '#2980b9'],
     ['★ ממוצע כללי',  summary.globalAvgScore!==null?String(summary.globalAvgScore):'N/A','#8e44ad'],
-    ['⚠️ בסיכון', String(summary.atRisk?summary.atRisk.length:0),'#e74c3c'],
+    ['⚠️ מתקשים', String(summary.atRisk?summary.atRisk.length:0),'#e74c3c'],
     ['📈 בשיפור',    String(summary.improving?summary.improving.length:0),'#27ae60']
   ];
   h.push('<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:14px;direction:rtl;">');
@@ -22801,11 +22942,11 @@ function _renderTraineeSummaryPanel() {
     h.push('</div></div>');
   }
   if(summary.atRisk&&summary.atRisk.length){
-    h.push('<div style="background:white;border:1px solid #fad7d0;border-radius:10px;padding:12px 16px;margin-bottom:12px;direction:rtl;"><div style="font-size:13px;font-weight:bold;color:#c0392b;margin-bottom:8px;">⚠️ חניכים בסיכון <span style="font-size:11px;font-weight:400;color:#888;">('+summary.atRisk.length+')</span></div><div style="display:flex;flex-direction:column;gap:8px;">');
+    h.push('<div style="background:white;border:1px solid #fad7d0;border-radius:10px;padding:12px 16px;margin-bottom:12px;direction:rtl;"><div style="font-size:13px;font-weight:bold;color:#c0392b;margin-bottom:8px;">⚠️ חניכים מתקשים <span style="font-size:11px;font-weight:400;color:#888;">('+summary.atRisk.length+')</span></div><div style="display:flex;flex-direction:column;gap:8px;">');
     summary.atRisk.forEach(function(t){var bc=t.riskLevel==='high'?'#e74c3c':t.riskLevel==='medium'?'#e67e22':'#f39c12';h.push('<div style="border:1px solid '+bc+';border-right:4px solid '+bc+';border-radius:8px;padding:10px 14px;">');h.push('<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;flex-wrap:wrap;gap:6px;">');h.push('<div style="display:flex;align-items:center;gap:8px;">'+riskBadge(t.riskLevel)+trendArrow(t.trend)+'<span style="font-size:14px;font-weight:bold;color:#2c3e50;">'+t.name+'</span></div>');h.push('<div style="display:flex;align-items:center;gap:8px;"><span style="font-size:11px;color:#888;">'+t.stage+'</span><button onclick="try{if(typeof TraineeSystem!==undefined)TraineeSystem.openDetail&&TraineeSystem.openDetail('+t.id+');}catch(ex){}" style="padding:3px 9px;background:#2980b9;color:white;border:none;border-radius:6px;cursor:pointer;font-size:11px;">פתח תיק ←</button></div></div>');if(t.riskReasons&&t.riskReasons.length){h.push('<ul style="margin:2px 0 0;padding-right:18px;">');t.riskReasons.forEach(function(r){h.push('<li style="font-size:12px;color:#666;margin-bottom:2px;">'+r+'</li>');});h.push('</ul>');}h.push('</div>');});
     h.push('</div></div>');
   } else {
-    h.push('<div style="background:#eafaf1;border:1px solid #a9dfbf;border-radius:10px;padding:10px 16px;margin-bottom:12px;direction:rtl;text-align:center;font-size:13px;color:#27ae60;">✅ אין חניכים בסיכון כרגע</div>');
+    h.push('<div style="background:#eafaf1;border:1px solid #a9dfbf;border-radius:10px;padding:10px 16px;margin-bottom:12px;direction:rtl;text-align:center;font-size:13px;color:#27ae60;">✅ אין חניכים מתקשים כרגע</div>');
   }
   var ts=summary.generatedAt?new Date(summary.generatedAt).toLocaleTimeString('he-IL'):'';
   h.push('<div style="display:flex;justify-content:space-between;align-items:center;direction:rtl;font-size:11px;color:#aaa;padding:4px 2px 0;margin-bottom:10px;"><span>עודכן: '+ts+'</span><button onclick="try{window._traineeSummaryCache=null;_renderTraineeSummaryPanel();}catch(e){}" style="padding:3px 10px;background:#f0f4f8;border:1px solid #ccc;border-radius:6px;cursor:pointer;font-size:11px;color:#666;">רענן</button></div>');
@@ -22813,7 +22954,7 @@ function _renderTraineeSummaryPanel() {
   // ── Settings toggle button ──────────────────────────────
   h.push('<div id="tsc-settings-area">');
   h.push('<button onclick="try{_toggleTraineeSummarySettings();}catch(e){}" style="width:100%;padding:8px 14px;background:#f8f9fa;border:1px solid #dee2e6;border-radius:8px;cursor:pointer;font-size:12px;color:#555;direction:rtl;text-align:right;display:flex;align-items:center;gap:6px;" id="tsc-settings-btn">');
-  h.push('<span>&#9881;&#65039; הגדרות קריטריוני סיכון</span><span id="tsc-settings-arrow" style="margin-right:auto;font-size:10px;">&#9660;</span></button>');
+  h.push('<span>&#9881;&#65039; הגדרות קריטריונים לחניכים מתקשים</span><span id="tsc-settings-arrow" style="margin-right:auto;font-size:10px;">&#9660;</span></button>');
 
   // ── Settings panel (hidden by default) ─────────────────
   h.push('<div id="tsc-settings-panel" style="display:none;background:#f8f9fa;border:1px solid #dee2e6;border-top:none;border-radius:0 0 8px 8px;padding:14px 16px;direction:rtl;">');
@@ -22823,17 +22964,17 @@ function _renderTraineeSummaryPanel() {
   h.push('<div style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px;">');
 
   h.push('<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">');
-  h.push('<label style="font-size:12px;color:#555;flex:1;">ימים ללא שיעור = סיכון <span style="color:#888;font-size:11px;">(בכל שלב משלב תפעולי)</span></label>');
+  h.push('<label style="font-size:12px;color:#555;flex:1;">ימים ללא שיעור = חניך מתקשה <span style="color:#888;font-size:11px;">(בכל שלב משלב תפעולי)</span></label>');
   h.push('<input type="number" id="tsc-inactiveDaysRisk" min="7" max="90" style="width:70px;padding:5px 8px;border:1px solid #ccc;border-radius:6px;font-size:13px;text-align:center;">');
   h.push('</div>');
 
   h.push('<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">');
-  h.push('<label style="font-size:12px;color:#555;flex:1;">ימים ללא שיעור בשלב טכני = סיכון <span style="color:#3498db;font-size:11px;">(שלב טכני בלבד)</span></label>');
+  h.push('<label style="font-size:12px;color:#555;flex:1;">ימים ללא שיעור בשלב טכני = חניך מתקשה <span style="color:#3498db;font-size:11px;">(שלב טכני בלבד)</span></label>');
   h.push('<input type="number" id="tsc-inactiveDaysEarly" min="3" max="60" style="width:70px;padding:5px 8px;border:1px solid #ccc;border-radius:6px;font-size:13px;text-align:center;">');
   h.push('</div>');
 
   h.push('<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">');
-  h.push('<label style="font-size:12px;color:#555;flex:1;">מינימום שעות כשירות/נוספות לקריטריון סיכון <span style="color:#e74c3c;font-size:11px;">(לפי שלב החניך)</span></label>');
+  h.push('<label style="font-size:12px;color:#555;flex:1;">מינימום שעות כשירות/נוספות לקריטריון חניך מתקשה <span style="color:#e74c3c;font-size:11px;">(לפי שלב החניך)</span></label>');
   h.push('<input type="number" id="tsc-extraHoursRiskCount" min="1" max="10" style="width:70px;padding:5px 8px;border:1px solid #ccc;border-radius:6px;font-size:13px;text-align:center;">');
   h.push('</div>');
 
@@ -22845,7 +22986,7 @@ function _renderTraineeSummaryPanel() {
   h.push('<span id="tsc-advanced-arrow" style="font-size:10px;">&#9654;</span><span>הגדרות מתקדמות</span></button>');
 
   h.push('<div id="tsc-advanced-panel" style="display:none;margin-top:10px;padding-top:10px;border-top:1px dashed #dee2e6;">');
-  h.push('<div style="font-size:11px;color:#999;margin-bottom:8px;">שינוי ערכים אלה ישפיע על סיווג הסיכון של כלל החניכים.</div>');
+  h.push('<div style="font-size:11px;color:#999;margin-bottom:8px;">שינוי ערכים אלה ישפיע על סיווג ה"מתקשים" של כלל החניכים.</div>');
   h.push('<div style="display:flex;flex-direction:column;gap:10px;">');
 
   h.push('<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">');
@@ -22859,7 +23000,7 @@ function _renderTraineeSummaryPanel() {
   h.push('</div>');
 
   h.push('<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">');
-  h.push('<label style="font-size:12px;color:#555;flex:1;">מינימום קריטריונים = בסיכון <span style="color:#888;font-size:11px;">(1-4)</span></label>');
+  h.push('<label style="font-size:12px;color:#555;flex:1;">מינימום קריטריונים = חניך מתקשה <span style="color:#888;font-size:11px;">(1-4)</span></label>');
   h.push('<input type="number" id="tsc-riskThreshold" min="1" max="4" style="width:70px;padding:5px 8px;border:1px solid #ccc;border-radius:6px;font-size:13px;text-align:center;">');
   h.push('</div>');
 
@@ -22925,7 +23066,7 @@ function _saveTraineeSummaryConfig() {
   };
   // Validation
   if (cfg.inactiveDaysEarly >= cfg.inactiveDaysRisk) {
-    try{showToast('שגיאה: ימי שלב טכני חייבים להיות פחות מימי סיכון כללי','error');}catch(e){alert('שגיאה: ימי שלב טכני חייבים להיות פחות מימי סיכון כללי');}
+    try{showToast('שגיאה: ימי שלב טכני חייבים להיות פחות מימי הקריטריון הכללי','error');}catch(e){alert('שגיאה: ימי שלב טכני חייבים להיות פחות מימי הקריטריון הכללי');}
     return;
   }
   if (cfg.lowScoreRed >= cfg.lowScoreOrange) {
@@ -22933,7 +23074,7 @@ function _saveTraineeSummaryConfig() {
     return;
   }
   if (cfg.riskThreshold < 1 || cfg.riskThreshold > 4) {
-    try{showToast('שגיאה: סף סיכון חייב להיות בין 1 ל-4','error');}catch(e){alert('שגיאה: סף סיכון חייב להיות בין 1 ל-4');}
+    try{showToast('שגיאה: סף הקריטריונים למתקשה חייב להיות בין 1 ל-4','error');}catch(e){alert('שגיאה: סף הקריטריונים למתקשה חייב להיות בין 1 ל-4');}
     return;
   }
   try {
