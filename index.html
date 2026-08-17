@@ -14,7 +14,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 7</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 8</title>
 
 <style>
 
@@ -1384,7 +1384,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 67;
+  const APP_VERSION = 68;
 
   function initFirebase() {
     try {
@@ -6704,15 +6704,33 @@ window.TraineeSystem = {
         const count = (course.trainees||[]).length;
         if (!confirm(`למחוק את הקורס "${course.name}"?${count ? `
 שים לב: ${count} חניכים יימחקו לצמיתות.` : ''}`)) return;
+        // Fix #68: same false-positive pattern as #66/#67 -- this used to show "נמחק" the
+        // instant the course left the in-memory array, regardless of whether the Firebase
+        // save actually succeeded. If _saveCourses() failed (bad key, network, etc.) the
+        // deletion looked successful in the UI but never reached Firebase -- so the course
+        // reappeared on next load/login, exactly like the earlier "default course reverts" bug.
+        const removedIdx = this.courses.findIndex(c => c.id === courseId);
+        const wasCurrent = this.currentCourseId === courseId;
         this.courses = this.courses.filter(c => c.id !== courseId);
-        if (this.currentCourseId === courseId) {
+        if (wasCurrent) {
             const def = this.courses.find(c=>c.isDefault) || this.courses[0];
             if (def) this.switchCourse(def.id);
         }
-        this._saveCourses();
         this._renderTab_courses();
         this._updateCourseSelector();
-        showToast('🗑 הקורס נמחק', 'info');
+        this._saveCourses().then(ok => {
+            if (ok) {
+                showToast('🗑 הקורס נמחק', 'info');
+            } else {
+                // Save failed -- roll back the local removal so the UI matches Firebase reality
+                // instead of lying about a deletion that never actually happened.
+                this.courses.splice(removedIdx, 0, course);
+                this.courses.sort((a,b) => (a.priority||99)-(b.priority||99));
+                if (wasCurrent) this.switchCourse(courseId);
+                this._renderTab_courses();
+                this._updateCourseSelector();
+            }
+        });
     },
 
     _moveCourseUp(courseId) {
