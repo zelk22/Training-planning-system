@@ -14,7 +14,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 8</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 9</title>
 
 <style>
 
@@ -1001,6 +1001,7 @@ body.dark-mode .msg-card{background:#1e2d42;border-color:#2a3a52;}
 .mentor-mode #instrNavBar,
 .mentor-mode #navInstrTabTrips,
 .mentor-mode #navInstrTabTeam { display:none !important; }
+.mentor-mode #teamViewToggleInstr { display:none !important; } /* Fix #74: mentors don't get the schedule "team view" toggle, matching the existing team-tab restriction */
 
 /* Mentor mode: show a mentor header bar */
 #mentorInstrBar { display:none; }
@@ -1384,7 +1385,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 68;
+  const APP_VERSION = 69;
 
   function initFirebase() {
     try {
@@ -2450,10 +2451,16 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 
     <!-- ══ TODAY TASKS AREA ══════════════════════════════ -->
     <div id="todayTasksCard" style="background:white;border-radius:12px;border:1px solid #dce3ec;padding:14px 16px;margin-bottom:12px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-        <h3 id="todayTasksTitle" style="margin:0;font-size:15px;color:var(--primary);">📅 היום</h3>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
+        <div style="display:flex;align-items:center;gap:6px;">
+          <!-- Fix #73: browse to the previous/next day's tasks (e.g. check tomorrow's assignment) -->
+          <button class="today-action-btn" onclick="changeDate(-1)" title="יום קודם" style="width:auto !important;padding:4px 9px;background:#f0f4f8;border:1px solid #dde;color:#555;border-radius:7px;cursor:pointer;font-size:13px;line-height:1;">‹</button>
+          <h3 id="todayTasksTitle" style="margin:0;font-size:15px;color:var(--primary);">📅 היום</h3>
+          <button class="today-action-btn" onclick="changeDate(1)" title="יום הבא" style="width:auto !important;padding:4px 9px;background:#f0f4f8;border:1px solid #dde;color:#555;border-radius:7px;cursor:pointer;font-size:13px;line-height:1;">›</button>
+        </div>
         <div style="display:flex;align-items:center;gap:8px;">
           <span id="todayTasksDate" style="font-size:12px;color:#888;"></span>
+          <button id="todayBackToTodayBtn" onclick="jumpToToday()" style="display:none;width:auto !important;padding:4px 8px;background:#fff3cd;border:1px solid #eab308;color:#8a6d1a;border-radius:7px;cursor:pointer;font-size:11px;font-weight:600;">היום</button>
           <button class="today-action-btn" onclick="openInstrAddTask()" style="width:auto !important;padding:4px 10px;background:#f0f8ff;border:1.5px solid #3498db;color:#2980b9;border-radius:7px;cursor:pointer;font-size:12px;font-weight:600;">+ משימה</button>
           <button class="today-action-btn" onclick="openUnifiedReport()" style="width:auto !important;padding:4px 10px;background:#27ae60;color:white;border:none;border-radius:7px;cursor:pointer;font-size:12px;font-weight:600;">📝 סיכום יום</button>
         </div>
@@ -2516,8 +2523,13 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 
         <!-- Title + month nav -->
         <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
-          <h4 style="margin:0;">🗓️ השיבוצים שלי</h4>
+          <h4 id="instrSchedTitle" style="margin:0;">🗓️ השיבוצים שלי</h4>
           <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+            <!-- Fix #74: "team view" — see other instructors' assignments, not just your own (hidden for mentors) -->
+            <div class="cal-view-toggle" id="teamViewToggleInstr">
+              <button data-mode="mine" class="active" onclick="setInstrTeamView(false)">שלי</button>
+              <button data-mode="team" onclick="setInstrTeamView(true)">👥 צוות</button>
+            </div>
             <div class="cal-view-toggle" id="calViewToggleInstr">
               <button data-mode="month" class="active" onclick="setCalViewMode('month')">חודשי</button>
               <button data-mode="week" onclick="setCalViewMode('week')">שבועי</button>
@@ -4788,6 +4800,12 @@ window.TraineeSystem = {
 
     deleteTrainee(id, name, e) {
         e.stopPropagation();
+        // Fix #75: defense in depth -- the delete button itself is now admin-only (renderList()),
+        // but guard the function too in case it's ever triggered another way.
+        if (typeof currentRole !== 'undefined' && currentRole !== 'admin') {
+            showToast('רק מנהל יכול למחוק חניך', 'warning');
+            return;
+        }
         this.showConfirm(`למחוק את <b>${name}</b> ואת כל נתוני ההכשרה שלו לצמיתות?`, () => {
             this.trainees = this.trainees.filter(t => t.id !== id);
             this.persist();
@@ -4897,6 +4915,13 @@ window.TraineeSystem = {
             const pct   = Math.min((maxL / 50) * 100, 100).toFixed(0);
             const phase = maxL < 10 ? 'שלב טכני' : maxL < 30 ? 'שלב תפעולי' : 'שלב מסחרי';
             const safeName = t.name.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+            // Fix #75: only admin may delete a trainee from a course. Instructors could
+            // previously delete any trainee (and all their training history) permanently --
+            // the button is now admin-only; instructors still get the rename (✏️) action.
+            const _isAdminForDelete = (typeof currentRole !== 'undefined' && currentRole === 'admin');
+            const _delBtnHtml = _isAdminForDelete
+                ? `<button class="cab del" data-delete-trainee="${t.id}" data-name="${safeName}" title="מחיקה">🗑️</button>`
+                : '';
             l.innerHTML += `
             <div class="trainee-card" data-id="${t.id}">
                 <div class="card-top">
@@ -4908,7 +4933,7 @@ window.TraineeSystem = {
                     <span class="card-count">${(t.lessons || []).length} דיווחים</span>
                     <div class="card-acts">
                         <button class="cab" data-edit-name="${t.id}" data-name="${safeName}" title="עריכת שם">✏️</button>
-                        <button class="cab del" data-delete-trainee="${t.id}" data-name="${safeName}" title="מחיקה">🗑️</button>
+                        ${_delBtnHtml}
                     </div>
                 </div>
             </div>`;
@@ -10294,15 +10319,33 @@ async function renderInstrList(){
 
         <span style="font-size:14px;">${_esc(name)}</span>
 
+        <div style="display:flex;gap:4px;">
+
+        <button class="instr-rename-btn" data-key="${key}" data-name="${_esc(name)}" title="שינוי שם" style="background:none;border:1px solid #ccc;border-radius:50%;width:24px;height:24px;padding:0;cursor:pointer;font-size:12px;line-height:1;color:#888;display:flex;align-items:center;justify-content:center;margin:0;transition:.15s;"
+
+          onmouseover="this.style.borderColor='var(--secondary)';this.style.color='var(--secondary)'"
+
+          onmouseout="this.style.borderColor='#ccc';this.style.color='#888'">✏️</button>
+
         <button onclick="removeInstructor('${key}')" style="background:none;border:1px solid #ccc;border-radius:50%;width:24px;height:24px;padding:0;cursor:pointer;font-size:14px;line-height:1;color:#888;display:flex;align-items:center;justify-content:center;margin:0;transition:.15s;"
 
           onmouseover="this.style.borderColor='var(--danger)';this.style.color='var(--danger)'"
 
           onmouseout="this.style.borderColor='#ccc';this.style.color='#888'">×</button>
 
+        </div>
+
       </div>`
 
     ).join('');
+
+    // Fix #72: delegated click handler for the rename (✏️) button — reads name via dataset
+    // instead of string-interpolating it into an inline onclick, so names with quotes/apostrophes
+    // can't break the generated HTML.
+    listEl.onclick=(e)=>{
+      const btn=e.target.closest('.instr-rename-btn');
+      if(btn) renameInstructorPrompt(btn.dataset.key, btn.dataset.name);
+    };
 
   }catch(e){listEl.innerHTML='<div style="padding:14px;font-size:13px;color:var(--danger);">שגיאה בטעינה</div>';}
 
@@ -10329,6 +10372,173 @@ async function removeInstructor(key){
 
   }catch(e){}
 
+}
+
+// ═══════════════════════════════════════════════════════════
+// Fix #72: rename an instructor everywhere their name is stored as plain text.
+// Instructor identity in this app is just the name string (no stable ID) — so a rename is
+// inherently a find-and-replace across every place that string was ever written. Covers, in
+// one pass: the instructor roster + hidden-from-scheduling flag, schedule assignments (every
+// month), trips (every date), task/day reports (every date), trainee lesson history in
+// courses_v20 (separate 'trainee' Firebase app), and notes (specific-visibility lists +
+// personal-note authorship). Every write uses a scoped multi-path .update() with exact keys —
+// never a full-tree .set() — so it can't clobber unrelated concurrent changes (the exact
+// clobber bug fixed in #64/#67/#68 for courses_v20; the same discipline applies here).
+// Deliberately NOT migrated: instrStatuses (today's live on-trip/returned status) — that's
+// transient same-day state that resets every day, not worth the added risk/complexity.
+// ═══════════════════════════════════════════════════════════
+
+async function renameInstructorPrompt(oldKey, oldName){
+  const input=prompt('שם חדש למדריך:',oldName);
+  if(input===null)return;
+  const newName=input.trim();
+  if(!newName){showToast('יש להזין שם','warning');return;}
+  if(newName===oldName)return;
+  if(_instrNames.includes(newName)){showToast('כבר קיים מדריך בשם הזה','warning');return;}
+  if(!confirm(`לשנות את השם "${oldName}" ל-"${newName}"?\n\nהפעולה תעדכן את כל השיבוצים, הנסיעות, דיווחי המשימות, היסטוריית החניכים והפתקים הקיימים של ${oldName} — הם יישארו מקושרים, רק תחת השם החדש. זה יכול לקחת כמה שניות.\n\nמומלץ לביצוע כשאין מדריכים/מנהלים אחרים פעילים במערכת במקביל.`))return;
+  showToast('🔄 מעדכן שם מדריך במערכת...','info');
+  try{
+    const result=await renameInstructorEverywhere(oldName,newName,oldKey);
+    showToast(`✅ השם עודכן ל-"${newName}" — עודכנו ${result.sched} שיבוצים, ${result.trips} נסיעות, ${result.reports} דיווחי משימות, ${result.lessons} רשומות חניכים, ${result.notes} פתקים`,'success');
+  }catch(e){
+    console.error('renameInstructorEverywhere failed:',e);
+    showToast('❌ שגיאה בעדכון השם — '+(e&&e.message||e),'error');
+  }
+  if(typeof renderInstrList==='function')renderInstrList();
+}
+
+async function renameInstructorEverywhere(oldName,newName,oldKey){
+  const counts={sched:0,trips:0,reports:0,lessons:0,notes:0};
+  const isDemo=(typeof _isDemoMode==='function'&&_isDemoMode());
+
+  // 1. Instructor roster + hidden-from-scheduling flag
+  _instrNames=_instrNames.filter(n=>n!==oldName);
+  if(!_instrNames.includes(newName))_instrNames.push(newName);
+  _instrNames.sort();
+  try{localStorage.setItem('v100_instructors',JSON.stringify(_instrNames));}catch(e){}
+  if(window._fbDb&&!isDemo){
+    try{
+      const newKey='instr_'+btoa(unescape(encodeURIComponent(newName))).replace(/[^a-zA-Z0-9]/g,'');
+      const rosterUpdates={};
+      rosterUpdates['instructors/'+newKey]=newName;
+      if(oldKey)rosterUpdates['instructors/'+oldKey]=null;
+      if(_hiddenInstrs&&_hiddenInstrs.has(_msgKey(oldName))){
+        rosterUpdates['settings/hiddenInstrs/'+_msgKey(oldName)]=null;
+        rosterUpdates['settings/hiddenInstrs/'+_msgKey(newName)]=true;
+        _hiddenInstrs.delete(_msgKey(oldName));
+        _hiddenInstrs.add(_msgKey(newName));
+        try{localStorage.setItem('v100_hiddenInstrs',JSON.stringify([..._hiddenInstrs]));}catch(e){}
+      }
+      await _db.ref().update(rosterUpdates);
+    }catch(e){console.warn('renameInstructor roster update failed:',e);}
+  }
+  populateAllInstrSelects();
+  try{_bus.emit(EV_INSTRS);}catch(e){}
+
+  if(isDemo||!window._fbDb)return counts;
+
+  // 2. Schedule assignments — schedule/{YYYY-MM}/{date}/{entryId}.name — every month at once
+  try{
+    const snap=await _fbGet(_fbRef(_db,'schedule'));
+    if(snap.exists()){
+      const updates={};
+      Object.entries(snap.val()||{}).forEach(([ym,days])=>{
+        Object.entries(days||{}).forEach(([date,entries])=>{
+          Object.entries(entries||{}).forEach(([entryId,entry])=>{
+            if(entry&&entry.name===oldName){
+              updates[`schedule/${ym}/${date}/${entryId}/name`]=newName;
+              counts.sched++;
+            }
+          });
+        });
+      });
+      if(Object.keys(updates).length)await _db.ref().update(updates);
+    }
+  }catch(e){console.warn('renameInstructor schedule scan failed:',e);}
+
+  // 3. Trips — trips/{date}/{tripId}.name
+  try{
+    const snap=await _fbGet(_fbRef(_db,'trips'));
+    if(snap.exists()){
+      const updates={};
+      Object.entries(snap.val()||{}).forEach(([date,dayTrips])=>{
+        Object.entries(dayTrips||{}).forEach(([tripId,trip])=>{
+          if(trip&&trip.name===oldName){
+            updates[`trips/${date}/${tripId}/name`]=newName;
+            counts.trips++;
+          }
+        });
+      });
+      if(Object.keys(updates).length)await _db.ref().update(updates);
+    }
+  }catch(e){console.warn('renameInstructor trips scan failed:',e);}
+
+  // 4. Task/day reports — taskReports/{date}/{entryId}.instructorName
+  try{
+    const snap=await _fbGet(_fbRef(_db,'taskReports'));
+    if(snap.exists()){
+      const updates={};
+      Object.entries(snap.val()||{}).forEach(([date,dayReports])=>{
+        Object.entries(dayReports||{}).forEach(([rid,r])=>{
+          if(r&&r.instructorName===oldName){
+            updates[`taskReports/${date}/${rid}/instructorName`]=newName;
+            counts.reports++;
+          }
+        });
+      });
+      if(Object.keys(updates).length)await _db.ref().update(updates);
+    }
+  }catch(e){console.warn('renameInstructor taskReports scan failed:',e);}
+
+  // 5. Notes — notes/{YYYY-MM}/{noteId} — specific-visibility lists + personal-note authorship
+  try{
+    const snap=await _fbGet(_fbRef(_db,'notes'));
+    if(snap.exists()){
+      const updates={};
+      Object.entries(snap.val()||{}).forEach(([ym,monthNotes])=>{
+        Object.entries(monthNotes||{}).forEach(([nid,n])=>{
+          if(!n)return;
+          if(Array.isArray(n.specificInstrs)&&n.specificInstrs.includes(oldName)){
+            updates[`notes/${ym}/${nid}/specificInstrs`]=n.specificInstrs.map(x=>x===oldName?newName:x);
+            counts.notes++;
+          }
+          if(n.authorName===oldName){
+            updates[`notes/${ym}/${nid}/authorName`]=newName;
+            counts.notes++;
+          }
+        });
+      });
+      if(Object.keys(updates).length)await _db.ref().update(updates);
+    }
+  }catch(e){console.warn('renameInstructor notes scan failed:',e);}
+
+  // 6. Trainee lesson history — separate 'trainee' Firebase app:
+  //    courses_v20/{courseId}/trainees/{traineeId}/lessons[].instructor
+  try{
+    if(typeof TraineeSystem!=='undefined'){
+      if(!TraineeSystem.coursesRef)TraineeSystem.initFirebase();
+      const snap=await TraineeSystem.coursesRef.once('value');
+      if(snap.exists()){
+        const updates={};
+        Object.entries(snap.val()||{}).forEach(([cid,course])=>{
+          Object.entries((course&&course.trainees)||{}).forEach(([tid,trainee])=>{
+            const lessonsRaw=trainee&&trainee.lessons;
+            if(!lessonsRaw)return;
+            const entries=Array.isArray(lessonsRaw)?lessonsRaw.map((l,i)=>[i,l]):Object.entries(lessonsRaw);
+            entries.forEach(([idx,lesson])=>{
+              if(lesson&&lesson.instructor===oldName){
+                updates[`courses_v20/${cid}/trainees/${tid}/lessons/${idx}/instructor`]=newName;
+                counts.lessons++;
+              }
+            });
+          });
+        });
+        if(Object.keys(updates).length)await TraineeSystem.db.ref().update(updates);
+      }
+    }
+  }catch(e){console.warn('renameInstructor trainee lessons scan failed:',e);}
+
+  return counts;
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -13017,6 +13227,20 @@ let schedMonth=new Date().getMonth();
 
 let _calViewMode='month'; // 'month' | 'week'
 
+// Fix #74: instructor's own schedule calendar — toggle between "just me" (default, unchanged
+// behavior) and "team view" (see every instructor's assignments, like the admin board).
+let _instrTeamView=false;
+function setInstrTeamView(isTeam){
+  _instrTeamView=!!isTeam;
+  const wrap=document.getElementById('teamViewToggleInstr');
+  if(wrap){
+    wrap.querySelectorAll('button').forEach(b=>b.classList.toggle('active', (b.dataset.mode==='team')===_instrTeamView));
+  }
+  const titleEl=document.getElementById('instrSchedTitle');
+  if(titleEl)titleEl.textContent=_instrTeamView?'🗓️ שיבוצי הצוות':'🗓️ השיבוצים שלי';
+  try{renderCalendar();}catch(e){}
+}
+
 let _weekAnchorDate=null; // date string (YYYY-MM-DD) inside the currently-shown week
 
 let schedData={};
@@ -13427,9 +13651,14 @@ function renderCalendar(){
 
   function buildCell(cell,forInstructor){
     const entries=schedData[cell.date]||[];
-    // ── SIMPLE RULE: admin sees all; instructor/mentor sees only their own ──
+    // ── SIMPLE RULE: admin sees all; instructor/mentor sees only their own —
+    // UNLESS the instructor turned on "team view" (fix #74), in which case they see everyone
+    // too, same as admin, but still only inside their own calendar (calGridInstr), and clicking
+    // a day still only opens THEIR OWN simple shift-request form (openSchedModal already
+    // branches on role for that), so this is view-only and can't be used to edit others' shifts.
     const isAdmin = (currentRole === 'admin');
-    const filtered = isAdmin ? entries : entries.filter(e=>e.name===currentUserName);
+    const showAll = isAdmin || (forInstructor && _instrTeamView);
+    const filtered = showAll ? entries : entries.filter(e=>e.name===currentUserName);
 
     // Sort by actual shift CATEGORY (same categorization used for the color/badge) — not by the raw
     // shift key. The raw key ('custom', named variants, etc.) doesn't reliably map to morning/evening/
@@ -13443,7 +13672,9 @@ function renderCalendar(){
     const _dayNum=cellD.getDate();
 
     let _entryHtml='';
-    const useInstructorLayout = forInstructor && !isAdmin;
+    // Fix #74: in team view there can be several instructors' entries in one cell, like the
+    // admin board — use the same dense name-list layout instead of the single-person pill.
+    const useInstructorLayout = forInstructor && !isAdmin && !(forInstructor && _instrTeamView);
     // Sticky notes for this cell (computed early — needed to decide entry-pill layout below)
     const cellNotesEarly=cell.otherMonth?[]:_getNotesForCell(cell.date,forInstructor);
     const hasNotesEarly=cellNotesEarly.length>0;
@@ -19054,6 +19285,9 @@ function renderTodayTasks(){
   }
   const titleEl=document.getElementById('todayTasksTitle');
   if(titleEl)titleEl.style.color=isReallyToday?'var(--primary)':'#b8860b';
+  // Fix #73: surface a quick "back to today" button once the instructor has browsed away
+  const backBtn=document.getElementById('todayBackToTodayBtn');
+  if(backBtn)backBtn.style.display=isReallyToday?'none':'inline-block';
 
   const entries=(schedData[today]||[]).filter(e=>e.name===currentUserName);
   if(!entries.length){
@@ -19241,7 +19475,8 @@ function _urAddFeedbackBlock() {
       ).join('');
       courseSelectEl.onchange = () => {
         const chosen = courses.find(cc => cc.id === courseSelectEl.value);
-        const ts = chosen ? (chosen.trainees || []) : [];
+        // Fix #69: alphabetical (Hebrew collation) trainee order in the day-summary form.
+        const ts = chosen ? (chosen.trainees || []).slice().sort((a,b) => (a.name||'').localeCompare(b.name||'', 'he')) : [];
         selectEl.innerHTML = '<option value="">— בחר חניך —</option>'
           + ts.map(t => `<option value="${t.id}">${_esc(t.name)}</option>`).join('');
         if (freeEl) { freeEl.value = ''; }
@@ -19250,7 +19485,8 @@ function _urAddFeedbackBlock() {
 
     // Default course trainees
     const defCourse = activeCourses.find(c => c.isDefault) || activeCourses[0];
-    const defTrainees = defCourse ? (defCourse.trainees || []) : [];
+    // Fix #69: alphabetical (Hebrew collation) trainee order in the day-summary form.
+    const defTrainees = defCourse ? (defCourse.trainees || []).slice().sort((a,b) => (a.name||'').localeCompare(b.name||'', 'he')) : [];
 
     selectEl.innerHTML = '<option value="">— בחר חניך —</option>'
       + defTrainees.map(t => `<option value="${t.id}">${_esc(t.name)}</option>`).join('');
@@ -21737,9 +21973,18 @@ function _noteVisibilityChanged(){
   picker.style.display=html?'block':'none';
 }
 
+// Fix #71: state for editing an existing note in place (instead of only create+delete).
+let _editingNoteId=null, _editingNoteOrigYr=null, _editingNoteOrigMo=null;
+function _resetNoteEditState(){
+  _editingNoteId=null; _editingNoteOrigYr=null; _editingNoteOrigMo=null;
+  const saveBtn=document.getElementById('noteSaveBtn');
+  if(saveBtn)saveBtn.textContent='💾 שמור פתק';
+}
+
 function openNotesModal(date){
   const el=document.getElementById('notesModal');
   if(!el)return;
+  _resetNoteEditState();
   const dateInput=document.getElementById('noteDate');
   if(date)dateInput.value=date;
   else if(currentDate)dateInput.value=currentDate;
@@ -21795,6 +22040,37 @@ function deleteMyNote(id){
 function closeNotesModal(){
   const el=document.getElementById('notesModal');
   if(el)el.style.display='none';
+  _resetNoteEditState();
+}
+// Fix #71: load an existing note's fields back into the form and switch saveNote() into
+// "update in place" mode, so admins can change visibility later (e.g. start "מנהל בלבד",
+// broaden to more people afterward) without deleting and recreating the note.
+function editNote(id){
+  const d=_monthlyDashDate||new Date();
+  const yr=d.getFullYear(), mo=d.getMonth();
+  const notes=_loadNotes(yr,mo);
+  const note=notes.find(n=>n.id===id);
+  if(!note)return;
+  _editingNoteId=id; _editingNoteOrigYr=yr; _editingNoteOrigMo=mo;
+  document.getElementById('noteDate').value=note.date;
+  document.getElementById('noteText').value=note.text||'';
+  const visList=Array.isArray(note.visibility)?note.visibility:[note.visibility||'all'];
+  document.querySelectorAll('input.noteVisibility').forEach(b=>{b.checked=visList.includes(b.value);});
+  document.querySelectorAll('input[name="noteColor"]').forEach(r=>{r.checked=(r.value===(note.color||'#fef08a'));});
+  _noteVisibilityChanged();
+  if(visList.includes('mentors_specific')&&note.specificMentors){
+    document.querySelectorAll('.noteSpecificChk-mentor').forEach(c=>{c.checked=note.specificMentors.includes(c.dataset.person);});
+  }
+  if(visList.includes('instr_specific')&&note.specificInstrs){
+    document.querySelectorAll('.noteSpecificChk-instr').forEach(c=>{c.checked=note.specificInstrs.includes(c.dataset.person);});
+  }
+  const titleEl=document.getElementById('notesModalTitle');
+  if(titleEl)titleEl.textContent='✏️ עריכת פתק';
+  const saveBtn=document.getElementById('noteSaveBtn');
+  if(saveBtn)saveBtn.textContent='💾 עדכן פתק';
+  const el=document.getElementById('notesModal');
+  if(el)el.style.display='flex';
+  setTimeout(()=>{const t=document.getElementById('noteText');if(t)t.focus();},100);
 }
 function saveNote(){
   const date=document.getElementById('noteDate').value;
@@ -21815,6 +22091,43 @@ function saveNote(){
     specificInstrs=[...document.querySelectorAll('.noteSpecificChk-instr:checked')].map(c=>c.dataset.person);
     if(!specificInstrs.length){showToast('יש לבחור לפחות מדריך אחד','warning');return;}
   }
+
+  // Fix #71: editing an existing note updates it in place instead of creating a new one —
+  // lets an admin start a note visible to themselves only and broaden visibility later.
+  if(_editingNoteId){
+    const origYr=_editingNoteOrigYr, origMo=_editingNoteOrigMo;
+    const origNotes=_loadNotes(origYr,origMo);
+    const idx=origNotes.findIndex(n=>n.id===_editingNoteId);
+    if(idx<0){showToast('הפתק לא נמצא לעדכון — אולי נמחק','error');_resetNoteEditState();return;}
+    const updated={...origNotes[idx],date,text,visibility,color};
+    if(specificMentors)updated.specificMentors=specificMentors; else delete updated.specificMentors;
+    if(specificInstrs)updated.specificInstrs=specificInstrs; else delete updated.specificInstrs;
+    const nd=new Date(date+'T12:00:00');
+    const targetYr=nd.getFullYear(), targetMo=nd.getMonth();
+    if(targetYr===origYr&&targetMo===origMo){
+      origNotes[idx]=updated;
+      _saveNotes(origNotes,origYr,origMo);
+    } else {
+      // Date was moved to a different month — remove from the old month bucket, add to the new one
+      origNotes.splice(idx,1);
+      _saveNotes(origNotes,origYr,origMo);
+      const targetNotes=_loadNotes(targetYr,targetMo);
+      targetNotes.push(updated);
+      _saveNotes(targetNotes,targetYr,targetMo);
+    }
+    _resetNoteEditState();
+    const titleEl=document.getElementById('notesModalTitle');
+    if(titleEl)titleEl.textContent=isAdminView?'📌 פתק על הלוח':'📌 הפתקים שלי ליום זה';
+    showToast('✅ פתק עודכן','success');
+    document.getElementById('noteText').value='';
+    const picker2=document.getElementById('noteSpecificPicker');
+    if(picker2){picker2.style.display='none';picker2.innerHTML='';}
+    if(isAdminView)_renderNotesList();
+    else _renderMyDayNotes(date);
+    renderCalendar();
+    return;
+  }
+
   const d=new Date(date+'T12:00:00');
   const notes=_loadNotes(d.getFullYear(),d.getMonth());
   const noteObj={id:Date.now(),date,text,visibility,color};
@@ -21873,7 +22186,8 @@ function _renderNotesList(){
     return '<div style="display:flex;align-items:start;gap:8px;padding:6px 0;border-bottom:1px solid #f5f5f5;">'
       +'<div style="flex:1;">'+dot+'<span style="font-size:11px;color:#888;">'+n.date+'</span> '+vtag
       +'<div style="font-size:12px;color:#333;margin-top:2px;">'+_esc(n.text)+'</div></div>'
-      +'<button onclick="deleteNote('+n.id+')" style="background:none;border:none;color:#e74c3c;cursor:pointer;font-size:14px;padding:2px;">🗑️</button>'
+      +'<button onclick="editNote('+n.id+')" title="עריכה" style="background:none;border:none;color:#888;cursor:pointer;font-size:14px;padding:2px;">✏️</button>'
+      +'<button onclick="deleteNote('+n.id+')" title="מחיקה" style="background:none;border:none;color:#e74c3c;cursor:pointer;font-size:14px;padding:2px;">🗑️</button>'
       +'</div>';
   }).join('');
 }
@@ -22760,7 +23074,7 @@ function _resetTraineeSummaryConfig() {
     </div>
     <div id="noteSpecificPicker" style="display:none;margin-bottom:10px;border:1.5px solid #ddd;border-radius:8px;padding:8px 10px;max-height:220px;overflow-y:auto;font-size:13px;"></div>
     <div style="display:flex;gap:8px;">
-      <button onclick="saveNote()" style="flex:1;padding:10px;background:var(--primary);color:white;border:none;border-radius:8px;font-size:14px;font-weight:bold;cursor:pointer;">💾 שמור פתק</button>
+      <button id="noteSaveBtn" onclick="saveNote()" style="flex:1;padding:10px;background:var(--primary);color:white;border:none;border-radius:8px;font-size:14px;font-weight:bold;cursor:pointer;">💾 שמור פתק</button>
       <button onclick="closeNotesModal()" style="padding:10px 16px;background:#f0f4f8;color:#555;border:none;border-radius:8px;font-size:14px;cursor:pointer;">ביטול</button>
     </div>
     <div id="myDayNotesList" style="margin-bottom:10px;"></div>
@@ -22828,7 +23142,7 @@ function _resetTraineeSummaryConfig() {
         <div class="ur-field">
           <div class="ur-num-field">
             <label>שעות הדרכה קלה</label>
-            <input type="number" id="ur-light-hours" min="0" max="16" step="0.5" placeholder="0">
+            <input type="number" id="ur-light-hours" min="0" max="16" step="1" placeholder="0">
           </div>
         </div>
         <div class="ur-field">
