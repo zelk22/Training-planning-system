@@ -14,7 +14,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 6</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 7</title>
 
 <style>
 
@@ -1384,7 +1384,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 66;
+  const APP_VERSION = 67;
 
   function initFirebase() {
     try {
@@ -4585,12 +4585,19 @@ window.TraineeSystem = {
         if (this.coursesRef && this.currentCourseId) {
             try {
                 const tData = {};
-                (cur ? (cur.trainees || []) : (this.trainees || [])).forEach(t => { tData[t.id] = t; });
+                (cur ? (cur.trainees || []) : (this.trainees || [])).forEach(t => { tData[this._fbKey(t.id)] = t; });
                 this.coursesRef.child(this.currentCourseId).child('trainees').set(tData).catch(err => {
                     console.error('persist courses failed:', err);
                     if (typeof showToast === 'function') showToast('❌ שמירת החניכים נכשלה — בדוק חיבור אינטרנט', 'error');
                 });
-            } catch(e) { console.warn('persist courses:', e); }
+            } catch(e) {
+                // Fix #67: this used to be a silent console.warn only -- a bad key (e.g. a
+                // trainee id containing a dot) made .set() throw synchronously here, and the
+                // failure was completely invisible to the user. Now surfaced like every other
+                // save-failure path.
+                console.warn('persist courses:', e);
+                if (typeof showToast === 'function') showToast('❌ שמירת החניכים נכשלה (שגיאה מקומית: ' + (e && e.message || e) + ')', 'error');
+            }
         }
         // NOTE: legacy flat trainees_v20 path is intentionally NOT overwritten here anymore.
         // It caused silent data loss: persist() only holds the ACTIVE course's trainees,
@@ -4743,7 +4750,7 @@ window.TraineeSystem = {
             if (!this._pendingTrainees.length) { inp.focus(); return; }
             // Save all at once
             this._pendingTrainees.forEach(n => {
-                const newTrainee = { id: Date.now() + Math.random(), name: n, lessons: [] };
+                const newTrainee = { id: Date.now() + '_' + Math.random().toString(36).slice(2,8), name: n, lessons: [] };
                 this.trainees.push(newTrainee);
             });
             const cur = this.courses.find(c => c.id === this.currentCourseId);
@@ -6403,6 +6410,18 @@ window.TraineeSystem = {
         };
     },
 
+    // Fix #67: Firebase RTDB keys can never contain '.', '#', '$', '/', '[', ']'.
+    // Trainee ids created via Date.now()+Math.random() (e.g. 1783580045101.3809) contain a
+    // dot, so using them directly as an object key makes .set() throw SYNCHRONOUSLY --
+    // before fix #66 this was invisible (silent catch), and it silently blocked the ENTIRE
+    // save for that course (courses_v20), including isDefault/priority changes -- root cause
+    // of the "default course reverts" bug. This sanitizes any id into a safe string key.
+    // Only the Firebase KEY changes -- the trainee object's own .id property (used everywhere
+    // else in the app to match/render) is untouched, so nothing else breaks.
+    _fbKey(id) {
+        return String(id).replace(/[.#$/\[\]]/g, '_');
+    },
+
     async loadCourses() {
         let loaded = false;
         const isDemoMode = typeof _isDemoMode === 'function' && _isDemoMode();
@@ -6472,7 +6491,7 @@ window.TraineeSystem = {
                 const cData = {};
                 coursesToSave.forEach(c => {
                     const tData = {};
-                    (c.trainees || []).forEach(t => { tData[t.id] = t; });
+                    (c.trainees || []).forEach(t => { tData[this._fbKey(t.id)] = t; });
                     cData[c.id] = { ...c, trainees: tData };
                 });
                 return this.coursesRef.set(cData).then(() => true).catch(err => {
@@ -19503,7 +19522,7 @@ function _urConfirmFreeName(idx) {
 
       if (targetCourse) {
         if (!targetCourse.trainees) targetCourse.trainees = [];
-        const newTrainee = { id: Date.now() + Math.random(), name: freeName, lessons: [] };
+        const newTrainee = { id: Date.now() + '_' + Math.random().toString(36).slice(2,8), name: freeName, lessons: [] };
         targetCourse.trainees.push(newTrainee);
         // NO SAVE HERE — saving happens only on "שמור סיכום יום"
 
