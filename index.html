@@ -14,7 +14,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 12</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 13</title>
 
 <style>
 
@@ -699,9 +699,12 @@ body.dark-mode .login-input{background:#2d3348;border-color:#3a4060;color:#e0e6f
   .sbtn{font-size:15px!important;padding:11px 16px!important;}
   .no-trip-card{font-size:17px!important;}
 
-  /* Fix #84: topbar — wrap instead of clipping action buttons off-screen */
-  .v100-topbar{height:auto;flex-wrap:wrap;padding:8px 10px;overflow:visible;}
-  .v100-topbar-actions{flex-wrap:wrap;justify-content:flex-end;}
+  /* Fix #90: topbar — scrollable in one row (like the tabs bar below it), replacing
+     the #84 wrap approach per Lavi's feedback: swipe sideways instead of wrapping. */
+  .v100-topbar{height:52px;flex-wrap:nowrap;padding:0 10px;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
+  .v100-topbar::-webkit-scrollbar{display:none;}
+  .v100-topbar-brand{flex-shrink:0;}
+  .v100-topbar-actions{flex-wrap:nowrap;flex-shrink:0;}
 
   /* Fix #85: schedule tab header row — table cells don't wrap like flex, so stack them */
   table.sched-header-row,table.sched-header-row tr,table.sched-header-row td{display:block;width:100%;text-align:center!important;white-space:normal!important;}
@@ -1393,7 +1396,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 72;
+  const APP_VERSION = 73;
 
   function initFirebase() {
     try {
