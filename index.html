@@ -14,7 +14,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 13</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 35</title>
 
 <style>
 
@@ -235,6 +235,22 @@ body.dark-mode .v100-nav-tab.v100-nav-active{color:#5ba8d4;background:#243447;bo
 select.p-input{cursor:pointer;}
 
 .p-status{font-size:12px;white-space:nowrap;}
+
+/* ── Fix #91: admin daily-plan summary — redesigned as name/hours/task/notes
+   grid rows (was: name + chip-cloud with tooltip-only notes). Desktop = 4
+   inline columns; mobile = name+hours+task on one line, note full-width below. */
+.daily-plan-header{display:grid;grid-template-columns:130px 85px 1fr 210px;gap:6px 10px;padding:8px 10px;background:#f0f4f8;font-size:12px;font-weight:600;color:#555;border-bottom:2px solid #dde;}
+body.dark-mode .daily-plan-header{background:#2d3348;color:#8ab4d8;border-color:#3a4060;}
+.daily-plan-entry{display:grid;grid-template-columns:130px 85px 1fr 210px;align-items:center;gap:6px 10px;padding:7px 10px;cursor:pointer;transition:background .15s;}
+.daily-plan-entry:hover{background:rgba(41,128,185,.06);}
+.dp-name{font-weight:bold;font-size:13px;}
+.dp-hours{font-size:12px;color:#888;white-space:nowrap;}
+.dp-task{font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.dp-note-input{width:100%;border:1.5px solid transparent;background:transparent;border-radius:6px;padding:4px 8px;font-size:12px;font-family:inherit;color:inherit;transition:.15s;box-sizing:border-box;resize:none;overflow:hidden;line-height:1.4;display:block;}
+.dp-note-input:hover{border-color:#ddd;background:#fafbfc;}
+.dp-note-input:focus{outline:none;border-color:var(--secondary);background:white;box-shadow:0 0 0 2px rgba(41,128,185,.12);}
+body.dark-mode .dp-note-input:hover{background:#2a3040;border-color:#3a4060;}
+body.dark-mode .dp-note-input:focus{background:#242938;}
 
 .btn-remove-row{background:none;border:1px solid #e0e0e0;color:#bbb;border-radius:50%;width:26px;height:26px;padding:0;cursor:pointer;font-size:15px;line-height:1;transition:.15s;margin:0;display:flex;align-items:center;justify-content:center;}
 
@@ -709,6 +725,14 @@ body.dark-mode .login-input{background:#2d3348;border-color:#3a4060;color:#e0e6f
   /* Fix #85: schedule tab header row — table cells don't wrap like flex, so stack them */
   table.sched-header-row,table.sched-header-row tr,table.sched-header-row td{display:block;width:100%;text-align:center!important;white-space:normal!important;}
   table.sched-header-row td{margin-bottom:6px;padding:0!important;}
+
+  /* Fix #91: admin daily-plan — name/hours/task on line 1, note full-width on line 2 */
+  .daily-plan-header{display:none;}
+  .daily-plan-entry{grid-template-columns:auto auto 1fr;grid-template-areas:"name hours task" "note note note";row-gap:5px;padding:8px 10px;}
+  .dp-name{grid-area:name;}
+  .dp-hours{grid-area:hours;font-size:11px;}
+  .dp-task{grid-area:task;text-align:left;white-space:normal;}
+  .dp-note{grid-area:note;}
 }.login-input:focus{outline:none;border-color:#2980b9;}
 
 .login-btn{width:100%;padding:13px;background:#2980b9;color:white;border:none;border-radius:10px;font-size:15px;font-weight:bold;cursor:pointer;margin:0;}
@@ -1010,9 +1034,9 @@ body.dark-mode .msg-card{background:#1e2d42;border-color:#2a3a52;}
 .mentor-mode #manualSectionPlaceholder,
 .mentor-mode #manualSection,
 .mentor-mode #instrNavBar,
-.mentor-mode #navInstrTabTrips,
-.mentor-mode #navInstrTabTeam { display:none !important; }
+.mentor-mode #navInstrTabTrips { display:none !important; }
 .mentor-mode #teamViewToggleInstr { display:none !important; } /* Fix #74: mentors don't get the schedule "team view" toggle, matching the existing team-tab restriction */
+.mentor-mode #teamTodaySection { display:none !important; } /* Fix #92: mentors don't get the "team today" section either, same precedent as #74 */
 
 /* Mentor mode: show a mentor header bar */
 #mentorInstrBar { display:none; }
@@ -1276,7 +1300,7 @@ body.dark-mode .assign-footer{border-color:#3a4060;}
 .wsched-table th.wsched-day-header:nth-child(even){background:#dbe6fa;}
 .wsched-table td:nth-child(4n+2):not(.wsched-instr-name):not(.wsched-cell-has-entry),
 .wsched-table td:nth-child(4n+3):not(.wsched-instr-name):not(.wsched-cell-has-entry){background:#e7edf9;}
-.wsched-table td:nth-child(2n){border-left:3px solid #9fb2d1;}
+.wsched-table td:nth-child(odd):not(:first-child){border-left:3px solid #9fb2d1;}
 .wsched-table tbody tr.wsched-instr-row td{border-bottom:2px solid #cdd8ea;}
 body.dark-mode .wsched-table td:nth-child(4n+2):not(.wsched-instr-name):not(.wsched-cell-has-entry),
 body.dark-mode .wsched-table td:nth-child(4n+3):not(.wsched-instr-name):not(.wsched-cell-has-entry){background:#232842;}
@@ -1396,7 +1420,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 73;
+  const APP_VERSION = 95;
 
   function initFirebase() {
     try {
@@ -2075,7 +2099,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 
       <button class="stab" onclick="switchSettingsTab('passwords',this)">🔑 ניהול סיסמאות</button>
 
-      <button class="stab" onclick="switchSettingsTab('instrs',this)">מדריכים</button>
+      <button class="stab" onclick="switchSettingsTab('instrs',this)">צוות הדרכה</button>
 
       <button class="stab" onclick="switchSettingsTab('mentors',this)">חונכים</button>
 
@@ -2207,7 +2231,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
         <div style="font-size:11px;color:#aaa;margin-bottom:8px;">סיסמה אחת משותפת לכל החונכים. השאר ריק לאי-שינוי.</div>
 
         <div style="font-size:11px;color:#888;margin-top:18px;padding:10px 12px;background:#f8faff;border-radius:8px;border:1px dashed #c5d8f0;">
-          🔑 סיסמה אישית לכל מדריך נקבעת בטאב "מדריכים" — לחץ על סמל המפתח ליד שם המדריך.
+          🔑 סיסמה אישית לכל מדריך נקבעת בטאב "צוות הדרכה" — לחץ על סמל המפתח ליד שם המדריך.
         </div>
 
       </div>
@@ -2216,7 +2240,13 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 
       <div class="settings-panel" id="stab-instrs">
 
-        <div class="ssection-title" id="instrListTitle">רשימת מדריכים</div>
+        <div class="ssection-title">מנהל המערכת</div>
+        <div style="display:flex;gap:8px;margin-bottom:16px;">
+          <input type="text" id="settingsManagerName" placeholder="שם המנהל" autocomplete="off" onkeydown="if(event.key==='Enter')saveManagerNameFromSettings()" style="flex:4;min-width:220px;padding:9px 12px;border:1.5px solid #ddd;border-radius:8px;font-size:16px;margin:0;direction:rtl;">
+          <button onclick="saveManagerNameFromSettings()" style="padding:9px 14px;background:var(--secondary);color:white;border:none;border-radius:8px;font-size:13px;font-weight:bold;cursor:pointer;margin:0;white-space:nowrap;">💾 שמור</button>
+        </div>
+
+        <div class="ssection-title" id="instrListTitle">רשימת צוות הדרכה</div>
 
         <div id="settingsInstrList" style="margin-bottom:12px;max-height:320px;overflow-y:auto;border:0.5px solid #ddd;border-radius:8px;"></div>
 
@@ -2340,7 +2370,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
   <!-- New-version banner (global — fix #65: shown to any tab whose loaded code is older than the latest deploy) -->
   <div id="versionUpdateBanner" style="display:none;background:#e8f4fd;border:1.5px solid #3498db;border-radius:8px;padding:8px 14px;margin:8px 16px 0;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
     <span style="font-size:13px;font-weight:bold;color:#1a5276;">🔄 גרסה חדשה של המערכת זמינה — יש לרענן כדי לקבל את התיקונים האחרונים</span>
-    <button onclick="location.reload()" style="width:auto;padding:5px 12px;background:#3498db;color:white;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:bold;">🔄 רענן עכשיו</button>
+    <button onclick="location.href=location.pathname+'?v='+Date.now();" style="width:auto;padding:5px 12px;background:#3498db;color:white;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:bold;">🔄 רענן עכשיו</button>
   </div>
 
   <!-- Demo mode banner (global — shown above tabs, in every section, when demo is active) -->
@@ -2453,9 +2483,6 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
         <button class="v100-nav-tab" onclick="v100InstrNavTo('sched')" id="navInstrTabSched">
           <span class="v100-tab-icon">🗓️</span><span class="v100-tab-label">שיבוצים</span>
         </button>
-        <button class="v100-nav-tab" onclick="v100InstrNavTo('team')" id="navInstrTabTeam">
-          <span class="v100-tab-icon">👥</span><span class="v100-tab-label">צוות</span>
-        </button>
         <button class="v100-nav-tab" onclick="v100InstrNavTo('trainees')" id="navInstrTabTrainees">
           <span class="v100-tab-icon">🎓</span><span class="v100-tab-label">חניכים</span>
         </button>
@@ -2484,10 +2511,27 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
       </div>
     </div>
 
+
     <!-- ══ INLINE TASK REPORT ══════════════════════════ -->
 <!-- old inlineTaskReport removed -->
 
     <div id="nextTripCard"></div>
+
+    <!-- Fix #92: team-today — collapsed by default, shift+task only (no notes,
+         read-only) so an instructor can see what teammates are doing today for
+         planning/coordination. Hidden from mentors (see CSS, matches fix #74). -->
+    <details id="teamTodaySection" class="manual-section" style="margin-bottom:14px;">
+      <summary>
+        <span class="manual-summary-arrow">▶</span>
+        👥 צוות היום
+        <span style="font-size:12px;font-weight:400;color:#888;margin-right:6px;">(לחץ להרחבה)</span>
+      </summary>
+      <div class="manual-inner" style="padding:10px 16px 16px;">
+        <div id="teamTodayList" style="display:flex;flex-direction:column;">
+          <div style="color:#aaa;font-size:13px;text-align:center;padding:10px;">אין מדריכים נוספים מתוכננים היום</div>
+        </div>
+      </div>
+    </details>
 
     <!-- Placeholder for traineeSection in instructor view -->
     <div id="traineeSectionInstrPlaceholder"></div>
@@ -2515,8 +2559,6 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
       </div>
     </div>
 
-    <div class="team-sec" id="instrTeamSection"><h4>👥 סטטוס הצוות</h4><div class="tgrid" id="teamGrid"></div></div>
-
     <details id="timelineSectionInstr" class="timeline-section" style="padding:0;">
       <summary style="display:flex;justify-content:space-between;align-items:center;padding:14px 20px;cursor:pointer;list-style:none;user-select:none;" onclick="setTimeout(()=>{if(document.getElementById('timelineSectionInstr').open)renderGanttInto('ganttGridInstr');},0)">
         <h4 style="margin:0;color:var(--primary);">📊 ציר זמן — כל הצוות</h4>
@@ -2526,6 +2568,10 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
         <div style="overflow-x:auto;"><div id="ganttGridInstr"><div class="gantt-empty">אין נסיעות</div></div></div>
       </div>
     </details>
+
+    <!-- Fix #96: moved here (was its own "צוות" tab) -- now the last section inside
+         the "יומן נסיעות" tab, per Lavi's request. -->
+    <div class="team-sec" id="instrTeamSection"><h4>👥 סטטוס הצוות</h4><div class="tgrid" id="teamGrid"></div></div>
 
     <!-- Instructor schedule view -->
 
@@ -3491,7 +3537,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
       <button class="stab" onclick="switchSettingsTab('ops',this)">הגבלות תפעול</button>
       <button class="stab" onclick="switchSettingsTab('shifts',this)">סוג משמרות ומשימות</button>
       <button class="stab" onclick="switchSettingsTab('passwords',this)">🔑 ניהול סיסמאות</button>
-      <button class="stab" onclick="switchSettingsTab('instrs',this)">מדריכים</button>
+      <button class="stab" onclick="switchSettingsTab('instrs',this)">צוות הדרכה</button>
       <button class="stab" onclick="switchSettingsTab('mentors',this)">חונכים</button>
       <button class="stab" onclick="switchSettingsTab('routes',this)">⭐ מסלולים שמורים</button>
       <button class="stab" onclick="switchSettingsTab('general',this)">⚙️ כללי</button>
@@ -3566,12 +3612,17 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
         <div style="font-size:11px;color:#aaa;margin-bottom:8px;">סיסמה אחת משותפת לכל החונכים. השאר ריק לאי-שינוי.</div>
 
         <div style="font-size:11px;color:#888;margin-top:18px;padding:10px 12px;background:#f8faff;border-radius:8px;border:1px dashed #c5d8f0;">
-          🔑 סיסמה אישית לכל מדריך נקבעת בטאב "מדריכים" — לחץ על סמל המפתח ליד שם המדריך.
+          🔑 סיסמה אישית לכל מדריך נקבעת בטאב "צוות הדרכה" — לחץ על סמל המפתח ליד שם המדריך.
         </div>
       </div>
 
       <div id="si-instrs" class="si-panel" style="display:none;">
-        <div class="ssection-title" id="si_instrListTitle">רשימת מדריכים</div>
+        <div class="ssection-title">מנהל המערכת</div>
+        <div style="display:flex;gap:8px;margin-bottom:16px;">
+          <input type="text" id="si_settingsManagerName" placeholder="שם המנהל" autocomplete="off" onkeydown="if(event.key==='Enter')saveManagerNameFromSettings()" style="flex:4;min-width:220px;padding:9px 12px;border:1.5px solid #ddd;border-radius:8px;font-size:16px;margin:0;direction:rtl;">
+          <button onclick="saveManagerNameFromSettings()" style="padding:9px 14px;background:var(--secondary);color:white;border:none;border-radius:8px;font-size:13px;font-weight:bold;cursor:pointer;margin:0;white-space:nowrap;">💾 שמור</button>
+        </div>
+        <div class="ssection-title" id="si_instrListTitle">רשימת צוות הדרכה</div>
         <div id="si_settingsInstrList" style="margin-bottom:12px;max-height:320px;overflow-y:auto;border:0.5px solid #ddd;border-radius:8px;"></div>
         <div style="display:flex;gap:8px;">
           <input type="text" id="si_newInstrName" placeholder="שם מדריך חדש" autocomplete="off" onkeydown="if(event.key==='Enter')addInstructorFromSettings()" style="flex:4;min-width:220px;padding:9px 12px;border:1.5px solid #ddd;border-radius:8px;font-size:16px;margin:0;direction:rtl;">
@@ -3943,6 +3994,9 @@ window.TraineeSystem = {
     .trainee-module .chinuch-bar-ticks { position: absolute; inset: 0; display: flex; pointer-events: auto; }
     .trainee-module .chinuch-tick { flex: 1; border-left: 1px solid rgba(0,0,0,0.1); }
     .lesson-content-cell:hover { background: rgba(255,255,255,0.25); }
+    /* Fix #97: small marker on any lesson-slot that already has "דגשי ביצוע" content
+       saved, so it's visible at a glance without clicking every cell to check. */
+    .lesson-content-mark { position:absolute; top:2px; left:50%; transform:translateX(-50%); width:7px; height:7px; border-radius:50%; background:#fff; border:1.5px solid #1a2a3a; box-shadow:0 1px 2px rgba(0,0,0,.4); pointer-events:none; }
 
 
     .trainee-module .alerts-title { font-size: 1.15em; font-weight: bold; margin: 28px 0 12px 0; color: var(--rail-dark); border-right: 5px solid var(--rail-blue); padding-right: 14px; }
@@ -4609,7 +4663,7 @@ window.TraineeSystem = {
     persist() {
         // DEMO MODE GUARD — memory only, never write to Firebase or localStorage courses
         if (typeof _isDemoMode === 'function' && _isDemoMode()) {
-            try { localStorage.setItem('demo_trainee_data', JSON.stringify({trainees: this.trainees, instructors: this.instructors})); } catch(e) {}
+            try { _saveDemoTraineeData(this.trainees, this.instructors); } catch(e) {}
             window._traineeSummaryCache = null;
             return;
         }
@@ -4725,7 +4779,15 @@ window.TraineeSystem = {
             cell.dataset.lessonNum = n;
             cell.dataset.lessonType = type;
             cell.style.cssText = `position:absolute;top:0;bottom:0;width:${100/count}%;right:${((n-1)/count)*100}%;cursor:pointer;`;
-            cell.title = `שיעור ${n} — דגשי ביצוע`;
+            // Fix #97: mark lesson-slots that already have content saved, so it's
+            // visible without clicking every cell to check.
+            const hasContent = !!((this.lessonContent?.[type]?.[n] || '').trim());
+            cell.title = hasContent ? `שיעור ${n} — יש דגשי ביצוע (לחץ לצפייה)` : `שיעור ${n} — דגשי ביצוע`;
+            if (hasContent) {
+                const mark = document.createElement('div');
+                mark.className = 'lesson-content-mark';
+                cell.appendChild(mark);
+            }
             container.appendChild(cell);
         }
     },
@@ -4960,7 +5022,7 @@ window.TraineeSystem = {
         // same red/orange thresholds already configurable in "הגדרות קריטריונים לחניכים מתקשים"
         // (formerly the risk-criteria settings), so the two features stay in sync.
         const _levelCfg = (typeof _getTraineeSummaryConfig === 'function')
-            ? _getTraineeSummaryConfig() : { lowScoreRed: 6.0, lowScoreOrange: 7.0 };
+            ? _getTraineeSummaryConfig() : { lowScoreRed: 5, lowScoreOrange: 8 };
         _visible.forEach(t => {
             const doneLessons = new Set();
             (t.lessons || []).forEach(ls => {
@@ -5143,6 +5205,11 @@ window.TraineeSystem = {
         setTimeout(() => this.initCanvas(), 200);
         this.resetForm();
         this.renderDetail();
+        // 2026-08-19: גלילה לתיק החניך — בלי זה התצוגה מתחלפת אך המשתמש
+        // נשאר גלול איפה שהיה ולא שם לב שהתיק נפתח.
+        requestAnimationFrame(() => {
+            try { this.$('detail-view').scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch(e) {}
+        });
     },
 
     showMainView() {
@@ -5709,6 +5776,9 @@ window.TraineeSystem = {
                 this.lessonContent = raw ? { ...empty, ...JSON.parse(raw) } : empty;
             } catch(e) { this.lessonContent = empty; }
             console.log('[lessonContent] demo mode — loaded from localStorage', this.lessonContent);
+            // Fix #97: buildCourseTicks() already ran once (in init(), before
+            // lessonContent existed) with no data to mark -- rebuild now that it's here.
+            try { this.buildCourseTicks(); } catch(e) {}
             return;
         }
         this.lessonContentRef = firebase.database().ref('lessonContent');
@@ -5722,6 +5792,9 @@ window.TraineeSystem = {
             } else if (this._lcDirty) {
                 console.log('[lessonContent] skipped panel re-render — unsaved edit in progress (_lcDirty)');
             }
+            // Fix #97: refresh the has-content markers on every sync (initial load
+            // and any later change), same reasoning as the demo-mode branch above.
+            try { this.buildCourseTicks(); } catch(e) {}
         });
     },
 
@@ -5986,6 +6059,9 @@ window.TraineeSystem = {
         const msg = this.$('lc-saved-msg');
         if (msg) { msg.style.display = 'inline'; setTimeout(() => msg.style.display = 'none', 2500); }
         showToast('\u2705 \u05d3\u05d2\u05e9\u05d9 \u05d4\u05d1\u05d9\u05e6\u05d5\u05e2 \u05e0\u05e9\u05de\u05e8\u05d5', 'success');
+        // Fix #97: refresh has-content markers immediately -- in demo mode there's no
+        // Firebase listener to catch this, and even live this avoids waiting on the round-trip.
+        try { this.buildCourseTicks(); } catch(e) {}
     },
 
     switchSettingsTab(tab) {
@@ -6628,8 +6704,8 @@ window.TraineeSystem = {
         this.currentCourseId = courseId;
         // במצב דמו — שומר על חניכי הדמו, לא מחליף לנתוני האמת של הקורס
         if (typeof _isDemoMode === 'function' && _isDemoMode()) {
-            const saved = localStorage.getItem('demo_trainee_data');
-            if (saved) { try { const d = JSON.parse(saved); this.trainees = d.trainees || []; } catch(e) {} }
+            const d = _loadDemoTraineeData();
+            if (d) { this.trainees = d.trainees || []; }
         } else {
             this.trainees = course.trainees || [];
         }
@@ -6985,6 +7061,7 @@ function isSouthDeparture(route){
 // ═══════════════════════════════════════════════════════════
 
 const ADMIN_PASSWORD_HASH='YWRtaW4xMjM0'; // btoa-encoded admin password
+let MANAGER_NAME='רמי זכאים'; // 2026-08-19: ברירת מחדל בלבד — נטען/נערך בפועל דרך loadManagerName/saveManagerNameFromSettings (טאב "צוות הדרכה")
 
 let currentRole=null, currentUserName=null;
 
@@ -7090,8 +7167,8 @@ async function doAdminLogin(){
 
   if(enteredHash===storedHash){
 
-    _saveSession('admin','מנהל');
-    enterApp('admin','מנהל');
+    _saveSession('admin',MANAGER_NAME);
+    enterApp('admin',MANAGER_NAME);
 
   } else {
 
@@ -7166,7 +7243,7 @@ async function loadMentors(){
     try{
       const hidSnap=await _fbGet(_fbRef(_db,'settings/hiddenMentors'));
       _hiddenMentors=new Set();
-      if(hidSnap.exists()){const v=hidSnap.val();Object.keys(v).forEach(k=>{if(v[k])_hiddenMentors.add(k);});}
+      if(hidSnap.exists()){const v=hidSnap.val();Object.keys(v).forEach(k=>{if(v[k])_hiddenMentors.add(typeof v[k]==='string'?v[k]:k);});}
       try{localStorage.setItem('v100_hiddenMentors',JSON.stringify([..._hiddenMentors]));}catch(e){}
     }catch(e){}
     _populateMentorSelect();
@@ -7278,7 +7355,9 @@ async function _setHiddenInstr(name, hide){
   if(hide) _hiddenInstrs.add(name); else _hiddenInstrs.delete(name);
   try{localStorage.setItem('v100_hiddenInstrs',JSON.stringify([..._hiddenInstrs]));}catch(e){}
   if(window._fbDb){
-    try{await _fbSet(_fbRef(_db,'settings/hiddenInstrs/'+_msgKey(name)),hide?true:null);}catch(e){}
+    // 2026-08-19: שומר את השם המלא כ-value (לא true) — _msgKey ממיר רווחים ל-_,
+    // ובלי זה טעינה מחדש הוסיפה את המפתח המקודד במקום השם, וההסתרה "התבטלה" אחרי רענון.
+    try{await _fbSet(_fbRef(_db,'settings/hiddenInstrs/'+_msgKey(name)),hide?name:null);}catch(e){}
   }
   renderSettingsInstrList();
   try{_populateSiInstrs();}catch(e){}
@@ -7288,7 +7367,7 @@ async function _setHiddenMentor(name, hide){
   if(hide) _hiddenMentors.add(name); else _hiddenMentors.delete(name);
   try{localStorage.setItem('v100_hiddenMentors',JSON.stringify([..._hiddenMentors]));}catch(e){}
   if(window._fbDb){
-    try{await _fbSet(_fbRef(_db,'settings/hiddenMentors/'+_msgKey(name)),hide?true:null);}catch(e){}
+    try{await _fbSet(_fbRef(_db,'settings/hiddenMentors/'+_msgKey(name)),hide?name:null);}catch(e){}
   }
   renderSettingsMentorList();
   try{_populateSiMentors();}catch(e){}
@@ -7321,9 +7400,25 @@ let _msgSettings = { showAdminBadge: true }; // configurable
 
 // Start realtime listener for messages relevant to current user
 function _startMsgListener() {
-  if (!window._fbDb) return;
   if (_msgsListener) { try{_msgsListener();}catch(e){} _msgsListener=null; }
 
+  // Fix #104: demo mode never had its own message data -- this used to subscribe to the
+  // REAL `messages/` Firebase node regardless of demo state, so testing in demo mode
+  // showed live production messages (and, worse, _sendMsg()/_sendMsgToAdmin() -- also
+  // patched in #104 -- used to write test messages straight into that real node). Demo
+  // mode now reads/writes a local demo-only cache instead and never touches Firebase here.
+  if (_isDemoMode()) {
+    try { _msgsCache = JSON.parse(localStorage.getItem(DEMO_PREFIX+'messages') || '{}'); }
+    catch(e) { _msgsCache = {}; }
+    _refreshMsgBadge();
+    if (document.getElementById('msgDrawer')?.classList.contains('open')) {
+      _renderMsgDrawer();
+    }
+    _renderInstrMsgBanner();
+    return;
+  }
+
+  if (!window._fbDb) return;
   window._fbDb.ref('messages').on('value', snap => {
     _msgsCache = snap.exists() ? snap.val() : {};
     _refreshMsgBadge();
@@ -7687,7 +7782,19 @@ async function _sendMsg() {
   };
 
   try {
-    if (window._fbDb) {
+    // Fix #104: a message composed while testing in demo mode must never land in the
+    // real Firebase `messages/` node -- write it to the same demo-only cache that
+    // _startMsgListener() reads in demo mode instead.
+    if (_isDemoMode()) {
+      const id = 'demo_sent_' + Date.now();
+      let all = {};
+      try { all = JSON.parse(localStorage.getItem(DEMO_PREFIX+'messages') || '{}'); } catch(e) {}
+      all[id] = msg;
+      localStorage.setItem(DEMO_PREFIX+'messages', JSON.stringify(all));
+      _msgsCache = all;
+      _refreshMsgBadge();
+      if (document.getElementById('msgDrawer')?.classList.contains('open')) _renderMsgDrawer();
+    } else if (window._fbDb) {
       await window._fbDb.ref('messages').push(msg);
     }
     showToast(`✅ הודעה נשלחה ל-${selected.length} נמענים`, 'success');
@@ -7809,7 +7916,18 @@ async function _sendMsgToAdmin() {
   };
 
   try {
-    if (window._fbDb) {
+    // Fix #104: same demo-safety fix as _sendMsg() -- never let a demo-mode test
+    // message reach the real Firebase `messages/` node.
+    if (_isDemoMode()) {
+      const id = 'demo_sent_' + Date.now();
+      let all = {};
+      try { all = JSON.parse(localStorage.getItem(DEMO_PREFIX+'messages') || '{}'); } catch(e) {}
+      all[id] = msg;
+      localStorage.setItem(DEMO_PREFIX+'messages', JSON.stringify(all));
+      _msgsCache = all;
+      _refreshMsgBadge();
+      if (document.getElementById('msgDrawer')?.classList.contains('open')) _renderMsgDrawer();
+    } else if (window._fbDb) {
       await window._fbDb.ref('messages').push(msg);
     }
     if (ta) ta.value = '';
@@ -7822,8 +7940,8 @@ async function _sendMsgToAdmin() {
 
 // Render inline message banner inside instrView (for instructors/mentors)
 // Friendly greeting for real login (instructor/mentor) — by time of day + first name
-function _renderUserGreeting(name) {
-  const el = document.getElementById('userGreeting');
+function _renderUserGreeting(name, elId) {
+  const el = document.getElementById(elId || 'userGreeting');
   if (!el || !name) return;
   const firstName = name.trim().split(' ')[0];
   const h = new Date().getHours();
@@ -8303,6 +8421,10 @@ function enterApp(role,name){
   _initBusListeners();
   currentDate=_localDateStr(new Date()); // always start a fresh session on today, not a stale navigated date
 
+  // 2026-08-19: מנהל הוא זהות יחידה קבועה — לא סומכים על ה-name שהתקבל (עלול
+  // להיות שריד מתצוגה מקדימה כמדריך שלא שוחזר כראוי), תמיד אוכפים כאן.
+  if(role==='admin') name=MANAGER_NAME;
+
   currentRole=role; currentUserName=name;
   _updateDemoBtnVisibility();
   _logAction('login', role==='admin'?'כניסת מנהל':'כניסת מדריך: '+name);
@@ -8647,6 +8769,10 @@ function _refreshInstrTabVisibility(){
   const home2=document.getElementById('nextTripCard');
   if(home1)home1.style.display=(tab==='home')?'':'none';
   if(home2)home2.style.display=(tab==='home')?'':'none';
+  // Fix #95: "team today" belongs only to the home tab -- it was leaking into every
+  // tab because nothing ever set its display based on the active tab.
+  const teamToday=document.getElementById('teamTodaySection');
+  if(teamToday)teamToday.style.display=(tab==='home')?'':'none';
 
   const manual=document.getElementById('manualSection');
   if(manual&&iv&&iv.contains(manual)){
@@ -8661,7 +8787,7 @@ function _refreshInstrTabVisibility(){
   if(sched)sched.style.display=(tab==='sched')?'':'none';
 
   const team=document.getElementById('instrTeamSection');
-  if(team)team.style.display=(tab==='team')?'':'none';
+  if(team)team.style.display=(tab==='trips')?'':'none';
 
   const trainee=document.getElementById('traineeSection');
   if(trainee&&iv&&iv.contains(trainee)){
@@ -8673,13 +8799,13 @@ function _refreshInstrTabVisibility(){
 function v100InstrNavTo(tab){
   _v100InstrActiveTab=tab;
   document.querySelectorAll('#v100InstrNav .v100-nav-tab').forEach(b=>b.classList.remove('v100-nav-active'));
-  const tabIdMap={home:'navInstrTabHome',trips:'navInstrTabTrips',sched:'navInstrTabSched',team:'navInstrTabTeam',trainees:'navInstrTabTrainees'};
+  const tabIdMap={home:'navInstrTabHome',trips:'navInstrTabTrips',sched:'navInstrTabSched',trainees:'navInstrTabTrainees'};
   const btn=document.getElementById(tabIdMap[tab]);
   if(btn)btn.classList.add('v100-nav-active');
 
   _refreshInstrTabVisibility();
 
-  const sectionIdMap={home:'todayTasksCard',trips:'instrTripLogSection',sched:'instrScheduleSection',team:'instrTeamSection',trainees:'traineeSection'};
+  const sectionIdMap={home:'todayTasksCard',trips:'instrTripLogSection',sched:'instrScheduleSection',trainees:'traineeSection'};
   const secId=sectionIdMap[tab];
   if(secId){
     const el=document.getElementById(secId);
@@ -9302,6 +9428,23 @@ function loadFromLocalStorage(){
 
 async function saveToStorage(){
 
+  // Fix #105 (Part A): the #1 leak point -- every trip save while demo mode is
+  // active used to write straight to the REAL Firebase trips/{date} AND overwrite
+  // the REAL history/{date} archive (there is no rebuild path for that archive).
+  // Demo mode must never reach Firebase here -- localStorage only, same object-keyed
+  // shape ({tripId: trip}) the Firebase branch below and _activateDemoData() use.
+  if(_isDemoMode()){
+    try{
+      const obj={};trips.forEach(t=>{obj[t.id]=t;});
+      localStorage.setItem('trips_'+currentDate,JSON.stringify(obj));
+      const ind=document.getElementById('savedIndicator');
+      if(ind){ind.classList.add('show');setTimeout(()=>ind.classList.remove('show'),2000);}
+      renderCalendar();
+      try{_bus.emit(EV_TRIPS);}catch(e){}
+    }catch(e){}
+    return;
+  }
+
   if(!window._fbDb){
 
     // Fallback: save to localStorage
@@ -9387,6 +9530,47 @@ async function saveInstructor(name){
   populateAllInstrSelects();
 }
 
+// 2026-08-19: שם המנהל ניתן לעריכה בטאב "צוות הדרכה" (במקום קבוע קשיח) —
+// נטען מ-Firebase עם נפילה חוזרת ל-localStorage, ובברירת מחדל MANAGER_NAME.
+async function loadManagerName(){
+  try{
+    if(window._fbDb){
+      const snap=await _fbGet(_fbRef(_db,'settings/managerName'));
+      if(snap.exists()&&snap.val()) MANAGER_NAME=snap.val();
+      try{localStorage.setItem('v100_managerName',MANAGER_NAME);}catch(e){}
+      return;
+    }
+  }catch(e){console.warn('loadManagerName (Firebase):',e);}
+  try{
+    const raw=localStorage.getItem('v100_managerName');
+    if(raw) MANAGER_NAME=raw;
+  }catch(e){}
+}
+
+async function saveManagerNameFromSettings(){
+  const input=_visibleNameInput('settingsManagerName','si_settingsManagerName');
+  if(!input)return;
+  const name=input.value.trim();
+  if(!name){showToast('יש להזין שם מנהל','warning');input.focus();return;}
+  MANAGER_NAME=name;
+  try{localStorage.setItem('v100_managerName',MANAGER_NAME);}catch(e){}
+  if(window._fbDb){
+    try{await _fbSet(_fbRef(_db,'settings/managerName'),MANAGER_NAME);}catch(e){}
+  }
+  // אם המשתמש הנוכחי הוא המנהל המחובר — לעדכן את התג למעלה מיידית
+  if(currentRole==='admin'){
+    currentUserName=MANAGER_NAME;
+    const lbl=document.getElementById('userNameLbl');if(lbl)lbl.textContent=MANAGER_NAME;
+  }
+  _populateManagerNameFields();
+  showToast('✅ שם המנהל עודכן','success');
+}
+
+function _populateManagerNameFields(){
+  const a=document.getElementById('settingsManagerName');if(a)a.value=MANAGER_NAME;
+  const b=document.getElementById('si_settingsManagerName');if(b)b.value=MANAGER_NAME;
+}
+
 async function loadInstructors(){
 
   // Try Firebase first
@@ -9411,7 +9595,7 @@ async function loadInstructors(){
         try{
           const hidSnap=await _fbGet(_fbRef(_db,'settings/hiddenInstrs'));
           _hiddenInstrs=new Set();
-          if(hidSnap.exists()){const v=hidSnap.val();Object.keys(v).forEach(k=>{if(v[k])_hiddenInstrs.add(k);});}
+          if(hidSnap.exists()){const v=hidSnap.val();Object.keys(v).forEach(k=>{if(v[k])_hiddenInstrs.add(typeof v[k]==='string'?v[k]:k);});}
           try{localStorage.setItem('v100_hiddenInstrs',JSON.stringify([..._hiddenInstrs]));}catch(e){}
         }catch(e){}
 
@@ -10006,9 +10190,8 @@ function _loadCoursesForAssign() {
   try {
     const isDemoMode = typeof _isDemoMode === 'function' && _isDemoMode();
     if (isDemoMode) {
-      const saved = localStorage.getItem('demo_trainee_data');
-      if (saved) {
-        const d = JSON.parse(saved);
+      const d = _loadDemoTraineeData();
+      if (d) {
         const trainees = d.trainees || [];
         if (trainees.length) return [{ id: 'default', name: 'קורס ראשי', trainees, isDefault: true }];
       }
@@ -10291,6 +10474,12 @@ async function resetTripsOnly(){
 }
 
 async function resetFirebaseHistory(){
+  // Fix #105 (additional finding, caught during the post-fix sweep for this same bug
+  // class): this admin "נקה היסטוריה" button had NO demo-mode guard at all -- clicking
+  // it while demo mode was active would permanently delete the REAL Firebase history/
+  // node. Per Lavi's explicit instruction, demo mode must never be able to delete real
+  // data, so this action is simply blocked while demo mode is active.
+  if(_isDemoMode()){showToast('פעולה זו חסומה במצב דמו כדי להגן על נתוני האמת','warning');return;}
   if(!confirm('מחיקת כל ההיסטוריה מהשרת (Firebase history/).\nהדשבורד החודשי יוצג ריק.\n\nלהמשיך?'))return;
   if(!window._fbDb){showToast('אין חיבור ל-Firebase','warning');return;}
   showToast('🔄 מוחק היסטוריה מהשרת...','info');
@@ -12454,7 +12643,7 @@ function renderSettingsInstrList(){
 
   // Update title with count
   const titleEl=document.getElementById('instrListTitle');
-  if(titleEl) titleEl.textContent=`רשימת מדריכים (${_instrNames.length})`;
+  if(titleEl) titleEl.textContent=`רשימת צוות הדרכה (${_instrNames.length})`;
 
   if(!_instrNames.length){
 
@@ -12542,7 +12731,7 @@ async function switchSettingsTab(tab,btn){
 
   // Populate dynamic content for inline section
   if(tab==='shifts'){try{_populateSiShifts();}catch(e){}}
-  if(tab==='instrs'){try{_populateSiInstrs();}catch(e){}}
+  if(tab==='instrs'){try{_populateSiInstrs();}catch(e){} try{_populateManagerNameFields();}catch(e){}}
   if(tab==='mentors'){try{_populateSiMentors();}catch(e){}}
   if(tab==='routes'){try{_populateSiRoutes();}catch(e){}}
 
@@ -13056,50 +13245,73 @@ function renderDailyScheduleSummary(){
     });
   });
 
-  const rowHtml=(name)=>{
-    const entries=byInstr[name];
-    const cells=entries.map(e=>{
-      const shiftIco=_shiftIcon(e.shift);
-      const sh=SHIFT_HOURS[e.shift]||{s:e.startTime||'',e:e.endTime||''};
-      const timeStr=e.shift==='custom'?`${e.startTime||''}–${e.endTime||''}`:`${sh.s}–${sh.e}`;
-      const shiftName=_shiftName(e.shift);
-      if(!e.task){ // no task assigned (e.g. vacation/flex, or genuinely unset) — show which shift-type (+time, unless it's a flex/vacation type where hours are meaningless)
-        const noteTag=e.note?` <span title="${_esc(e.note)}" style="color:#e67e22;">💬 ${_esc(e.note)}</span>`:'';
-        const timeSuffix=_isFlexShift(e.shift)?'':` <span style="font-size:11px;">(${timeStr})</span>`;
-        return`<span style="display:inline-flex;align-items:center;gap:4px;background:${_chipBg1};border-radius:6px;padding:3px 8px;margin:2px;font-size:12px;color:${_muted};white-space:nowrap;">${shiftIco} ${_esc(shiftName)}${timeSuffix}${noteTag}</span>`;
-      }
+  // Fix #91: one row per schedule ENTRY (not one chip-cloud row per instructor) --
+  // columns מדריך/שעות/משימה/הערות, no per-row shift icons (kept only on the group
+  // header). Notes are a real editable <input>, not a tooltip-only icon.
+  const date=currentDate;
+  const entryRowHtml=(name,e)=>{
+    const sh=SHIFT_HOURS[e.shift]||{s:e.startTime||'',e:e.endTime||''};
+    const timeStr=e.shift==='custom'?`${e.startTime||''}–${e.endTime||''}`:`${sh.s}–${sh.e}`;
+    const hoursHtml=_isFlexShift(e.shift)?'—':_esc(timeStr);
+    let taskHtml;
+    if(e.task){
       const tDef=taskDefs.find(t=>t.id===e.task)||{label:e.task,icon:'📋'};
-      const noteTag=e.note?`<span title="${_esc(e.note)}" style="font-size:11px;color:#e67e22;margin-right:4px;">💬</span>`:'';
-      return`<span style="display:inline-flex;align-items:center;gap:4px;background:${_chipBg2};border-radius:6px;padding:3px 8px;margin:2px;font-size:12px;white-space:nowrap;">
-        ${tDef.icon} <b>${_esc(tDef.label)}</b>
-        <span style="color:${_muted};font-size:11px;">${shiftIco} ${timeStr}</span>
-        ${noteTag}
-      </span>`;
-    }).join('');
+      taskHtml=`${tDef.icon} <b>${_esc(tDef.label)}</b>`;
+    }else if(_isFlexShift(e.shift)){
+      taskHtml=`<span style="color:${_muted};">${_esc(_shiftName(e.shift))}</span>`;
+    }else{
+      taskHtml='';
+    }
     const safeName=name.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
-    return`<tr class="dash-sched-row" onclick="openSchedModalForName(currentDate,'${safeName}')" style="cursor:pointer;" title="לחץ לעריכת השיבוץ">
-      <td style="font-weight:bold;font-size:13px;padding:6px 10px;white-space:nowrap;border-bottom:1px solid ${_rowBorder};background:${_cardBg};">${_esc(name)}</td>
-      <td style="padding:6px 10px;border-bottom:1px solid ${_rowBorder};background:${_cardBg};">${cells}</td>
-    </tr>`;
+    const noteVal=_esc(e.note||'');
+    return`<div class="daily-plan-entry" style="background:${_cardBg};border-bottom:1px solid ${_rowBorder};" onclick="openSchedModalForName('${date}','${safeName}')" title="לחץ לעריכת השיבוץ">
+      <div class="dp-name">${_esc(name)}</div>
+      <div class="dp-hours">${hoursHtml}</div>
+      <div class="dp-task">${taskHtml}</div>
+      <div class="dp-note" onclick="event.stopPropagation();">
+        <textarea class="dp-note-input" rows="1" placeholder="➕ הערה..."
+          onblur="_saveDailyPlanNote('${date}','${e.id}',this.value)"
+          onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}"
+          oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px';">${noteVal}</textarea>
+      </div>
+    </div>`;
   };
 
   let _isFirstGroup=true;
-  const rows=BUCKETS.filter(b=>grouped[b.key].length).map(b=>{
-    const spacerRow=_isFirstGroup?'':'<tr><td colspan="2" style="height:10px;padding:0;border:none;"></td></tr>';
+  const groupsHtml=BUCKETS.filter(b=>grouped[b.key].length).map(b=>{
+    const spacer=_isFirstGroup?'':'<div style="height:10px;"></div>';
     _isFirstGroup=false;
-    const headerRow=`<tr><td colspan="2" style="background:${b.bg};color:${b.text};border-right:6px solid ${b.border};font-size:14px;font-weight:bold;padding:8px 12px;">${b.label} <span style="opacity:.8;font-weight:normal;font-size:11.5px;">· ${grouped[b.key].length} מדריכים</span></td></tr>`;
-    return spacerRow+headerRow+grouped[b.key].map(rowHtml).join('');
+    const header=`<div style="background:${b.bg};color:${b.text};border-right:6px solid ${b.border};font-size:14px;font-weight:bold;padding:8px 12px;">${b.label} <span style="opacity:.8;font-weight:normal;font-size:11.5px;">· ${grouped[b.key].length} מדריכים</span></div>`;
+    const rows=grouped[b.key].map(name=>byInstr[name].map(e=>entryRowHtml(name,e)).join('')).join('');
+    return spacer+header+rows;
   }).join('');
 
   wrap.innerHTML=`
     <div style="font-size:12px;font-weight:bold;color:${_muted};margin:12px 0 8px;letter-spacing:.3px;">📋 לוז יומי — כל המדריכים</div>
-    <table style="width:100%;border-collapse:collapse;background:${_cardBg};border-radius:10px;overflow:hidden;box-shadow:0 1px 6px rgba(0,0,0,.06);">
-      <thead><tr style="background:${_headBg};">
-        <th style="text-align:right;padding:8px 10px;font-size:12px;color:${_headTxt};border-bottom:2px solid ${_headBorder};">מדריך</th>
-        <th style="text-align:right;padding:8px 10px;font-size:12px;color:${_headTxt};border-bottom:2px solid ${_headBorder};">משימות</th>
-      </tr></thead>
-      <tbody>${rows}</tbody>
-    </table>`;
+    <div style="background:${_cardBg};border-radius:10px;overflow:hidden;box-shadow:0 1px 6px rgba(0,0,0,.06);">
+      <div class="daily-plan-header"><div>מדריך</div><div>שעות</div><div>משימה</div><div>הערות</div></div>
+      ${groupsHtml}
+    </div>`;
+
+  // Fix #94: auto-size every note textarea to its pre-filled content on first paint
+  // (the oninput handler only grows it while actively typing, not on initial render).
+  wrap.querySelectorAll('.dp-note-input').forEach(ta=>{
+    ta.style.height='auto';
+    ta.style.height=ta.scrollHeight+'px';
+  });
+}
+
+// Fix #91: inline note edit from the daily-plan table -- reuses saveSchedEntry()'s
+// existing per-entry Firebase write (never a full-tree set), same as every other
+// schedule-entry field edit in this app.
+function _saveDailyPlanNote(date,entryId,val){
+  const entry=(schedData[date]||[]).find(e=>e.id===entryId);
+  if(!entry)return;
+  const newNote=(val||'').trim();
+  if((entry.note||'')===newNote)return;
+  saveSchedEntry(date,{...entry,note:newNote}).then(()=>{
+    try{renderDailyScheduleSummary();}catch(e){}
+  });
 }// ═══════════════════════════════════════════════════════════
 
 // EXPORT
@@ -13181,6 +13393,25 @@ async function executeCopyDay(){
   const targetDate=document.getElementById('copyToDate').value;
 
   if(!targetDate||targetDate===currentDate){alert('יש לבחור תאריך שונה מהיום הנוכחי');return;}
+
+  // Fix #105 (Part A): demo mode must copy into its own localStorage trips for the
+  // target date, never the real Firebase trips/{targetDate} node.
+  if(_isDemoMode()){
+    try{
+      const raw=localStorage.getItem('trips_'+targetDate);
+      const existing=raw?JSON.parse(raw):{};
+      const copied={...existing};
+      trips.forEach(t=>{
+        const newId=Date.now()+Math.floor(Math.random()*10000);
+        copied[newId]={...t,id:newId};
+      });
+      localStorage.setItem('trips_'+targetDate,JSON.stringify(copied));
+      closeCopyDayModal();
+      const d=new Date(targetDate+'T12:00:00');
+      alert(`✅ ${trips.length} נסיעות הועתקו ל-${d.toLocaleDateString('he-IL')}`);
+    }catch(e){alert('שגיאה בהעתקה: '+e.message);}
+    return;
+  }
 
   if(!window._fbDb){alert('Firebase לא זמין');return;}
 
@@ -13549,6 +13780,11 @@ async function saveSchedEntry(date,entry){
   // 2. Persist to localStorage
   lsSaveSched();
 
+  // Fix #105 (Part A): saveSchedEntry() (used by e.g. the daily-plan note editor)
+  // had no demo-mode guard -- a note edited while testing in demo mode would write
+  // straight into the real Firebase schedule/{date} node.
+  if(_isDemoMode()){renderCalendar();return;}
+
   // 3. Save to Firebase if available
   if(!window._fbDb){renderCalendar();return;}
 
@@ -13571,6 +13807,9 @@ async function deleteSchedEntry(date,id){
   // 2. Persist to localStorage
   lsSaveSched();
 
+  // Fix #105 (Part A): same demo guard as saveSchedEntry() above.
+  if(_isDemoMode()){renderCalendar();return;}
+
   if(!window._fbDb){renderCalendar();return;}
 
   // 3. Pause Firebase listener so deleted entry doesn't come back while modal is open
@@ -13591,6 +13830,9 @@ async function deleteSchedEntry(date,id){
 async function updateSchedStatus(date,id,status){
 
   if(schedData[date]){const e=schedData[date].find(x=>x.id===id);if(e)e.status=status;}
+
+  // Fix #105 (Part A): same demo guard as saveSchedEntry() above.
+  if(_isDemoMode()){lsSaveSched();renderCalendar();return;}
 
   if(!window._fbDb){lsSaveSched();renderCalendar();return;}
 
@@ -13780,11 +14022,13 @@ function renderCalendar(){
         const s=e.shift==='custom'?e.startTime:SHIFT_HOURS[e.shift]?.s;
         const en=e.shift==='custom'?e.endTime:SHIFT_HOURS[e.shift]?.e;
         const hoursLbl=(s&&en)?`${s}–${en}`:'';
+        const tDefI=e.task?(taskDefs.find(td=>td.id===e.task)||{label:e.task}):null;
         const wrapStyle=(hasNotesEarly||isWeek)?'margin-bottom:3px;':`position:absolute;top:${top};left:3px;right:3px;z-index:1;`;
         return `<div style="${wrapStyle}">
           <div class="cal-entry" style="background:${col};border-right:4px solid ${bdr};font-size:11px;padding:3px 5px;border-radius:4px;font-weight:700;color:${catStyle.text};line-height:1.35;">
             <div>${_shiftIcon(e.shift)} ${_shiftName(e.shift)} ${ico}</div>
             ${hoursLbl?`<div style="font-size:10px;font-weight:600;">${hoursLbl}</div>`:''}
+            ${(isWeek&&tDefI)?`<div style="font-size:10px;font-weight:500;opacity:.85;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${_esc(tDefI.label)}</div>`:''}
           </div>
         </div>`;
       }).join('');
@@ -13801,7 +14045,16 @@ function renderCalendar(){
         const ico={approved:'✅',pending:'⏳',rejected:'❌'}[e.status||'pending']||'❓';
         const sep=(_lastCat!==null&&_lastCat!==cat)?'<div style="border-top:1px dashed #dde;margin:2px 0;"></div>':'';
         _lastCat=cat;
-        return sep+`<div class="cal-entry status-${e.status||'pending'}" style="background:${col};border-right:3px solid ${bdr};padding:2px 5px;margin:1px 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${ico} ${e.name||''}</div>`;
+        let extraLine='';
+        if(isWeek){
+          const s=e.shift==='custom'?e.startTime:SHIFT_HOURS[e.shift]?.s;
+          const en=e.shift==='custom'?e.endTime:SHIFT_HOURS[e.shift]?.e;
+          const hoursLbl=(s&&en)?`${s}–${en}`:'';
+          const tDefM=e.task?(taskDefs.find(td=>td.id===e.task)||{label:e.task}):null;
+          const bits=[hoursLbl,tDefM?_esc(tDefM.label):''].filter(Boolean).join(' · ');
+          extraLine=bits?`<div style="font-size:10px;opacity:.8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${bits}</div>`:'';
+        }
+        return sep+`<div class="cal-entry status-${e.status||'pending'}" style="background:${col};border-right:3px solid ${bdr};padding:2px 5px;margin:1px 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${ico} ${e.name||''}${extraLine}</div>`;
       }).join('');
     }
 
@@ -14384,6 +14637,7 @@ document.addEventListener('DOMContentLoaded',()=>{
     _dataLoaded=true;
     console.log('🔄 Initial data load starting...');
     try{await loadSettings();}catch(e){console.warn('loadSettings:',e);}
+    try{await loadManagerName();}catch(e){console.warn('loadManagerName:',e);}
     try{await loadInstructors();}catch(e){console.warn('loadInstructors:',e);}
     try{await loadMentors();}catch(e){console.warn('loadMentors:',e);}
     try{await _loadShiftsFromStorage();}catch(e){console.warn('loadShifts:',e);}
@@ -15413,12 +15667,12 @@ function renderWeeklySchedTable(){
 
     last.toLocaleDateString('he-IL',{day:'numeric',month:'long',year:'numeric'});
 
-  const shiftOpts=`<option value="none">—</option>${Object.keys(SHIFT_HOURS).filter(k=>k!=='custom'&&!SHIFT_HOURS[k].hidden).map(k=>`<option value="${k}">${_shiftFullLabel(k)}</option>`).join('')}<option value="custom">⏰ משמרת מותאמת</option>`;
+  const shiftOpts=`<option value="none">—</option>${Object.keys(SHIFT_HOURS).filter(k=>k!=='custom'&&!SHIFT_HOURS[k].hidden).map(k=>`<option value="${k}">${_shiftName(k)}</option>`).join('')}<option value="custom">משמרת מותאמת</option>`;
 
   const taskOpts=(selTask='')=>'<option value=""'+((!selTask||selTask==='')?' selected':'')+'>— ללא משימה —</option>'
     +(taskDefs.length
-      ?taskDefs.filter(t=>!t.hidden).map(t=>`<option value="${t.id}"${t.id===selTask?' selected':''}>${_esc(t.icon||'')} ${_esc(t.label)}</option>`).join('')
-      :'<option value="training">🚇 הדרכה</option>');
+      ?taskDefs.filter(t=>!t.hidden).map(t=>`<option value="${t.id}"${t.id===selTask?' selected':''}>${_esc(t.label)}</option>`).join('')
+      :'<option value="training">הדרכה</option>');
 
   const isMentorMode=(_weeklyTableMode==='mentors');
 
@@ -16043,7 +16297,13 @@ async function confirmRangeReset(){
   showToast('🔄 מבצע איפוס...','info');
 
   // Detach Firebase listeners
-  if(window._fbDb){
+  // Fix #105 (Part A): confirmRangeReset() had NO demo-mode awareness at all -- an
+  // admin testing "איפוס" while demo mode was active would wipe real production
+  // schedule/trips/history in Firebase. The localStorage-side deletion below already
+  // runs unconditionally and correctly clears the demo's own fake data either way, so
+  // every Firebase-touching block in this function is now additionally gated on
+  // `!_isDemoMode()` -- demo mode only ever touches localStorage here.
+  if(window._fbDb&&!_isDemoMode()){
 
     try{_fbRef(_db,'schedule').off('value');}catch(e){}
 
@@ -16143,7 +16403,7 @@ async function confirmRangeReset(){
 
     // Delete from Firebase
 
-    if(window._fbDb){
+    if(window._fbDb&&!_isDemoMode()){
 
       for(const ym of monthsToDelete){
 
@@ -16179,7 +16439,7 @@ async function confirmRangeReset(){
 
     Object.keys(localStorage).filter(k=>k.startsWith('trips_')).forEach(k=>localStorage.removeItem(k));
 
-    if(window._fbDb){
+    if(window._fbDb&&!_isDemoMode()){
 
       try{await _fbRef(_db,'trips').remove();}catch(e){}
       try{await _fbRef(_db,'history').remove();}catch(e){}
@@ -16198,7 +16458,7 @@ async function confirmRangeReset(){
 
     tripDates.forEach(k=>localStorage.removeItem(k));
 
-    if(window._fbDb){
+    if(window._fbDb&&!_isDemoMode()){
 
       for(const ym of monthsToDelete){
 
@@ -16265,7 +16525,7 @@ async function confirmRangeReset(){
   showToast(`✅ האיפוס בוצע: ${modeLabel} — ${scopeLabel2}`,'success');
 
   // Re-attach Firebase listener
-  if(window._fbDb) setTimeout(()=>{startSchedSync();resubscribeTripsListener();},600);
+  if(window._fbDb&&!_isDemoMode()) setTimeout(()=>{startSchedSync();resubscribeTripsListener();},600);
 }
 
 
@@ -16431,6 +16691,12 @@ async function autoGenerateTripsFromSchedule(){
 
 async function loadTripsForDate(date){
   if(date===currentDate)return [...trips];
+  // Fix #105 (Part A): demo mode must read its own localStorage trips, never the
+  // real Firebase node -- otherwise auto-generate/copy-day pull real trips into the
+  // demo working set and then write the merged result back (two-way contamination).
+  if(_isDemoMode()){
+    try{const raw=localStorage.getItem('trips_'+date);return raw?Object.values(JSON.parse(raw)).map(parseTrip):[];}catch(e){return [];}
+  }
   if(window._fbDb){
     try{const snap=await _fbGet(_fbRef(_db,'trips/'+date));return snap.exists()?Object.values(snap.val()).map(parseTrip):[];}catch(e){return [];}
   }else{
@@ -16440,6 +16706,12 @@ async function loadTripsForDate(date){
 
 async function saveTripsForDate(date,tripsArr){
   if(date===currentDate){trips=tripsArr;await saveToStorage();return;}
+  // Fix #105 (Part A): same demo guard as loadTripsForDate() above -- never write a
+  // non-today demo date's trips to the real Firebase trips/{date} node.
+  if(_isDemoMode()){
+    try{const obj={};tripsArr.forEach(t=>{obj[t.id]=t;});localStorage.setItem('trips_'+date,JSON.stringify(obj));}catch(e){}
+    return;
+  }
   if(window._fbDb){
     try{const obj={};tripsArr.forEach(t=>{obj[t.id]=t;});await _fbSet(_fbRef(_db,'trips/'+date),obj);}catch(e){console.warn('saveTripsForDate Firebase error:',e);}
   }else{
@@ -16480,6 +16752,7 @@ function _populateSettingsInline(){
   });
   _populateSiShifts();
   _populateSiInstrs();
+  try{_populateManagerNameFields();}catch(e){}
   _populateSiMentors();
   _populateSiRoutes();
   // Activate first sub-tab
@@ -17335,13 +17608,13 @@ function _exitMentorPreview(){
   const mib=document.getElementById('mentorInstrBar');if(mib)mib.style.display='none';
   // Restore
   if(role==='admin'){
-    currentRole='admin';currentUserName=name;
+    currentRole='admin';currentUserName=MANAGER_NAME;
     _updateDemoBtnVisibility();
     document.getElementById('managerView').style.display='block';
     const adminNav=document.getElementById('v100AdminNav');if(adminNav)adminNav.style.display='block';
     const swBtn=document.getElementById('switchViewBtn');if(swBtn)swBtn.style.display='inline-block';
     document.getElementById('userRoleTag').textContent='מנהל';
-    document.getElementById('userNameLbl').textContent=name;
+    document.getElementById('userNameLbl').textContent=MANAGER_NAME;
     const _smBtnExit=document.getElementById('switchMentorBtn');if(_smBtnExit)_smBtnExit.style.display='inline-block';
     const _swBtnExit=document.getElementById('switchViewBtn');if(_swBtnExit)_swBtnExit.style.display='inline-block';
     showToast('🔙 חזרת לממשק המנהל','info');
@@ -17367,7 +17640,7 @@ function switchBackToAdmin(){
   if(!_adminPreviewMode)return;
   _adminPreviewMode=false;
   currentRole=window._savedRole||'admin';
-  currentUserName=window._savedName||currentUserName;
+  currentUserName=(currentRole==='admin')?MANAGER_NAME:(window._savedName||currentUserName);
   _updateDemoBtnVisibility();
   renderCalendar();
   const _ivBack=document.getElementById('instrView');
@@ -19070,8 +19343,13 @@ async function exportPDFReport(){
   const mo=_monthlyDashDate.getMonth();
   const label=new Date(yr,mo,1).toLocaleDateString('he-IL',{month:'long',year:'numeric'});
 
+  // 2026-08-19: טעינה עצמאית — לא תלוי יותר בפתיחת "דשבורד חודשי" קודם
   if(!Object.keys(_monthHistoryCache).length){
-    showToast('טען נתונים תחילה','warning');return;
+    showToast('⏳ טוען נתוני חודש...','info');
+    _monthHistoryCache=await loadMonthHistory(yr,mo);
+  }
+  if(!Object.keys(_monthHistoryCache).length){
+    showToast('אין נתוני נסיעות לחודש זה','warning');return;
   }
 
   // Build a printable HTML document
@@ -19409,6 +19687,10 @@ function renderTodayTasks(){
   const backBtn=document.getElementById('todayBackToTodayBtn');
   if(backBtn)backBtn.style.display=isReallyToday?'none':'inline-block';
 
+  // Fix #92: team-today refreshes regardless of whether the instructor themselves
+  // has tasks today (early-return below only covers the "todayTasksList" container).
+  try{renderInstrTeamToday(today);}catch(e){}
+
   const entries=(schedData[today]||[]).filter(e=>e.name===currentUserName);
   if(!entries.length){
     container.innerHTML='<div class="today-empty-msg" style="color:#aaa;font-size:13px;text-align:center;padding:10px;">אין משימות מתוכננות להיום</div>';
@@ -19454,6 +19736,82 @@ function renderTodayTasks(){
       </div>
       ${_buildTaskDetails(taskDef,entry)}
     </div>`;
+  }).join('');
+}
+
+// Fix #92: "team today" — read-only shift+task overview of every OTHER instructor
+// scheduled today (own tasks are already shown above), so an instructor can see what
+// teammates are doing for planning/coordination. No notes shown, no click-to-edit —
+// intentionally lighter than the admin daily-plan table (fix #91). Hidden from
+// mentors via .mentor-mode CSS (matches fix #74's precedent).
+function renderInstrTeamToday(today){
+  const container=document.getElementById('teamTodayList');
+  if(!container)return;
+  const day=today||currentDate||_localDateStr(new Date());
+  const todayEntries=(schedData[day]||[]).filter(e=>e.name!==currentUserName);
+  if(!todayEntries.length){
+    container.innerHTML='<div style="color:#aaa;font-size:13px;text-align:center;padding:10px;">אין מדריכים נוספים מתוכננים היום</div>';
+    return;
+  }
+
+  const byInstr={};
+  todayEntries.forEach(e=>{
+    if(!byInstr[e.name])byInstr[e.name]=[];
+    byInstr[e.name].push(e);
+  });
+
+  const _primaryEntry=(entries)=>entries.find(e=>!e._extraTask)||entries[0];
+  const _shiftStart=(p)=>{
+    if(!p)return null;
+    return p.shift==='custom'?(p.startTime||null):(SHIFT_HOURS[p.shift]?.s||null);
+  };
+  const _CS=_catStyleMap();
+  const _isDark=document.body.classList.contains('dark-mode');
+  const _muted=_isDark?'#9aa8bc':'#888';
+  const _rowBorder=_isDark?'#3a4060':'#eee';
+  const BUCKETS=[
+    {key:'morning',label:'🌅 בוקר',..._CS.morning},
+    {key:'evening',label:'🌆 ערב',..._CS.evening},
+    {key:'night',label:'🌙 לילה',..._CS.night},
+    {key:'other',label:'⏳ אחר',..._CS.other}
+  ];
+  const grouped={morning:[],evening:[],night:[],other:[]};
+  Object.keys(byInstr).forEach(name=>grouped[_entryShiftCategory(_primaryEntry(byInstr[name]))].push(name));
+  Object.keys(grouped).forEach(b=>{
+    grouped[b].sort((a,c)=>{
+      const sa=_shiftStart(_primaryEntry(byInstr[a]))||'99:99', sc=_shiftStart(_primaryEntry(byInstr[c]))||'99:99';
+      if(sa!==sc)return sa<sc?-1:1;
+      return a.localeCompare(c,'he');
+    });
+  });
+
+  const lineHtml=(name,e)=>{
+    const sh=SHIFT_HOURS[e.shift]||{s:e.startTime||'',e:e.endTime||''};
+    const timeStr=e.shift==='custom'?`${e.startTime||''}–${e.endTime||''}`:`${sh.s}–${sh.e}`;
+    const hoursHtml=_isFlexShift(e.shift)?'':timeStr;
+    let taskHtml;
+    if(e.task){
+      const tDef=taskDefs.find(t=>t.id===e.task)||{label:e.task,icon:'📋'};
+      taskHtml=`${tDef.icon} ${_esc(tDef.label)}`;
+    }else if(_isFlexShift(e.shift)){
+      taskHtml=`<span style="color:${_muted};">${_esc(_shiftName(e.shift))}</span>`;
+    }else{
+      taskHtml='';
+    }
+    return`<div style="display:flex;align-items:center;gap:8px;padding:5px 8px;border-bottom:1px solid ${_rowBorder};font-size:13px;flex-wrap:wrap;">
+      <span style="font-weight:bold;min-width:70px;">${_esc(name)}</span>
+      <span style="color:${_muted};font-size:12px;white-space:nowrap;">${hoursHtml}</span>
+      <span>${taskHtml}</span>
+    </div>`;
+  };
+
+  let _isFirstGroup=true;
+  container.innerHTML=BUCKETS.filter(b=>grouped[b.key].length).map(b=>{
+    const spacer=_isFirstGroup?'':'<div style="height:8px;"></div>';
+    _isFirstGroup=false;
+    const header=`<div style="background:${b.bg};color:${b.text};border-right:5px solid ${b.border};font-size:12px;font-weight:bold;padding:5px 10px;">${b.label}</div>`;
+    const rows=grouped[b.key].map(name=>byInstr[name].map(e=>lineHtml(name,e)).join('')).join('');
+    return spacer+header+rows;
   }).join('');
 }
 
@@ -20173,7 +20531,10 @@ async function submitUnifiedReport() {
     existing[reportKey] = report;
     localStorage.setItem(lsKey, JSON.stringify(existing));
   } catch(e) {}
-  if (window._fbDb) {
+  // Fix #105 (Part A): a unified day-report submitted while testing in demo mode
+  // must never land in the real Firebase taskReports/{date} node -- the localStorage
+  // write above already covers demo mode correctly, so just skip Firebase here.
+  if (window._fbDb && !_isDemoMode()) {
     try {
       const safeKey = instructor.replace(/[.#$[\]/]/g,'_') + '__unified';
       await _fbSet(_fbRef(_db, `taskReports/${date}/${safeKey}`), report);
@@ -20233,6 +20594,104 @@ async function submitUnifiedReport() {
     _logAction('save_unified_report', `סיכום יום ${date}`);
   };
   await _processFreeEntries();
+}
+
+// ── Fix #98: read-only admin view of a submitted unified report ──
+// The report object saved to taskReports/{date}/{safeKey} only carries a feedbackCount
+// number -- the actual per-trainee feedback (skill scores, note) is injected directly into
+// each trainee's own lesson log (TraineeSystem.trainees[].lessons[]) at submit time, tagged
+// with {date, ins}. So to show the full feedback detail here we reconstruct it by scanning
+// the trainee records for lessons matching this date+instructor, rather than reading it off
+// the report itself.
+function openViewUnifiedReport(date, instructorName) {
+  const reportKey = `${date}__${instructorName}__unified`;
+  const report = (window._taskReportsCache && window._taskReportsCache[reportKey]) || null;
+  if (!report) { showToast('⚠️ לא נמצא סיכום יום לתאריך זה', 'warning'); return; }
+
+  const dObj = new Date(date + 'T12:00:00');
+  const dateLabel = dObj.toLocaleDateString('he-IL', {weekday:'long', day:'numeric', month:'long', year:'numeric'});
+  const titleEl = document.getElementById('vur-title');
+  if (titleEl) titleEl.textContent = `📝 ${_esc(instructorName)} — ${dateLabel}`;
+
+  // ── Basic shift fields ──
+  // Fix #99 follow-up (per Lavi's correction): sinerioHours IS the total shift duration
+  // (computed from shiftStart/shiftEnd — see _calcSinerioHours() in openUnifiedReport()),
+  // and lightHours is a SUBSET of it (how many of those hours were light-instruction). They
+  // are not two separate/additive totals, so there is no third "total" to show — only these
+  // two fields belong in this summary.
+  const basicRows = [
+    `<div><b>שעות סינריון:</b> ${report.sinerioHours || 0}</div>`,
+    `<div><b>שעות הדרכה קלה:</b> ${report.lightHours || 0}</div>`
+  ];
+  const customFields = (typeof _getUrCustomFields === 'function') ? _getUrCustomFields() : [];
+  customFields.forEach(f => {
+    const val = report['custom_' + f.id];
+    if (val === undefined || val === '' || val === false) return;
+    const shown = f.type === 'checkbox' ? '✔️' : _esc(String(val));
+    basicRows.push(`<div><b>${_esc(f.label)}:</b> ${shown}</div>`);
+  });
+  const basicEl = document.getElementById('vur-basic');
+  if (basicEl) basicEl.innerHTML = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 14px;font-size:13px;">${basicRows.join('')}</div>`;
+
+  // ── Notes (full text) ──
+  const notesEl = document.getElementById('vur-notes');
+  if (notesEl) {
+    notesEl.innerHTML = report.notes
+      ? `<div style="white-space:pre-wrap;background:#f8faff;border:1px solid #e0e8f5;border-radius:8px;padding:10px 12px;font-size:13px;line-height:1.5;">${_esc(report.notes)}</div>`
+      : `<div style="color:#aaa;font-size:13px;">אין הערות</div>`;
+  }
+
+  // ── Trainee feedback (reconstructed from trainee lesson logs) ──
+  const feedbackEl = document.getElementById('vur-feedback');
+  if (feedbackEl) {
+    let matches = [];
+    try {
+      if (typeof TraineeSystem !== 'undefined' && Array.isArray(TraineeSystem.trainees)) {
+        TraineeSystem.trainees.forEach(t => {
+          (t.lessons || []).forEach(les => {
+            if (les.date === date && les.ins === instructorName) matches.push({trainee: t, lesson: les});
+          });
+        });
+      }
+    } catch(e) {}
+
+    const skills = (typeof TraineeSystem !== 'undefined' && TraineeSystem.settings?.skills?.length)
+      ? TraineeSystem.settings.skills : [];
+
+    if (!matches.length) {
+      feedbackEl.innerHTML = (report.feedbackCount > 0)
+        ? `<div style="color:#aaa;font-size:13px;">דווחו ${report.feedbackCount} משובים, אך לא נמצא פירוט (ייתכן שנשמרו כשם חד-פעמי שלא נקשר לחניך קבוע).</div>`
+        : `<div style="color:#aaa;font-size:13px;">לא מולאו משובי חניכים ביום זה.</div>`;
+    } else {
+      let html = matches.map(({trainee, lesson}) => {
+        const scoresHtml = skills.map(sk => {
+          const v = lesson[sk.id];
+          if (v === undefined || v === null) return '';
+          return `<span style="display:inline-flex;align-items:center;gap:4px;background:#eef3fb;border-radius:6px;padding:2px 8px;font-size:12px;margin:2px 2px 2px 0;"><b>${_esc(sk.name)}:</b> ${v}/10</span>`;
+        }).join('');
+        const lessonNumsStr = (lesson.lessonNums || []).length ? `שיעורים: ${lesson.lessonNums.join(', ')}` : '';
+        return `<div style="border:1px solid #eee;border-radius:8px;padding:10px 12px;margin-bottom:8px;background:#fff;">
+          <div style="font-weight:bold;font-size:13px;margin-bottom:4px;">${_esc(trainee.name)} <span style="color:#888;font-weight:400;font-size:12px;">— ${_esc(lesson.mission||'')}</span></div>
+          ${lessonNumsStr ? `<div style="font-size:12px;color:#666;margin-bottom:4px;">${_esc(lessonNumsStr)}</div>` : ''}
+          ${scoresHtml ? `<div style="margin-bottom:4px;">${scoresHtml}</div>` : ''}
+          ${lesson.extraDesc ? `<div style="font-size:12px;color:#555;margin-bottom:4px;">${_esc(lesson.extraDesc)}</div>` : ''}
+          ${lesson.note ? `<div style="font-size:12px;color:#333;white-space:pre-wrap;">💬 ${_esc(lesson.note)}</div>` : ''}
+        </div>`;
+      }).join('');
+      if ((report.feedbackCount||0) > matches.length) {
+        html += `<div style="color:#aaa;font-size:12px;margin-top:4px;">⚠️ דווחו ${report.feedbackCount} משובים בסך הכל, נמצא פירוט עבור ${matches.length} (משוב על שם חד-פעמי ללא קישור לחניך קבוע לא נשמר).</div>`;
+      }
+      feedbackEl.innerHTML = html;
+    }
+  }
+
+  const overlay = document.getElementById('viewUnifiedReportOverlay');
+  if (overlay) { overlay.classList.add('open'); overlay.scrollTop = 0; }
+}
+
+function closeViewUnifiedReport() {
+  const overlay = document.getElementById('viewUnifiedReportOverlay');
+  if (overlay) overlay.classList.remove('open');
 }
 
 // ── Custom fields settings (manager) ──
@@ -20436,8 +20895,21 @@ async function submitTaskReport(){
   const reportKey=`${date}__${currentUserName}__${entryId}`;
   window._taskReportsCache[reportKey]=report;
 
+  // Fix #105 (Part A): this function had NO localStorage fallback at all -- in demo
+  // mode it would only have written to the in-memory cache (lost on reload) unless it
+  // fell through to the real Firebase write below. Persist to the same demo-readable
+  // localStorage key loadTaskReportsForDate()/submitUnifiedReport() use.
+  if(_isDemoMode()){
+    try{
+      const lsKey='taskReports_'+date;
+      const existing=JSON.parse(localStorage.getItem(lsKey)||'{}');
+      existing[reportKey]=report;
+      localStorage.setItem(lsKey,JSON.stringify(existing));
+    }catch(e){}
+  }
+
   // Save to Firebase
-  if(window._fbDb){
+  if(window._fbDb&&!_isDemoMode()){
     try{
       const safeInstr=currentUserName.replace(/[.#$[\]/]/g,'_');
       const safeKey=`${safeInstr}__${entryId}`;
@@ -20470,7 +20942,9 @@ async function loadTaskReportsForDate(date){
     }
   }catch(e){}
   // From Firebase
-  if(!window._fbDb)return;
+  // Fix #105 (Part A): must not merge real taskReports into the demo cache -- same
+  // isolation rule as everywhere else in this pass.
+  if(_isDemoMode()||!window._fbDb)return;
   try{
     const snap=await _fbGet(_fbRef(_db,'taskReports/'+date));
     if(snap.exists()){
@@ -20881,8 +21355,9 @@ async function renderDaySummary(){
       const instrSt=dayStatuses[instrKey]||{};
       const confirmedCount=confirmedByTimeline>0?confirmedByTimeline:(instrSt.status==='returned'?totalTrips:0);
 
-      // Planned cell: show total with breakdown
-      plannedCell=`<span style="font-size:12px;">${totalTrips} נסיעות</span>`;
+      // Planned cell: show total with breakdown + shift hours (fix: hours were computed
+      // above (timeStr) but never shown here — only for non-trip tasks below).
+      plannedCell=`<span style="font-size:12px;">${totalTrips} נסיעות</span><br><span style="font-size:11px;color:#888;">משמרת ${timeStr}</span>`;
 
       // Trip sub-line (secondary info)
       let _tripLine='';
@@ -20898,8 +21373,10 @@ async function renderDaySummary(){
       const _uRptTrip=(window._taskReportsCache&&window._taskReportsCache[_uKeyTrip])||null;
       if(_uRptTrip){
         const _parts=[];
-        const _totalH=(_uRptTrip.lightHours||0)+(_uRptTrip.sinerioHours||0);
-        if(_totalH>0) _parts.push(`<span>${_totalH} שעות הדרכה</span>`);
+        // Fix #102: lightHours is the "how many hours were instruction" figure (per
+        // #100/#101) -- summing it with sinerioHours (the total shift) double-counts,
+        // and produced impossible-looking totals like "17 שעות הדרכה" for an 8h shift.
+        if(_uRptTrip.lightHours>0) _parts.push(`<span>${_uRptTrip.lightHours} שעות הדרכה קלה</span>`);
         if(_uRptTrip.notes) _parts.push(`<span>קיים הערות</span>`);
         if(_uRptTrip.feedbackCount>0) _parts.push(`<span>${_uRptTrip.feedbackCount} משובים מולאו</span>`);
         const _summary=_parts.length
@@ -20916,8 +21393,9 @@ async function renderDaySummary(){
       const _uRpt=(window._taskReportsCache&&window._taskReportsCache[_uKey])||null;
       if(_uRpt){
         const _parts=[];
-        const _totalHours=(_uRpt.lightHours||0)+(_uRpt.sinerioHours||0);
-        if(_totalHours>0) _parts.push(`<span>${_totalHours} שעות הדרכה</span>`);
+        // Fix #102: same correction as the trip branch above -- lightHours alone, not
+        // summed with sinerioHours (the shift total).
+        if(_uRpt.lightHours>0) _parts.push(`<span>${_uRpt.lightHours} שעות הדרכה קלה</span>`);
         if(_uRpt.notes) _parts.push(`<span>קיים הערות</span>`);
         if(_uRpt.feedbackCount>0) _parts.push(`<span>${_uRpt.feedbackCount} משובים מולאו</span>`);
         executedCell=_parts.length
@@ -20940,7 +21418,13 @@ async function renderDaySummary(){
 
     const noteTag=e.note?`<span title="${e.note}" style="font-size:11px;color:#e67e22;margin-right:4px;">💬</span>`:'';
 
-    return`<tr style="border-bottom:1px solid #f0f0f0;">
+    // Fix #98: rows with an existing unified report open a read-only view of its full content
+    const safeInstrName=(e.name||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    const rowAttrs=_unifiedReport
+      ?`onclick="openViewUnifiedReport('${dateStr}','${safeInstrName}')" style="border-bottom:1px solid #f0f0f0;cursor:pointer;" title="לחץ לצפייה בתוכן הדוח המלא"`
+      :`style="border-bottom:1px solid #f0f0f0;"`;
+
+    return`<tr ${rowAttrs}>
       <td style="padding:8px 10px;font-weight:bold;font-size:13px;white-space:nowrap;">${_esc(e.name)}</td>
       <td style="padding:8px 10px;font-size:12px;">${tDef.icon} ${_esc(tDef.label)} ${noteTag}</td>
       <td style="padding:8px 10px;">${plannedCell}</td>
@@ -21026,9 +21510,10 @@ document.addEventListener('DOMContentLoaded',()=>{
 
 const DEMO_PREFIX='demo_';
 const DEMO_BACKUP_PREFIX='realbackup_';
-const DEMO_LS_KEYS=['v100_sched_all','v100_instructors','v100_taskDefs','v100_settings','v100_shifts_def'];
+const DEMO_LS_KEYS=['v100_sched_all','v100_instructors','v100_mentors','v100_taskDefs','v100_settings','v100_shifts_def'];
 
 const DEMO_INSTRUCTORS=['אחמד עבדלאל','איאד סולימן','דודו היילו','לואי שהין','סמיר ג\'אבר'];
+const DEMO_MENTORS=['נועה שגיא','יובל פרץ','דנה כהן']; // 2026-08-19: לא היו חונכי דמו כלל — טאב/שיבוץ חונכים היה ריק בדמו
 const DEMO_TASK_NOTES=[
   'בוצעו 4 בקרות לנהגים: דוד, דני, רונית, מחמד. עצירת רכבות שעה.',
   'כל הנהגים עמדו בסטנדרט. ניהול זמן תקין.',
@@ -21048,8 +21533,106 @@ function _generateInspectedNames(date,instrName){
 }
 
 const DEMO_NOTES=['לדבדיקה מיוחדת','להגיע מוקדם 15 דק\'','לתאם עם ממונה','לסיים עד 22:00 בדיוק','שים לב לפינת נווה יעקב','תלמיד VIP ברכב','נסיעה ארוכה — הכן חטיפים'];
+
+// Fix #103: target skill-score average per demo trainee (matches the intended risk
+// tier baked into their hand-authored lessons in _generateTraineeDemoData() -- red
+// <6 / yellow 6-7 / green >=7, same thresholds the card-coloring logic uses). Extra
+// trip-feedback lessons injected below are generated AROUND this mean instead of a
+// flat high range, so a trainee's overall average stays consistent with their tier
+// even after months of additional injected feedback -- otherwise the uniformly-high
+// injected scores drown out the deliberately-varied hand-authored ones and every
+// trainee ends up looking "green".
+const DEMO_TRAINEE_PROFILE={
+  1013:9.3, 1012:8.7, 1010:8.6, 1006:8.2, 1011:8.3,
+  1004:6.8, 1007:7.3, 1014:7.4, 1015:6.4,
+  1005:6.4, 1008:5.7, 1003:8.9, 1001:5.2, 1002:6.7
+};
 const DEMO_DELAY_REASONS=['עומס תנועה חריג','תקלה טכנית ברכב','תלמיד איחר','פקק בכביש 6','בעיה בהחלפת נהג','ביקורת בטיחות','אירוע חירום בדרך'];
 const DEMO_ROUTES=['D3','N1','N2','L2','O2','O1','L1','D4'];
+
+// Fix #104: demo mode previously left the messaging inbox and the "פתקים" (sticky
+// notes) calendar completely empty -- only schedules/trips/task-reports/trainees had
+// fake data. These templates + the two generator functions below fill those gaps so a
+// generated demo feels lived-in everywhere, not just on the schedule/dashboard screens.
+const DEMO_MSG_TEXTS_TO_ADMIN=[
+  'שלום, סיימתי את המשמרת של היום. הכל תקין.',
+  'יש לי שאלה לגבי השיבוץ של השבוע הבא — אשמח להבהרה.',
+  'תלמיד ציין תקלה קטנה בדלת ברכבת — דיווחתי לתחזוקה, לא דורש טיפול דחוף.',
+  'מבקש לתאם יום חופש בשבוע הקרוב, אם אפשר.',
+  'ההדרכה של היום הלכה טוב, החניך מתקדם יפה.',
+];
+const DEMO_MSG_TEXTS_FROM_ADMIN=[
+  'תזכורת: ישיבת צוות מחר בבוקר.',
+  'שימו לב לעדכון בנוהל הבטיחות שיצא השבוע — אנא קראו בהקדם.',
+  'תודה על העבודה הטובה בשבוע האחרון!',
+  'נא לעדכן את שעות הנוכחות עד סוף השבוע.',
+  'יש עדכון בלוח הזמנים לחודש הקרוב — בדקו בטאב שיבוצים.',
+];
+const DEMO_NOTE_TEMPLATES=[
+  {text:'תזכורת: ביקורת בטיחות מתוכננת השבוע.',color:'#fef08a',visibility:['all']},
+  {text:'שינוי בנוהל הבלמים בקו 2 — לתדרך את הצוות.',color:'#fecaca',visibility:['all']},
+  {text:'יום עומס גבוה — לתאם משמרות מראש.',color:'#bfdbfe',visibility:['instr_only']},
+  {text:'לבדוק את התקדמות ההדרכה עד סוף השבוע.',color:'#bbf7d0',visibility:['self']},
+  {text:'ישיבת חונכים בשעה 14:00.',color:'#ddd6fe',visibility:['mentors_all']},
+  {text:'לתאם עם ממונה לגבי שינוי בלוח הזמנים.',color:'#fed7aa',visibility:['admin']},
+];
+
+// Fake but realistic admin/instructor message inbox — mix of read/unread, and messages
+// that require a reply (some already answered, some still pending), spread over the
+// last few weeks. Stored under a demo-prefixed key so _startMsgListener()/`_sendMsg()`/
+// `_sendMsgToAdmin()` (patched below to check _isDemoMode()) read/write it directly
+// instead of ever touching the real `messages/` Firebase node while demo mode is active.
+function _generateDemoMessages(instrs){
+  const msgs={};
+  const now=Date.now();
+  const DAY=86400000;
+  instrs.forEach((name,i)=>{
+    const txt=DEMO_MSG_TEXTS_TO_ADMIN[i%DEMO_MSG_TEXTS_TO_ADMIN.length];
+    const daysAgo=1+i*2;
+    const read=_pseudoRand(name+'msgread')>0.35;
+    msgs['demo_ta_'+i]={
+      text:txt, from:name, fromRole:'instructor', toAdmin:true, requiresReply:false,
+      recipients:{'מנהל':{name:'מנהל',read,reply:'',readAt:read?now-daysAgo*DAY+3600000:null}},
+      createdAt:now-daysAgo*DAY, permanent:true
+    };
+  });
+  DEMO_MSG_TEXTS_FROM_ADMIN.forEach((txt,i)=>{
+    const daysAgo=2+i*3;
+    const requiresReply=(i===1||i===3);
+    const recipients={};
+    instrs.forEach(name=>{
+      const read=_pseudoRand(name+txt+'read')>0.4;
+      const replied=requiresReply&&read&&_pseudoRand(name+txt+'reply')>0.5;
+      recipients[_msgKey(name)]={name,read,reply:replied?'תודה, קראתי והבנתי.':'',readAt:read?now-daysAgo*DAY+7200000:null};
+    });
+    msgs['demo_fa_'+i]={
+      text:txt, from:'מנהל', requiresReply, recipients,
+      createdAt:now-daysAgo*DAY, expiresAt:null, permanent:true
+    };
+  });
+  try{localStorage.setItem(DEMO_PREFIX+'messages',JSON.stringify(msgs));}catch(e){}
+}
+
+// Fake calendar sticky-notes ("פתקים") spread across the generated demo months, one
+// roughly every ~6 working days, cycling through the visibility/color templates above.
+// Written straight into the exact key _loadNotes()/_saveNotes() already read/write in
+// demo mode (cal_notes_<year>_<MM>) -- no extra plumbing needed, that gating already existed.
+function _generateDemoNotes(instrs,days){
+  const byMonth={};
+  days.filter((_,i)=>i%6===0).forEach((date,i)=>{
+    const tpl=DEMO_NOTE_TEMPLATES[i%DEMO_NOTE_TEMPLATES.length];
+    const d=new Date(date+'T12:00:00');
+    const mk=d.getFullYear()+'_'+String(d.getMonth()+1).padStart(2,'0');
+    if(!byMonth[mk])byMonth[mk]=[];
+    const note={id:Date.now()+i,date,text:tpl.text,visibility:tpl.visibility,color:tpl.color};
+    if(tpl.visibility.includes('self'))note.authorName=instrs[i%instrs.length];
+    if(tpl.visibility.includes('instr_specific'))note.specificInstrs=[instrs[i%instrs.length]];
+    byMonth[mk].push(note);
+  });
+  Object.entries(byMonth).forEach(([mk,notes])=>{
+    try{localStorage.setItem('cal_notes_'+mk,JSON.stringify(notes));}catch(e){}
+  });
+}
 
 function openDemoPanel(){
   const overlay=document.getElementById('demoPanelOverlay');
@@ -21171,6 +21754,18 @@ async function generateAndActivateDemo(){
         note:_pseudoRand(date+name+'n')>0.7?DEMO_NOTES[Math.floor(_pseudoRand(date+name+'nt')*DEMO_NOTES.length)]:'',
         createdAt:Date.now(),submittedBy:name
       }));
+      // 2026-08-19: שיבוצי חונכים — לא היו קיימים כלל בדמו (טאב חונכים/לוח שיבוצים ריקים)
+      DEMO_MENTORS.forEach((mName,mi)=>{
+        if(_pseudoRand(date+mName+'men')>0.35)return; // לא כל חונך משובץ כל יום
+        const mShift=SHIFTS[Math.floor(_pseudoRand(date+mName+'ms')*3)];
+        fullSched[date].push({
+          id:'dm_'+date.replace(/-/g,'')+'_'+mi,
+          name:mName,shift:mShift,task:'',
+          startTime:SHIFT_H[mShift].s,endTime:SHIFT_H[mShift].e,
+          status:STATUSES[Math.floor(_pseudoRand(date+mName+'mst')*STATUSES.length)],
+          note:'',createdAt:Date.now(),submittedBy:mName,role:'mentor'
+        });
+      });
     });
 
     let totalTrips=0,totalDelays=0,totalReports=0;
@@ -21250,20 +21845,23 @@ async function generateAndActivateDemo(){
               const sk=name.replace(/[.#$[\]/]/g,'_')+'__unified';
               // Generate 1-4 trainee feedback entries
               const _numFeedback=Math.round(1+_pseudoRand(date+name+'nf')*3);
-              const _DEMO_TRAINEE_IDS=[1013,1012,1010,1006,1011,1004,1007,1014,1015,1005,1008,1003,1001,1009,1002];
+              const _DEMO_TRAINEE_IDS=[1013,1012,1010,1006,1011,1004,1007,1014,1015,1005,1008,1003,1001,1002];
               const _feedbackEntries=[];
               for(let fi=0;fi<_numFeedback;fi++){
                 const tidx=Math.floor(_pseudoRand(date+name+'tid'+fi)*_DEMO_TRAINEE_IDS.length);
                 const traineeId=_DEMO_TRAINEE_IDS[tidx];
-                const s1=Math.round(6+_pseudoRand(date+name+'s1'+fi)*4);
-                const s2=Math.round(6+_pseudoRand(date+name+'s2'+fi)*4);
-                const s3=Math.round(5+_pseudoRand(date+name+'s3'+fi)*5);
-                const s4=Math.round(6+_pseudoRand(date+name+'s4'+fi)*4);
-                const s5=Math.round(6+_pseudoRand(date+name+'s5'+fi)*4);
+                // Fix #103: score around this trainee's own profile mean (±1.5ish), clamped
+                // 1-10, instead of a flat high range shared by everyone.
+                const _mean=DEMO_TRAINEE_PROFILE[traineeId]||7.5;
+                const _mkScore=(seed)=>Math.max(1,Math.min(10,Math.round(_mean+(_pseudoRand(date+name+seed+fi)-0.5)*3)));
+                const s1=_mkScore('s1'),s2=_mkScore('s2'),s3=_mkScore('s3'),s4=_mkScore('s4'),s5=_mkScore('s5');
                 _feedbackEntries.push({traineeId,s1,s2,s3,s4,s5,note:'שיעור שגרתי.'});
               }
-              const _demoLightH=Math.round((1+_pseudoRand(date+name+'lh')*5)*2)/2;
-              const _demoSinerioH=Math.round((1+_pseudoRand(date+name+'sh')*3)*2)/2;
+              // Fix #101: sinerioHours = total shift hours (realistic 8-12h shift);
+              // lightHours is a SUBSET of it (2-8h, never more than the shift itself).
+              const _demoSinerioH=Math.round((8+_pseudoRand(date+name+'sh')*4)*2)/2;
+              const _demoLightMax=Math.min(8,_demoSinerioH);
+              const _demoLightH=Math.round((2+_pseudoRand(date+name+'lh')*(_demoLightMax-2))*2)/2;
               const _demoNotes=_pseudoRand(date+name+'un')>0.5?DEMO_TASK_NOTES[Math.floor(_pseudoRand(date+name+'uns')*DEMO_TASK_NOTES.length)]:'';
               rptMap[sk]={date,instructorName:name,taskId:'training',
                 taskLabel:'קורס מעשי סיטאדיס',entryId:entry.id,submittedAt:Date.now(),
@@ -21288,8 +21886,11 @@ async function generateAndActivateDemo(){
               if(!entry)return;
               const sk=name.replace(/[.#$[\]/]/g,'_')+'__unified';
               if(rptMap[sk])return; // already has one
-              const _lightH=Math.round((1+_pseudoRand(date+name+'nlh')*5)*2)/2;
-              const _sinerioH=Math.round((1+_pseudoRand(date+name+'nsh')*3)*2)/2;
+              // Fix #101: sinerioHours = total shift hours (realistic 8-12h shift);
+              // lightHours is a SUBSET of it (2-8h, never more than the shift itself).
+              const _sinerioH=Math.round((8+_pseudoRand(date+name+'nsh')*4)*2)/2;
+              const _lightMax=Math.min(8,_sinerioH);
+              const _lightH=Math.round((2+_pseudoRand(date+name+'nlh')*(_lightMax-2))*2)/2;
               const _nNotes=_pseudoRand(date+name+'nun')>0.5?DEMO_TASK_NOTES[Math.floor(_pseudoRand(date+name+'nuns')*DEMO_TASK_NOTES.length)]:'';
               rptMap[sk]={date,instructorName:name,type:'unified_daily',submittedAt:Date.now(),
                 lightHours:_lightH,sinerioHours:_sinerioH,feedbackCount:0,notes:_nNotes,isUnified:true};
@@ -21335,11 +21936,12 @@ async function generateAndActivateDemo(){
     localStorage.setItem(DEMO_PREFIX+'v100_taskDefs',JSON.stringify(demoTaskDefs));
     // Also store currently active taskDefs (backup real ones first if needed)
     localStorage.setItem(DEMO_PREFIX+'v100_instructors',JSON.stringify(instrs));
+    localStorage.setItem(DEMO_PREFIX+'v100_mentors',JSON.stringify(DEMO_MENTORS));
 
     setP(88,'מגבה נתונים ומפעיל...');await new Promise(r=>setTimeout(r,30));
 
     // Backup real data
-    ['v100_sched_all','v100_taskDefs','v100_instructors'].forEach(k=>{
+    ['v100_sched_all','v100_taskDefs','v100_instructors','v100_mentors'].forEach(k=>{
       const v=localStorage.getItem(k);if(v)localStorage.setItem(DEMO_BACKUP_PREFIX+k,v);
     });
 
@@ -21347,6 +21949,10 @@ async function generateAndActivateDemo(){
     _activateDemoData(months);
     localStorage.setItem('demo_active','1');
     localStorage.setItem('demo_months',JSON.stringify(months));
+    // Fix #104: fill the messaging inbox and the calendar "פתקים" too, so demo mode
+    // feels lived-in everywhere, not just on the schedule/dashboard/trainee screens.
+    try{_generateDemoMessages(instrs);}catch(e){console.warn('demo messages:',e);}
+    try{_generateDemoNotes(instrs,days);}catch(e){console.warn('demo notes:',e);}
     _logAction('demo_on','הפעלת מצב דמו');
     setTimeout(_fireDemoTraineeAlerts, 400); // show badge immediately after activation
 
@@ -21414,7 +22020,11 @@ function exitDemoMode(){
       const data=JSON.parse(localStorage.getItem(DEMO_PREFIX+pfx+mk)||'{}');
       Object.keys(data).forEach(date=>['trips_','taskReports_','instrStatus_'].forEach(p=>localStorage.removeItem(p+date)));
     });
+    // Fix #104: also drop the demo "פתקים" (sticky notes) generated for this month --
+    // cal_notes_ uses an underscore separator (cal_notes_2026_07), unlike the dash-separated mk.
+    try{localStorage.removeItem('cal_notes_'+mk.replace('-','_'));}catch(e){}
   });
+  localStorage.removeItem(DEMO_PREFIX+'messages'); // Fix #104: demo message inbox
   localStorage.removeItem('demo_months');
   localStorage.removeItem('demo_active');
   localStorage.removeItem('demo_trainee_data');
@@ -21476,26 +22086,50 @@ function exitDemoMode(){
     _tsCont.innerHTML = '<div style="padding:30px;text-align:center;color:#888;font-size:14px;">⏳ לחץ כאן לטעינת מערכת החניכים...</div>';
   }
 
-  // Delete Firebase demo data FIRST, then reload app
+  // Fix #105 (Part B): the old code here unconditionally ran
+  // _fbRef(_db,'history').remove() and _fbRef(_db,'trips').remove() on EVERY exit from
+  // demo mode -- a blanket delete of the ENTIRE real trips/ and history/ Firebase trees.
+  // That was only ever "needed" because, before Fix #105 Part A, demo-mode trip/report
+  // saves leaked straight into real Firebase and had to be scrubbed back out on exit.
+  // Part A closed every one of those leaks (saveToStorage/loadTripsForDate/
+  // saveTripsForDate/executeCopyDay/confirmRangeReset/saveSchedEntry/deleteSchedEntry/
+  // updateSchedStatus/submitUnifiedReport/submitTaskReport/loadTaskReportsForDate all
+  // now check _isDemoMode() and never touch real Firebase) -- so demo mode no longer
+  // writes anything fake into trips/ or history/ that would need cleaning up here.
+  // Per Lavi's explicit instruction ("אני לא רוצה שנתוני אמת ימחקו"), this function must
+  // NEVER delete real Firebase data -- the blanket remove() calls are removed entirely
+  // (not "scoped down") because there is nothing left for them to legitimately do.
   const _doFirebaseCleanupAndReload=async()=>{
-    if(window._fbDb){
-      showToast('🔄 מנקה נתוני דמו מהשרת...','info');
-      try{await _fbRef(_db,'history').remove();}catch(e){}
-      try{await _fbRef(_db,'trips').remove();}catch(e){}
-    }
-    // Reload real data after Firebase is clean
+    // Reload real data
     try{schedData={};}catch(e){}
     try{lsLoadSched();}catch(e){}
     try{normalizeTaskDefs();}catch(e){}
-    const _exitToday=_localDateStr(new Date());
-    try{const raw=localStorage.getItem('trips_'+_exitToday);trips=raw?Object.values(JSON.parse(raw)).map(parseTrip):[];}catch(e){trips=[];}
+    // Fix #105 (Part C): this used to read a stale/nonexistent localStorage
+    // 'trips_'+today key -- real trips are only ever fetched from Firebase (never
+    // mirrored to localStorage outside demo mode, since Part A). Use the app's own real
+    // loader instead, which correctly fetches from Firebase (or localStorage if Firebase
+    // is unavailable) for the currently-selected date, and also re-renders the trip log,
+    // timeline, calendar and instructor journal.
+    try{await loadFromStorage();}catch(e){}
+    // Fix #105 (Part C): instrStatuses was left holding stale demo statuses after exit;
+    // reset so the instructor board doesn't keep showing demo instructors as "on shift".
+    try{instrStatuses={};}catch(e){}
     try{renderCalendar();}catch(e){}
     try{renderLog();}catch(e){}
     try{renderInstrTripJournal();}catch(e){}
     try{if(typeof startSchedSync==='function')startSchedSync();}catch(e){}
+    // Fix #105 (Part C): re-subscribe to the real live trips listener now that
+    // demo_active is cleared -- previously the app kept whatever listener state (or lack
+    // of one) it had from before demo mode, so live sync could stay stale/frozen.
+    try{if(typeof resubscribeTripsListener==='function')resubscribeTripsListener();}catch(e){}
+    try{if(currentRole==='instructor'&&typeof startInstrSync==='function')startInstrSync();}catch(e){}
+    try{renderDailyScheduleSummary();}catch(e){}
+    try{renderInstrView();}catch(e){}
+    try{renderTodayTasks();}catch(e){}
+    try{loadTaskReportsForDate(currentDate);}catch(e){}
     setTimeout(()=>{try{renderCalendar();}catch(e){}},200);
     try{renderDashboard();}catch(e){}
-    // If monthly dashboard is open, reload it now that Firebase is clean
+    // If monthly dashboard is open, reload it now that real data is back
     try{
       const _mdp=document.getElementById('monthlyDashPanel');
       if(_mdp&&_mdp.style.display!=='none'&&typeof loadMonthlyDash==='function'){
@@ -21506,6 +22140,9 @@ function exitDemoMode(){
     const _exitBtn=document.getElementById('demoExitBtn');
     if(_genBtn)_genBtn.style.display='block';
     if(_exitBtn)_exitBtn.style.display='none';
+    // Fix #104: re-subscribe to the REAL messages/ Firebase node now that demo_active
+    // is cleared -- otherwise the inbox would keep showing the (now-deleted) demo cache.
+    try{_startMsgListener();}catch(e){}
     showToast('✅ חזרת לנתונים האמיתיים','success');
   };
   _doFirebaseCleanupAndReload();
@@ -21519,8 +22156,12 @@ function clearDemoData(){
     const v=localStorage.getItem(DEMO_BACKUP_PREFIX+k);
     if(v)localStorage.setItem(k,v);
   });
+  // Fix #104: grab the demo month list BEFORE it's wiped below (demo_months itself
+  // starts with DEMO_PREFIX) so the "פתקים" generated for those months can be cleaned too.
+  const _demoMonthsForCleanup=JSON.parse(localStorage.getItem('demo_months')||'[]');
   const keys=Object.keys(localStorage).filter(k=>k.startsWith(DEMO_PREFIX)||k.startsWith(DEMO_BACKUP_PREFIX));
   keys.forEach(k=>localStorage.removeItem(k));
+  _demoMonthsForCleanup.forEach(mk=>{try{localStorage.removeItem('cal_notes_'+mk.replace('-','_'));}catch(e){}});
   // Reload in-memory state from the now-restored real data (not just fix localStorage silently)
   try{schedData={};}catch(e){}
   try{lsLoadSched();}catch(e){}
@@ -21553,6 +22194,7 @@ function clearDemoData(){
   } else if(_tsCont2){
     _tsCont2.innerHTML='<div style="padding:30px;text-align:center;color:#888;font-size:14px;">⏳ לחץ כאן לטעינת מערכת החניכים...</div>';
   }
+  try{_startMsgListener();}catch(e){} // Fix #104: re-subscribe to real messages/ now that demo_active is gone
   showToast('🗑️ נתוני הדמו נמחקו','info');
 }
 
@@ -21616,6 +22258,7 @@ function _activateDemoData(months){
   const ds=localStorage.getItem(DEMO_PREFIX+'v100_sched_all');if(ds)localStorage.setItem('v100_sched_all',ds);
   const dt=localStorage.getItem(DEMO_PREFIX+'v100_taskDefs');if(dt)localStorage.setItem('v100_taskDefs',dt);
   const di=localStorage.getItem(DEMO_PREFIX+'v100_instructors');if(di)localStorage.setItem('v100_instructors',di);
+  const dm=localStorage.getItem(DEMO_PREFIX+'v100_mentors');if(dm)localStorage.setItem('v100_mentors',dm);
 
   // Copy monthly buckets into per-day keys for existing code compatibility
   (months||[]).forEach(mk=>{
@@ -21637,6 +22280,10 @@ function _reloadAppWithDemoData(){
   try{renderLog();}catch(e){}
   try{renderDashboard();}catch(e){}
   try{renderInstrTripJournal();}catch(e){}
+  // Fix #104: re-subscribe so the message inbox switches from the real Firebase
+  // node to the freshly-generated demo cache (login-time _startMsgListener() already
+  // ran before demo mode existed this session, so it needs to re-run here).
+  try{_startMsgListener();}catch(e){}
 }
 
 
@@ -21889,11 +22536,19 @@ async function renderTasksTab(){
 async function exportDashboardXLSX(){
   showToast('⏳ מכין קובץ Excel...','info');
   try{
+    const yr=_monthlyDashDate.getFullYear();
+    const mo=_monthlyDashDate.getMonth();
+    // 2026-08-19: טעינה עצמאית — לא תלוי יותר בפתיחת "דשבורד חודשי" קודם
+    // (לפני התיקון: קובץ Excel ריק היה מיוצא בשקט ללא שגיאה אם הדשבורד לא נפתח קודם)
+    if(!Object.keys(_monthHistoryCache).length){
+      _monthHistoryCache=await loadMonthHistory(yr,mo);
+    }
+    if(!Object.keys(_monthHistoryCache).length){
+      showToast('אין נתוני נסיעות לחודש זה','warning');return;
+    }
     const XLSX=await import('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js').catch(()=>window.XLSX);
     if(!XLSX){showToast('שגיאה: ספריית Excel לא נטענה','warning');return;}
     const wb=XLSX.utils.book_new();
-    const yr=_monthlyDashDate.getFullYear();
-    const mo=_monthlyDashDate.getMonth();
     const label=_monthlyDashDate.toLocaleDateString('he-IL',{month:'long',year:'numeric'});
 
     // Sheet 1: instructors summary
@@ -22344,7 +22999,7 @@ function _generateTraineeDemoData() {
       _l(100,'קורס מעשי אורבוס',_seq(5,7),_ins[0],10,10,10,10,10,'השלים אורבוס.'),
       _l(80,'חניכה',_seq(1,1),_ins[0],9,9,10,9,10,'שיעור חניכה ראשון — חניך מצוין.'),
       _l(60,'חניכה',_seq(2,2),_ins[1],9,10,9,10,10,''),
-      _l(40,'חניכה',_seq(3,3),_ins[1],10,9,10,9,10,'ביצועים יציבים בחניכה.'),
+      _l(5,'חניכה',_seq(3,3),_ins[1],10,9,10,9,10,'ביצועים יציבים בחניכה.'),
     ]},
 
     // ── קבוצה F — מוכן לחניכה: סיטאדיס 50 + אורבוס 7, ללא חניכה ──
@@ -22355,7 +23010,7 @@ function _generateTraineeDemoData() {
       _l(135,'קורס מעשי סיטאדיס',_seq(31,40),_ins[3],9,9,8,9,9,_note(40,'')),
       _l(110,'קורס מעשי סיטאדיס',_seq(41,50),_ins[0],9,9,9,10,10,_note(50,'טסט 50!')),
       _l(85,'קורס מעשי אורבוס',_seq(1,4),_ins[0],9,9,9,9,10,''),
-      _l(60,'קורס מעשי אורבוס',_seq(5,7),_ins[1],9,9,9,10,10,'השלים אורבוס — מוכן לחניכה.'),
+      _l(9,'קורס מעשי אורבוס',_seq(5,7),_ins[1],9,9,9,10,10,'השלים אורבוס — מוכן לחניכה.'),
     ]},
     {id:1010,name:'נדב ברגר',lessons:[
       _l(230,'קורס מעשי סיטאדיס',_seq(1,10),_ins[1],8,7,7,8,8,_note(10,'טסט 10.')),
@@ -22364,7 +23019,7 @@ function _generateTraineeDemoData() {
       _l(140,'קורס מעשי סיטאדיס',_seq(31,40),_ins[0],9,8,8,9,9,_note(40,'')),
       _l(110,'קורס מעשי סיטאדיס',_seq(41,50),_ins[0],9,9,9,9,10,_note(50,'מוכן לחניכה!')),
       _l(90,'קורס מעשי אורבוס',_seq(1,3),_ins[1],9,9,9,9,9,''),
-      _l(70,'קורס מעשי אורבוס',_seq(4,7),_ins[1],9,9,9,10,9,'השלים 7 שיעורי אורבוס.'),
+      _l(14,'קורס מעשי אורבוס',_seq(4,7),_ins[1],9,9,9,10,9,'השלים 7 שיעורי אורבוס.'),
     ]},
 
     // ── קבוצה E — השתלמות אורבוס: סיטאדיס 50 + אורבוס חלקי ──
@@ -22374,8 +23029,8 @@ function _generateTraineeDemoData() {
       _l(150,'קורס מעשי סיטאדיס',_seq(21,30),_ins[2],9,9,7,9,9,_note(30,'טסט 30 — ביצועים מספקים.')),
       _l(125,'קורס מעשי סיטאדיס',_seq(31,40),_ins[2],9,9,8,9,9,_note(40,'')),
       _l(100,'קורס מעשי סיטאדיס',_seq(41,50),_ins[0],9,9,8,9,9,_note(50,'טסט 50 — פתח אורבוס.')),
-      _l(75,'קורס מעשי אורבוס',_seq(1,2),_ins[0],8,8,8,8,8,''),
-      _l(50,'קורס מעשי אורבוס',_seq(3,4),_ins[3],8,9,8,8,8,'בעיצומה של השתלמות אורבוס.'),
+      _l(75,'קורס מעשי אורבוס',_seq(1,2),_ins[0],6,6,5,6,6,'ירידה בריכוז לאחרונה.'),
+      _l(50,'קורס מעשי אורבוס',_seq(3,4),_ins[3],5,6,5,5,6,'ממשיך להתקשות — מגמת ירידה.'),
     ]},
 
     // ── קבוצה D — שלב מסחרי: סיטאדיס 30–49 ──
@@ -22383,28 +23038,28 @@ function _generateTraineeDemoData() {
       _l(165,'קורס מעשי סיטאדיס',_seq(1,10),_ins[0],8,7,7,8,8,_note(10,'טסט 10.')),
       _l(140,'קורס מעשי סיטאדיס',_seq(11,20),_ins[3],8,8,8,8,9,_note(20,'')),
       _l(115,'קורס מעשי סיטאדיס',_seq(21,30),_ins[3],9,8,8,9,9,_note(30,'טסט 30.')),
-      _l(90,'קורס מעשי סיטאדיס',_seq(31,38),_ins[1],9,8,8,9,9,_note(38,'')),
+      _l(25,'קורס מעשי סיטאדיס',_seq(31,38),_ins[1],9,8,8,9,9,_note(38,'')),
     ]},
     {id:1004,name:'אורי לוי',lessons:[
       _l(150,'קורס מעשי סיטאדיס',_seq(1,10),_ins[0],6,6,6,6,7,_note(10,'טסט 10.')),
       _l(125,'קורס מעשי סיטאדיס',_seq(11,20),_ins[1],7,7,6,7,7,_note(20,'')),
       _l(100,'קורס מעשי סיטאדיס',_seq(21,30),_ins[1],7,7,7,7,8,_note(30,'טסט 30.')),
-      _l(75,'קורס מעשי סיטאדיס',_seq(31,35),_ins[0],7,7,7,7,8,_note(35,'')),
+      _l(6,'קורס מעשי סיטאדיס',_seq(31,35),_ins[0],7,7,7,7,8,_note(35,'')),
     ]},
 
     // ── קבוצה C — שלב תפעולי: סיטאדיס 10–29 ──
     {id:1007,name:'עמית שרון',lessons:[
       _l(120,'קורס מעשי סיטאדיס',_seq(1,10),_ins[0],7,6,6,7,7,_note(10,'טסט 10.')),
       _l(95,'קורס מעשי סיטאדיס',_seq(11,20),_ins[3],8,7,7,8,8,_note(20,'')),
-      _l(70,'קורס מעשי סיטאדיס',_seq(21,24),_ins[3],8,7,7,8,8,''),
+      _l(30,'קורס מעשי סיטאדיס',_seq(21,24),_ins[3],8,7,7,8,8,''),
     ]},
     {id:1014,name:'תום פרידמן',lessons:[
       _l(130,'קורס מעשי סיטאדיס',_seq(1,10),_ins[1],7,7,7,7,7,_note(10,'טסט 10.')),
-      _l(105,'קורס מעשי סיטאדיס',_seq(11,18),_ins[0],8,8,7,8,8,_note(18,'')),
+      _l(3,'קורס מעשי סיטאדיס',_seq(11,18),_ins[0],8,8,7,8,8,_note(18,'')),
     ]},
     {id:1015,name:'שיר גולן',lessons:[
       _l(110,'קורס מעשי סיטאדיס',_seq(1,10),_ins[0],6,6,6,6,7,_note(10,'טסט 10.')),
-      _l(85,'קורס מעשי סיטאדיס',_seq(11,16),_ins[2],7,7,6,7,7,''),
+      _l(45,'קורס מעשי סיטאדיס',_seq(11,16),_ins[2],7,7,6,7,7,''),
     ]},
 
     // ── קבוצה B — שלב טכני + שעות נוספות ──
@@ -22419,7 +23074,7 @@ function _generateTraineeDemoData() {
       _l(90,'קורס מעשי סיטאדיס',_seq(1,5),_ins[2],6,5,5,6,7,''),
       _l(70,'קורס מעשי סיטאדיס',_seq(6,8),_ins[2],6,6,5,6,7,'עבר בקושי.'),
       _lo(55,'כשירות מעשית/ שעות נוספות','שיפור בסטיק — תרגול מגרש.'),
-      _lo(40,'כשירות מעשית/ שעות נוספות','תרגול נהלי ביטחון.'),
+      _lo(12,'כשירות מעשית/ שעות נוספות','תרגול נהלי ביטחון.'),
     ]},
 
     // ── קבוצה A — שלב טכני: סיטאדיס 1–9 ──
@@ -22428,8 +23083,8 @@ function _generateTraineeDemoData() {
       _l(13,'קורס מעשי סיטאדיס',_seq(6,8),_ins[2],9,9,9,9,10,''),
     ]},
     {id:1001,name:'מוחמד חמדאן',lessons:[
-      _l(40,'קורס מעשי סיטאדיס',_seq(1,3),_ins[0],6,5,4,5,6,'סטיק נמוך מאוד.'),
-      _l(25,'קורס מעשי סיטאדיס',_seq(4,6),_ins[0],6,5,4,5,6,'אין שיפור.'),
+      _l(40,'קורס מעשי סיטאדיס',_seq(1,3),_ins[0],5,4,3,4,5,'סטיק נמוך מאוד.'),
+      _l(6,'קורס מעשי סיטאדיס',_seq(4,6),_ins[0],4,3,3,4,4,'אין שיפור — ירידה נוספת.'),
     ]},
     {id:1002,name:'רועי כהן',lessons:[
       _l(15,'קורס מעשי סיטאדיס',_seq(1,3),_ins[1],7,6,6,7,8,'שיעור ראשון.'),
@@ -22468,6 +23123,9 @@ function _generateTraineeDemoData() {
 
   TraineeSystem.renderList();
   TraineeSystem.renderInsTags();
+  // 2026-08-19: שמירת תמונת מצב טרייה עם savedAt עדכני — כך שטעינות חוזרות תוך 24 שעות
+  // ישתמשו בקאש (ולא ייצרו מחדש), אך אחרי 24 שעות ייווצר מחדש עם תאריכים עדכניים.
+  try { if(_isDemoMode()) _saveDemoTraineeData(TraineeSystem.trainees, TraineeSystem.instructors); } catch(e) {}
   // Refresh summary dashboard with demo data
   window._traineeSummaryCache = null;
   setTimeout(()=>{ try{ _renderTraineeSummaryPanel(); }catch(e){} }, 300);
@@ -22590,18 +23248,18 @@ function _initTraineeIfNeeded() {
     TraineeSystem._origPersist   = TraineeSystem._origPersist   || TraineeSystem.persist;
     TraineeSystem._origLoadData  = TraineeSystem._origLoadData  || TraineeSystem.loadData;
     TraineeSystem.persist = function() {
-      if(localStorage.getItem('demo_active')==='1'){localStorage.setItem('demo_trainee_data',JSON.stringify({trainees:this.trainees,instructors:this.instructors}));}
+      if(localStorage.getItem('demo_active')==='1'){_saveDemoTraineeData(this.trainees,this.instructors);}
       else{this._origPersist();}
     };
     TraineeSystem.loadData = function() {
-      if(localStorage.getItem('demo_active')==='1'){const saved=localStorage.getItem('demo_trainee_data');if(saved){try{const d=JSON.parse(saved);this.trainees=d.trainees||[];this.instructors=d.instructors||[];}catch(e){}}else{_generateTraineeDemoData();return;}this.renderList();this.renderInsTags();}
+      if(localStorage.getItem('demo_active')==='1'){const d=_loadDemoTraineeData();if(d){this.trainees=d.trainees||[];this.instructors=d.instructors||[];}else{_generateTraineeDemoData();return;}this.renderList();this.renderInsTags();}
       else{this._origLoadData();}
     };
   }
   try {
     if (typeof TraineeSystem !== 'undefined') {
       TraineeSystem.init('traineeSystemContainer');
-      if(_isDemoMode()&&!localStorage.getItem('demo_trainee_data')){setTimeout(()=>{try{_generateTraineeDemoData();}catch(e){}},50);}
+      if(_isDemoMode()&&!_loadDemoTraineeData()){setTimeout(()=>{try{_generateTraineeDemoData();}catch(e){}},50);}
       setTimeout(_updateTraineeBtnVisibility, 150);
     } else {
       window._traineeInitialized = false;
@@ -22631,15 +23289,30 @@ document.addEventListener('DOMContentLoaded', () => {
 // V100 Trainee Summary Dashboard - Logic Engine (no DOM)
 // Read-only, in-memory only. All data already loaded in TraineeSystem.
 
+// 2026-08-19: תמונת מצב "demo_trainee_data" נשמרת עם תאריכים אבסולוטיים מחושבים.
+// בלי תוקף, הפעלה עתידית הייתה ממשיכה להשתמש בתמונת מצב ישנה עם "ימים מאז שיעור"
+// שרק הולכים ומתיישנים. עכשיו: תמונת מצב פגה אחרי 24 שעות ונוצרת מחדש אוטומטית.
+const DEMO_TRAINEE_DATA_MAX_AGE_MS = 24*60*60*1000;
+function _saveDemoTraineeData(trainees, instructors) {
+  try { localStorage.setItem('demo_trainee_data', JSON.stringify({trainees, instructors, savedAt: Date.now()})); } catch(e) {}
+}
+function _loadDemoTraineeData() {
+  try {
+    const raw = localStorage.getItem('demo_trainee_data');
+    if (!raw) return null;
+    const d = JSON.parse(raw);
+    if (!d.savedAt || (Date.now() - d.savedAt) > DEMO_TRAINEE_DATA_MAX_AGE_MS) return null;
+    return d;
+  } catch(e) { return null; }
+}
+
 const TRAINEE_SUMMARY_CONFIG_KEY = 'v100_trainee_summary_config';
 
 function _getTraineeSummaryConfig() {
   const defaults = {
-    riskThreshold:       2,
-    inactiveDaysRisk:    21,
-    inactiveDaysEarly:   14,
-    lowScoreRed:         6.0,
-    lowScoreOrange:      7.0,
+    inactiveDaysAlert:   21,
+    lowScoreRed:         5,
+    lowScoreOrange:      8,
     extraHoursRiskCount: 2,
   };
   try {
@@ -22757,41 +23430,31 @@ function _generateTraineeSummary() {
     else                                           stage = 'טרם התחיל';
 
     // Risk Score
-    let riskScore = 0;
-    const riskReasons = [];
+    // 2026-08-19: הסיווג "מתקשה" מבוסס אך ורק על ציונים — לביא ביקש להוציא שעות
+    // נוספות ומגמת ירידה מהסיווג ולהפוך אותן להתרעות מידע בלבד (לא קובעות atRisk).
+    const riskReasons = [];  // סיבות לסיווג "מתקשה" — ציונים בלבד
+    const infoNotes   = [];  // התרעות מידע למנהל — לא משפיעות על הסיווג
 
-    if (daysSinceLast !== null && daysSinceLast > cfg.inactiveDaysRisk) {
-      riskScore++;
-      riskReasons.push('לא היה שיעור ' + daysSinceLast + ' ימים');
-    }
     if (avgScore !== null && avgScore < cfg.lowScoreRed) {
-      riskScore++;
       riskReasons.push('ממוצע ציון נמוך מאוד (' + avgScore.toFixed(1) + ')');
     }
     if (avgScore !== null && avgScore < cfg.lowScoreOrange && trend === 'declining') {
-      riskScore++;
-      riskReasons.push('ממוצע ' + avgScore.toFixed(1) + ' עם מגמת ירידה');
-    }
-    if (maxSitadis > 0 && !msStatus.test10 && daysSinceLast !== null && daysSinceLast > cfg.inactiveDaysEarly) {
-      riskScore++;
-      riskReasons.push('בשלב טכני, לא היה שיעור ' + daysSinceLast + ' ימים');
+      infoNotes.push('ממוצע ' + avgScore.toFixed(1) + ' עם מגמת ירידה');
     }
     if (!msStatus.test10 && extraHoursCount >= cfg.extraHoursRiskCount) {
-      riskScore++;
-      riskReasons.push('לא עבר טסט 10, קיבל ' + extraHoursCount + ' שעות נוספות/כשירות');
+      infoNotes.push('לא עבר טסט 10, קיבל ' + extraHoursCount + ' שעות נוספות/כשירות');
     }
     if (msStatus.test10 && !msStatus.test30 && extraHoursCount >= cfg.extraHoursRiskCount) {
-      riskScore++;
-      riskReasons.push('לא עבר טסט 30, קיבל ' + extraHoursCount + ' שעות נוספות/כשירות');
+      infoNotes.push('לא עבר טסט 30, קיבל ' + extraHoursCount + ' שעות נוספות/כשירות');
     }
     if (msStatus.test30 && !msStatus.test50 && extraHoursCount >= cfg.extraHoursRiskCount) {
-      riskScore++;
-      riskReasons.push('לא עבר טסט 50, קיבל ' + extraHoursCount + ' שעות נוספות/כשירות');
+      infoNotes.push('לא עבר טסט 50, קיבל ' + extraHoursCount + ' שעות נוספות/כשירות');
     }
 
     // Fix #83: a single skill rating of 1-2 in ANY lesson forces an alert, regardless of
     // stage or overall average -- a trainee whose average looks fine can still have had one
     // very bad lesson worth the manager's attention, and averaging would hide that.
+    // (זהו עדיין מבוסס-ציונים — דירוג בודד — ולכן ממשיך להשפיע על סיווג "מתקשה".)
     const lowSkillHits = [];
     lessons.forEach(l => {
       [['s1',l.s1],['s2',l.s2],['s3',l.s3],['s4',l.s4],['s5',l.s5]].forEach(([k,v]) => {
@@ -22807,11 +23470,9 @@ function _generateTraineeSummary() {
       );
     }
 
-    let riskLevel =
-      riskScore >= 3  ? 'high'   :
-      riskScore === 2 ? 'medium' :
-      riskScore === 1 ? 'low'    : 'none';
-    if (forcedAlert && riskLevel === 'none') riskLevel = 'low';
+    // מתקשה = ממוצע נמוך מהסף האדום, או דירוג בודד 1-2 בכל מיומנות — ציונים בלבד.
+    const isAtRisk  = (avgScore !== null && avgScore < cfg.lowScoreRed) || forcedAlert;
+    const riskLevel = forcedAlert ? 'high' : isAtRisk ? 'medium' : 'none';
 
     return {
       id:              t.id,
@@ -22827,16 +23488,30 @@ function _generateTraineeSummary() {
       lastLessonDate,
       milestones:      msStatus,
       stage,
-      riskScore,
       riskLevel,
       riskReasons,
-      atRisk:          riskScore >= cfg.riskThreshold || forcedAlert,
+      infoNotes,
+      atRisk:          isAtRisk,
+      // 2026-08-19: התרעת חוסר-פעילות עצמאית — סף אחד פשוט לכולם, לא תלוי שלב,
+      // ולא משפיע יותר על atRisk (הוסר ביוזמת לביא).
+      inactiveAlert:   daysSinceLast !== null && daysSinceLast >= cfg.inactiveDaysAlert,
     };
   });
 
   // Aggregates
   const byStage = perTrainee.reduce((acc, t) => {
     acc[t.stage] = (acc[t.stage] || 0) + 1;
+    return acc;
+  }, {});
+
+  // בקשה 2026-08-19: התפלגות רמות (אדום/צהוב/ירוק) — אותם ספים מוגדרים
+  // כמו צביעת תיקי חניכים (#79) ואיתור מתקשים, כדי שכל המקומות יישארו מסונכרנים.
+  const levelDistribution = perTrainee.reduce((acc, t) => {
+    if (t.avgScore === null) return acc;
+    const lvl = t.avgScore < cfg.lowScoreRed    ? 'מתקשים'
+              : t.avgScore < cfg.lowScoreOrange ? 'בינוניים'
+              : 'מתקדמים';
+    acc[lvl] = (acc[lvl] || 0) + 1;
     return acc;
   }, {});
 
@@ -22854,14 +23529,22 @@ function _generateTraineeSummary() {
 
   const atRisk = perTrainee
     .filter(t => t.atRisk)
-    .sort((a, b) => b.riskScore - a.riskScore);
+    .sort((a, b) => (b.riskLevel === 'high') - (a.riskLevel === 'high') || (a.avgScore ?? 99) - (b.avgScore ?? 99));
 
   const inactive = perTrainee
-    .filter(t => t.daysSinceLast !== null && t.daysSinceLast >= cfg.inactiveDaysRisk)
+    .filter(t => t.inactiveAlert)
     .sort((a, b) => b.daysSinceLast - a.daysSinceLast);
+
+  // 2026-08-19: התרעות מידע למנהל (שעות נוספות תקועות / מגמת ירידה) — לא קובעות
+  // "מתקשה", רק מוצגות למידע. מוצג בנפרד גם אם החניך כבר מופיע כ"מתקשה".
+  const infoAlerts = perTrainee
+    .filter(t => t.infoNotes && t.infoNotes.length);
 
   const improving = perTrainee
     .filter(t => t.trend === 'improving');
+
+  const declining = perTrainee
+    .filter(t => t.trend === 'declining');
 
   return {
     generatedAt:    new Date().toISOString(),
@@ -22869,11 +23552,14 @@ function _generateTraineeSummary() {
     activeTrainees: active.length,
     perTrainee,
     byStage,
+    levelDistribution,
     milestoneStats,
     globalAvgScore,
     atRisk,
     inactive,
+    infoAlerts,
     improving,
+    declining,
   };
 }
 
@@ -22885,6 +23571,65 @@ function _getTraineeSummary() {
     window._traineeSummaryCache = _generateTraineeSummary();
   }
   return window._traineeSummaryCache;
+}
+
+// 2026-08-19: לחיצה על פיל "התפלגות שלבים"/"התפלגות רמות" פותחת רשימת חניכים
+// (accordion פשוט — סגירה בלחיצה חוזרת על אותו מפתח).
+function _levelOf(t) {
+  if (t.avgScore === null || t.avgScore === undefined) return null;
+  var cfg = _getTraineeSummaryConfig();
+  return t.avgScore < cfg.lowScoreRed    ? 'מתקשים'
+       : t.avgScore < cfg.lowScoreOrange ? 'בינוניים'
+       : 'מתקדמים';
+}
+function _toggleTsBucket(kind, key) {
+  var contId = kind === 'stage' ? 'ts-stage-detail' : 'ts-level-detail';
+  var cont = document.getElementById(contId);
+  if (!cont) return;
+  if (cont.getAttribute('data-key') === key && cont.style.display !== 'none') {
+    cont.style.display = 'none';
+    cont.setAttribute('data-key', '');
+    return;
+  }
+  var list = (window._tsPerTrainee || []).filter(function(t) {
+    return kind === 'stage' ? t.stage === key : _levelOf(t) === key;
+  });
+  var htm = list.length
+    ? list.map(function(t) {
+        return '<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 4px;border-bottom:1px solid #eee;">'
+          + '<span style="font-size:13px;color:#2c3e50;">' + _esc(t.name) + '</span>'
+          + '<button onclick="try{if(typeof TraineeSystem!==\'undefined\')TraineeSystem.openTrainee&&TraineeSystem.openTrainee(' + t.id + ');}catch(ex){}" style="padding:2px 9px;background:#2980b9;color:white;border:none;border-radius:6px;cursor:pointer;font-size:11px;">פתח תיק ←</button></div>';
+      }).join('')
+    : '<div style="padding:6px 4px;color:#888;font-size:12px;">אין חניכים</div>';
+  cont.innerHTML = htm;
+  cont.setAttribute('data-key', key);
+  cont.style.display = 'block';
+}
+
+// 2026-08-19: אזור "התרעות מידע למנהל" מתקפל — מכווץ כברירת מחדל, בנייה עצלה בפתיחה
+function _toggleInfoAlerts() {
+  var body  = document.getElementById('ts-infoalerts-body');
+  var arrow = document.getElementById('ts-infoalerts-arrow');
+  if (!body) return;
+  var open = body.style.display === 'flex';
+  if (open) {
+    body.style.display = 'none';
+    if (arrow) arrow.innerHTML = '&#9654;';
+    return;
+  }
+  var list = window._tsInfoAlerts || [];
+  body.innerHTML = list.map(function(t) {
+    var rows = '<div style="border:1px solid #f5e3c3;border-right:4px solid #f39c12;border-radius:8px;padding:8px 14px;">'
+      + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;flex-wrap:wrap;gap:6px;">'
+      + '<span style="font-size:14px;font-weight:bold;color:#2c3e50;">' + _esc(t.name) + '</span>'
+      + '<button onclick="try{if(typeof TraineeSystem!==\'undefined\')TraineeSystem.openTrainee&&TraineeSystem.openTrainee(' + t.id + ');}catch(ex){}" style="padding:3px 9px;background:#2980b9;color:white;border:none;border-radius:6px;cursor:pointer;font-size:11px;">פתח תיק ←</button></div>'
+      + '<ul style="margin:2px 0 0;padding-right:18px;">'
+      + t.infoNotes.map(function(n){ return '<li style="font-size:12px;color:#666;margin-bottom:2px;">'+n+'</li>'; }).join('')
+      + '</ul></div>';
+    return rows;
+  }).join('');
+  body.style.display = 'flex';
+  if (arrow) arrow.innerHTML = '&#9660;';
 }
 
 function _renderTraineeSummaryPanel() {
@@ -22923,19 +23668,28 @@ function _renderTraineeSummaryPanel() {
     ['🎓 חניכים',     String(summary.totalTrainees),  '#2c3e50'],
     ['⚡ פעילים',       String(summary.activeTrainees), '#2980b9'],
     ['★ ממוצע כללי',  summary.globalAvgScore!==null?String(summary.globalAvgScore):'N/A','#8e44ad'],
-    ['⚠️ מתקשים', String(summary.atRisk?summary.atRisk.length:0),'#e74c3c'],
-    ['📈 בשיפור',    String(summary.improving?summary.improving.length:0),'#27ae60']
+    ['📉 מגמת ירידה', String(summary.declining?summary.declining.length:0),'#e74c3c'],
+    ['📈 מגמת שיפור', String(summary.improving?summary.improving.length:0),'#27ae60']
   ];
   h.push('<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:14px;direction:rtl;">');
   kpis.forEach(function(k){h.push('<div style="background:white;border:1px solid #e8edf5;border-radius:10px;padding:12px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,.05);"><div style="font-size:11px;color:#888;margin-bottom:4px;">'+k[0]+'</div><div style="font-size:22px;font-weight:bold;color:'+k[2]+';">'+k[1]+'</div></div>');});
   h.push('</div>');
+  window._tsPerTrainee = summary.perTrainee; // לשימוש handlers של פילי שלב/רמה לחיצים
   var byStage=summary.byStage||{};
   if(Object.keys(byStage).length){
     var sColors={'טרם התחיל':['\#95a5a6','\#f4f6f7'],'שלב טכני':['\#3498db','\#ebf5fb'],'שלב תפעולי':['\#f39c12','\#fef9e7'],'שלב מסחרי':['\#8e44ad','\#f5eef8'],'השתלמות אורבוס':['\#e67e22','\#fdf2e9'],'מוכן לחניכה':['\#27ae60','\#eafaf1'],'בחניכה':['\#16a085','\#e8f8f5']};
     var sOrder=['טרם התחיל','שלב טכני','שלב תפעולי','שלב מסחרי','השתלמות אורבוס','מוכן לחניכה','בחניכה'];
-    h.push('<div style="background:white;border:1px solid #e8edf5;border-radius:10px;padding:12px 16px;margin-bottom:12px;direction:rtl;"><div style="font-size:13px;font-weight:bold;color:#2c3e50;margin-bottom:8px;">📊 התפלגות שלבים</div><div style="display:flex;flex-wrap:wrap;gap:8px;">');
-    sOrder.forEach(function(s){var n=byStage[s];if(!n)return;var c=sColors[s]||['#7f8c8d','#f9f9f9'];h.push('<div style="display:inline-flex;align-items:center;gap:6px;background:'+c[1]+';border:1px solid '+c[0]+';border-radius:20px;padding:4px 12px;"><span style="font-size:13px;font-weight:bold;color:'+c[0]+';">'+n+'</span><span style="font-size:12px;color:#555;">'+s+'</span></div>');});
-    h.push('</div></div>');
+    h.push('<div style="background:white;border:1px solid #e8edf5;border-radius:10px;padding:12px 16px;margin-bottom:12px;direction:rtl;"><div style="font-size:13px;font-weight:bold;color:#2c3e50;margin-bottom:8px;">📊 התפלגות שלבים <span style="font-weight:400;color:#aaa;font-size:11px;">(לחיצה מציגה חניכים)</span></div><div style="display:flex;flex-wrap:wrap;gap:8px;">');
+    sOrder.forEach(function(s){var n=byStage[s];if(!n)return;var c=sColors[s]||['#7f8c8d','#f9f9f9'];h.push('<button onclick="try{_toggleTsBucket(\'stage\',\''+s+'\');}catch(e){}" style="width:auto;margin:0;cursor:pointer;display:inline-flex;align-items:center;gap:6px;background:'+c[1]+';border:1px solid '+c[0]+';border-radius:20px;padding:4px 12px;font-family:inherit;"><span style="font-size:13px;font-weight:bold;color:'+c[0]+';">'+n+'</span><span style="font-size:12px;color:#555;">'+s+'</span></button>');});
+    h.push('</div><div id="ts-stage-detail" style="display:none;margin-top:10px;padding-top:10px;border-top:1px dashed #dee2e6;"></div></div>');
+  }
+  var levelDist=summary.levelDistribution||{};
+  if(Object.keys(levelDist).length){
+    var lColors={'מתקשים':['#e74c3c','#fdecea'],'בינוניים':['#f1c40f','#fef9e7'],'מתקדמים':['#27ae60','#eafaf1']};
+    var lOrder=['מתקשים','בינוניים','מתקדמים'];
+    h.push('<div style="background:white;border:1px solid #e8edf5;border-radius:10px;padding:12px 16px;margin-bottom:12px;direction:rtl;"><div style="font-size:13px;font-weight:bold;color:#2c3e50;margin-bottom:8px;">🚦 התפלגות רמות <span style="font-weight:400;color:#aaa;font-size:11px;">(לחיצה מציגה חניכים)</span></div><div style="display:flex;flex-wrap:wrap;gap:8px;">');
+    lOrder.forEach(function(s){var n=levelDist[s];if(!n)return;var c=lColors[s];h.push('<button onclick="try{_toggleTsBucket(\'level\',\''+s+'\');}catch(e){}" style="width:auto;margin:0;cursor:pointer;display:inline-flex;align-items:center;gap:6px;background:'+c[1]+';border:1px solid '+c[0]+';border-radius:20px;padding:4px 12px;font-family:inherit;"><span style="font-size:13px;font-weight:bold;color:'+c[0]+';">'+n+'</span><span style="font-size:12px;color:#555;">'+s+'</span></button>');});
+    h.push('</div><div id="ts-level-detail" style="display:none;margin-top:10px;padding-top:10px;border-top:1px dashed #dee2e6;"></div></div>');
   }
   if(summary.milestoneStats){
     var ms=summary.milestoneStats;var tot=summary.activeTrainees||1;
@@ -22946,10 +23700,30 @@ function _renderTraineeSummaryPanel() {
   }
   if(summary.atRisk&&summary.atRisk.length){
     h.push('<div style="background:white;border:1px solid #fad7d0;border-radius:10px;padding:12px 16px;margin-bottom:12px;direction:rtl;"><div style="font-size:13px;font-weight:bold;color:#c0392b;margin-bottom:8px;">⚠️ חניכים מתקשים <span style="font-size:11px;font-weight:400;color:#888;">('+summary.atRisk.length+')</span></div><div style="display:flex;flex-direction:column;gap:8px;">');
-    summary.atRisk.forEach(function(t){var bc=t.riskLevel==='high'?'#e74c3c':t.riskLevel==='medium'?'#e67e22':'#f39c12';h.push('<div style="border:1px solid '+bc+';border-right:4px solid '+bc+';border-radius:8px;padding:10px 14px;">');h.push('<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;flex-wrap:wrap;gap:6px;">');h.push('<div style="display:flex;align-items:center;gap:8px;">'+riskBadge(t.riskLevel)+trendArrow(t.trend)+'<span style="font-size:14px;font-weight:bold;color:#2c3e50;">'+t.name+'</span></div>');h.push('<div style="display:flex;align-items:center;gap:8px;"><span style="font-size:11px;color:#888;">'+t.stage+'</span><button onclick="try{if(typeof TraineeSystem!==undefined)TraineeSystem.openDetail&&TraineeSystem.openDetail('+t.id+');}catch(ex){}" style="padding:3px 9px;background:#2980b9;color:white;border:none;border-radius:6px;cursor:pointer;font-size:11px;">פתח תיק ←</button></div></div>');if(t.riskReasons&&t.riskReasons.length){h.push('<ul style="margin:2px 0 0;padding-right:18px;">');t.riskReasons.forEach(function(r){h.push('<li style="font-size:12px;color:#666;margin-bottom:2px;">'+r+'</li>');});h.push('</ul>');}h.push('</div>');});
+    summary.atRisk.forEach(function(t){var bc=t.riskLevel==='high'?'#e74c3c':t.riskLevel==='medium'?'#e67e22':'#f39c12';h.push('<div style="border:1px solid '+bc+';border-right:4px solid '+bc+';border-radius:8px;padding:10px 14px;">');h.push('<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;flex-wrap:wrap;gap:6px;">');h.push('<div style="display:flex;align-items:center;gap:8px;">'+riskBadge(t.riskLevel)+trendArrow(t.trend)+'<span style="font-size:14px;font-weight:bold;color:#2c3e50;">'+_esc(t.name)+'</span></div>');h.push('<div style="display:flex;align-items:center;gap:8px;"><span style="font-size:11px;color:#888;">'+t.stage+'</span><button onclick="try{if(typeof TraineeSystem!==\'undefined\')TraineeSystem.openTrainee&&TraineeSystem.openTrainee('+t.id+');}catch(ex){}" style="padding:3px 9px;background:#2980b9;color:white;border:none;border-radius:6px;cursor:pointer;font-size:11px;">פתח תיק ←</button></div></div>');if(t.riskReasons&&t.riskReasons.length){h.push('<ul style="margin:2px 0 0;padding-right:18px;">');t.riskReasons.forEach(function(r){h.push('<li style="font-size:12px;color:#666;margin-bottom:2px;">'+r+'</li>');});h.push('</ul>');}h.push('</div>');});
     h.push('</div></div>');
   } else {
     h.push('<div style="background:#eafaf1;border:1px solid #a9dfbf;border-radius:10px;padding:10px 16px;margin-bottom:12px;direction:rtl;text-align:center;font-size:13px;color:#27ae60;">✅ אין חניכים מתקשים כרגע</div>');
+  }
+  // 2026-08-19: התרעת חוסר-פעילות עצמאית — ווידג'ט נפרד, לא קשור לסיווג "מתקשה"
+  if(summary.inactive&&summary.inactive.length){
+    h.push('<div style="background:white;border:1px solid #cfe2f3;border-radius:10px;padding:12px 16px;margin-bottom:12px;direction:rtl;"><div style="font-size:13px;font-weight:bold;color:#2c3e50;margin-bottom:8px;">📅 התרעת חוסר פעילות <span style="font-size:11px;font-weight:400;color:#888;">('+summary.inactive.length+')</span></div><div style="display:flex;flex-direction:column;gap:6px;">');
+    summary.inactive.forEach(function(t){h.push('<div style="display:flex;align-items:center;justify-content:space-between;border:1px solid #cfe2f3;border-right:4px solid #3498db;border-radius:8px;padding:8px 14px;flex-wrap:wrap;gap:6px;">'+
+      '<span style="font-size:14px;font-weight:bold;color:#2c3e50;">'+_esc(t.name)+'</span>'+
+      '<span style="display:flex;align-items:center;gap:8px;"><span style="font-size:12px;color:#3498db;font-weight:bold;">'+t.daysSinceLast+' ימים ללא שיעור</span>'+
+      '<button onclick="try{if(typeof TraineeSystem!==\'undefined\')TraineeSystem.openTrainee&&TraineeSystem.openTrainee('+t.id+');}catch(ex){}" style="padding:3px 9px;background:#2980b9;color:white;border:none;border-radius:6px;cursor:pointer;font-size:11px;">פתח תיק ←</button></span></div>');});
+    h.push('</div></div>');
+  }
+  // 2026-08-19: התרעות מידע למנהל — שעות נוספות תקועות / מגמת ירידה — לא קובעות
+  // "מתקשה" (הוצאו מהסיווג ביוזמת לביא), רק מוצגות למידע. אזור מתקפל (מכווץ כברירת מחדל).
+  if(summary.infoAlerts&&summary.infoAlerts.length){
+    h.push('<div style="background:white;border:1px solid #f5e3c3;border-radius:10px;padding:12px 16px;margin-bottom:12px;direction:rtl;">');
+    h.push('<button onclick="try{_toggleInfoAlerts();}catch(e){}" style="width:100%;background:none;border:none;padding:0;cursor:pointer;display:flex;align-items:center;justify-content:space-between;font-family:inherit;">'
+      +'<span style="font-size:13px;font-weight:bold;color:#2c3e50;">💡 התרעות מידע למנהל <span style="font-size:11px;font-weight:400;color:#888;">('+summary.infoAlerts.length+')</span></span>'
+      +'<span id="ts-infoalerts-arrow" style="font-size:10px;color:#aaa;">&#9654;</span></button>');
+    h.push('<div id="ts-infoalerts-body" style="display:none;flex-direction:column;gap:6px;margin-top:10px;"></div>');
+    h.push('</div>');
+    window._tsInfoAlerts = summary.infoAlerts; // לבנייה עצלה ע"י _toggleInfoAlerts
   }
   var ts=summary.generatedAt?new Date(summary.generatedAt).toLocaleTimeString('he-IL'):'';
   h.push('<div style="display:flex;justify-content:space-between;align-items:center;direction:rtl;font-size:11px;color:#aaa;padding:4px 2px 0;margin-bottom:10px;"><span>עודכן: '+ts+'</span><button onclick="try{window._traineeSummaryCache=null;_renderTraineeSummaryPanel();}catch(e){}" style="padding:3px 10px;background:#f0f4f8;border:1px solid #ccc;border-radius:6px;cursor:pointer;font-size:11px;color:#666;">רענן</button></div>');
@@ -22957,57 +23731,50 @@ function _renderTraineeSummaryPanel() {
   // ── Settings toggle button ──────────────────────────────
   h.push('<div id="tsc-settings-area">');
   h.push('<button onclick="try{_toggleTraineeSummarySettings();}catch(e){}" style="width:100%;padding:8px 14px;background:#f8f9fa;border:1px solid #dee2e6;border-radius:8px;cursor:pointer;font-size:12px;color:#555;direction:rtl;text-align:right;display:flex;align-items:center;gap:6px;" id="tsc-settings-btn">');
-  h.push('<span>&#9881;&#65039; הגדרות קריטריונים לחניכים מתקשים</span><span id="tsc-settings-arrow" style="margin-right:auto;font-size:10px;">&#9660;</span></button>');
+  h.push('<span>&#9881;&#65039; קריטריונים להתפלגות רמות</span><span id="tsc-settings-arrow" style="margin-right:auto;font-size:10px;">&#9660;</span></button>');
 
   // ── Settings panel (hidden by default) ─────────────────
   h.push('<div id="tsc-settings-panel" style="display:none;background:#f8f9fa;border:1px solid #dee2e6;border-top:none;border-radius:0 0 8px 8px;padding:14px 16px;direction:rtl;">');
 
-  // -- Section A: common settings -------------------------
-  h.push('<div style="font-size:12px;font-weight:bold;color:#2c3e50;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid #dee2e6;">הגדרות שכיחות</div>');
-  h.push('<div style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px;">');
+  // ── 4 קבוצות לפי תפקיד (במקום פיצול "שכיח/מתקדם") ──────
+  var _grp = function(icon, title, color) {
+    h.push('<div style="font-size:12px;font-weight:bold;color:'+color+';margin-bottom:8px;padding-bottom:5px;border-bottom:1px solid #dee2e6;">'+icon+' '+title+'</div>');
+    h.push('<div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px;">');
+  };
+  var _endGrp = function(){ h.push('</div>'); };
 
+  // קבוצה 1: התרעת חוסר פעילות (עצמאית — לא משפיעה על "מתקשה")
+  _grp('📅', 'התרעת חוסר פעילות', '#2c3e50');
+  h.push('<div style="font-size:11px;color:#888;margin:-4px 0 2px;">התרעה בלבד — אינה משפיעה על סיווג "מתקשה".</div>');
   h.push('<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">');
-  h.push('<label style="font-size:12px;color:#555;flex:1;">ימים ללא שיעור = חניך מתקשה <span style="color:#888;font-size:11px;">(בכל שלב משלב תפעולי)</span></label>');
-  h.push('<input type="number" id="tsc-inactiveDaysRisk" min="7" max="90" style="width:70px;padding:5px 8px;border:1px solid #ccc;border-radius:6px;font-size:13px;text-align:center;">');
+  h.push('<label style="font-size:12px;color:#555;flex:1;">התרעה: עברו X ימים ללא שיעור <span style="color:#888;font-size:11px;">(לכל החניכים, בכל שלב)</span></label>');
+  h.push('<input type="number" id="tsc-inactiveDaysAlert" min="3" max="90" style="width:70px;padding:5px 8px;border:1px solid #ccc;border-radius:6px;font-size:13px;text-align:center;">');
   h.push('</div>');
+  _endGrp();
 
+  // קבוצה 2: שעות נוספות — התרעת מידע בלבד, לא משפיעה על "מתקשה"
+  _grp('⏱️', 'שעות נוספות (מידע בלבד)', '#2c3e50');
+  h.push('<div style="font-size:11px;color:#888;margin:-4px 0 2px;">מוצג ב-"💡 התרעות מידע למנהל" — אינו משפיע על סיווג "מתקשה".</div>');
   h.push('<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">');
-  h.push('<label style="font-size:12px;color:#555;flex:1;">ימים ללא שיעור בשלב טכני = חניך מתקשה <span style="color:#3498db;font-size:11px;">(שלב טכני בלבד)</span></label>');
-  h.push('<input type="number" id="tsc-inactiveDaysEarly" min="3" max="60" style="width:70px;padding:5px 8px;border:1px solid #ccc;border-radius:6px;font-size:13px;text-align:center;">');
-  h.push('</div>');
-
-  h.push('<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">');
-  h.push('<label style="font-size:12px;color:#555;flex:1;">מינימום שעות כשירות/נוספות לקריטריון חניך מתקשה <span style="color:#e74c3c;font-size:11px;">(לפי שלב החניך)</span></label>');
+  h.push('<label style="font-size:12px;color:#555;flex:1;">התרעה: הצטברו X שעות כשירות/נוספות בלי מעבר טסט <span style="color:#e67e22;font-size:11px;">(לפי שלב החניך)</span></label>');
   h.push('<input type="number" id="tsc-extraHoursRiskCount" min="1" max="10" style="width:70px;padding:5px 8px;border:1px solid #ccc;border-radius:6px;font-size:13px;text-align:center;">');
   h.push('</div>');
+  _endGrp();
 
-  h.push('</div>');
-
-  // -- Section B: advanced settings (collapsible) ---------
-  h.push('<div style="margin-bottom:12px;">');
-  h.push('<button onclick="try{_toggleAdvancedTsc();}catch(e){}" style="background:none;border:none;cursor:pointer;font-size:12px;color:#7f8c8d;padding:0;display:flex;align-items:center;gap:4px;" id="tsc-advanced-btn">');
-  h.push('<span id="tsc-advanced-arrow" style="font-size:10px;">&#9654;</span><span>הגדרות מתקדמות</span></button>');
-
-  h.push('<div id="tsc-advanced-panel" style="display:none;margin-top:10px;padding-top:10px;border-top:1px dashed #dee2e6;">');
-  h.push('<div style="font-size:11px;color:#999;margin-bottom:8px;">שינוי ערכים אלה ישפיע על סיווג ה"מתקשים" של כלל החניכים.</div>');
-  h.push('<div style="display:flex;flex-direction:column;gap:10px;">');
-
+  // קבוצה 3: ציונים (טווחי רמות) — קובעת התפלגות רמות, צביעת תיקים, וסיווג "מתקשה"
+  _grp('🔴🟡🟢', 'ציונים — טווחי רמות (קובע גם סיווג "מתקשה")', '#2c3e50');
   h.push('<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">');
-  h.push('<label style="font-size:12px;color:#555;flex:1;">סף ציון אדום <span style="color:#e74c3c;font-size:11px;">(קריטריון עצמאי)</span></label>');
-  h.push('<input type="number" id="tsc-lowScoreRed" min="1" max="9" step="0.1" style="width:70px;padding:5px 8px;border:1px solid #ccc;border-radius:6px;font-size:13px;text-align:center;">');
+  h.push('<label style="font-size:12px;color:#e74c3c;flex:1;">🔴 מתקשים: עד ציון</label>');
+  h.push('<input type="number" id="tsc-levelRedMax" min="1" max="9" step="1" oninput="try{_updateLevelMidPreview();}catch(e){}" style="width:70px;padding:5px 8px;border:1px solid #ccc;border-radius:6px;font-size:13px;text-align:center;">');
   h.push('</div>');
-
   h.push('<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">');
-  h.push('<label style="font-size:12px;color:#555;flex:1;">סף ציון כתום <span style="color:#e67e22;font-size:11px;">(+ מגמת ירידה)</span></label>');
-  h.push('<input type="number" id="tsc-lowScoreOrange" min="1" max="10" step="0.1" style="width:70px;padding:5px 8px;border:1px solid #ccc;border-radius:6px;font-size:13px;text-align:center;">');
+  h.push('<label style="font-size:12px;color:#f1c40f;flex:1;">🟡 בינוניים <span id="tsc-level-mid-preview" style="color:#888;font-size:11px;"></span></label>');
   h.push('</div>');
-
   h.push('<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">');
-  h.push('<label style="font-size:12px;color:#555;flex:1;">מינימום קריטריונים = חניך מתקשה <span style="color:#888;font-size:11px;">(1-4)</span></label>');
-  h.push('<input type="number" id="tsc-riskThreshold" min="1" max="4" style="width:70px;padding:5px 8px;border:1px solid #ccc;border-radius:6px;font-size:13px;text-align:center;">');
+  h.push('<label style="font-size:12px;color:#27ae60;flex:1;">🟢 מתקדמים: החל מציון</label>');
+  h.push('<input type="number" id="tsc-levelGreenMin" min="2" max="10" step="1" oninput="try{_updateLevelMidPreview();}catch(e){}" style="width:70px;padding:5px 8px;border:1px solid #ccc;border-radius:6px;font-size:13px;text-align:center;">');
   h.push('</div>');
-
-  h.push('</div></div></div>');
+  _endGrp();
 
   // -- Action buttons -------------------------------------
   h.push('<div style="display:flex;gap:8px;justify-content:flex-start;align-items:center;padding-top:10px;border-top:1px solid #dee2e6;">');
@@ -23034,50 +23801,41 @@ function _toggleTraineeSummarySettings() {
   if (!open) { try { _populateTraineeSummaryConfigForm(); } catch(e) {} }
 }
 
-function _toggleAdvancedTsc() {
-  var p = document.getElementById('tsc-advanced-panel');
-  var arrow = document.getElementById('tsc-advanced-arrow');
-  if (!p) return;
-  var open = p.style.display !== 'none';
-  p.style.display = open ? 'none' : 'block';
-  if (arrow) arrow.innerHTML = open ? '&#9660;' : '&#9654;';
-}
-
 function _populateTraineeSummaryConfigForm() {
   var cfg = _getTraineeSummaryConfig();
   var set = function(id, val) {
     var el = document.getElementById(id);
     if (el) el.value = val;
   };
-  set('tsc-inactiveDaysRisk',    cfg.inactiveDaysRisk);
-  set('tsc-inactiveDaysEarly',   cfg.inactiveDaysEarly);
+  set('tsc-inactiveDaysAlert',   cfg.inactiveDaysAlert);
   set('tsc-extraHoursRiskCount', cfg.extraHoursRiskCount);
-  set('tsc-lowScoreRed',         cfg.lowScoreRed);
-  set('tsc-lowScoreOrange',      cfg.lowScoreOrange);
-  set('tsc-riskThreshold',       cfg.riskThreshold);
+  set('tsc-levelRedMax',         cfg.lowScoreRed - 1);
+  set('tsc-levelGreenMin',       cfg.lowScoreOrange);
+  try { _updateLevelMidPreview(); } catch(e) {}
+}
+
+// תצוגת "בינוניים" מחושבת חיה משני שדות הטווח (לא נשמרת בנפרד — נגזרת)
+function _updateLevelMidPreview() {
+  var elR = document.getElementById('tsc-levelRedMax');
+  var elG = document.getElementById('tsc-levelGreenMin');
+  var prev = document.getElementById('tsc-level-mid-preview');
+  if (!elR || !elG || !prev) return;
+  var r = parseInt(elR.value, 10), g = parseInt(elG.value, 10);
+  if (isNaN(r) || isNaN(g) || r + 1 > g - 1) { prev.textContent = '(אין טווח בינוני)'; return; }
+  prev.textContent = r + 1 === g - 1 ? '(ציון ' + (r + 1) + ')' : '(' + (r + 1) + '–' + (g - 1) + ')';
 }
 
 function _saveTraineeSummaryConfig() {
   var get = function(id) { return document.getElementById(id); };
   var cfg = {
-    inactiveDaysRisk:    parseInt((get('tsc-inactiveDaysRisk')||{}).value)    || 21,
-    inactiveDaysEarly:   parseInt((get('tsc-inactiveDaysEarly')||{}).value)   || 14,
+    inactiveDaysAlert:   parseInt((get('tsc-inactiveDaysAlert')||{}).value)   || 21,
     extraHoursRiskCount: parseInt((get('tsc-extraHoursRiskCount')||{}).value) || 2,
-    lowScoreRed:         parseFloat((get('tsc-lowScoreRed')||{}).value)       || 6.0,
-    lowScoreOrange:      parseFloat((get('tsc-lowScoreOrange')||{}).value)    || 7.0,
-    riskThreshold:       parseInt((get('tsc-riskThreshold')||{}).value)       || 2,
+    lowScoreRed:         (parseInt((get('tsc-levelRedMax')  ||{}).value, 10) || 4) + 1,
+    lowScoreOrange:      parseInt((get('tsc-levelGreenMin')||{}).value, 10)   || 8,
   };
   // Validation
-  if (cfg.inactiveDaysEarly >= cfg.inactiveDaysRisk) {
-    try{showToast('שגיאה: ימי שלב טכני חייבים להיות פחות מימי הקריטריון הכללי','error');}catch(e){alert('שגיאה: ימי שלב טכני חייבים להיות פחות מימי הקריטריון הכללי');}
-    return;
-  }
-  if (cfg.lowScoreRed >= cfg.lowScoreOrange) {
-    try{showToast('שגיאה: סף אדום חייב להיות נמוך מסף כתום','error');}catch(e){alert('שגיאה: סף אדום חייב להיות נמוך מסף כתום');}
-    return;
-  }
-  if (cfg.riskThreshold < 1 || cfg.riskThreshold > 4) {
-    try{showToast('שגיאה: סף הקריטריונים למתקשה חייב להיות בין 1 ל-4','error');}catch(e){alert('שגיאה: סף הקריטריונים למתקשה חייב להיות בין 1 ל-4');}
+  if (cfg.lowScoreRed > cfg.lowScoreOrange) {
+    try{showToast('שגיאה: "מתקשים עד" חייב להיות נמוך מ-"מתקדמים החל מ"','error');}catch(e){alert('שגיאה: "מתקשים עד" חייב להיות נמוך מ-"מתקדמים החל מ"');}
     return;
   }
   try {
@@ -23315,6 +24073,33 @@ function _resetTraineeSummaryConfig() {
     <div class="unified-report-footer">
       <button class="ur-btn-cancel" onclick="closeUnifiedReport()">ביטול</button>
       <button class="ur-btn-save" onclick="submitUnifiedReport()">💾 שמור סיכום יום</button>
+    </div>
+
+  </div>
+</div>
+
+<!-- ── VIEW UNIFIED REPORT (Fix #98) — read-only admin view of a submitted day-summary ── -->
+<div id="viewUnifiedReportOverlay" class="unified-report-overlay">
+  <div class="unified-report-box">
+
+    <div class="unified-report-head">
+      <h3 id="vur-title">📝 סיכום יום</h3>
+      <button class="unified-report-close" onclick="closeViewUnifiedReport()">×</button>
+    </div>
+
+    <div class="unified-report-section">
+      <h4>📋 פרטי משמרת</h4>
+      <div id="vur-basic"></div>
+    </div>
+
+    <div class="unified-report-section">
+      <h4>📝 הערות המדריך</h4>
+      <div id="vur-notes"></div>
+    </div>
+
+    <div class="unified-report-section" style="border-bottom:none;">
+      <h4>🎓 משוב חניכים</h4>
+      <div id="vur-feedback"></div>
     </div>
 
   </div>
