@@ -14,7 +14,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 58</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 61</title>
 
 <style>
 
@@ -1420,7 +1420,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 118;
+  const APP_VERSION = 121;
 
   function initFirebase() {
     try {
@@ -2243,7 +2243,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 
         <div class="ssection-title">מנהל המערכת</div>
         <div style="display:flex;gap:8px;margin-bottom:16px;">
-          <input type="text" id="settingsManagerName" placeholder="שם המנהל" autocomplete="off" onkeydown="if(event.key==='Enter')saveManagerNameFromSettings()" style="flex:4;min-width:220px;padding:9px 12px;border:1.5px solid #ddd;border-radius:8px;font-size:16px;margin:0;direction:rtl;">
+          <input type="text" id="settingsManagerName" placeholder="שם המנהל" title="השם שמוצג בתג העליון ובברכה כשהמנהל מחובר. לא קשור לשם המשתמש/סיסמה." autocomplete="off" onkeydown="if(event.key==='Enter')saveManagerNameFromSettings()" style="flex:4;min-width:220px;padding:9px 12px;border:1.5px solid #ddd;border-radius:8px;font-size:16px;margin:0;direction:rtl;">
           <button onclick="saveManagerNameFromSettings()" style="padding:9px 14px;background:var(--secondary);color:white;border:none;border-radius:8px;font-size:13px;font-weight:bold;cursor:pointer;margin:0;white-space:nowrap;">💾 שמור</button>
         </div>
 
@@ -2352,6 +2352,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
       </div>
 
       <div class="v100-icon-group">
+        <button onclick="openUserGuide()" id="guideBtn" class="v100-icon-btn" title="מדריך שימוש">📖</button>
         <button onclick="reloadApp()" id="globalReloadBtn" class="v100-icon-btn" title="רענן" style="display:none;">↺</button>
         <button class="v100-icon-btn" onclick="toggleDarkMode()" id="darkBtn" title="מצב לילה">☽</button>
       </div>
@@ -4341,7 +4342,7 @@ window.TraineeSystem = {
     </div>
     <!-- Tab: Alert thresholds -->
     <div class="ts-spanel" id="ts-panel-alerts">
-      <p style="font-size:12px;color:#888;margin:0 0 10px;">כללי התרעה על ביצועי חניך לפי מיומנות.</p>
+      <p style="font-size:12px;color:#888;margin:0 0 10px;">כללי התרעה על ביצועי חניך לפי מיומנות — אלה בדיוק ה"תובנות והמלצות" (🔴/🟠) שמופיעות בתיק כל חניך. כל שורה: אם ממוצע המיומנות הנבחרת עומד בתנאי (מתחת/מעל לסף), תוצג ההתרעה בטקסט שקבעת, בצבע לפי החומרה.</p>
       <div style="display:grid;grid-template-columns:1fr 70px 90px 90px 1fr auto;gap:6px;padding:0 10px;margin-bottom:4px;">
         <span style="font-size:11px;font-weight:bold;color:#888;">מיומנות</span>
         <span style="font-size:11px;font-weight:bold;color:#888;text-align:center;">סף %</span>
@@ -18602,6 +18603,107 @@ async function loadMonthHistory(year,month){
 // 2026-08-19: גרסה כללית — טווח תאריכים חופשי, לא מוגבל לחודש קלנדרי אחד.
 // אותו מנגנון בדיוק (loadTripHistory לכל יום, מקבילי), רק שהטווח הוא [startStr,endStr]
 // ולא "כל הימים בחודש X".
+// ══════════════════════════════════════════════════════════════════════
+// 📖 מדריך שימוש — תוכן מסודר לפי אזור במערכת, מסונן לפי תפקיד המשתמש.
+// roles: מי רואה את הסעיף. מנהל רואה הכל; מדריך/חונך רואים רק את מה ששייך אליהם.
+// ══════════════════════════════════════════════════════════════════════
+const GUIDE_SECTIONS = [
+  {
+    id: 'daily', icon: '📅', title: 'תכנון יומי', roles: ['admin','instructor','mentor'],
+    body: `
+      <p><b>למנהל:</b> פותחים יום מסוים בלוח החודשי, "➕ הוסף שיבוצים ליום" מוסיף מדריך/חונך + סוג משמרת + משימה. לחיצה על שורה קיימת פותחת אותה לעריכה.</p>
+      <p><b>למדריך:</b> נסיעות מדווחות דרך "היום שלי" — כל נסיעה כוללת מסלול, שעת יציאה, ומספר שיעורים. אפשר לערוך/למחוק נסיעה כל עוד לא אושרה.</p>
+      <p><b>משמרת מותאמת:</b> כשבוחרים "משמרת מותאמת" נפתחות שעות התחלה/סיום ידניות. חשוב: אם עורכים יום אחר בלוח השבועי ולא נוגעים בשורה הזו — היא נשמרת כמו שהיא, לא מתאפסת.</p>
+      <p><b>"📅 דוח יומי"</b> בראש המסך מציג תצוגה מקדימה של כל היום — שיבוצים, נסיעות, וסטטוס דיווח — עם הדפסה/CSV.</p>`
+  },
+  {
+    id: 'weekly', icon: '🗓️', title: 'שיבוץ שבועי', roles: ['admin','instructor','mentor'],
+    body: `
+      <p><b>למדריך/חונך:</b> בלוח השיבוצים יש שני מצבי תצוגה — <b>"שלי"</b> (השיבוצים האישיים שלך, לחיצה על יום פותחת טופס בקשת שיבוץ) ו-<b>"צוות"</b> (רואים את כל הצוות; לחיצה על יום פותחת תצוגה לצפייה בלבד — שעות ומשימות של כולם, לא ניתן לערוך).</p>
+      <p><b>למנהל:</b> בטבלת השיבוץ השבועי אפשר לבחור משמרת/משימה לכל מדריך בכל יום, ולשמור כ"ממתין" או "מאושר" ישירות.</p>
+      <p><b>אישור בקשות:</b> בקשות שיבוץ שהוגשו ע"י מדריכים/חונכים ממתינות לאישור המנהל בפאנל "אישור שיבוצים".</p>`
+  },
+  {
+    id: 'daysummary', icon: '📝', title: 'טופס "סיכום יום"', roles: ['admin','instructor','mentor'],
+    body: `
+      <p>מוגש בסוף משמרת: שעות סינריון, שעות הדרכה קלה, הערות חופשיות, ומשוב לכל חניך שהודרך באותו יום.</p>
+      <p><b>חשוב מאוד — מספר שיעור (שנתון):</b> לכל משוב חניך <u>חובה</u> לבחור באיזה שיעור מדובר (הכפתורים הממוספרים). בלי זה, המערכת לא סופרת את השיעור בכלל — לא בממוצע, לא בבר ההתקדמות ("הרכבת"), ולא בסטטוס הכשירות של החניך. שיעור שכבר בוצע מופיע עם קו חוצה ולא ניתן לבחירה חוזרת; לחיצה חוזרת על שיעור שנבחר עכשיו מבטלת את הבחירה.</p>
+      <p><b>עריכה בדיעבד (מנהל בלבד):</b> טופס שכבר הוגש ניתן לפתוח מה"ארכיון" (בדוחות) וללחוץ "✏️ ערוך פרטים" — לתיקון תאריך/שעות/הערות. אם שיעור נשמר בלי מספר, אפשר לשייך לו מספר ישירות מתוך אותה תצוגה.</p>`
+  },
+  {
+    id: 'trainees', icon: '🎓', title: 'חניכים ומשובים', roles: ['admin','instructor','mentor'],
+    body: `
+      <p><b>קורסים:</b> ניתן לנהל כמה קורסי חניכים במקביל (בורר "📚 קורס" בראש המסך). כל קורס שומר את החניכים שלו בנפרד.</p>
+      <p><b>תיק חניך:</b> לחיצה על שם החניך פותחת תיק מלא — בר התקדמות ("הרכבת", עד שיעור 50), התקדמות אורבוס/חניכה, סטטוס כשירות לפי מיומנות, ותובנות והמלצות אוטומטיות.</p>
+      <p><b>תג רמה:</b> ליד שם החניך — 🔴 מתקשה / 🟡 בינוני / 🟢 מתקדם, לפי ממוצע הציונים בפועל (לא צריך למלא את כל המיומנויות בכל שיעור — הממוצע מחושב רק ממה שבאמת מולא).</p>
+      <p><b>סימון דיווחים:</b> כרטיס חניך עם דיווחים קיימים מסומן בתג ירוק בולט ("✅ N דיווחים"), לעומת תג אפור לחניך ללא דיווחים.</p>`
+  },
+  {
+    id: 'reports', icon: '📊', title: 'דוחות', roles: ['admin'],
+    body: `
+      <p><b>טווח תאריכים:</b> בראש טאב הדוחות יש בורר משותף (7/30 ימים אחרונים, החודש שעבר, או טווח מותאם) — משפיע על כל הדוחות התקופתיים למטה. ללא בחירה — ברירת המחדל היא החודש המוצג בדשבורד החודשי.</p>
+      <p><b>כל הדוחות</b> (נסיעות, שיבוצים, Excel מלא, PDF, ביצועי משימות, נוכחות, לוג פעולות) נטענים עצמאית בלחיצה ונפתחים בתצוגה מקדימה — עם כפתורי הדפסה/הורדה <u>בתוך</u> החלון, לא הורדה מיידית.</p>
+      <p><b>🗂️ ארכיון טפסי סיכום יום:</b> רשימה חיפושית של כל הטפסים שהוגשו בטווח הנבחר — לחיצה על שורה פותחת את הטופס המלא, כולל אפשרות עריכה.</p>
+      <p><b>🔧 שיוך מספרי שיעור לדיווחים ישנים:</b> מאתר את כל הדיווחים עם ציונים אך בלי מספר שיעור (מהתקופה שלפני התיקון), ומאפשר לשייך מספר בדיעבד כדי שההתקדמות תתעדכן.</p>`
+  },
+  {
+    id: 'settings', icon: '⚙️', title: 'הגדרות מערכת', roles: ['admin'],
+    body: `
+      <p><b>צוות הדרכה:</b> ניהול רשימת מדריכים, הסתרה/הצגה בשיבוצים, וכן שדה שם המנהל (מוצג בתג העליון ובברכה).</p>
+      <p><b>קריטריונים להתפלגות רמות:</b> טווחי ציון למתקשים/בינוניים/מתקדמים, ספי מילוי חלקי לפי שלב (סיטאדיס/אורבוס), וסף חוסר-פעילות.</p>
+      <p><b>בטאב "חניכים ומשובים" ⚙️ הגדרות:</b> מיומנויות (שמות, סדר), סוגי משימות, <b>ספי התרעות</b> — כאן קובעים אילו התרעות יופיעו בתיק חניך (איזו מיומנות, איזה סף %, איזו חומרה, איזה טקסט) — ניתן לעריכה מלאה בלי צורך בתיקון קוד.</p>`
+  },
+  {
+    id: 'auditlog', icon: '🔍', title: 'לוג פעולות', roles: ['admin'],
+    body: `
+      <p>יומן ביקורת משותף לכל המכשירים — מציג כניסות/יציאות, שינויי שיבוץ, עריכות דוחות, הוספות/הסרות מדריכים וחונכים, ועוד. נגיש מכפתור בכותרת ומטאב הדוחות.</p>
+      <p>מחיקת היסטוריה אפשרית אך דורשת הקלדת אישור מפורש — היא לצמיתות ומשותפת לכל המכשירים.</p>`
+  },
+];
+
+function openUserGuide(){
+  const overlay = document.getElementById('userGuideOverlay');
+  if (!overlay) return;
+  const inp = document.getElementById('guideSearchInput');
+  if (inp) inp.value = '';
+  _renderGuideBody('');
+  overlay.style.display = 'flex';
+}
+function closeUserGuide(){
+  const overlay = document.getElementById('userGuideOverlay');
+  if (overlay) overlay.style.display = 'none';
+}
+function _toggleGuideSection(id){
+  const body = document.getElementById('guide-sec-body-' + id);
+  const arrow = document.getElementById('guide-sec-arrow-' + id);
+  if (!body) return;
+  const open = body.style.display === 'block';
+  body.style.display = open ? 'none' : 'block';
+  if (arrow) arrow.textContent = open ? '▸' : '▾';
+}
+function _renderGuideBody(query){
+  const container = document.getElementById('guideBody');
+  if (!container) return;
+  const role = (typeof currentRole !== 'undefined' && currentRole) ? currentRole : 'instructor';
+  const q = (query || '').trim().toLowerCase();
+  let sections = GUIDE_SECTIONS.filter(s => s.roles.includes(role));
+  if (q) sections = sections.filter(s => s.title.toLowerCase().includes(q) || s.body.toLowerCase().includes(q));
+
+  if (!sections.length) {
+    container.innerHTML = '<div style="text-align:center;color:#aaa;padding:24px;font-size:13px;">לא נמצאו תוצאות</div>';
+    return;
+  }
+  container.innerHTML = sections.map((s, i) => `
+    <div style="border:1px solid #eee;border-radius:10px;margin-bottom:8px;overflow:hidden;">
+      <button onclick="_toggleGuideSection('${s.id}')" style="width:100%;text-align:right;background:#f8faff;border:none;padding:12px 14px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;font-family:inherit;">
+        <span style="font-size:13px;font-weight:bold;color:#2c3e50;">${s.icon} ${_esc(s.title)}</span>
+        <span id="guide-sec-arrow-${s.id}" style="font-size:11px;color:#aaa;">${q ? '▾' : '▸'}</span>
+      </button>
+      <div id="guide-sec-body-${s.id}" style="display:${q ? 'block' : 'none'};padding:12px 16px;font-size:13px;color:#444;line-height:1.6;">${s.body}</div>
+    </div>`).join('');
+}
+
+
 async function loadDateRangeHistory(startStr,endStr){
   const result={};
   const tasks=[];
@@ -20964,7 +21066,6 @@ function _urUpdateChips(idx) {
   const isChinuchMission = (isFree || missionName === 'חניכה') && !isOrbus
     && !(missionName === 'קורס מעשי סיטאדיס' || missionName === 'קורס מעשי' || missionName === 'קורס');
   const maxChip = isOrbus ? 7 : 50;
-  const maxDone = done.size ? Math.max(...done) : 0;
 
   // -- מיילסטון חניכה: בדיקה לפני כניסה לחניכה --
   if (isChinuchMission && traineeId && typeof _hasMilestonePassed === 'function') {
@@ -21030,17 +21131,13 @@ function _urUpdateChips(idx) {
 
   chipsEl.innerHTML = Array.from({length:maxChip},(_,i)=>i+1).map(n => {
     const isDone      = done.has(n);
-    const isLocked    = !isFree && n < maxDone;
     const isMsBlocked = (_urMsBlockAbove > 0 && n >= _urMsBlockAbove);
-    // 2026-08-19: תוקן באג — "כבר בוצע" (done) ו"נבחר עכשיו בטופס זה" (selected)
-    // היו שני מצבים שונים לגמרי, אך שניהם נצבעו באותו ירוק בדיוק, ושניהם היו
-    // לחיצים באותו אופן (toggle) — כך שאי אפשר היה להבחין ביניהם, ולחיצה בטעות
-    // על שיעור שכבר בוצע "ביטלה" אותו ויזואלית ועלולה הייתה להיכלל שוב בשמירה.
-    // עכשיו: done = קו חוצה, לא לחיץ בכלל. selected = טוגל אמיתי (בחירה/ביטול).
-    const state = isDone ? 'done' : isMsBlocked ? 'blocked' : isLocked ? 'locked' : 'available';
+    // 2026-08-19: הוסרה חסימת "כל מספר נמוך מהמקסימום שבוצע" (isLocked/n<maxDone) —
+    // היא מנעה מילוי "חורים" ברצף (למשל: 2 ו-4 בוצעו אך 3 דולג בטעות ולא ניתן
+    // היה לפתוח אותו לעולם, כי הוא נמוך מ-4). עכשיו נחסם רק מספר שכבר בוצע בעצמו.
+    const state = isDone ? 'done' : isMsBlocked ? 'blocked' : 'available';
     const style = state==='done'     ? 'background:#d5f0e0;color:#1e8449;border-color:#a9dfbf;cursor:not-allowed;text-decoration:line-through;text-decoration-thickness:2px;'
                 : state==='blocked'  ? 'background:#fdecea;color:#c0392b;border-color:#e74c3c;cursor:not-allowed;'
-                : state==='locked'   ? 'background:#ddd;color:#aaa;cursor:not-allowed;border-color:#ddd;'
                 :                      'background:white;color:#333;border-color:#aaa;cursor:pointer;';
     const isMsWarn = (state==='available' && _urMsWarnAbove > 0 && n >= _urMsWarnAbove);
     const title = state==='done' ? 'שיעור זה כבר בוצע ותועד — לא ניתן לבחור שוב'
@@ -21066,10 +21163,14 @@ function _urToggleChip(btn, n, isMsWarn, msWarnTestNum) {
     showToast('⚠️ שים לב: טסט ' + msWarnTestNum + ' טרם עבר רשמית', 'warning');
   if (nowSelected) {
     btn.dataset.state = 'available';
-    btn.style.cssText = btn.style.cssText.replace(/background:[^;]+;color:[^;]+;border-color:[^;]+;/, 'background:white;color:#333;border-color:#aaa;');
+    btn.style.background = 'white';
+    btn.style.color = '#333';
+    btn.style.borderColor = '#aaa';
   } else {
     btn.dataset.state = 'selected';
-    btn.style.cssText = btn.style.cssText.replace(/background:[^;]+;color:[^;]+;border-color:[^;]+;/, 'background:#2980b9;color:white;border-color:#2980b9;');
+    btn.style.background = '#2980b9';
+    btn.style.color = 'white';
+    btn.style.borderColor = '#2980b9';
   }
 }
 
@@ -24982,14 +25083,14 @@ function _renderTraineeSummaryPanel() {
   _grp('🔴🟡🟢', 'ציונים — טווחי רמות (קובע גם סיווג "מתקשה")', '#2c3e50');
   h.push('<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">');
   h.push('<label style="font-size:12px;color:#e74c3c;flex:1;">🔴 מתקשים: עד ציון</label>');
-  h.push('<input type="number" id="tsc-levelRedMax" min="1" max="9" step="1" oninput="try{_updateLevelMidPreview();}catch(e){}" style="width:70px;padding:5px 8px;border:1px solid #ccc;border-radius:6px;font-size:13px;text-align:center;">');
+  h.push('<input type="number" id="tsc-levelRedMax" min="1" max="9" step="1" title="חניך עם ממוצע ציונים עד המספר הזה (כולל) יסווג &quot;מתקשה&quot; — משפיע על תיוג הכרטיס, ההתפלגות בדשבורד, וגם על סיווג &quot;מתקשה&quot; שנשלף מדוחות." oninput="try{_updateLevelMidPreview();}catch(e){}" style="width:70px;padding:5px 8px;border:1px solid #ccc;border-radius:6px;font-size:13px;text-align:center;">');
   h.push('</div>');
   h.push('<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">');
   h.push('<label style="font-size:12px;color:#f1c40f;flex:1;">🟡 בינוניים <span id="tsc-level-mid-preview" style="color:#888;font-size:11px;"></span></label>');
   h.push('</div>');
   h.push('<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">');
   h.push('<label style="font-size:12px;color:#27ae60;flex:1;">🟢 מתקדמים: החל מציון</label>');
-  h.push('<input type="number" id="tsc-levelGreenMin" min="2" max="10" step="1" oninput="try{_updateLevelMidPreview();}catch(e){}" style="width:70px;padding:5px 8px;border:1px solid #ccc;border-radius:6px;font-size:13px;text-align:center;">');
+  h.push('<input type="number" id="tsc-levelGreenMin" min="2" max="10" step="1" title="חניך עם ממוצע ציונים מהמספר הזה ומעלה יסווג &quot;מתקדם&quot;. הטווח שביניהם (מתקשים-עד, מתקדמים-מ) מוצג אוטומטית כ&quot;בינוני&quot; למטה." oninput="try{_updateLevelMidPreview();}catch(e){}" style="width:70px;padding:5px 8px;border:1px solid #ccc;border-radius:6px;font-size:13px;text-align:center;">');
   h.push('</div>');
   _endGrp();
 
@@ -24999,15 +25100,15 @@ function _renderTraineeSummaryPanel() {
   h.push('<div style="font-size:11px;color:#888;margin:-4px 0 2px;">עד השיעור המצוין — מילוי חלקי תמיד מספיק. אחריו — נדרש האחוז שלמטה.</div>');
   h.push('<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">');
   h.push('<label style="font-size:12px;color:#555;flex:1;">בקורס מעשי סיטאדיס: מילוי חלקי חופשי עד שיעור</label>');
-  h.push('<input type="number" id="tsc-sitadisFullFrom" min="1" max="49" step="1" style="width:70px;padding:5px 8px;border:1px solid #ccc;border-radius:6px;font-size:13px;text-align:center;">');
+  h.push('<input type="number" id="tsc-sitadisFullFrom" min="1" max="49" step="1" title="בשיעורים 1 עד המספר הזה, מדריך יכול למלא רק חלק מהמיומנויות והשיעור עדיין ייחשב בממוצע. משיעור המספר+1 ואילך יידרש האחוז שבשדה למטה." style="width:70px;padding:5px 8px;border:1px solid #ccc;border-radius:6px;font-size:13px;text-align:center;">');
   h.push('</div>');
   h.push('<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">');
   h.push('<label style="font-size:12px;color:#555;flex:1;">בקורס מעשי אורבוס: מילוי חלקי חופשי עד שיעור</label>');
-  h.push('<input type="number" id="tsc-orbusFullFrom" min="1" max="6" step="1" style="width:70px;padding:5px 8px;border:1px solid #ccc;border-radius:6px;font-size:13px;text-align:center;">');
+  h.push('<input type="number" id="tsc-orbusFullFrom" min="1" max="6" step="1" title="אותו עיקרון כמו בסיטאדיס, אבל עבור שלב האורבוס (7 שיעורים בסך הכל)." style="width:70px;padding:5px 8px;border:1px solid #ccc;border-radius:6px;font-size:13px;text-align:center;">');
   h.push('</div>');
   h.push('<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">');
   h.push('<label style="font-size:12px;color:#555;flex:1;">מהשיעור הבא ואילך: אחוז מיומנויות נדרש</label>');
-  h.push('<div style="display:flex;align-items:center;gap:4px;"><input type="number" id="tsc-partialScorePct" min="10" max="100" step="5" style="width:60px;padding:5px 8px;border:1px solid #ccc;border-radius:6px;font-size:13px;text-align:center;"><span style="font-size:12px;color:#888;">%</span></div>');
+  h.push('<div style="display:flex;align-items:center;gap:4px;"><input type="number" id="tsc-partialScorePct" min="10" max="100" step="5" title="לדוגמה: אם יש 10 מיומנויות ונקבע 80%, נדרש למלא לפחות 8 כדי שהשיעור ייספר (מעוגל למטה)." style="width:60px;padding:5px 8px;border:1px solid #ccc;border-radius:6px;font-size:13px;text-align:center;"><span style="font-size:12px;color:#888;">%</span></div>');
   h.push('</div>');
   _endGrp();
 
@@ -25316,6 +25417,20 @@ function _resetTraineeSummaryConfig() {
       <button class="ur-btn-save" onclick="submitUnifiedReport()">💾 שמור סיכום יום</button>
     </div>
 
+  </div>
+</div>
+
+<!-- ── מדריך שימוש (📖) ── -->
+<div id="userGuideOverlay" style="position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9990;display:none;align-items:center;justify-content:center;">
+  <div style="background:white;border-radius:16px;width:min(760px,96vw);max-height:88vh;overflow:hidden;display:flex;flex-direction:column;direction:rtl;">
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:2px solid #eef2f8;">
+      <h3 style="margin:0;font-size:16px;">📖 מדריך שימוש</h3>
+      <button onclick="closeUserGuide()" style="width:auto !important;background:none;border:none;font-size:22px;cursor:pointer;color:#888;">×</button>
+    </div>
+    <div style="padding:12px 20px 8px;">
+      <input type="text" id="guideSearchInput" placeholder="🔍 חיפוש במדריך..." oninput="_renderGuideBody(this.value)" style="width:100%;padding:9px 12px;border:1.5px solid #ddd;border-radius:8px;font-size:13px;box-sizing:border-box;">
+    </div>
+    <div id="guideBody" style="overflow-y:auto;flex:1;padding:4px 20px 20px;"></div>
   </div>
 </div>
 
