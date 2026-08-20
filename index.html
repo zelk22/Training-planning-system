@@ -14,7 +14,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 35</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 42</title>
 
 <style>
 
@@ -1420,7 +1420,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 95;
+  const APP_VERSION = 102;
 
   function initFirebase() {
     try {
@@ -1445,6 +1445,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
         window._fbSet = (ref, v) => ref.set(v);
         window._fbGet = ref => ref.once('value').then(s => ({exists: () => s.exists(), val: () => s.val()}));
         window._fbOnValue = (ref, cb) => ref.on('value', s => cb({exists: () => s.exists(), val: () => s.val()}));
+        window._fbPush = (ref, v) => ref.push(v); // 2026-08-19: לוג פעולות — מפתח כרונולוגי ייחודי אוטומטי
         window._firebaseOK = true;
         
         console.log('✅ Firebase initialized successfully');
@@ -3236,12 +3237,13 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 
   <div class="schedule-section" id="auditLogPanel" style="display:none;margin-bottom:18px;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
-      <h4 style="margin:0;color:var(--primary);">🔍 לוג שינויים — ביקורת פעולות</h4>
+      <h4 style="margin:0;color:var(--primary);">🔍 לוג שינויים — ביקורת פעולות <span style="font-size:11px;font-weight:400;color:#888;">(כל המכשירים, 30 ימים)</span></h4>
       <div style="display:flex;gap:6px;">
-        <button onclick="clearAuditLog()" style="width:auto;padding:6px 10px;background:#fdf2f2;border:1px solid #e74c3c;color:#e74c3c;border-radius:7px;cursor:pointer;font-size:11px;font-weight:bold;">🗑 נקה לוג</button>
+        <button onclick="clearAuditLogAll()" style="width:auto;padding:6px 10px;background:#fdf2f2;border:1px solid #e74c3c;color:#e74c3c;border-radius:7px;cursor:pointer;font-size:11px;font-weight:bold;">🗑 מחק תיעוד היסטורי</button>
         <button onclick="exportAuditCSV()" style="width:auto;padding:6px 10px;background:#f0f4f8;border:1px solid #ccc;color:#555;border-radius:7px;cursor:pointer;font-size:11px;font-weight:bold;">📥 ייצא CSV</button>
       </div>
     </div>
+    <div style="font-size:11px;color:#aaa;margin-bottom:8px;">יומן ביקורת משותף לכל המכשירים — מחיקה היא לצמיתות ובלתי הפיכה.</div>
     <div style="overflow-x:auto;max-height:320px;overflow-y:auto;">
       <table class="mgmt-table" id="auditTable" style="width:100%;min-width:500px;">
         <thead style="position:sticky;top:0;background:white;z-index:1;"><tr>
@@ -3305,9 +3307,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 
       <button onclick="openCopyDayModal()" title="העתקת יום" style="padding:8px 13px;background:#f0f4f8;border:1px solid #ccc;border-radius:8px;cursor:pointer;font-size:13px;color:#555;width:auto;margin:0;white-space:nowrap;">📋 העתק יום</button>
 
-      <button onclick="exportPDF()" title="יצוא PDF" style="padding:8px 13px;background:#f0f4f8;border:1px solid #ccc;border-radius:8px;cursor:pointer;font-size:13px;color:#555;width:auto;margin:0;white-space:nowrap;">🖨️ PDF</button>
-
-      <button onclick="exportCSV()" title="יצוא Excel" style="padding:8px 13px;background:#f0f4f8;border:1px solid #ccc;border-radius:8px;cursor:pointer;font-size:13px;color:#27ae60;width:auto;margin:0;white-space:nowrap;">📊 Excel</button>
+      <button onclick="openDailyReportPreview()" title="דוח יומי מאוחד" style="padding:8px 13px;background:#f0f4f8;border:1px solid #ccc;border-radius:8px;cursor:pointer;font-size:13px;color:#555;width:auto;margin:0;white-space:nowrap;">📅 דוח יומי</button>
 
     </div>
 
@@ -3441,10 +3441,27 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
       <h4 style="margin:0;color:var(--primary);font-size:17px;">📊 דוחות וייצוא</h4>
     </div>
 
+    <!-- 2026-08-19: בורר טווח תאריכים משותף — לא רק אותו חודש. משפיע על כל דוחות
+         "דוחות חודשיים" למטה. ברירת מחדל (ללא בחירה) = החודש המוצג בדשבורד, כמו קודם. -->
+    <div style="background:#fbfcff;border:1.5px dashed #c8d8f0;border-radius:12px;padding:14px 18px;margin-bottom:16px;">
+      <div style="font-size:12px;font-weight:700;color:#1a2a3a;margin-bottom:8px;">🗓️ טווח תאריכים לדוחות <span id="reportsRangeLbl" style="font-weight:400;color:#888;"></span></div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;">
+        <button onclick="_setReportsRangePreset('month')" style="width:auto;padding:5px 12px;background:#eef2f8;border:1px solid #ccc;border-radius:16px;font-size:12px;cursor:pointer;">החודש בדשבורד</button>
+        <button onclick="_setReportsRangePreset('last7')" style="width:auto;padding:5px 12px;background:#eef2f8;border:1px solid #ccc;border-radius:16px;font-size:12px;cursor:pointer;">7 ימים אחרונים</button>
+        <button onclick="_setReportsRangePreset('last30')" style="width:auto;padding:5px 12px;background:#eef2f8;border:1px solid #ccc;border-radius:16px;font-size:12px;cursor:pointer;">30 ימים אחרונים</button>
+        <button onclick="_setReportsRangePreset('lastMonth')" style="width:auto;padding:5px 12px;background:#eef2f8;border:1px solid #ccc;border-radius:16px;font-size:12px;cursor:pointer;">החודש שעבר</button>
+        <span style="font-size:11px;color:#aaa;">|</span>
+        <input type="date" id="reportsRangeFrom" style="width:auto;padding:5px 8px;border:1px solid #ccc;border-radius:6px;font-size:12px;">
+        <span style="font-size:11px;color:#888;">עד</span>
+        <input type="date" id="reportsRangeTo" style="width:auto;padding:5px 8px;border:1px solid #ccc;border-radius:6px;font-size:12px;">
+        <button onclick="_setReportsRangeCustom()" style="width:auto;padding:5px 12px;background:var(--secondary);color:white;border:none;border-radius:16px;font-size:12px;font-weight:bold;cursor:pointer;">החל טווח</button>
+      </div>
+    </div>
+
     <!-- Group 1: Monthly reports -->
     <div style="background:white;border-radius:14px;border:1px solid #eef2f8;padding:20px 24px;margin-bottom:16px;">
-      <div style="font-size:13px;font-weight:700;color:#1a2a3a;margin-bottom:4px;">📅 דוחות חודשיים</div>
-      <div style="font-size:11px;color:#888;margin-bottom:16px;">דוחות המבוססים על נתוני הדשבורד החודשי. יש לטעון נתונים בדשבורד לפני הפקה.</div>
+      <div style="font-size:13px;font-weight:700;color:#1a2a3a;margin-bottom:4px;">📅 דוחות תקופתיים</div>
+      <div style="font-size:11px;color:#888;margin-bottom:16px;">משתמשים בטווח התאריכים שנבחר למעלה (ברירת מחדל: החודש בדשבורד).</div>
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;">
         <button onclick="exportMonthlyReport()" style="display:flex;flex-direction:column;align-items:flex-start;gap:4px;padding:14px 16px;background:#f8faff;border:1.5px solid #d0e4f7;border-radius:10px;cursor:pointer;text-align:right;transition:background .15s;">
           <span style="font-size:18px;">📥</span>
@@ -3477,22 +3494,30 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
     <!-- Group 2: Daily reports -->
     <div style="background:white;border-radius:14px;border:1px solid #eef2f8;padding:20px 24px;margin-bottom:16px;">
       <div style="font-size:13px;font-weight:700;color:#1a2a3a;margin-bottom:4px;">📅 דוחות יומיים</div>
-      <div style="font-size:11px;color:#888;margin-bottom:16px;">מבוסס על התכנון היומי הנוכחי.</div>
+      <div style="font-size:11px;color:#888;margin-bottom:16px;">מבוסס על התכנון היומי הנוכחי, או על טווח התאריכים שנבחר למעלה (עבור הארכיון).</div>
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;">
-        <button onclick="exportPDF()" style="display:flex;flex-direction:column;align-items:flex-start;gap:4px;padding:14px 16px;background:#f8faff;border:1.5px solid #d0e4f7;border-radius:10px;cursor:pointer;text-align:right;">
-          <span style="font-size:18px;">🖨️</span>
-          <span style="font-size:13px;font-weight:600;color:#2c3e50;">הדפס / PDF יומי</span>
-          <span style="font-size:11px;color:#888;">מדפיס את תכנון היום הנוכחי</span>
+        <button onclick="openDailyReportPreview()" style="display:flex;flex-direction:column;align-items:flex-start;gap:4px;padding:14px 16px;background:#f8faff;border:1.5px solid #d0e4f7;border-radius:10px;cursor:pointer;text-align:right;">
+          <span style="font-size:18px;">📅</span>
+          <span style="font-size:13px;font-weight:600;color:#2c3e50;">דוח יומי מאוחד</span>
+          <span style="font-size:11px;color:#888;">תכנון מלא + נסיעות + סטטוס דיווח — תצוגה מקדימה עם הדפסה/CSV</span>
         </button>
-        <button onclick="exportCSV()" style="display:flex;flex-direction:column;align-items:flex-start;gap:4px;padding:14px 16px;background:#f0fff6;border:1.5px solid #a9dfbf;border-radius:10px;cursor:pointer;text-align:right;">
-          <span style="font-size:18px;">📊</span>
-          <span style="font-size:13px;font-weight:600;color:#217346;">Excel — תכנון יומי</span>
-          <span style="font-size:11px;color:#888;">נסיעות היום הנוכחי</span>
+        <button onclick="openUnifiedReportsArchive()" style="display:flex;flex-direction:column;align-items:flex-start;gap:4px;padding:14px 16px;background:#f8faff;border:1.5px solid #d0e4f7;border-radius:10px;cursor:pointer;text-align:right;">
+          <span style="font-size:18px;">🗂️</span>
+          <span style="font-size:13px;font-weight:600;color:#2c3e50;">ארכיון טפסי סיכום יום</span>
+          <span style="font-size:11px;color:#888;">כל הטפסים שהוגשו בטווח שנבחר, עם חיפוש וצפייה מהירה</span>
         </button>
-        <button onclick="openUnifiedReport()" style="display:flex;flex-direction:column;align-items:flex-start;gap:4px;padding:14px 16px;background:#f8faff;border:1.5px solid #d0e4f7;border-radius:10px;cursor:pointer;text-align:right;">
-          <span style="font-size:18px;">📝</span>
-          <span style="font-size:13px;font-weight:600;color:#2c3e50;">סיכום יום</span>
-          <span style="font-size:11px;color:#888;">סיכום ביצוע יומי מלא</span>
+      </div>
+    </div>
+
+    <!-- Group 2.5: Task performance report (2026-08-19) -->
+    <div style="background:white;border-radius:14px;border:1px solid #eef2f8;padding:20px 24px;margin-bottom:16px;">
+      <div style="font-size:13px;font-weight:700;color:#1a2a3a;margin-bottom:4px;">🧩 ביצועי משימות</div>
+      <div style="font-size:11px;color:#888;margin-bottom:16px;">כמה שיבוצים הוקצו לכל סוג משימה (לא רק נסיעות) — לפי טווח התאריכים שנבחר למעלה.</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;">
+        <button onclick="exportTaskTypeReport()" style="display:flex;flex-direction:column;align-items:flex-start;gap:4px;padding:14px 16px;background:#f8faff;border:1.5px solid #d0e4f7;border-radius:10px;cursor:pointer;text-align:right;">
+          <span style="font-size:18px;">🧩</span>
+          <span style="font-size:13px;font-weight:600;color:#2c3e50;">דוח ביצועי משימות</span>
+          <span style="font-size:11px;color:#888;">כמות שיבוצים ושעות לכל סוג משימה, לפי מדריך</span>
         </button>
       </div>
     </div>
@@ -7287,6 +7312,7 @@ async function saveMentor(name){
   }
   _populateMentorSelect();
   renderSettingsMentorList();
+  _logAction('add_mentor', 'נוסף חונך: '+name);
 }
 
 async function removeMentor(name){
@@ -7311,6 +7337,7 @@ async function removeMentor(name){
   _populateMentorSelect();
   renderSettingsMentorList();
   showToast(`🗑️ החונך "${name}" נמחק`,'success');
+  _logAction('remove_mentor', 'הוסר חונך: '+name);
 }
 
 function renderSettingsMentorList(){
@@ -7798,6 +7825,7 @@ async function _sendMsg() {
       await window._fbDb.ref('messages').push(msg);
     }
     showToast(`✅ הודעה נשלחה ל-${selected.length} נמענים`, 'success');
+    _logAction('send_message', `נשלח ל-${selected.length} נמענים: ${selected.join(', ')}`);
     // Clear form
     const ta = document.getElementById('msgComposeText');
     if (ta) ta.value = '';
@@ -7932,6 +7960,7 @@ async function _sendMsgToAdmin() {
     }
     if (ta) ta.value = '';
     showToast('✅ ההודעה נשלחה למנהל', 'success');
+    _logAction('send_message_to_admin', text.slice(0,80));
   } catch(e) {
     showToast('שגיאה בשליחה', 'error');
     console.warn('_sendMsgToAdmin:', e);
@@ -8328,81 +8357,136 @@ async function submitMentorFeedback(){
 }
 
 // ── ACTION LOG ══════════════════════════════════════════════
+// 2026-08-19: היה localStorage בלבד — מנהל שפתח את הלוג ראה רק מה שקרה בדפדפן
+// שלו, לא שום דבר שמדריכים/חונכים עשו במכשירים שלהם. עבר ל-Firebase, מאוחד
+// עם logAudit() שהייתה מערכת שנייה נפרדת לגמרי (v100_audit_log) עם אותה בעיה.
 const _V100_LOG_KEY = 'v100_action_log';
-const _V100_LOG_MAX = 200; // keep last 200 entries
+const _V100_LOG_MAX = 50; // מירור מקומי בלבד — לתצוגה מיידית/offline; המקור האמיתי ב-Firebase
 
 function _logAction(type, details) {
+  const entry = {
+    ts: new Date().toISOString(),
+    type,
+    details: details || '',
+    user: (typeof currentUserName !== 'undefined' && currentUserName) || '—',
+    role: (typeof currentRole !== 'undefined' && currentRole) || '—'
+  };
+  // מירור מקומי — תמיד, מיידי, לא תלוי רשת
   try {
     const log = JSON.parse(localStorage.getItem(_V100_LOG_KEY) || '[]');
-    log.unshift({
-      ts: new Date().toISOString(),
-      type,
-      details: details || '',
-      user: (typeof currentUserName !== 'undefined' && currentUserName) || '—',
-      role: (typeof currentRole !== 'undefined' && currentRole) || '—'
-    });
+    log.unshift(entry);
     if (log.length > _V100_LOG_MAX) log.length = _V100_LOG_MAX;
     localStorage.setItem(_V100_LOG_KEY, JSON.stringify(log));
   } catch(e) {}
+  // Firebase — מקור האמת המשותף לכל המכשירים/משתמשים
+  try {
+    if (window._fbDb) {
+      const dateKey = (typeof _localDateStr === 'function' ? _localDateStr(new Date()) : entry.ts.slice(0,10));
+      _fbPush(_fbRef(_db, 'auditLog/' + dateKey), entry).catch(()=>{});
+    }
+  } catch(e) {}
 }
 
-function showActionLog() {
-  let log = [];
-  try { log = JSON.parse(localStorage.getItem(_V100_LOG_KEY) || '[]'); } catch(e) {}
+// תוויות תצוגה — כוללות גם סוגי פעולה שמגיעים כטקסט עברי ישירות (מ-logAudit לשעבר)
+const _V100_LOG_LABELS = {
+  login:       '🔑 כניסה',
+  logout:      '🚪 יציאה',
+  reset_trips: '🗑️ איפוס נסיעות',
+  reset_all:   '⚠️ איפוס כללי',
+  save_trip:   '💾 שמירת נסיעה',
+  del_trip:    '🗑️ מחיקת נסיעה',
+  edit_trip:   '✏️ עריכת נסיעה',
+  save_settings:'⚙️ שמירת הגדרות',
+  demo_on:     '🎭 הפעלת דמו',
+  demo_off:    '🎭 כיבוי דמו',
+  save_unified_report: '📝 סיכום יום',
+  mentor_feedback: '🎓 משוב חונך',
+  add_instructor: '➕ הוספת מדריך',
+  remove_instructor: '🗑️ הסרת מדריך',
+  add_mentor: '➕ הוספת חונך',
+  remove_mentor: '🗑️ הסרת חונך',
+  save_weekly_sched: '📆 שמירת שיבוץ שבועי',
+  send_message: '✉️ שליחת הודעה',
+  send_message_to_admin: '✉️ הודעה למנהל',
+  'שמירת נסיעה': '💾 שמירת נסיעה',
+  'איפוס': '🗑️ איפוס',
+  'אישור שיבוץ': '✅ אישור שיבוץ',
+  'דחיית שיבוץ': '❌ דחיית שיבוץ',
+};
 
-  const typeLabel = {
-    login:       '🔑 כניסה',
-    logout:      '🚪 יציאה',
-    reset_trips: '🗑️ איפוס נסיעות',
-    reset_all:   '⚠️ איפוס כללי',
-    save_trip:   '💾 שמירת נסיעה',
-    del_trip:    '🗑️ מחיקת נסיעה',
-    edit_trip:   '✏️ עריכת נסיעה',
-    save_settings:'⚙️ שמירת הגדרות',
-    demo_on:     '🎭 הפעלת דמו',
-    demo_off:    '🎭 כיבוי דמו',
-  };
+// שולף היסטוריה מ-Firebase לטווח ימים אחורה (מקביל ל-loadMonthHistory), עם נפילה
+// חוזרת למירור המקומי אם אין Firebase/אין רשת.
+async function _fetchAuditLogRange(days) {
+  days = days || 30;
+  if (!window._fbDb) {
+    try { return JSON.parse(localStorage.getItem(_V100_LOG_KEY) || '[]'); } catch(e) { return []; }
+  }
+  const dates = [];
+  const d = new Date();
+  for (let i = 0; i < days; i++) {
+    dates.push(_localDateStr(d));
+    d.setDate(d.getDate() - 1);
+  }
+  const perDay = await Promise.all(dates.map(async dt => {
+    try {
+      const snap = await _fbGet(_fbRef(_db, 'auditLog/' + dt));
+      return snap.exists() ? Object.values(snap.val()) : [];
+    } catch(e) { return []; }
+  }));
+  const merged = perDay.flat();
+  merged.sort((a,b) => new Date(b.ts) - new Date(a.ts));
+  return merged;
+}
+
+async function showActionLog() {
+  // מציג טעינה מיידית, ואז מחליף לנתונים אמיתיים מכל המכשירים
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9800;display:flex;align-items:center;justify-content:center;';
+  overlay.className = 'log-overlay';
+  overlay.innerHTML = `
+    <div style="background:white;border-radius:16px;width:min(760px,96vw);max-height:85vh;overflow:hidden;display:flex;flex-direction:column;direction:rtl;">
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:2px solid #eef2f8;">
+        <h3 style="margin:0;font-size:16px;">🔍 לוג פעולות מערכת <span style="font-size:11px;font-weight:400;color:#888;">(כל המכשירים, 30 ימים אחרונים)</span></h3>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <button onclick="clearAuditLogAll()" style="width:auto !important;padding:5px 12px;background:#fdf2f2;border:1px solid #e74c3c;color:#e74c3c;border-radius:7px;cursor:pointer;font-size:12px;">🗑 מחק תיעוד</button>
+          <button onclick="this.closest('.log-overlay').remove()" style="width:auto !important;background:none;border:none;font-size:22px;cursor:pointer;color:#888;">×</button>
+        </div>
+      </div>
+      <div id="v100LogBody" style="overflow-y:auto;flex:1;padding:30px;text-align:center;color:#aaa;font-size:13px;">⏳ טוען מ-Firebase...</div>
+    </div>`;
+  overlay.addEventListener('click', e => { if(e.target === overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
+
+  const log = await _fetchAuditLogRange(30);
+  const body = document.getElementById('v100LogBody');
+  if (!body) return; // המשתמש כבר סגר את החלון
 
   const rows = log.length ? log.map(e => {
     const d = new Date(e.ts);
     const dateStr = d.toLocaleDateString('he-IL', {day:'2-digit',month:'2-digit',year:'2-digit'});
     const timeStr = d.toLocaleTimeString('he-IL', {hour:'2-digit',minute:'2-digit'});
-    const label = typeLabel[e.type] || ('📋 ' + e.type);
+    const label = _V100_LOG_LABELS[e.type] || ('📋 ' + e.type);
+    const roleLabel = {admin:'מנהל',instructor:'מדריך',mentor:'חונך'}[e.role] || e.role || '';
     return `<tr style="border-bottom:1px solid #f0f4f8;">
       <td style="padding:7px 10px;font-size:12px;color:#888;white-space:nowrap;">${dateStr} ${timeStr}</td>
       <td style="padding:7px 10px;font-size:12px;">${label}</td>
-      <td style="padding:7px 10px;font-size:12px;font-weight:600;">${_esc(e.user)}</td>
-      <td style="padding:7px 10px;font-size:12px;color:#555;">${e.details || ''}</td>
+      <td style="padding:7px 10px;font-size:12px;font-weight:600;">${_esc(e.user)}${roleLabel?' <span style="font-weight:400;color:#aaa;">('+roleLabel+')</span>':''}</td>
+      <td style="padding:7px 10px;font-size:12px;color:#555;">${_esc(e.details||'')}</td>
     </tr>`;
-  }).join('') : `<tr><td colspan="4" style="text-align:center;padding:20px;color:#aaa;">אין רשומות בלוג</td></tr>`;
+  }).join('') : `<tr><td colspan="4" style="text-align:center;padding:20px;color:#aaa;">אין רשומות ב-30 הימים האחרונים</td></tr>`;
 
-  const overlay = document.createElement('div');
-  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9800;display:flex;align-items:center;justify-content:center;';
-  overlay.innerHTML = `
-    <div style="background:white;border-radius:16px;width:min(720px,96vw);max-height:85vh;overflow:hidden;display:flex;flex-direction:column;direction:rtl;">
-      <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:2px solid #eef2f8;">
-        <h3 style="margin:0;font-size:16px;">🔍 לוג פעולות מערכת</h3>
-        <div style="display:flex;gap:8px;align-items:center;">
-          <button onclick="if(confirm('לנקות את הלוג?')){localStorage.removeItem(_V100_LOG_KEY);this.closest('.log-overlay').remove();showToast('הלוג נוקה','info');}" style="width:auto !important;padding:5px 12px;background:#e74c3c;color:white;border:none;border-radius:7px;cursor:pointer;font-size:12px;">נקה לוג</button>
-          <button onclick="this.closest('.log-overlay').remove()" style="width:auto !important;background:none;border:none;font-size:22px;cursor:pointer;color:#888;">×</button>
-        </div>
-      </div>
-      <div style="overflow-y:auto;flex:1;">
-        <table style="width:100%;border-collapse:collapse;">
-          <thead><tr style="background:#f8faff;position:sticky;top:0;">
-            <th style="padding:8px 10px;text-align:right;font-size:12px;color:#888;font-weight:600;">זמן</th>
-            <th style="padding:8px 10px;text-align:right;font-size:12px;color:#888;font-weight:600;">פעולה</th>
-            <th style="padding:8px 10px;text-align:right;font-size:12px;color:#888;font-weight:600;">משתמש</th>
-            <th style="padding:8px 10px;text-align:right;font-size:12px;color:#888;font-weight:600;">פרטים</th>
-          </tr></thead>
-          <tbody>${rows}</tbody>
-        </table>
-      </div>
-      <div style="padding:10px 20px;border-top:1px solid #eef2f8;font-size:11px;color:#aaa;text-align:center;">${log.length} רשומות (שומר עד ${_V100_LOG_MAX})</div>
-    </div>`;
-  overlay.classList.add('log-overlay');
-  overlay.addEventListener('click', e => { if(e.target === overlay) overlay.remove(); });
-  document.body.appendChild(overlay);
+  body.style.cssText = 'overflow-y:auto;flex:1;';
+  body.innerHTML = `
+    <table style="width:100%;border-collapse:collapse;">
+      <thead><tr style="background:#f8faff;position:sticky;top:0;">
+        <th style="padding:8px 10px;text-align:right;font-size:12px;color:#888;font-weight:600;">זמן</th>
+        <th style="padding:8px 10px;text-align:right;font-size:12px;color:#888;font-weight:600;">פעולה</th>
+        <th style="padding:8px 10px;text-align:right;font-size:12px;color:#888;font-weight:600;">מבצע</th>
+        <th style="padding:8px 10px;text-align:right;font-size:12px;color:#888;font-weight:600;">פרטים</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <div style="padding:10px 20px;font-size:11px;color:#aaa;text-align:center;">${log.length} רשומות</div>`;
 }
 
 
@@ -8556,6 +8640,7 @@ function enterApp(role,name){
 }
 
 function doLogout(){
+  _logAction('logout', (currentRole==='admin'?'יציאת מנהל':currentRole==='mentor'?'יציאת חונך':'יציאת מדריך')+': '+(currentUserName||''));
   _clearSession();
   const _grbl=document.getElementById('globalReloadBtn');if(_grbl)_grbl.style.display='none';
 
@@ -9528,6 +9613,7 @@ async function saveInstructor(name){
   // Refresh UI selects
   _bus.emit(EV_INSTRS);
   populateAllInstrSelects();
+  _logAction('add_instructor', 'נוסף מדריך: '+trimmed);
 }
 
 // 2026-08-19: שם המנהל ניתן לעריכה בטאב "צוות הדרכה" (במקום קבוע קשיח) —
@@ -12617,6 +12703,8 @@ async function removeInstructorFromSettings(name){
 
   showToast(`🗑️ המדריך "${name}" נמחק`,'success');
 
+  _logAction('remove_instructor', 'הוסר מדריך: '+name);
+
   if(!window._fbDb)return;
 
   try{
@@ -13319,51 +13407,15 @@ function _saveDailyPlanNote(date,entryId,val){
 // ═══════════════════════════════════════════════════════════
 
 function exportPDF(){
-
-  window.print();
-
+  // 2026-08-19: היה window.print() גולמי של המסך כולו (לא ברור מה זה אמור להיות).
+  // מפנה עכשיו לדוח היומי המאוחד — אותו תוכן בדיוק שהחליף את 3 הכפתורים בטאב דוחות.
+  openDailyReportPreview();
 }
 
 function exportCSV(){
-
-  if(!trips.length){alert('אין נסיעות לייצוא');return;}
-
-  const BOM='\uFEFF';
-
-  const headers=['מדריך','מסלול','יציאה','סיום','שיעורים','מיקום'];
-
-  const rows=trips.map(t=>{
-
-    const last=t.timeline[t.timeline.length-1];
-
-    const endMin=last?.endMin||0;
-
-    const loc=last?.id?.includes('N')?'נווה יעקב':last?.id?.includes('O')?'הדסה':'דיפו';
-
-    const route=_routeLabel(t);
-
-    const lessons=(t.route.reduce((s,r)=>s+r.t,0)/45).toFixed(2);
-
-    return[t.name,route,t.startStr,toHHMM(endMin),lessons,loc];
-
-  });
-
-  const d=new Date(currentDate+'T12:00:00');
-
-  const dateStr=d.toLocaleDateString('he-IL');
-
-  const csv=BOM+`תאריך: ${dateStr}\n`+[headers,...rows].map(r=>r.map(c=>`"${c}"`).join(',')).join('\n');
-
-  const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
-
-  const url=URL.createObjectURL(blob);
-
-  const a=document.createElement('a');
-
-  a.href=url;a.download=`תכנון_${currentDate}.csv`;a.click();
-
-  URL.revokeObjectURL(url);
-
+  // 2026-08-19: היה כולל רק נסיעות (בלי משימות אחרות כמו קו/נהיגה). מפנה לדוח
+  // היומי המאוחד שכולל את כל סוגי המשימות.
+  openDailyReportPreview();
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -15733,11 +15785,19 @@ function renderWeeklySchedTable(){
 
       const hasEntry=shiftVal!=='none';
 
+      // 2026-08-19: תיקון באג — שעות משמרת "מותאמת" קיימות לא הוטמעו כ-data attributes
+      // בבנייה מחדש של הטבלה. כתוצאה, כל שמירה (גם של שורה אחרת לגמרי בטבלה) הייתה
+      // מאפסת בשקט שורות "מותאם" שלא נגעו בהן חזרה לברירת המחדל הקשיחה 07:00–15:30,
+      // כי saveWeeklySchedEntries קורא מה-dataset ולא מה-DOM/schedData.
+      const customAttrs=(shiftVal==='custom'&&existing)
+        ?` data-custom-start="${existing.startTime||'07:00'}" data-custom-end="${existing.endTime||'15:30'}"`
+        :'';
+
       tbodyHtml+=`<td class="${hasEntry?'wsched-cell-has-entry':''}" data-date="${dateISO}">
 
         <select class="wsched-shift-sel" onchange="onWeeklyCellChange(this)"
 
-          data-date="${dateISO}" data-name="${name.replace(/"/g,'&quot;')}">
+          data-date="${dateISO}" data-name="${name.replace(/"/g,'&quot;')}"${customAttrs}>
 
           ${shiftOpts.replace(`value="${shiftVal}"`,`value="${shiftVal}" selected`)}
 
@@ -15817,7 +15877,7 @@ function addWeeklyCustomRow(){
 
   const days=getWeekDays(_weeklySchedStartDate);
 
-  const shiftOpts=`<option value="none">—</option>${Object.keys(SHIFT_HOURS).filter(k=>k!=='custom'&&!SHIFT_HOURS[k].hidden).map(k=>`<option value="${k}">${_shiftFullLabel(k)}</option>`).join('')}<option value="custom">⏰ משמרת מותאמת</option>`;
+  const shiftOpts=`<option value="none">—</option>${Object.keys(SHIFT_HOURS).filter(k=>k!=='custom'&&!SHIFT_HOURS[k].hidden).map(k=>`<option value="${k}">${_shiftName(k)}</option>`).join('')}<option value="custom">משמרת מותאמת</option>`;
 
   // Define taskOpts locally (was missing — caused silent failure)
   const taskOpts='<option value="" selected>— ללא משימה —</option>'+(taskDefs.length
@@ -15959,6 +16019,8 @@ async function saveWeeklySchedEntries(approved=false){
   }else{
 
     showToast(`✅ ${saved} שיבוצים נשמרו${approved?' ואושרו':' (ממתינים)'}${skipped?` (${skipped} דולגו)`:''}` ,'success');
+
+    _logAction('save_weekly_sched', `${saved} שיבוצים${approved?' (מאושר)':' (ממתין)'}`);
 
   }
 
@@ -18173,6 +18235,68 @@ async function loadMonthHistory(year,month){
   return result;
 }
 
+// 2026-08-19: גרסה כללית — טווח תאריכים חופשי, לא מוגבל לחודש קלנדרי אחד.
+// אותו מנגנון בדיוק (loadTripHistory לכל יום, מקבילי), רק שהטווח הוא [startStr,endStr]
+// ולא "כל הימים בחודש X".
+async function loadDateRangeHistory(startStr,endStr){
+  const result={};
+  const tasks=[];
+  const d=new Date(startStr+'T12:00:00');
+  const end=new Date(endStr+'T12:00:00');
+  while(d<=end){
+    const dateStr=_localDateStr(d);
+    tasks.push(loadTripHistory(dateStr).then(trips=>{if(trips.length)result[dateStr]=trips;}));
+    d.setDate(d.getDate()+1);
+  }
+  await Promise.all(tasks);
+  return result;
+}
+
+// מצב טווח תאריכים משותף לכל דוחות "דוחות תקופתיים". null = ברירת מחדל (החודש
+// המוצג בדשבורד, כמו שהיה תמיד) — לא שובר התנהגות קיימת למי שלא נוגע בבורר.
+let _reportsDateRange=null; // {start,end,label} | null
+
+function _setReportsRangePreset(preset){
+  const today=new Date();
+  let start,end,label;
+  if(preset==='month'){
+    _reportsDateRange=null; // חוזר לברירת המחדל — החודש בדשבורד
+    _updateReportsRangeLabel();
+    showToast('טווח הדוחות: החודש המוצג בדשבורד','info');
+    return;
+  } else if(preset==='last7'){
+    end=new Date(today); start=new Date(today); start.setDate(start.getDate()-6);
+    label='7 ימים אחרונים';
+  } else if(preset==='last30'){
+    end=new Date(today); start=new Date(today); start.setDate(start.getDate()-29);
+    label='30 ימים אחרונים';
+  } else if(preset==='lastMonth'){
+    const y=today.getFullYear(),m=today.getMonth();
+    start=new Date(y,m-1,1); end=new Date(y,m,0);
+    label='החודש שעבר';
+  }
+  _reportsDateRange={start:_localDateStr(start),end:_localDateStr(end),label};
+  const f=document.getElementById('reportsRangeFrom');if(f)f.value=_reportsDateRange.start;
+  const t=document.getElementById('reportsRangeTo');if(t)t.value=_reportsDateRange.end;
+  _updateReportsRangeLabel();
+  showToast(`טווח הדוחות: ${label}`,'success');
+}
+
+function _setReportsRangeCustom(){
+  const from=document.getElementById('reportsRangeFrom')?.value;
+  const to=document.getElementById('reportsRangeTo')?.value;
+  if(!from||!to){showToast('יש לבחור תאריך התחלה וסיום','warning');return;}
+  if(from>to){showToast('תאריך ההתחלה חייב להיות לפני תאריך הסיום','warning');return;}
+  _reportsDateRange={start:from,end:to,label:`${from} – ${to}`};
+  _updateReportsRangeLabel();
+  showToast('טווח הדוחות עודכן','success');
+}
+
+function _updateReportsRangeLabel(){
+  const lbl=document.getElementById('reportsRangeLbl');
+  if(lbl)lbl.textContent=_reportsDateRange?`— ${_reportsDateRange.label}`:'— החודש בדשבורד (ברירת מחדל)';
+}
+
 
 
 // ══════════════════════════════════════════════════════════════════════
@@ -18486,16 +18610,86 @@ document.addEventListener('click',function(e){
   if(w&&!w.contains(e.target)){const dd=document.getElementById('reportsDropdown');if(dd)dd.style.display='none';}
 });
 
-async function exportMonthlyReport(){
+// 2026-08-19: helper משותף — פותח דוח CSV בחלון תצוגה מקדימה עם כפתורי הדפסה/הורדה
+// *בתוך* החלון, במקום הורדה אוטומטית מיידית. rows[0] הן הכותרות.
+function _openCsvPreviewWindow(title, rows, filename, kpis){
+  const headers=rows[0]||[];
+  const body=rows.slice(1);
+  const headHtml=headers.map(h=>`<th>${_esc(String(h))}</th>`).join('');
+  const bodyHtml=body.map(r=>'<tr>'+r.map(c=>`<td>${_esc(String(c==null?'':c))}</td>`).join('')+'</tr>').join('');
+  const kpiHtml=(kpis&&kpis.length)?`<div class="kpi-row">${kpis.map(k=>`<div class="kpi"><div class="kpi-n" style="color:${k.color||'#1a5276'};">${_esc(String(k.n))}</div><div class="kpi-l">${_esc(k.l)}</div></div>`).join('')}</div>`:'';
+  const win=window.open('','_blank','width=1000,height=750');
+  if(!win){showToast('הדפדפן חסם את חלון התצוגה המקדימה — אשר חלונות קופצים','warning');return;}
+  win.document.write(`<!DOCTYPE html>
+<html dir="rtl" lang="he">
+<head><meta charset="UTF-8">
+<title>${_esc(title)}</title>
+<style>
+  body{font-family:Arial,sans-serif;direction:rtl;padding:24px;color:#333;max-width:1100px;margin:0 auto;}
+  h1{font-size:20px;color:#1a5276;margin-bottom:4px;}
+  .sub{font-size:12px;color:#888;margin-bottom:18px;}
+  .toolbar{display:flex;gap:10px;margin-bottom:20px;}
+  .toolbar button{padding:8px 16px;border:none;border-radius:7px;font-size:13px;font-weight:bold;cursor:pointer;}
+  .btn-print{background:#3498db;color:white;}
+  .btn-csv{background:#27ae60;color:white;}
+  .kpi-row{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:22px;}
+  .kpi{background:#eaf4fd;border-radius:8px;padding:12px 18px;text-align:center;border:1px solid #b5d4f4;min-width:110px;}
+  .kpi-n{font-size:20px;font-weight:bold;}
+  .kpi-l{font-size:11px;color:#666;margin-top:2px;}
+  table{width:100%;border-collapse:collapse;font-size:12px;}
+  thead{background:#2c3e50;color:white;}
+  th,td{padding:7px 10px;border:1px solid #dde;text-align:right;white-space:nowrap;}
+  tr:nth-child(even){background:#f8faff;}
+  .footer{margin-top:20px;font-size:11px;color:#aaa;border-top:1px solid #eee;padding-top:8px;}
+  .empty{padding:30px;text-align:center;color:#aaa;}
+  @media print{.toolbar{display:none;}body{padding:10px;}}
+</style>
+</head>
+<body>
+  <h1>📊 ${_esc(title)}</h1>
+  <div class="sub">הופק ב-${new Date().toLocaleString('he-IL')} | מערכת ניהול הדרכה V100 | ${body.length} רשומות</div>
+  <div class="toolbar">
+    <button class="btn-print" onclick="window.print()">🖨️ הדפס / שמור כ-PDF</button>
+    <button class="btn-csv" id="csvBtn">⬇️ הורד CSV</button>
+  </div>
+  ${kpiHtml}
+  ${body.length?`<table><thead><tr>${headHtml}</tr></thead><tbody>${bodyHtml}</tbody></table>`:'<div class="empty">אין נתונים להצגה</div>'}
+  <div class="footer">מסמך זה הופק אוטומטית ממערכת ניהול ההדרכה. לא מהווה מסמך רשמי אלא עזר לניהול פנימי.</div>
+  <scr'+'ipt>
+    var csvData = ${JSON.stringify(rows)};
+    document.getElementById('csvBtn').addEventListener('click', function(){
+      var csv = csvData.map(function(r){ return r.map(function(c){ return '"'+String(c==null?'':c).replace(/"/g,'""')+'"'; }).join(','); }).join('\\n');
+      var blob = new Blob(['\\uFEFF'+csv], {type:'text/csv;charset=utf-8;'});
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = ${JSON.stringify(filename)};
+      a.click();
+    });
+  <\/sc'+'ript>
+</body></html>`);
+  win.document.close();
+}
+
+// 2026-08-19: פותר את טווח התאריכים לדוח — מהבורר המשותף אם המשתמש בחר טווח,
+// אחרת נופל בחזרה לחודש המוצג בדשבורד (ההתנהגות המקורית, ללא שינוי).
+function _resolveReportDates(){
+  if(_reportsDateRange) return _reportsDateRange;
   const yr=_monthlyDashDate.getFullYear();
   const mo=_monthlyDashDate.getMonth();
+  const start=`${yr}-${String(mo+1).padStart(2,'0')}-01`;
+  const end=_localDateStr(new Date(yr,mo+1,0));
   const label=new Date(yr,mo,1).toLocaleDateString('he-IL',{month:'long',year:'numeric'});
+  return {start,end,label};
+}
+
+async function exportMonthlyReport(){
+  const {start,end,label}=_resolveReportDates();
   showToast('⏳ מכין דו"ח...','info');
 
-  const monthData=await loadMonthHistory(yr,mo);
+  const rangeData=await loadDateRangeHistory(start,end);
   const rows=[['מדריך','תאריך','מסלול','שעת יציאה','שעת סיום','שיעורים','עיכוב (דק)','סיבת עיכוב']];
 
-  for(const [date,dayTrips] of Object.entries(monthData).sort()){
+  for(const [date,dayTrips] of Object.entries(rangeData).sort()){
     for(const t of dayTrips){
       const routeStr=_routeLabel(t);
       const lessons=((t.route||[]).reduce((a,r)=>a+(r.t||0),0)/45).toFixed(1);
@@ -18507,42 +18701,74 @@ async function exportMonthlyReport(){
     }
   }
 
-  const csv=rows.map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\n');
-  const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(blob);
-  a.download=`דוח_נסיעות_${label}.csv`;
-  a.click();
-  showToast(`📥 דו"ח ${label} הורד`,'success');
+  _openCsvPreviewWindow(`דוח נסיעות — ${label}`, rows, `דוח_נסיעות_${label}.csv`,
+    [{n:rows.length-1,l:'נסיעות'}]);
+  showToast(`📄 דוח ${label} נפתח לתצוגה מקדימה`,'success');
 }
 
 async function exportScheduleReport(){
-  // Export monthly schedule (all instructors, all days)
-  const yr=_monthlyDashDate.getFullYear();
-  const mo=_monthlyDashDate.getMonth();
-  const label=new Date(yr,mo,1).toLocaleDateString('he-IL',{month:'long',year:'numeric'});
-  const daysInMonth=new Date(yr,mo+1,0).getDate();
+  // 2026-08-19: טווח תאריכים חופשי במקום חודש קלנדרי קבוע — schedData כבר בזיכרון
+  // במלואו, לא צריך fetch, רק לעבור על תאריכי הטווח.
+  const {start,end,label}=_resolveReportDates();
   const rows=[['מדריך','תאריך','משמרת','שעת כניסה','שעת יציאה','סטטוס','הערה']];
 
-  for(let d=1;d<=daysInMonth;d++){
-    const dateStr=`${yr}-${String(mo+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+  const d=new Date(start+'T12:00:00');
+  const endD=new Date(end+'T12:00:00');
+  while(d<=endD){
+    const dateStr=_localDateStr(d);
     const entries=schedData[dateStr]||[];
     for(const e of entries){
       const sh=SHIFT_HOURS[e.shift]||{};
-      const start=e.shift==='custom'?(e.startTime||''):(sh.s||'');
-      const end=e.shift==='custom'?(e.endTime||''):(sh.e||'');
+      const s=e.shift==='custom'?(e.startTime||''):(sh.s||'');
+      const en=e.shift==='custom'?(e.endTime||''):(sh.e||'');
       const statusLabel={pending:'ממתין',approved:'מאושר',rejected:'נדחה'}[e.status||'pending'];
-      rows.push([e.name||'',dateStr,SHIFT_LABELS[e.shift]||e.shift,start,end,statusLabel,e.note||'']);
+      rows.push([e.name||'',dateStr,SHIFT_LABELS[e.shift]||e.shift,s,en,statusLabel,e.note||'']);
     }
+    d.setDate(d.getDate()+1);
   }
 
-  const csv=rows.map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\n');
-  const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(blob);
-  a.download=`שיבוצים_${label}.csv`;
-  a.click();
-  showToast(`📥 שיבוצי ${label} הורדו`,'success');
+  _openCsvPreviewWindow(`דוח שיבוצים — ${label}`, rows, `שיבוצים_${label}.csv`,
+    [{n:rows.length-1,l:'שיבוצים'}]);
+  showToast(`📄 שיבוצי ${label} נפתחו לתצוגה מקדימה`,'success');
+}
+
+// 2026-08-19: דוח ביצועי משימות — כמה שיבוצים הוקצו לכל סוג משימה (לא רק נסיעות),
+// לפי טווח התאריכים שנבחר. schedData כבר בזיכרון במלואו, לא צריך fetch.
+async function exportTaskTypeReport(){
+  const {start,end,label}=_resolveReportDates();
+  const byTask={}; // taskId -> {label, count, hours, instrs:Set}
+
+  const d=new Date(start+'T12:00:00');
+  const endD=new Date(end+'T12:00:00');
+  while(d<=endD){
+    const dateStr=_localDateStr(d);
+    (schedData[dateStr]||[]).forEach(e=>{
+      if(!e.task)return; // ללא משימה — לא נספר
+      const tDef=taskDefs.find(t=>t.id===e.task)||{label:e.task};
+      const key=e.task;
+      if(!byTask[key])byTask[key]={label:tDef.label,count:0,hours:0,instrs:new Set()};
+      const b=byTask[key];
+      b.count++;
+      b.instrs.add(e.name);
+      const sh=SHIFT_HOURS[e.shift]||{};
+      const s=e.shift==='custom'?e.startTime:sh.s;
+      const en=e.shift==='custom'?e.endTime:sh.e;
+      if(s&&en){
+        let mins=timeToMin(en)-timeToMin(s);
+        if(mins<0)mins+=24*60; // משמרת חוצה חצות
+        b.hours+=mins/60;
+      }
+    });
+    d.setDate(d.getDate()+1);
+  }
+
+  const sorted=Object.values(byTask).sort((a,b)=>b.count-a.count);
+  const rows=[['סוג משימה','כמות שיבוצים','סה"כ שעות','מדריכים/חונכים מעורבים'],
+    ...sorted.map(b=>[b.label,b.count,+b.hours.toFixed(1),b.instrs.size])];
+
+  const kpis=sorted.slice(0,4).map(b=>({n:b.count,l:b.label,color:'#1a5276'}));
+  _openCsvPreviewWindow(`דוח ביצועי משימות — ${label}`, rows, `ביצועי_משימות_${label}.csv`, kpis);
+  showToast(`📄 דוח ביצועי משימות (${label}) נפתח לתצוגה מקדימה`,'success');
 }
 
 // Badge update is called after schedule sync (hooked via renderCalendar)
@@ -18735,13 +18961,12 @@ async function exportTimesheetCSV(){
   const yr=_monthlyDashDate.getFullYear();
   const mo=_monthlyDashDate.getMonth();
   const label=new Date(yr,mo,1).toLocaleDateString('he-IL',{month:'long',year:'numeric'});
-  const csv=[['מדריך','תאריך','שעת כניסה','שעת יציאה','שעות נסיעה','שיעורים','עיכובים'],
+  const csvRows=[['מדריך','תאריך','שעת כניסה','שעת יציאה','שעות נסיעה','שיעורים','עיכובים'],
     ...rows.map(r=>[r.name,r.date,r.entry,r.exit,r.hoursStr,r.lessons,r.delays])
-  ].map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\n');
-  const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});
-  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
-  a.download=`נוכחות_${label}.csv`;a.click();
-  showToast(`📥 גיליון נוכחות ${label} הורד`,'success');
+  ];
+  _openCsvPreviewWindow(`גיליון נוכחות — ${label}`, csvRows, `נוכחות_${label}.csv`,
+    [{n:rows.length,l:'רשומות'}]);
+  showToast(`📄 גיליון נוכחות ${label} נפתח לתצוגה מקדימה`,'success');
 }
 
 // Hook renderTimesheet into tab switch
@@ -19255,45 +19480,40 @@ function renderEfficiencyTab(){
 // ══════════════════════════════════════════════════════════════════════
 // FEATURE 4: Audit Log
 // ══════════════════════════════════════════════════════════════════════
+// 2026-08-19: זו הייתה מערכת לוג שנייה, נפרדת לגמרי מ-_logAction (v100_action_log),
+// עם אותה בעיה (localStorage מקומי בלבד) וכיסוי חלקי שונה. אוחדה לתשתית אחת משותפת.
 
-let _auditLog=JSON.parse(localStorage.getItem('v100_audit_log')||'[]');
-
-function logAudit(action,details){
-  const entry={
-    ts:Date.now(),
-    time:new Date().toLocaleString('he-IL'),
-    action,
-    user:currentUserName||'system',
-    details:details||''
-  };
-  _auditLog.unshift(entry); // newest first
-  if(_auditLog.length>200)_auditLog=_auditLog.slice(0,200); // keep last 200
-  try{localStorage.setItem('v100_audit_log',JSON.stringify(_auditLog));}catch(e){}
-  // Re-render if panel is open
-  const panel=document.getElementById('auditLogPanel');
-  if(panel&&panel.style.display!=='none')renderAuditLog();
+function logAudit(action, details) {
+  _logAction(action, details); // כתיבה ל-Firebase (auditLog/{date}) + מירור מקומי
+  const panel = document.getElementById('auditLogPanel');
+  if (panel && panel.style.display !== 'none') renderAuditLog();
 }
 
-function renderAuditLog(){
+async function renderAuditLog(){
   const tbody=document.getElementById('auditBody');
   if(!tbody)return;
-  if(!_auditLog.length){
-    tbody.innerHTML='<tr><td colspan="4" style="text-align:center;color:#aaa;padding:16px;">אין רישומים בלוג</td></tr>';
+  tbody.innerHTML='<tr><td colspan="4" style="text-align:center;color:#aaa;padding:16px;">⏳ טוען מ-Firebase...</td></tr>';
+  const log = await _fetchAuditLogRange(30);
+  if(!tbody.isConnected)return; // הפאנל נסגר בזמן הטעינה
+  if(!log.length){
+    tbody.innerHTML='<tr><td colspan="4" style="text-align:center;color:#aaa;padding:16px;">אין רישומים ב-30 הימים האחרונים</td></tr>';
     return;
   }
   const actionColors={
     'שמירת נסיעה':'#2980b9','מחיקת נסיעה':'#e74c3c','עריכת נסיעה':'#8e44ad',
     'אישור שיבוץ':'#27ae60','דחיית שיבוץ':'#e67e22','בקשת שיבוץ':'#3498db',
-    'איפוס נסיעות':'#c0392b','הוספת מדריך':'#1abc9c','מחיקת מדריך':'#e74c3c',
-    'שינוי הגדרות':'#95a5a6'
+    'איפוס':'#c0392b','איפוס נסיעות':'#c0392b','הוספת מדריך':'#1abc9c','מחיקת מדריך':'#e74c3c',
+    'שינוי הגדרות':'#95a5a6',save_settings:'#95a5a6',login:'#2980b9',demo_on:'#8e44ad',demo_off:'#8e44ad'
   };
-  tbody.innerHTML=_auditLog.map(e=>{
-    const col=actionColors[e.action]||'#888';
+  tbody.innerHTML=log.map(e=>{
+    const label=_V100_LOG_LABELS[e.type]||e.type;
+    const col=actionColors[e.type]||'#888';
+    const time=new Date(e.ts).toLocaleString('he-IL');
     return`<tr>
-      <td style="font-size:11px;color:#888;white-space:nowrap;">${e.time}</td>
-      <td><span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:bold;background:${col}22;color:${col};border:1px solid ${col}55;">${_esc(e.action)}</span></td>
+      <td style="font-size:11px;color:#888;white-space:nowrap;">${time}</td>
+      <td><span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:bold;background:${col}22;color:${col};border:1px solid ${col}55;">${_esc(label)}</span></td>
       <td style="font-size:12px;font-weight:bold;">${_esc(e.user)}</td>
-      <td style="font-size:12px;color:#555;">${_esc(e.details)}</td>
+      <td style="font-size:12px;color:#555;">${_esc(e.details||'')}</td>
     </tr>`;
   }).join('');
 }
@@ -19313,24 +19533,31 @@ function toggleAuditLog(){
   }
 }
 
-function clearAuditLog(){
-  if(!confirm('למחוק את כל לוג הפעולות? פעולה זו בלתי הפיכה.'))return;
-  _auditLog=[];
-  try{localStorage.removeItem('v100_audit_log');}catch(e){}
-  renderAuditLog();
-  showToast('🗑 הלוג נוקה','info');
+// 2026-08-19: לביא ביקש בחזרה יכולת מחיקת תיעוד היסטורי (בניגוד להחלטתי הקודמת
+// להסיר אותה) — זה הלוג/מדיניות שלו להחליט. מוחק גם מ-Firebase (לא רק מקומי),
+// לכן אישור מוגבר בהקלדת מילה, לא רק confirm() רגיל.
+async function clearAuditLogAll(){
+  const word = prompt('פעולה זו תמחק את כל תיעוד לוג הפעולות, מכל המכשירים, לצמיתות — בלתי הפיך.\nלאישור, הקלד: מחק');
+  if(word !== 'מחק'){ if(word!==null) showToast('המחיקה בוטלה — יש להקליד בדיוק "מחק"','warning'); return; }
+  try{ localStorage.removeItem(_V100_LOG_KEY); }catch(e){}
+  if(window._fbDb){
+    try{ await _fbRef(_db,'auditLog').remove(); }
+    catch(e){ showToast('שגיאה במחיקה מ-Firebase','warning'); return; }
+  }
+  showToast('🗑 כל תיעוד הלוג נמחק','info');
+  const panel=document.getElementById('auditLogPanel');
+  if(panel && panel.style.display!=='none') renderAuditLog();
 }
 
-function exportAuditCSV(){
-  if(!_auditLog.length){showToast('אין רישומים לייצוא','warning');return;}
-  const rows=[['תאריך ושעה','פעולה','מי ביצע','פרטים'],
-    ..._auditLog.map(e=>[e.time,e.action,e.user,e.details])];
-  const csv=rows.map(r=>r.map(v=>'"'+String(v||'').replace(/"/g,'""')+'"').join(',')).join('\n');
-  const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(blob);
-  a.download='לוג_פעולות.csv';a.click();
-  showToast('📥 הלוג יוצא ל-CSV','success');
+async function exportAuditCSV(){
+  showToast('⏳ טוען לוג ליצוא...','info');
+  const log = await _fetchAuditLogRange(30);
+  if(!log.length){showToast('אין רישומים לייצוא','warning');return;}
+  const rows=[['תאריך ושעה','פעולה','מבצע','תפקיד','פרטים'],
+    ...log.map(e=>[new Date(e.ts).toLocaleString('he-IL'),_V100_LOG_LABELS[e.type]||e.type,e.user,({admin:'מנהל',instructor:'מדריך',mentor:'חונך'})[e.role]||e.role||'',e.details])];
+  _openCsvPreviewWindow('לוג פעולות — 30 יום אחרונים', rows, 'לוג_פעולות.csv',
+    [{n:log.length,l:'רשומות'}]);
+  showToast('📄 הלוג נפתח לתצוגה מקדימה','success');
 }
 
 // Audit hooks integrated directly into functions
@@ -19339,22 +19566,29 @@ function exportAuditCSV(){
 // ══════════════════════════════════════════════════════════════════════
 
 async function exportPDFReport(){
-  const yr=_monthlyDashDate.getFullYear();
-  const mo=_monthlyDashDate.getMonth();
-  const label=new Date(yr,mo,1).toLocaleDateString('he-IL',{month:'long',year:'numeric'});
+  const {start,end,label}=_resolveReportDates();
 
-  // 2026-08-19: טעינה עצמאית — לא תלוי יותר בפתיחת "דשבורד חודשי" קודם
-  if(!Object.keys(_monthHistoryCache).length){
-    showToast('⏳ טוען נתוני חודש...','info');
-    _monthHistoryCache=await loadMonthHistory(yr,mo);
+  // 2026-08-19: תומך בטווח תאריכים מותאם. כשלא נבחר טווח — מתנהג כמו קודם (חודש
+  // הדשבורד, כולל שימוש במטמון _monthHistoryCache אם כבר נטען). בטווח מותאם לא
+  // נוגעים במטמון החודשי, כדי לא לבלבל את תצוגת הדשבורד עם נתוני טווח אחר.
+  let rangeData;
+  if(_reportsDateRange){
+    showToast('⏳ טוען נתוני טווח...','info');
+    rangeData=await loadDateRangeHistory(start,end);
+  } else {
+    if(!Object.keys(_monthHistoryCache).length){
+      showToast('⏳ טוען נתוני חודש...','info');
+      _monthHistoryCache=await loadMonthHistory(_monthlyDashDate.getFullYear(),_monthlyDashDate.getMonth());
+    }
+    rangeData=_monthHistoryCache;
   }
-  if(!Object.keys(_monthHistoryCache).length){
-    showToast('אין נתוני נסיעות לחודש זה','warning');return;
+  if(!Object.keys(rangeData).length){
+    showToast('אין נתוני נסיעות לטווח זה','warning');return;
   }
 
   // Build a printable HTML document
   const statsPerInstr={};
-  for(const dayTrips of Object.values(_monthHistoryCache)){
+  for(const dayTrips of Object.values(rangeData)){
     for(const t of dayTrips){
       if(!t.name)continue;
       if(!statsPerInstr[t.name])statsPerInstr[t.name]={trips:0,lessons:0,minutes:0,delays:0};
@@ -19915,11 +20149,24 @@ function _getUrCustomFields() {
   try { return JSON.parse(localStorage.getItem('ur_custom_fields') || '[]'); } catch(e) { return []; }
 }
 
-function _urAddFeedbackBlock() {
+async function _urAddFeedbackBlock() {
   _urFeedbackCount++;
   const idx = _urFeedbackCount;
   const container = document.getElementById('ur-feedback-blocks');
   if (!container) return;
+
+  // 2026-08-19: תיקון באג — מדריך שנכנס ישירות ל"סיכום יום" (בלי לפתוח קודם את
+  // טאב "חניכים ומשובים") מעולם לא הפעיל את TraineeSystem.init(), ולכן
+  // TraineeSystem.settings.skills נשאר ריק ושמות המיומנויות נפלו לברירת המחדל
+  // הגנרית ("מיומנות 1" וכו'). אותו דפוס בדיוק כבר קיים למטה עבור קורסים/חניכים —
+  // עכשיו מיושם גם לשמות המיומנויות עצמם.
+  if (typeof TraineeSystem !== 'undefined' && !(TraineeSystem.settings?.skills?.length)
+      && !(typeof _isDemoMode === 'function' && _isDemoMode())) {
+    try {
+      if (!TraineeSystem.settingsRef) TraineeSystem.initFirebase();
+      await TraineeSystem.loadSettings();
+    } catch(e) { console.warn('[unifiedReport] on-demand settings load failed:', e); }
+  }
 
   // Build trainee select asynchronously so it works even if TraineeSystem isn't rendered yet
   const _urPopulateTraineeSelect = async (selectEl, courseSelectEl, freeEl) => {
@@ -20603,6 +20850,71 @@ async function submitUnifiedReport() {
 // with {date, ins}. So to show the full feedback detail here we reconstruct it by scanning
 // the trainee records for lessons matching this date+instructor, rather than reading it off
 // the report itself.
+// 2026-08-19: "מנהל שמור" של טפסי סיכום יום — הדרך היחידה הקודמת לגשת לטופס
+// שהוגש הייתה דרך שורת "קיים" בטבלת "סיכום יום" ליום ספציפי אחד. כאן מרוכזים כל
+// הטפסים בטווח התאריכים הנבחר (בורר משותף לדוחות), עם חיפוש, ופתיחה לאותה חלונית
+// תצוגה קומפקטית (openViewUnifiedReport) בלי לשכפל אותה.
+async function openUnifiedReportsArchive(){
+  const {start,end,label}=_resolveReportDates();
+  showToast('⏳ טוען טפסים...','info');
+  const allReports=await loadDateRangeTaskReports(start,end);
+  const unified=Object.entries(allReports).filter(([k,v])=>v&&v.type==='unified_daily');
+  // ממזג למטמון הגלובלי כדי ש"צפה" יעבוד (openViewUnifiedReport קורא משם)
+  unified.forEach(([k,v])=>{ window._taskReportsCache[k]=v; });
+  unified.sort((a,b)=> b[1].date.localeCompare(a[1].date) || (a[1].instructorName||'').localeCompare(b[1].instructorName||''));
+
+  const overlay=document.createElement('div');
+  overlay.className='log-overlay';
+  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9800;display:flex;align-items:center;justify-content:center;';
+
+  const rowsHtml=unified.length?unified.map(([k,v])=>{
+    const dObj=new Date(v.date+'T12:00:00');
+    const dLabel=dObj.toLocaleDateString('he-IL',{day:'2-digit',month:'2-digit',year:'2-digit',weekday:'short'});
+    const shiftStr=(v.shiftStart&&v.shiftEnd)?`${v.shiftStart}–${v.shiftEnd}`:'—';
+    const safeName=(v.instructorName||'').replace(/'/g,"\\'").replace(/"/g,'&quot;');
+    return`<tr style="border-bottom:1px solid #f0f0f0;cursor:pointer;" onclick="openViewUnifiedReport('${v.date}','${safeName}')">
+      <td style="padding:8px 10px;font-size:12px;color:#888;white-space:nowrap;">${dLabel}</td>
+      <td style="padding:8px 10px;font-size:13px;font-weight:bold;">${_esc(v.instructorName||'')}</td>
+      <td style="padding:8px 10px;font-size:12px;">${_esc(shiftStr)}</td>
+      <td style="padding:8px 10px;font-size:12px;text-align:center;">${v.lightHours||0}</td>
+      <td style="padding:8px 10px;font-size:12px;text-align:center;">${v.feedbackCount?`${v.feedbackCount} 🎓`:'—'}</td>
+    </tr>`;
+  }).join(''):`<tr><td colspan="5" style="text-align:center;padding:24px;color:#aaa;">אין טפסים בטווח זה</td></tr>`;
+
+  overlay.innerHTML=`
+    <div style="background:white;border-radius:16px;width:min(820px,96vw);max-height:85vh;overflow:hidden;display:flex;flex-direction:column;direction:rtl;">
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:2px solid #eef2f8;">
+        <h3 style="margin:0;font-size:16px;">🗂️ ארכיון טפסי סיכום יום <span style="font-size:11px;font-weight:400;color:#888;">— ${_esc(label)}</span></h3>
+        <button onclick="this.closest('.log-overlay').remove()" style="width:auto !important;background:none;border:none;font-size:22px;cursor:pointer;color:#888;">×</button>
+      </div>
+      <div style="padding:12px 20px 8px;">
+        <input type="text" id="uraSearchInput" placeholder="🔍 חיפוש לפי שם מדריך..." oninput="_filterUnifiedArchive(this.value)" style="width:100%;padding:8px 12px;border:1.5px solid #ddd;border-radius:8px;font-size:13px;">
+      </div>
+      <div style="overflow-y:auto;flex:1;padding:0 20px 16px;">
+        <table style="width:100%;border-collapse:collapse;">
+          <thead><tr style="background:#f8faff;position:sticky;top:0;">
+            <th style="padding:8px 10px;text-align:right;font-size:12px;color:#888;">תאריך</th>
+            <th style="padding:8px 10px;text-align:right;font-size:12px;color:#888;">מדריך</th>
+            <th style="padding:8px 10px;text-align:right;font-size:12px;color:#888;">משמרת</th>
+            <th style="padding:8px 10px;text-align:center;font-size:12px;color:#888;">הדרכה קלה</th>
+            <th style="padding:8px 10px;text-align:center;font-size:12px;color:#888;">משובים</th>
+          </tr></thead>
+          <tbody id="uraTbody">${rowsHtml}</tbody>
+        </table>
+      </div>
+      <div style="padding:8px 20px;font-size:11px;color:#aaa;text-align:center;border-top:1px solid #eef2f8;">${unified.length} טפסים • לחץ על שורה לצפייה מלאה</div>
+    </div>`;
+  document.body.appendChild(overlay);
+}
+
+function _filterUnifiedArchive(query){
+  const q=query.trim().toLowerCase();
+  document.querySelectorAll('#uraTbody tr').forEach(tr=>{
+    const name=tr.children[1]?.textContent.toLowerCase()||'';
+    tr.style.display=(!q||name.includes(q))?'':'none';
+  });
+}
+
 function openViewUnifiedReport(date, instructorName) {
   const reportKey = `${date}__${instructorName}__unified`;
   const report = (window._taskReportsCache && window._taskReportsCache[reportKey]) || null;
@@ -20620,6 +20932,7 @@ function openViewUnifiedReport(date, instructorName) {
   // are not two separate/additive totals, so there is no third "total" to show — only these
   // two fields belong in this summary.
   const basicRows = [
+    `<div><b>🕒 משמרת:</b> ${report.shiftStart&&report.shiftEnd?`${report.shiftStart}–${report.shiftEnd}`:'—'}</div>`,
     `<div><b>שעות סינריון:</b> ${report.sinerioHours || 0}</div>`,
     `<div><b>שעות הדרכה קלה:</b> ${report.lightHours || 0}</div>`
   ];
@@ -20937,7 +21250,12 @@ async function loadTaskReportsForDate(date){
     if(raw){
       const obj=JSON.parse(raw);
       Object.entries(obj).forEach(([k,v])=>{
-        window._taskReportsCache[`${date}__${k}`]=v;
+        // 2026-08-19: תיקון באג — טפסי "סיכום יום" (unified_daily) נשמרים עם מפתח
+        // שכבר כולל את התאריך במלואו (reportKey=`${date}__${instructor}__unified`),
+        // אז הוספת עוד ${date}__ לפניו יצרה מפתח כפול-קידומת שלא תואם למה ש-
+        // openViewUnifiedReport מחפש (ולכן "לא נמצא" בכל טעינה מחדש של הדף).
+        const key=(v&&v.type==='unified_daily')?`${date}__${v.instructorName}__unified`:`${date}__${k}`;
+        window._taskReportsCache[key]=v;
       });
     }
   }catch(e){}
@@ -20950,7 +21268,7 @@ async function loadTaskReportsForDate(date){
     if(snap.exists()){
       const val=snap.val();
       Object.entries(val).forEach(([k,v])=>{
-        const rk=`${v.date}__${v.instructorName}__${v.entryId}`;
+        const rk=(v&&v.type==='unified_daily')?`${v.date}__${v.instructorName}__unified`:`${v.date}__${v.instructorName}__${v.entryId}`;
         window._taskReportsCache[rk]=v;
       });
     }
@@ -20971,7 +21289,7 @@ async function loadMonthTaskReports(year,month){
         if(raw){
           const obj=JSON.parse(raw);
           Object.entries(obj).forEach(([k,v])=>{
-            const rk=`${v.date||dateStr}__${v.instructorName||''}__${v.entryId||k}`;
+            const rk=(v&&v.type==='unified_daily')?`${v.date||dateStr}__${v.instructorName||''}__unified`:`${v.date||dateStr}__${v.instructorName||''}__${v.entryId||k}`;
             result[rk]=v;
           });
         }
@@ -20982,12 +21300,48 @@ async function loadMonthTaskReports(year,month){
         const snap=await _fbGet(_fbRef(_db,'taskReports/'+dateStr));
         if(snap.exists()){
           Object.entries(snap.val()).forEach(([k,v])=>{
-            const rk=`${v.date}__${v.instructorName}__${v.entryId}`;
+            const rk=(v&&v.type==='unified_daily')?`${v.date}__${v.instructorName}__unified`:`${v.date}__${v.instructorName}__${v.entryId}`;
             result[rk]=v;
           });
         }
       }catch(e){}
     })());
+  }
+  await Promise.all(tasks);
+  return result;
+}
+
+// 2026-08-19: גרסה כללית — טווח תאריכים חופשי, אותו מנגנון בדיוק
+async function loadDateRangeTaskReports(startStr,endStr){
+  const result={};
+  const tasks=[];
+  const d=new Date(startStr+'T12:00:00');
+  const end=new Date(endStr+'T12:00:00');
+  while(d<=end){
+    const dateStr=_localDateStr(d);
+    tasks.push((async()=>{
+      try{
+        const raw=localStorage.getItem('taskReports_'+dateStr);
+        if(raw){
+          const obj=JSON.parse(raw);
+          Object.entries(obj).forEach(([k,v])=>{
+            const rk=(v&&v.type==='unified_daily')?`${v.date||dateStr}__${v.instructorName||''}__unified`:`${v.date||dateStr}__${v.instructorName||''}__${v.entryId||k}`;
+            result[rk]=v;
+          });
+        }
+      }catch(e){}
+      if(_isDemoMode()||!window._fbDb)return;
+      try{
+        const snap=await _fbGet(_fbRef(_db,'taskReports/'+dateStr));
+        if(snap.exists()){
+          Object.entries(snap.val()).forEach(([k,v])=>{
+            const rk=(v&&v.type==='unified_daily')?`${v.date}__${v.instructorName}__unified`:`${v.date}__${v.instructorName}__${v.entryId}`;
+            result[rk]=v;
+          });
+        }
+      }catch(e){}
+    })());
+    d.setDate(d.getDate()+1);
   }
   await Promise.all(tasks);
   return result;
@@ -21274,69 +21628,49 @@ function setDaySummaryDate(val){
   renderDaySummary();
 }
 
-async function renderDaySummary(){
-  const dateStr=_getDaySummaryDate();
-  const d=new Date(dateStr+'T12:00:00');
-
-  // Update date label
-  const lbl=document.getElementById('daySummaryDateLbl');
-  if(lbl)lbl.textContent=d.toLocaleDateString('he-IL',{weekday:'short',day:'numeric',month:'long'});
-  const picker=document.getElementById('daySummaryDatePicker');
-  if(picker&&!picker.value)picker.value=dateStr;
-
-  const wrap=document.getElementById('daySummaryContent');
-  if(!wrap)return;
-  wrap.innerHTML='<div style="color:#aaa;font-size:13px;text-align:center;padding:10px;">טוען...</div>';
-
-  // Load trips for this date
+// 2026-08-19: חולצה מ-renderDaySummary כדי שגם הדוח היומי המאוחד החדש (openDailyReportPreview)
+// ישתמש באותה טעינה בדיוק — מקור אמת יחיד, לא שני מימושים שעלולים לסטות זה מזה.
+async function _loadDaySummaryDataForDate(dateStr){
   let dayTrips=[];
   if(dateStr===currentDate){
     dayTrips=[...trips];
   } else if(_isDemoMode()){
-    // Demo mode: always read from localStorage
     try{const raw=localStorage.getItem('trips_'+dateStr);if(raw)dayTrips=Object.values(JSON.parse(raw)).map(t=>{try{return parseTrip(t);}catch(e){return t;}});}catch(e){}
   } else if(window._fbDb){
     try{
       const snap=await _fbGet(_fbRef(_db,'trips/'+dateStr));
       dayTrips=snap.exists()?Object.values(snap.val()).map(parseTrip):[];
     }catch(e){
-      console.warn('[V100] renderDaySummary trips load failed:',e);
-      wrap.innerHTML='<div style="color:#e74c3c;font-size:13px;text-align:center;padding:14px;">⚠️ שגיאה בטעינת נסיעות — נסה לרענן</div>';
-      return;
+      console.warn('[V100] _loadDaySummaryDataForDate trips load failed:',e);
+      return {dayTrips:[],dayStatuses:{},dayEntries:[],error:'trips'};
     }
   }
 
-  // Load task reports for this date
   await loadTaskReportsForDate(dateStr);
 
-  // Load statuses for this date
   let dayStatuses={};
   if(dateStr===currentDate){
     dayStatuses={...instrStatuses};
   } else if(_isDemoMode()){
-    // Demo mode: always read from localStorage
     try{const raw=localStorage.getItem('instrStatus_'+dateStr);if(raw)dayStatuses=JSON.parse(raw);}catch(e){}
   } else if(window._fbDb){
     try{
       const snap=await _fbGet(_fbRef(_db,'instrStatus/'+dateStr));
       dayStatuses=snap.exists()?snap.val():{};
     }catch(e){
-      console.warn('[V100] renderDaySummary instrStatus load failed:',e);
-      // Non-fatal: continue with empty statuses rather than blocking render
+      console.warn('[V100] _loadDaySummaryDataForDate instrStatus load failed:',e);
       dayStatuses={};
     }
   }
 
-  // Get schedData for this date
   const dayEntries=schedData[dateStr]||[];
+  return {dayTrips,dayStatuses,dayEntries,error:null};
+}
 
-  if(!dayEntries.length){
-    wrap.innerHTML='<div style="color:#aaa;font-size:13px;text-align:center;padding:14px;">אין שיבוצים לתאריך זה</div>';
-    return;
-  }
-
-  // Build rows per instructor
-  const rows=dayEntries.map(e=>{
+// בונה את שורות ה-<tr> של טבלת סיכום היום. interactive=true מוסיף onclick לצפייה
+// בדוח המלא (מתאים לווידג'ט החי בלבד — לא לחלון תצוגה מקדים/הדפסה נפרד).
+function _buildDaySummaryRowsHtml(dateStr,dayTrips,dayStatuses,dayEntries,interactive){
+  const buildRow=(e)=>{
     const tDef=taskDefs.find(t=>t.id===e.task)||{label:e.task||'?',icon:'📋',isTrip:false,requiresSummary:false,summaryFields:[]};
     const sh=SHIFT_HOURS[e.shift]||{s:e.startTime||'',e:e.endTime||''};
     const timeStr=e.shift==='custom'?`${e.startTime||''}–${e.endTime||''}`:`${sh.s}–${sh.e}`;
@@ -21420,7 +21754,7 @@ async function renderDaySummary(){
 
     // Fix #98: rows with an existing unified report open a read-only view of its full content
     const safeInstrName=(e.name||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
-    const rowAttrs=_unifiedReport
+    const rowAttrs=(interactive&&_unifiedReport)
       ?`onclick="openViewUnifiedReport('${dateStr}','${safeInstrName}')" style="border-bottom:1px solid #f0f0f0;cursor:pointer;" title="לחץ לצפייה בתוכן הדוח המלא"`
       :`style="border-bottom:1px solid #f0f0f0;"`;
 
@@ -21431,7 +21765,52 @@ async function renderDaySummary(){
       <td style="padding:8px 10px;">${executedCell}</td>
       <td style="padding:8px 10px;text-align:center;">${statusCell}</td>
     </tr>`;
-  }).join('');
+  };
+
+  // 2026-08-19: הפרדה עם כותרת בין מדריכים לחונכים — לא המשך ישיר של אותה רשימה.
+  // חל גם על נתוני אמת: בכל פעם שיש שיבוץ חונך (role==='mentor'), הוא מקובץ תחת
+  // כותרת "חונכים" נפרדת, לא רק בדמו.
+  const sectionHeader=(label)=>`<tr><td colspan="5" style="padding:10px 10px 5px;font-size:11px;font-weight:700;color:#8e44ad;background:#faf7ff;border-top:2px solid #e8d9f5;">${label}</td></tr>`;
+  const instructorEntries=dayEntries.filter(e=>e.role!=='mentor');
+  const mentorEntries=dayEntries.filter(e=>e.role==='mentor');
+
+  let html='';
+  if(instructorEntries.length){
+    html+=sectionHeader('👨‍🏫 מדריכים');
+    html+=instructorEntries.map(buildRow).join('');
+  }
+  if(mentorEntries.length){
+    html+=sectionHeader('🎓 חונכים');
+    html+=mentorEntries.map(buildRow).join('');
+  }
+  return html;
+}
+
+async function renderDaySummary(){
+  const dateStr=_getDaySummaryDate();
+  const d=new Date(dateStr+'T12:00:00');
+
+  // Update date label
+  const lbl=document.getElementById('daySummaryDateLbl');
+  if(lbl)lbl.textContent=d.toLocaleDateString('he-IL',{weekday:'short',day:'numeric',month:'long'});
+  const picker=document.getElementById('daySummaryDatePicker');
+  if(picker&&!picker.value)picker.value=dateStr;
+
+  const wrap=document.getElementById('daySummaryContent');
+  if(!wrap)return;
+  wrap.innerHTML='<div style="color:#aaa;font-size:13px;text-align:center;padding:10px;">טוען...</div>';
+
+  const {dayTrips,dayStatuses,dayEntries,error}=await _loadDaySummaryDataForDate(dateStr);
+  if(error){
+    wrap.innerHTML='<div style="color:#e74c3c;font-size:13px;text-align:center;padding:14px;">⚠️ שגיאה בטעינת נסיעות — נסה לרענן</div>';
+    return;
+  }
+  if(!dayEntries.length){
+    wrap.innerHTML='<div style="color:#aaa;font-size:13px;text-align:center;padding:14px;">אין שיבוצים לתאריך זה</div>';
+    return;
+  }
+
+  const rows=_buildDaySummaryRowsHtml(dateStr,dayTrips,dayStatuses,dayEntries,true);
 
   wrap.innerHTML=`
     <table style="width:100%;border-collapse:collapse;background:white;border-radius:10px;overflow:hidden;box-shadow:0 1px 6px rgba(0,0,0,.06);">
@@ -21440,28 +21819,108 @@ async function renderDaySummary(){
         <th style="padding:9px 10px;font-size:12px;text-align:right;color:#555;border-bottom:2px solid #d9c8f5;">משימה</th>
         <th style="padding:9px 10px;font-size:12px;text-align:right;color:#555;border-bottom:2px solid #d9c8f5;">מתוכנן</th>
         <th style="padding:9px 10px;font-size:12px;text-align:right;color:#555;border-bottom:2px solid #d9c8f5;">בוצע</th>
-        <th
-
-// ══ MANUAL SECTION VISIBILITY — per-instructor ══
-function _syncManualSectionVisibility(){
-  const ms=document.getElementById('manualSection');
-  if(!ms)return;
-  if(!_editState.forInstructor||_editState.forInstructor===currentUserName){
-    // This instructor owns the edit (or no edit active) — show as-is
-    // If there's an active edit for this instructor, keep it open
-    if(_editState.forInstructor===currentUserName&&_editState.tripId){
-      ms.open=true;
-    }
-  } else {
-    // Different instructor — hide the section content (close details)
-    ms.removeAttribute('open');
-  }
-}
-
- style="padding:9px 10px;font-size:12px;text-align:center;color:#555;border-bottom:2px solid #d9c8f5;">טופס סיכום יום</th>
+        <th style="padding:9px 10px;font-size:12px;text-align:center;color:#555;border-bottom:2px solid #d9c8f5;">טופס סיכום יום</th>
       </tr></thead>
       <tbody>${rows}</tbody>
     </table>`;
+}
+
+// 2026-08-19: מחליף את 3 הכפתורים השבורים/מבלבלים בטאב דוחות ("הדפס PDF יומי" שהיה
+// window.print() גולמי, "Excel תכנון יומי" שכלל רק נסיעות, "סיכום יום" שפתח בטעות
+// את טופס ההגשה האישי) — דוח יומי אחד, אותה טבלת "סיכום יום" בדיוק, בחלון תצוגה
+// מקדימה עם כפתורי הדפסה/CSV *בתוך* החלון (לא הורדה מיידית).
+async function openDailyReportPreview(dateOverride){
+  const dateStr=dateOverride||currentDate||_localDateStr(new Date());
+  const d=new Date(dateStr+'T12:00:00');
+  const dateLabel=d.toLocaleDateString('he-IL',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+
+  showToast('⏳ מכין דוח יומי...','info');
+  const {dayTrips,dayStatuses,dayEntries,error}=await _loadDaySummaryDataForDate(dateStr);
+  if(error){showToast('שגיאה בטעינת נתוני היום','warning');return;}
+  if(!dayEntries.length){showToast('אין שיבוצים לתאריך זה','warning');return;}
+
+  const rows=_buildDaySummaryRowsHtml(dateStr,dayTrips,dayStatuses,dayEntries,false);
+
+  const totalTrips=dayTrips.length;
+  const totalDelays=dayTrips.filter(t=>t.delayMin>0).length;
+  const totalLessonHours=dayTrips.reduce((s,t)=>s+((t.route||[]).reduce((a,r)=>a+(r.t||0),0)),0)/60;
+  const activeCount=dayEntries.length;
+  const missingReports=dayEntries.filter(e=>{
+    const k=`${dateStr}__${e.name}__unified`;
+    return !(window._taskReportsCache&&window._taskReportsCache[k]);
+  }).length;
+
+  // נתוני CSV נבנים כאן (בחלון האב) ומוטמעים כ-JSON בחלון הנפתח — לא זקוקים לספריה חיצונית
+  const csvRows=dayEntries.map(e=>{
+    const tDef=taskDefs.find(t=>t.id===e.task)||{label:e.task||'?'};
+    const sh=SHIFT_HOURS[e.shift]||{s:e.startTime||'',e:e.endTime||''};
+    const timeStr=e.shift==='custom'?`${e.startTime||''}-${e.endTime||''}`:`${sh.s}-${sh.e}`;
+    const myTrips=dayTrips.filter(t=>t.name===e.name);
+    const k=`${dateStr}__${e.name}__unified`;
+    const rpt=(window._taskReportsCache&&window._taskReportsCache[k])||null;
+    return[e.name,tDef.label,timeStr,myTrips.length,rpt?'בוצע':'טרם דווח'];
+  });
+
+  const printWin=window.open('','_blank','width=1000,height=750');
+  printWin.document.write(`<!DOCTYPE html>
+<html dir="rtl" lang="he">
+<head><meta charset="UTF-8">
+<title>דוח יומי — ${dateLabel}</title>
+<style>
+  body{font-family:Arial,sans-serif;direction:rtl;padding:24px;color:#333;max-width:920px;margin:0 auto;}
+  h1{font-size:20px;color:#1a5276;margin-bottom:4px;}
+  .sub{font-size:12px;color:#888;margin-bottom:18px;}
+  .toolbar{display:flex;gap:10px;margin-bottom:20px;}
+  .toolbar button{padding:8px 16px;border:none;border-radius:7px;font-size:13px;font-weight:bold;cursor:pointer;}
+  .btn-print{background:#3498db;color:white;}
+  .btn-csv{background:#27ae60;color:white;}
+  .kpi-row{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:22px;}
+  .kpi{background:#eaf4fd;border-radius:8px;padding:12px;text-align:center;border:1px solid #b5d4f4;}
+  .kpi-n{font-size:22px;font-weight:bold;color:#1a5276;}
+  .kpi-l{font-size:11px;color:#666;margin-top:2px;}
+  table{width:100%;border-collapse:collapse;font-size:12px;}
+  thead{background:#2c3e50;color:white;}
+  th,td{padding:8px 10px;border:1px solid #dde;text-align:right;}
+  tr:nth-child(even){background:#f8faff;}
+  .footer{margin-top:20px;font-size:11px;color:#aaa;border-top:1px solid #eee;padding-top:8px;}
+  @media print{.toolbar{display:none;}body{padding:10px;}}
+</style>
+</head>
+<body>
+  <h1>📅 דוח יומי מאוחד — ${dateLabel}</h1>
+  <div class="sub">הופק ב-${new Date().toLocaleString('he-IL')} | מערכת ניהול הדרכה V100</div>
+  <div class="toolbar">
+    <button class="btn-print" onclick="window.print()">🖨️ הדפס / שמור כ-PDF</button>
+    <button class="btn-csv" id="csvBtn">⬇️ הורד CSV</button>
+  </div>
+  <div class="kpi-row">
+    <div class="kpi"><div class="kpi-n">${activeCount}</div><div class="kpi-l">מדריכים/חונכים משובצים</div></div>
+    <div class="kpi"><div class="kpi-n">${totalTrips}</div><div class="kpi-l">נסיעות</div></div>
+    <div class="kpi"><div class="kpi-n">${totalLessonHours.toFixed(1)}</div><div class="kpi-l">שעות שיעור</div></div>
+    <div class="kpi"><div class="kpi-n" style="color:${totalDelays>0?'#c0392b':'#27ae60'};">${totalDelays}</div><div class="kpi-l">עיכובים</div></div>
+    <div class="kpi"><div class="kpi-n" style="color:${missingReports>0?'#c0392b':'#27ae60'};">${missingReports}</div><div class="kpi-l">דוחות חסרים</div></div>
+  </div>
+  <table>
+    <thead><tr><th>מדריך</th><th>משימה</th><th>מתוכנן</th><th>בוצע</th><th>טופס סיכום יום</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>
+  <div class="footer">מסמך זה הופק אוטומטית ממערכת ניהול ההדרכה. לא מהווה מסמך רשמי אלא עזר לניהול פנימי.</div>
+  <scr'+'ipt>
+    var csvData = ${JSON.stringify(csvRows)};
+    document.getElementById('csvBtn').addEventListener('click', function(){
+      var headers = ['מדריך','משימה','שעות','נסיעות','סטטוס דיווח'];
+      var allRows = [headers].concat(csvData);
+      var csv = allRows.map(function(r){ return r.map(function(c){ return '"'+String(c==null?'':c).replace(/"/g,'""')+'"'; }).join(','); }).join('\\n');
+      var blob = new Blob(['\\uFEFF'+csv], {type:'text/csv;charset=utf-8;'});
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'דוח_יומי_${dateStr}.csv';
+      a.click();
+    });
+  <\/sc'+'ript>
+</body></html>`);
+  printWin.document.close();
+  showToast('📄 דוח יומי נפתח לתצוגה מקדימה','success');
 }
 
 
@@ -21863,8 +22322,10 @@ async function generateAndActivateDemo(){
               const _demoLightMax=Math.min(8,_demoSinerioH);
               const _demoLightH=Math.round((2+_pseudoRand(date+name+'lh')*(_demoLightMax-2))*2)/2;
               const _demoNotes=_pseudoRand(date+name+'un')>0.5?DEMO_TASK_NOTES[Math.floor(_pseudoRand(date+name+'uns')*DEMO_TASK_NOTES.length)]:'';
-              rptMap[sk]={date,instructorName:name,taskId:'training',
+              rptMap[sk]={date,instructorName:name,taskId:'training',type:'unified_daily',
                 taskLabel:'קורס מעשי סיטאדיס',entryId:entry.id,submittedAt:Date.now(),
+                shiftStart:entry.shift==='custom'?entry.startTime:(SHIFT_H[entry.shift]?.s||''),
+                shiftEnd:entry.shift==='custom'?entry.endTime:(SHIFT_H[entry.shift]?.e||''),
                 quantity:myTrips.length,quantityLabel:'מספר נסיעות',
                 duration:totalLesson,durationLabel:'זמן שיעורים (דקות)',
                 lightHours:_demoLightH,sinerioHours:_demoSinerioH,
@@ -21893,7 +22354,30 @@ async function generateAndActivateDemo(){
               const _lightH=Math.round((2+_pseudoRand(date+name+'nlh')*(_lightMax-2))*2)/2;
               const _nNotes=_pseudoRand(date+name+'nun')>0.5?DEMO_TASK_NOTES[Math.floor(_pseudoRand(date+name+'nuns')*DEMO_TASK_NOTES.length)]:'';
               rptMap[sk]={date,instructorName:name,type:'unified_daily',submittedAt:Date.now(),
+                shiftStart:entry.shift==='custom'?entry.startTime:(SHIFT_H[entry.shift]?.s||''),
+                shiftEnd:entry.shift==='custom'?entry.endTime:(SHIFT_H[entry.shift]?.e||''),
                 lightHours:_lightH,sinerioHours:_sinerioH,feedbackCount:0,notes:_nNotes,isUnified:true};
+              totalReports++;
+            }
+          });
+        }
+
+        // ── unified reports for mentors (2026-08-19: מדריכי חונכים היו משובצים
+        // בדמו אך מעולם לא הגישו טופס דמו — הארכיון היה מציג "חונכים" ריקים) ──
+        if(!_isToday&&!_isFuture){
+          DEMO_MENTORS.forEach(mName=>{
+            if(_pseudoRand(date+mName+'mur')>0.25){// 75% chance of filing unified report
+              const mEntry=fullSched[date]?.find(e=>e.name===mName&&e.role==='mentor');
+              if(!mEntry)return;
+              const sk=mName.replace(/[.#$[\]/]/g,'_')+'__unified';
+              if(rptMap[sk])return;
+              const _mSinerioH=Math.round((6+_pseudoRand(date+mName+'msh')*3)*2)/2;
+              const _mLightMax=Math.min(6,_mSinerioH);
+              const _mLightH=Math.round((1+_pseudoRand(date+mName+'mlh')*(_mLightMax-1))*2)/2;
+              rptMap[sk]={date,instructorName:mName,type:'unified_daily',submittedAt:Date.now(),
+                shiftStart:mEntry.shift==='custom'?mEntry.startTime:(SHIFT_H[mEntry.shift]?.s||''),
+                shiftEnd:mEntry.shift==='custom'?mEntry.endTime:(SHIFT_H[mEntry.shift]?.e||''),
+                lightHours:_mLightH,sinerioHours:_mSinerioH,feedbackCount:0,notes:'',isUnified:true};
               totalReports++;
             }
           });
@@ -22534,25 +23018,28 @@ async function renderTasksTab(){
 }
 
 async function exportDashboardXLSX(){
-  showToast('⏳ מכין קובץ Excel...','info');
+  showToast('⏳ טוען נתונים...','info');
   try{
-    const yr=_monthlyDashDate.getFullYear();
-    const mo=_monthlyDashDate.getMonth();
-    // 2026-08-19: טעינה עצמאית — לא תלוי יותר בפתיחת "דשבורד חודשי" קודם
-    // (לפני התיקון: קובץ Excel ריק היה מיוצא בשקט ללא שגיאה אם הדשבורד לא נפתח קודם)
-    if(!Object.keys(_monthHistoryCache).length){
-      _monthHistoryCache=await loadMonthHistory(yr,mo);
+    const {start,end,label}=_resolveReportDates();
+    // 2026-08-19: תומך בטווח תאריכים מותאם. כשלא נבחר טווח — מתנהג כמו קודם
+    // (חודש הדשבורד, כולל שימוש במטמון אם כבר נטען). בטווח מותאם לא נוגעים
+    // במטמון החודשי, כדי לא לבלבל את תצוגת הדשבורד עם נתוני טווח אחר.
+    let monthData,taskRpts;
+    if(_reportsDateRange){
+      monthData=await loadDateRangeHistory(start,end);
+      taskRpts=await loadDateRangeTaskReports(start,end);
+    } else {
+      if(!Object.keys(_monthHistoryCache).length){
+        _monthHistoryCache=await loadMonthHistory(_monthlyDashDate.getFullYear(),_monthlyDashDate.getMonth());
+      }
+      monthData=_monthHistoryCache||{};
+      taskRpts=await loadMonthTaskReports(_monthlyDashDate.getFullYear(),_monthlyDashDate.getMonth());
     }
-    if(!Object.keys(_monthHistoryCache).length){
-      showToast('אין נתוני נסיעות לחודש זה','warning');return;
+    if(!Object.keys(monthData).length){
+      showToast('אין נתוני נסיעות לטווח זה','warning');return;
     }
-    const XLSX=await import('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js').catch(()=>window.XLSX);
-    if(!XLSX){showToast('שגיאה: ספריית Excel לא נטענה','warning');return;}
-    const wb=XLSX.utils.book_new();
-    const label=_monthlyDashDate.toLocaleDateString('he-IL',{month:'long',year:'numeric'});
 
     // Sheet 1: instructors summary
-    const monthData=_monthHistoryCache||{};
     const byInstr={};
     Object.values(monthData).forEach(day=>(day||[]).forEach(t=>{
       if(!byInstr[t.name])byInstr[t.name]={trips:0,lessons:0,minutes:0,delays:0,routeChanges:0};
@@ -22564,8 +23051,6 @@ async function exportDashboardXLSX(){
     }));
     const instrRows=[['מדריך','נסיעות','שיעורים','שעות','עיכובים','שינויי מסלול']];
     Object.entries(byInstr).sort().forEach(([name,v])=>instrRows.push([name,v.trips,+v.lessons.toFixed(1),+(v.minutes/60).toFixed(1),v.delays,v.routeChanges]));
-    const ws1=XLSX.utils.aoa_to_sheet(instrRows);
-    XLSX.utils.book_append_sheet(wb,ws1,'סיכום מדריכים');
 
     // Sheet 2: route efficiency
     const routeStats={};
@@ -22580,35 +23065,81 @@ async function exportDashboardXLSX(){
     const routeRows=[['מסלול','נסיעות','שיעורים ממוצע','משך ממוצע (דק)','עיכובים']];
     Object.entries(routeStats).sort((a,b)=>b[1].count-a[1].count).forEach(([r,v])=>
       routeRows.push([r,v.count,+(v.lessons/v.count).toFixed(1),Math.round(v.min/v.count),v.delays]));
-    const ws2=XLSX.utils.aoa_to_sheet(routeRows);
-    XLSX.utils.book_append_sheet(wb,ws2,'יעילות מסלול');
 
     // Sheet 3: task reports
-    const taskRpts=await loadMonthTaskReports(yr,mo);
     const taskRows=[['מדריך','משימה','כמות','משך (דק)','הערות','נהגים שנבקרו']];
     Object.values(taskRpts).forEach(r=>taskRows.push([r.instructorName,r.taskLabel||r.taskId,r.quantity||0,r.duration||0,r.notes||'',r.inspectedDrivers||'']));
-    const ws3=XLSX.utils.aoa_to_sheet(taskRows);
-    XLSX.utils.book_append_sheet(wb,ws3,'משימות');
 
     // Sheet 4: delays
     const delayRows=[['מדריך','תאריך','מסלול','עיכוב (דק)','סיבה']];
     Object.entries(monthData).forEach(([date,day])=>(day||[]).forEach(t=>{
       if(t.delayMin>0)delayRows.push([t.name,date,_routeLabel(t),t.delayMin,t.delayNote||'']);
     }));
-    const ws4=XLSX.utils.aoa_to_sheet(delayRows);
-    XLSX.utils.book_append_sheet(wb,ws4,'עיכובים');
 
     // Sheet 5: route changes
     const rcRows=[['מדריך','תאריך','מסלול שבוצע','סיבה']];
     Object.entries(monthData).forEach(([date,day])=>(day||[]).forEach(t=>{
       if(t.routeVariant>0)rcRows.push([t.name,date,_routeLabel(t),t.delayNote||'שינוי מסלול']);
     }));
-    const ws5=XLSX.utils.aoa_to_sheet(rcRows);
-    XLSX.utils.book_append_sheet(wb,ws5,'שינויי מסלול');
 
-    XLSX.writeFile(wb,'דשבורד_'+label.replace(/ /g,'_')+'.xlsx');
-    showToast('✅ קובץ Excel הורד','success');
-  }catch(e){console.error(e);showToast('שגיאה ביצוא: '+e.message,'warning');}
+    const sheets=[
+      {name:'סיכום מדריכים',rows:instrRows},
+      {name:'יעילות מסלול',rows:routeRows},
+      {name:'משימות',rows:taskRows},
+      {name:'עיכובים',rows:delayRows},
+      {name:'שינויי מסלול',rows:rcRows},
+    ];
+    _showExcelPreviewModal(`דשבורד — ${label}`,sheets,'דשבורד_'+label.replace(/ /g,'_')+'.xlsx');
+  }catch(e){console.error(e);showToast('שגיאה בהכנת הדוח: '+e.message,'warning');}
+}
+
+// 2026-08-19: תצוגה מקדימה למודל בעמוד (לא חלון חדש — צריך גישה ל-SheetJS/window.XLSX
+// שנטען בהקשר הזה) — מציג אילו גליונות ייכללו + תצוגה של הגליון הראשי, והורדה בפועל
+// רק בלחיצה על כפתור בתוך המודל.
+function _showExcelPreviewModal(title,sheets,filename){
+  const overlay=document.createElement('div');
+  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9800;display:flex;align-items:center;justify-content:center;';
+  overlay.className='log-overlay';
+  const mainSheet=sheets[0];
+  const headHtml=(mainSheet.rows[0]||[]).map(h=>`<th style="padding:6px 8px;border:1px solid #dde;background:#2c3e50;color:white;font-size:11px;">${_esc(String(h))}</th>`).join('');
+  const bodyHtml=mainSheet.rows.slice(1).map(r=>'<tr>'+r.map(c=>`<td style="padding:6px 8px;border:1px solid #eee;font-size:12px;">${_esc(String(c==null?'':c))}</td>`).join('')+'</tr>').join('');
+  overlay.innerHTML=`
+    <div style="background:white;border-radius:16px;width:min(820px,96vw);max-height:85vh;overflow:hidden;display:flex;flex-direction:column;direction:rtl;">
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:2px solid #eef2f8;">
+        <h3 style="margin:0;font-size:16px;">📊 ${_esc(title)}</h3>
+        <button onclick="this.closest('.log-overlay').remove()" style="width:auto !important;background:none;border:none;font-size:22px;cursor:pointer;color:#888;">×</button>
+      </div>
+      <div style="padding:14px 20px;border-bottom:1px solid #eef2f8;">
+        <div style="font-size:12px;color:#888;margin-bottom:8px;">הקובץ יכלול ${sheets.length} גליונות:</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;">
+          ${sheets.map(s=>`<span style="background:#eaf4fd;border:1px solid #b5d4f4;border-radius:14px;padding:3px 10px;font-size:11px;">${_esc(s.name)} (${Math.max(s.rows.length-1,0)})</span>`).join('')}
+        </div>
+      </div>
+      <div style="padding:10px 20px 0;font-size:12px;color:#555;">תצוגה מקדימה — גליון "${_esc(mainSheet.name)}":</div>
+      <div style="overflow:auto;flex:1;padding:10px 20px 16px;">
+        <table style="width:100%;border-collapse:collapse;">
+          <thead><tr>${headHtml}</tr></thead>
+          <tbody>${bodyHtml||'<tr><td style="padding:16px;color:#aaa;text-align:center;">אין נתונים</td></tr>'}</tbody>
+        </table>
+      </div>
+      <div style="padding:14px 20px;border-top:1px solid #eef2f8;display:flex;justify-content:flex-end;">
+        <button id="xlsxDownloadBtn" style="width:auto;padding:9px 20px;background:#217346;color:white;border:none;border-radius:8px;font-size:13px;font-weight:bold;cursor:pointer;">⬇️ הורד קובץ Excel</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  document.getElementById('xlsxDownloadBtn').onclick=async()=>{
+    try{
+      const XLSX=await import('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js').catch(()=>window.XLSX);
+      if(!XLSX){showToast('שגיאה: ספריית Excel לא נטענה','warning');return;}
+      const wb=XLSX.utils.book_new();
+      sheets.forEach(s=>{
+        const ws=XLSX.utils.aoa_to_sheet(s.rows);
+        XLSX.utils.book_append_sheet(wb,ws,s.name);
+      });
+      XLSX.writeFile(wb,filename);
+      showToast('✅ קובץ Excel הורד','success');
+    }catch(e){console.error(e);showToast('שגיאה ביצוא: '+e.message,'warning');}
+  };
 }
 // ══ STICKY NOTES ═══════════════════════════════════════════
 // Synced via Firebase (path: notes/{YYYY-MM}/{noteId}) so a note created on one device/browser
