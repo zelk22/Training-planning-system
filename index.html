@@ -14,7 +14,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 42</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 46</title>
 
 <style>
 
@@ -1391,7 +1391,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 
 
 /* ── Unified Daily Report Modal (global) ── */
-.unified-report-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9600;display:none;align-items:flex-start;justify-content:center;overflow-y:auto;padding:20px 0;}
+.unified-report-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9950;display:none;align-items:flex-start;justify-content:center;overflow-y:auto;padding:20px 0;}
 .unified-report-overlay.open{display:flex !important;}
 .unified-report-box{background:white;border-radius:18px;width:min(640px,96vw);margin:auto;direction:rtl;overflow:hidden;flex-shrink:0;}
 .unified-report-head{display:flex;justify-content:space-between;align-items:center;padding:18px 22px;background:linear-gradient(135deg,#1a2a3a,#2c3e50);color:white;}
@@ -1420,7 +1420,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 102;
+  const APP_VERSION = 106;
 
   function initFirebase() {
     try {
@@ -2371,7 +2371,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
   <!-- New-version banner (global — fix #65: shown to any tab whose loaded code is older than the latest deploy) -->
   <div id="versionUpdateBanner" style="display:none;background:#e8f4fd;border:1.5px solid #3498db;border-radius:8px;padding:8px 14px;margin:8px 16px 0;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
     <span style="font-size:13px;font-weight:bold;color:#1a5276;">🔄 גרסה חדשה של המערכת זמינה — יש לרענן כדי לקבל את התיקונים האחרונים</span>
-    <button onclick="location.href=location.pathname+'?v='+Date.now();" style="width:auto;padding:5px 12px;background:#3498db;color:white;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:bold;">🔄 רענן עכשיו</button>
+    <button onclick="location.replace(location.pathname+'?v='+Date.now());" style="width:auto;padding:5px 12px;background:#3498db;color:white;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:bold;">🔄 רענן עכשיו</button>
   </div>
 
   <!-- Demo mode banner (global — shown above tabs, in every section, when demo is active) -->
@@ -3913,7 +3913,7 @@ window.TraineeSystem = {
     .ts-settings-close { background:none;border:none;font-size:22px;cursor:pointer;color:#888;width:auto !important;padding:4px 8px; }
     .ts-settings-close:hover { color:#e74c3c; }
     /* ── Unified Daily Report Modal ── */
-.unified-report-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9600;display:none;align-items:flex-start;justify-content:center;overflow-y:auto;padding:20px 0;}
+.unified-report-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9950;display:none;align-items:flex-start;justify-content:center;overflow-y:auto;padding:20px 0;}
 .unified-report-overlay.open{display:flex;}
 .unified-report-box{background:white;border-radius:18px;width:min(640px,96vw);margin:auto;direction:rtl;overflow:hidden;flex-shrink:0;}
 .unified-report-head{display:flex;justify-content:space-between;align-items:center;padding:18px 22px;background:linear-gradient(135deg,#1a2a3a,#2c3e50);color:white;}
@@ -4813,6 +4813,13 @@ window.TraineeSystem = {
                 mark.className = 'lesson-content-mark';
                 cell.appendChild(mark);
             }
+            // 2026-08-19: מספר שיעור גלוי תמיד מעל השנתון — קודם הוצג רק בריחוף (title),
+            // ובנייד אין ריחוף, אז לא היה ניתן לזהות מספר שיעור בלי ללחוץ על כל תא בנפרד.
+            const numLbl = document.createElement('div');
+            numLbl.className = 'lesson-num-label';
+            numLbl.textContent = n;
+            numLbl.style.cssText = 'position:absolute;top:-13px;left:50%;transform:translateX(-50%);font-size:7px;color:#888;line-height:1;pointer-events:none;white-space:nowrap;';
+            cell.appendChild(numLbl);
             container.appendChild(cell);
         }
     },
@@ -5075,6 +5082,10 @@ window.TraineeSystem = {
                 : _avgScore < _levelCfg.lowScoreRed ? 'level-red'
                 : _avgScore < _levelCfg.lowScoreOrange ? 'level-yellow'
                 : 'level-green';
+            const _reportCount = (t.lessons || []).length;
+            const _countBadgeStyle = _reportCount > 0
+                ? 'background:#eafaf1;color:#1e8449;border:1px solid #a9dfbf;font-weight:700;'
+                : 'background:#f4f4f4;color:#999;border:1px solid #e0e0e0;';
             l.innerHTML += `
             <div class="trainee-card ${_levelClass}" data-id="${t.id}">
                 <div class="card-top">
@@ -5083,7 +5094,7 @@ window.TraineeSystem = {
                     <div class="card-bar"><div class="card-bar-fill" style="width:${pct}%"></div></div>
                 </div>
                 <div class="card-bottom">
-                    <span class="card-count">${(t.lessons || []).length} דיווחים</span>
+                    <span class="card-count" style="padding:2px 8px;border-radius:10px;font-size:11px;${_countBadgeStyle}">${_reportCount > 0 ? '✅ ' : ''}${_reportCount} דיווחים</span>
                     <div class="card-acts">
                         ${_editBtnHtml}
                         ${_delBtnHtml}
@@ -8406,6 +8417,7 @@ const _V100_LOG_LABELS = {
   add_mentor: '➕ הוספת חונך',
   remove_mentor: '🗑️ הסרת חונך',
   save_weekly_sched: '📆 שמירת שיבוץ שבועי',
+  edit_unified_report: '✏️ עריכת סיכום יום',
   send_message: '✉️ שליחת הודעה',
   send_message_to_admin: '✉️ הודעה למנהל',
   'שמירת נסיעה': '💾 שמירת נסיעה',
@@ -14186,8 +14198,25 @@ function openSchedModal(date){
   const instrForm = document.getElementById('schedInstrSimpleForm');
   const mgrForm = document.getElementById('schedManagerTableForm');
 
-  if(currentRole==='instructor'||currentRole==='mentor'){
+  // 2026-08-19: בתצוגת "צוות" (לא "שלי"), לחיצה על יום צריכה להראות פרטי שיבוץ
+  // מלאים לצפייה בלבד — לא טופס בקשת שיבוץ (זה שייך רק לתצוגה האישית "שלי").
+  const isTeamViewClick=(currentRole==='instructor'||currentRole==='mentor')
+    && typeof _instrTeamView!=='undefined' && _instrTeamView;
+  if(isTeamViewClick){
+    const titleEl2=document.getElementById('schedModalTitle');
+    if(titleEl2) titleEl2.textContent+=' — תצוגת צוות (לצפייה)';
+    const addFormWrap=document.getElementById('schedAddForm');
+    if(addFormWrap) addFormWrap.style.display='none';
+    if(instrForm) instrForm.style.display='none';
+    if(mgrForm) mgrForm.style.display='none';
+    const list=document.getElementById('schedEntriesList');
+    const arrow=document.getElementById('schedEntriesArrow');
+    if(list) list.style.display='block'; // פתוח אוטומטית — זה התוכן העיקרי של החלון במצב הזה
+    if(arrow) arrow.textContent='▾';
+  } else if(currentRole==='instructor'||currentRole==='mentor'){
 
+    const addFormWrap2=document.getElementById('schedAddForm');
+    if(addFormWrap2) addFormWrap2.style.display='';
     if(instrForm) instrForm.style.display='block';
     if(mgrForm) mgrForm.style.display='none';
 
@@ -14232,6 +14261,8 @@ function openSchedModal(date){
 
   } else {
 
+    const addFormWrap3=document.getElementById('schedAddForm');
+    if(addFormWrap3) addFormWrap3.style.display='';
     if(instrForm) instrForm.style.display='none';
     if(mgrForm) mgrForm.style.display='block';
 
@@ -14243,7 +14274,11 @@ function openSchedModal(date){
 
   const footer=document.getElementById('schedFooter');
 
-  if(currentRole==='admin'){
+  if(isTeamViewClick){
+
+    footer.innerHTML=`<button onclick="closeSchedModal()" style="padding:10px 14px;background:#f5f5f5;color:#666;border:none;border-radius:8px;font-size:13px;cursor:pointer;margin:0;">סגור</button>`;
+
+  } else if(currentRole==='admin'){
 
     footer.innerHTML=`
 
@@ -14598,8 +14633,10 @@ function renderSchedEntriesList(date){
 
   let entries=schedData[date]||[];
 
-  // ── SIMPLE RULE: admin sees all; instructor/mentor sees only their own ──
-  if(currentRole !== 'admin'){
+  // ── SIMPLE RULE: admin sees all; instructor/mentor sees only their own —
+  // 2026-08-19: אלא אם התצוגה כרגע "צוות" (_instrTeamView), ואז רואים את כולם
+  // (לצפייה בלבד — לא לעריכה, זה נאכף למטה ב-openSchedModal ובכפתורי הפעולה).
+  if(currentRole !== 'admin' && !(typeof _instrTeamView!=='undefined' && _instrTeamView)){
     entries = entries.filter(e=>e.name===currentUserName);
   }
 
@@ -20668,30 +20705,44 @@ function _urUpdateChips(idx) {
     const isDone      = done.has(n);
     const isLocked    = !isFree && n < maxDone;
     const isMsBlocked = (_urMsBlockAbove > 0 && n >= _urMsBlockAbove);
-    const style = isDone      ? 'background:#27ae60;color:white;border-color:#27ae60;'
-                : isMsBlocked ? 'background:#fdecea;color:#c0392b;border-color:#e74c3c;cursor:not-allowed;'
-                : isLocked    ? 'background:#ddd;color:#aaa;cursor:not-allowed;border-color:#ddd;'
-                :               'background:white;color:#333;border-color:#aaa;';
-    const isMsWarn = (!isMsBlocked && _urMsWarnAbove > 0 && n >= _urMsWarnAbove);
-    const title = isMsBlocked ? ('\u05D7\u05E1\u05D5\u05DD \u2014 \u05D8\u05E1\u05D8 ' + (_urMsBlockAbove-1) + ' \u05D8\u05E8\u05DD \u05E2\u05D1\u05E8') : '';
-    return '<button type="button" data-chip-n="' + n + '" data-fb-idx="' + idx + '"' +
-      ' onclick="_urToggleChip(this,' + n + ',' + (isFree?'true':'false') + ',' + (isMsBlocked?'true':'false') + ',' + (isMsWarn?'true':'false') + ',' + (_urMsWarnAbove-1||0) + ')"' +
+    // 2026-08-19: תוקן באג — "כבר בוצע" (done) ו"נבחר עכשיו בטופס זה" (selected)
+    // היו שני מצבים שונים לגמרי, אך שניהם נצבעו באותו ירוק בדיוק, ושניהם היו
+    // לחיצים באותו אופן (toggle) — כך שאי אפשר היה להבחין ביניהם, ולחיצה בטעות
+    // על שיעור שכבר בוצע "ביטלה" אותו ויזואלית ועלולה הייתה להיכלל שוב בשמירה.
+    // עכשיו: done = קו חוצה, לא לחיץ בכלל. selected = טוגל אמיתי (בחירה/ביטול).
+    const state = isDone ? 'done' : isMsBlocked ? 'blocked' : isLocked ? 'locked' : 'available';
+    const style = state==='done'     ? 'background:#d5f0e0;color:#1e8449;border-color:#a9dfbf;cursor:not-allowed;text-decoration:line-through;text-decoration-thickness:2px;'
+                : state==='blocked'  ? 'background:#fdecea;color:#c0392b;border-color:#e74c3c;cursor:not-allowed;'
+                : state==='locked'   ? 'background:#ddd;color:#aaa;cursor:not-allowed;border-color:#ddd;'
+                :                      'background:white;color:#333;border-color:#aaa;cursor:pointer;';
+    const isMsWarn = (state==='available' && _urMsWarnAbove > 0 && n >= _urMsWarnAbove);
+    const title = state==='done' ? 'שיעור זה כבר בוצע ותועד — לא ניתן לבחור שוב'
+                : state==='blocked' ? ('חסום — טסט ' + (_urMsBlockAbove-1) + ' טרם עבר')
+                : '';
+    const clickAttr = state==='available'
+      ? ' onclick="_urToggleChip(this,' + n + ',' + (isMsWarn?'true':'false') + ',' + (_urMsWarnAbove-1||0) + ')"'
+      : '';
+    return '<button type="button" data-chip-n="' + n + '" data-fb-idx="' + idx + '" data-state="' + state + '"' +
+      clickAttr +
       (title ? ' title="' + title + '"' : '') +
-      ' style="width:30px;height:30px;border-radius:50%;border:1.5px solid;font-size:11px;font-weight:bold;cursor:pointer;' + style + 'padding:0;width:auto !important;min-width:28px;">' +
+      ' style="width:30px;height:30px;border-radius:50%;border:1.5px solid;font-size:11px;font-weight:bold;' + style + 'padding:0;width:auto !important;min-width:28px;">' +
       n + '</button>';
   }).join('');
 }
 
-function _urToggleChip(btn, n, isFree, isMsBlocked, isMsWarn, msWarnTestNum) {
-  const isDone   = btn.style.background.includes('27ae60');
-  const isLocked = btn.style.cursor === 'not-allowed';
-  if (isMsBlocked || isLocked) return; // חסום ע"י מיילסטון או כבר נעשה
-  if (isMsWarn && !isDone && typeof showToast === 'function')
+// לחיצה על שנתון פנוי (available) — טוגל אמיתי: בחירה (selected) או ביטול בחירה
+// (חזרה ל-available). שנתונים שכבר בוצעו (done) לא מקבלים בכלל onclick — לא ניתן
+// ללחוץ עליהם, כמבוקש.
+function _urToggleChip(btn, n, isMsWarn, msWarnTestNum) {
+  const nowSelected = btn.dataset.state === 'selected';
+  if (!nowSelected && isMsWarn && typeof showToast === 'function')
     showToast('⚠️ שים לב: טסט ' + msWarnTestNum + ' טרם עבר רשמית', 'warning');
-  if (isDone) {
-    btn.style.cssText += 'background:white;color:#333;border-color:#aaa;';
+  if (nowSelected) {
+    btn.dataset.state = 'available';
+    btn.style.cssText = btn.style.cssText.replace(/background:[^;]+;color:[^;]+;border-color:[^;]+;/, 'background:white;color:#333;border-color:#aaa;');
   } else {
-    btn.style.cssText += 'background:#27ae60;color:white;border-color:#27ae60;';
+    btn.dataset.state = 'selected';
+    btn.style.cssText = btn.style.cssText.replace(/background:[^;]+;color:[^;]+;border-color:[^;]+;/, 'background:#2980b9;color:white;border-color:#2980b9;');
   }
 }
 
@@ -20746,7 +20797,7 @@ async function submitUnifiedReport() {
     // Collect selected chip numbers
     const lessonNums = [];
     block.querySelectorAll('[data-chip-n]').forEach(btn => {
-      if (btn.style.background && btn.style.background.includes('27ae60'))
+      if (btn.dataset.state === 'selected')
         lessonNums.push(parseInt(btn.dataset.chipN));
     });
     // Extra text for כשירות
@@ -20764,6 +20815,21 @@ async function submitUnifiedReport() {
     });
     lessonResults.push({ traineeId, freeName, freeCourseId, lesson, idx });
   });
+
+  // 2026-08-19: תיקון באג — משוב חניך נשמר לפעמים עם ציונים אך בלי מספר שיעור
+  // נבחר (lessonNums ריק), כי לא הייתה ולידציה שמחייבת בחירת שנתון. setTrain()
+  // (התקדמות הרכבת) מסתמך אך ורק על lessonNums — כך שמשוב תקין נראה "נעלם"
+  // מבחינת ההתקדמות הוויזואלית, גם שהוא כן נשמר ומופיע במונה הדיווחים.
+  const _missingLessonNum = lessonResults.filter(r => !r.lesson.lessonNums.length);
+  if (_missingLessonNum.length) {
+    const _names = _missingLessonNum.map(r => {
+      const block = document.querySelector(`.ur-trainee-block[data-fb-idx="${r.idx}"]`);
+      const sel = document.getElementById(`ur-fb-${r.idx}-trainee`);
+      return sel?.options[sel?.selectedIndex]?.textContent || r.freeName || '?';
+    }).join(', ');
+    showToast(`⚠️ יש לבחור מספר שיעור (שנתון) עבור: ${_names} — אחרת ההתקדמות לא תתעדכן`, 'warning');
+    return;
+  }
 
   // Attach feedback count to report before saving
   report.feedbackCount = lessonResults.length;
@@ -20915,15 +20981,20 @@ function _filterUnifiedArchive(query){
   });
 }
 
-function openViewUnifiedReport(date, instructorName) {
+async function openViewUnifiedReport(date, instructorName) {
   const reportKey = `${date}__${instructorName}__unified`;
   const report = (window._taskReportsCache && window._taskReportsCache[reportKey]) || null;
   if (!report) { showToast('⚠️ לא נמצא סיכום יום לתאריך זה', 'warning'); return; }
 
+  // 2026-08-19: שומר הקשר נוכחי לצורך יכולת עריכה (תיקון תאריך שגוי וכו')
+  window._vurCurrent = { date, instructorName };
+  const editBtn = document.getElementById('vur-edit-btn');
+  if (editBtn) editBtn.style.display = (currentRole === 'admin') ? 'inline-block' : 'none';
+
   const dObj = new Date(date + 'T12:00:00');
   const dateLabel = dObj.toLocaleDateString('he-IL', {weekday:'long', day:'numeric', month:'long', year:'numeric'});
   const titleEl = document.getElementById('vur-title');
-  if (titleEl) titleEl.textContent = `📝 ${_esc(instructorName)} — ${dateLabel}`;
+  if (titleEl) titleEl.textContent = `📝 ${instructorName} — ${dateLabel}`;
 
   // ── Basic shift fields ──
   // Fix #99 follow-up (per Lavi's correction): sinerioHours IS the total shift duration
@@ -20954,18 +21025,52 @@ function openViewUnifiedReport(date, instructorName) {
       : `<div style="color:#aaa;font-size:13px;">אין הערות</div>`;
   }
 
+  // פותחים את החלונית כאן — מיד אחרי הפרטים הבסיסיים, לא ממתינים לטעינת החניכים
+  const overlay = document.getElementById('viewUnifiedReportOverlay');
+  if (overlay) { overlay.classList.add('open'); overlay.scrollTop = 0; }
+
   // ── Trainee feedback (reconstructed from trainee lesson logs) ──
   const feedbackEl = document.getElementById('vur-feedback');
   if (feedbackEl) {
+    feedbackEl.innerHTML = '<div style="color:#aaa;font-size:13px;">⏳ טוען נתוני חניכים...</div>';
+
+    // 2026-08-19: תיקון באג אמיתי (לא רק דמו) — אם המנהל ניגש לארכיון/לצפייה בלי
+    // לפתוח קודם את טאב "חניכים ומשובים" באותו סשן, TraineeSystem.courses מעולם
+    // לא נטען, כך שהחיפוש למטה תמיד היה מפספס גם חניכים אמיתיים שקיימים בפועל.
+    // אותו דפוס בדיוק שכבר קיים ל-_urPopulateTraineeSelect, מיושם כאן.
+    if (typeof TraineeSystem !== 'undefined' && !(TraineeSystem.courses?.length)
+        && !(typeof _isDemoMode === 'function' && _isDemoMode())) {
+      try {
+        if (!TraineeSystem.coursesRef) TraineeSystem.initFirebase();
+        await TraineeSystem.loadCourses();
+      } catch(e) { console.warn('[viewUnifiedReport] on-demand course load failed:', e); }
+    }
+    if (typeof TraineeSystem !== 'undefined' && !(TraineeSystem.settings?.skills?.length)
+        && !(typeof _isDemoMode === 'function' && _isDemoMode())) {
+      try {
+        if (!TraineeSystem.settingsRef) TraineeSystem.initFirebase();
+        await TraineeSystem.loadSettings();
+      } catch(e) { console.warn('[viewUnifiedReport] on-demand settings load failed:', e); }
+    }
+
+    // 2026-08-19: לחפש בכל הקורסים, לא רק ב-TraineeSystem.trainees (שמשקף רק את
+    // הקורס הפעיל כרגע בזיכרון) — חניך יכול להיות בקורס שאינו הנבחר הנוכחי.
+    let allTrainees = [];
+    if (typeof TraineeSystem !== 'undefined') {
+      if (Array.isArray(TraineeSystem.courses) && TraineeSystem.courses.length) {
+        TraineeSystem.courses.forEach(c => { if (Array.isArray(c.trainees)) allTrainees.push(...c.trainees); });
+      } else if (Array.isArray(TraineeSystem.trainees)) {
+        allTrainees = TraineeSystem.trainees;
+      }
+    }
+
     let matches = [];
     try {
-      if (typeof TraineeSystem !== 'undefined' && Array.isArray(TraineeSystem.trainees)) {
-        TraineeSystem.trainees.forEach(t => {
-          (t.lessons || []).forEach(les => {
-            if (les.date === date && les.ins === instructorName) matches.push({trainee: t, lesson: les});
-          });
+      allTrainees.forEach(t => {
+        (t.lessons || []).forEach(les => {
+          if (les.date === date && les.ins === instructorName) matches.push({trainee: t, lesson: les});
         });
-      }
+      });
     } catch(e) {}
 
     const skills = (typeof TraineeSystem !== 'undefined' && TraineeSystem.settings?.skills?.length)
@@ -20997,14 +21102,91 @@ function openViewUnifiedReport(date, instructorName) {
       feedbackEl.innerHTML = html;
     }
   }
-
-  const overlay = document.getElementById('viewUnifiedReportOverlay');
-  if (overlay) { overlay.classList.add('open'); overlay.scrollTop = 0; }
 }
 
 function closeViewUnifiedReport() {
   const overlay = document.getElementById('viewUnifiedReportOverlay');
   if (overlay) overlay.classList.remove('open');
+}
+
+// 2026-08-19: אפשרות עריכה לטופס סיכום יום שכבר בוצע — למשל מדריך שטעה בתאריך.
+// מוגבל לפרטי המשמרת הבסיסיים (תאריך, שעות, סינריון/הדרכה קלה, הערות) — לא
+// עורך משוב חניכים פרטני (שנשמר בנפרד בתיקי החניכים עצמם, לא בטופס).
+function toggleEditUnifiedReport() {
+  const cur = window._vurCurrent;
+  if (!cur) return;
+  const reportKey = `${cur.date}__${cur.instructorName}__unified`;
+  const report = (window._taskReportsCache && window._taskReportsCache[reportKey]) || null;
+  if (!report) return;
+  const basicEl = document.getElementById('vur-basic');
+  if (!basicEl) return;
+
+  basicEl.innerHTML = `
+    <div style="display:flex;flex-direction:column;gap:10px;font-size:13px;">
+      <div style="font-size:11px;color:#e67e22;background:#fff8ee;border:1px solid #f5d9a8;border-radius:8px;padding:6px 10px;">⚠️ עריכת פרטי הדוח בלבד — משוב חניכים פרטני נשמר בתיק כל חניך בנפרד ואינו נערך כאן.</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <label style="flex:1;min-width:130px;">תאריך<br><input type="date" id="vur-edit-date" value="${cur.date}" style="width:100%;padding:6px;border:1.5px solid #ddd;border-radius:6px;"></label>
+        <label style="flex:1;min-width:100px;">שעת התחלה<br><input type="time" id="vur-edit-start" value="${report.shiftStart||''}" style="width:100%;padding:6px;border:1.5px solid #ddd;border-radius:6px;"></label>
+        <label style="flex:1;min-width:100px;">שעת סיום<br><input type="time" id="vur-edit-end" value="${report.shiftEnd||''}" style="width:100%;padding:6px;border:1.5px solid #ddd;border-radius:6px;"></label>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <label style="flex:1;min-width:120px;">שעות סינריון<br><input type="number" step="0.5" id="vur-edit-sinerio" value="${report.sinerioHours||0}" style="width:100%;padding:6px;border:1.5px solid #ddd;border-radius:6px;"></label>
+        <label style="flex:1;min-width:120px;">שעות הדרכה קלה<br><input type="number" step="0.5" id="vur-edit-light" value="${report.lightHours||0}" style="width:100%;padding:6px;border:1.5px solid #ddd;border-radius:6px;"></label>
+      </div>
+      <label>הערות<br><textarea id="vur-edit-notes" rows="2" style="width:100%;padding:6px;border:1.5px solid #ddd;border-radius:6px;">${report.notes||''}</textarea></label>
+      <div style="display:flex;gap:8px;">
+        <button onclick="_saveEditedUnifiedReportBasics()" style="width:auto;padding:8px 16px;background:var(--success);color:white;border:none;border-radius:8px;font-size:13px;font-weight:bold;cursor:pointer;">💾 שמור שינויים</button>
+        <button onclick="openViewUnifiedReport('${cur.date}','${cur.instructorName.replace(/'/g,"\\'")}')" style="width:auto;padding:8px 16px;background:#f5f5f5;color:#666;border:none;border-radius:8px;font-size:13px;cursor:pointer;">ביטול</button>
+      </div>
+    </div>`;
+}
+
+async function _saveEditedUnifiedReportBasics() {
+  const cur = window._vurCurrent;
+  if (!cur) return;
+  const oldKey = `${cur.date}__${cur.instructorName}__unified`;
+  const report = (window._taskReportsCache && window._taskReportsCache[oldKey]) || null;
+  if (!report) return;
+
+  const newDate = document.getElementById('vur-edit-date')?.value || cur.date;
+  report.shiftStart = document.getElementById('vur-edit-start')?.value || '';
+  report.shiftEnd = document.getElementById('vur-edit-end')?.value || '';
+  report.sinerioHours = parseFloat(document.getElementById('vur-edit-sinerio')?.value) || 0;
+  report.lightHours = parseFloat(document.getElementById('vur-edit-light')?.value) || 0;
+  report.notes = document.getElementById('vur-edit-notes')?.value.trim() || '';
+  report.editedAt = Date.now();
+  report.editedBy = currentUserName || '';
+
+  const dateChanged = newDate !== cur.date;
+  const newKey = `${newDate}__${cur.instructorName}__unified`;
+  report.date = newDate;
+
+  try {
+    // מסיר מהתאריך הישן (אם השתנה), כותב לתאריך החדש
+    if (dateChanged) {
+      const oldLs = JSON.parse(localStorage.getItem('taskReports_' + cur.date) || '{}');
+      delete oldLs[oldKey];
+      localStorage.setItem('taskReports_' + cur.date, JSON.stringify(oldLs));
+      delete window._taskReportsCache[oldKey];
+    }
+    const newLs = JSON.parse(localStorage.getItem('taskReports_' + newDate) || '{}');
+    newLs[newKey] = report;
+    localStorage.setItem('taskReports_' + newDate, JSON.stringify(newLs));
+    window._taskReportsCache[newKey] = report;
+
+    if (window._fbDb && !_isDemoMode()) {
+      const safeKey = cur.instructorName.replace(/[.#$[\]/]/g,'_') + '__unified';
+      if (dateChanged) {
+        try { await _fbRef(_db, `taskReports/${cur.date}/${safeKey}`).remove(); } catch(e) {}
+      }
+      await _fbSet(_fbRef(_db, `taskReports/${newDate}/${safeKey}`), report);
+    }
+  } catch(e) { console.warn('edit unified report save:', e); showToast('שגיאה בשמירת השינויים', 'warning'); return; }
+
+  _logAction('edit_unified_report', `עריכת סיכום יום: ${cur.instructorName} — ${cur.date}${dateChanged ? ' → ' + newDate : ''}`);
+  showToast('✅ השינויים נשמרו', 'success');
+  try { renderDaySummary(); } catch(e) {}
+  openViewUnifiedReport(newDate, cur.instructorName);
 }
 
 // ── Custom fields settings (manager) ──
@@ -23627,13 +23809,20 @@ function _generateTraineeDemoData() {
   TraineeSystem.trainees.sort((a,b)=>(b.lessons||[]).length-(a.lessons||[]).length);
 
   // Inject lessons from demo taskReports (unified reports by trip instructors)
+  // 2026-08-19: תוקן באג גורף — הקוד קרא מ-'demo_rpts_'+mk שמעולם לא נכתב בפועל
+  // (הנתון האמיתי נשמר תחת 'taskReports_'+date לכל יום). כתוצאה, אף משוב חניך
+  // מדמו לא הוזרק אף פעם לתיק אף חניך — "לא נמצא פירוט" תמיד, בכל הדוחות.
   try {
     const _today = _localDateStr(new Date());
     const _demoMonths = JSON.parse(localStorage.getItem('demo_months') || '[]');
     _demoMonths.forEach(mk => {
-      const rpts = JSON.parse(localStorage.getItem('demo_rpts_' + mk) || '{}');
-      Object.entries(rpts).forEach(([date, rptMap]) => {
-        if(date >= _today) return; // skip today and future
+      const [y, m] = mk.split('-').map(Number);
+      const daysInMonth = new Date(y, m, 0).getDate();
+      for (let d = 1; d <= daysInMonth; d++) {
+        const date = `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+        if (date >= _today) continue; // skip today and future
+        let rptMap;
+        try { rptMap = JSON.parse(localStorage.getItem('taskReports_' + date) || '{}'); } catch(e) { continue; }
         Object.values(rptMap).forEach(r => {
           if(!r.isUnified || !r.traineeFeedback || !r.traineeFeedback.length) return;
           r.traineeFeedback.forEach(fb => {
@@ -23648,7 +23837,7 @@ function _generateTraineeDemoData() {
             } catch(e) {}
           });
         });
-      });
+      }
     });
   } catch(e) { console.warn('demo trainee lesson inject:', e); }
 
@@ -24615,7 +24804,10 @@ function _resetTraineeSummaryConfig() {
 
     <div class="unified-report-head">
       <h3 id="vur-title">📝 סיכום יום</h3>
-      <button class="unified-report-close" onclick="closeViewUnifiedReport()">×</button>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <button id="vur-edit-btn" onclick="toggleEditUnifiedReport()" style="display:none;width:auto;padding:5px 12px;background:#eaf2fb;border:1px solid var(--secondary);color:var(--secondary);border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;">✏️ ערוך פרטים</button>
+        <button class="unified-report-close" onclick="closeViewUnifiedReport()">×</button>
+      </div>
     </div>
 
     <div class="unified-report-section">
