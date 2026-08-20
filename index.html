@@ -14,7 +14,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 46</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 53</title>
 
 <style>
 
@@ -1420,7 +1420,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 106;
+  const APP_VERSION = 113;
 
   function initFirebase() {
     try {
@@ -3532,6 +3532,11 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
           <span style="font-size:13px;font-weight:600;color:#2c3e50;">דוח מצב חניכים</span>
           <span style="font-size:11px;color:#888;">התקדמות, ממוצעים, מדריכים</span>
         </button>
+        <button onclick="openStuckLessonsManager()" style="display:flex;flex-direction:column;align-items:flex-start;gap:4px;padding:14px 16px;background:#fff8ee;border:1.5px solid #f5d9a8;border-radius:10px;cursor:pointer;text-align:right;">
+          <span style="font-size:18px;">🔧</span>
+          <span style="font-size:13px;font-weight:600;color:#8a5a1a;">שיוך מספרי שיעור לדיווחים ישנים</span>
+          <span style="font-size:11px;color:#888;">דיווחים עם ציונים אך בלי מספר שיעור — פוגע בהתקדמות במסלול</span>
+        </button>
       </div>
     </div>
 
@@ -4095,7 +4100,8 @@ window.TraineeSystem = {
         </div>
 
         <div id="pdf-content">
-            <h1 id="det-name" style="margin:0 0 4px; font-size:2.5em; color:var(--rail-dark); font-weight:800;"></h1>
+            <h1 id="det-name" style="margin:0 0 4px; font-size:2.5em; color:var(--rail-dark); font-weight:800; display:inline-block;"></h1>
+            <span id="det-level-badge" style="display:inline-block;margin-right:10px;vertical-align:middle;"></span>
             <p id="det-sub" style="color:#a0aec0; margin:0 0 8px; font-size:0.93em;"></p>
             <div id="det-milestones" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;"></div>
 
@@ -5074,9 +5080,9 @@ window.TraineeSystem = {
             const _editBtnHtml = _isAdminForDelete
                 ? `<button class="cab" data-edit-name="${t.id}" data-name="${safeName}" title="עריכת שם">✏️</button>`
                 : '';
-            const _scoredLessons = (t.lessons || []).filter(l => l.s1 != null && l.s2 != null && l.s3 != null && l.s4 != null && l.s5 != null);
+            const _scoredLessons = (t.lessons || []).filter(l => _lessonScoreAvg(l) !== null);
             const _avgScore = _scoredLessons.length
-                ? _scoredLessons.reduce((sum, l) => sum + (l.s1 + l.s2 + l.s3 + l.s4 + l.s5) / 5, 0) / _scoredLessons.length
+                ? _scoredLessons.reduce((sum, l) => sum + _lessonScoreAvg(l), 0) / _scoredLessons.length
                 : null;
             const _levelClass = _avgScore === null ? ''
                 : _avgScore < _levelCfg.lowScoreRed ? 'level-red'
@@ -5259,6 +5265,10 @@ window.TraineeSystem = {
         const t = this.trainees.find(x => x.id === this.currentId);
         if (!t) return;
 
+        // 2026-08-19: קודם כל, מיד — כדי שהשם תמיד יוצג גם אם משהו אחר בפונקציה
+        // הזו נכשל בהמשך (כמו chinuchSection null שהיה יכול לקרוס בשקט).
+        try { this.$('det-name').innerText = t.name; } catch(e) {}
+
         let maxL = 0;
         const orbusDone = new Set();
         const chinuchDone = new Set();
@@ -5278,13 +5288,15 @@ window.TraineeSystem = {
         const len    = (t.lessons || []).length;
         const isTech = maxL < 11;
 
-        this.$('det-name').innerText = t.name;
         const _orbusSub = orbusDone.size > 0 ? ` • אורבוס: ${orbusDone.size}/7` : '';
         this.$('det-sub').innerText  = `${len} דיווחים • קורס: שיעור ${maxL}/50${_orbusSub} • חניכה: ${chinuchDone.size}/50`;
         this.setTrain(maxL);
         this.updateS2Label();
         // Render milestone status badges on detail view
         this._renderDetailMilestoneBadges(t, maxL);
+        // 2026-08-19: תג רמה/סטטוס (נגזרת ניקוד) על תיק החניך — היה קיים רק על
+        // הכרטיס ברשימה הראשית, לא בתיק עצמו.
+        try { _renderDetailLevelBadge(t); } catch(e) {}
 
         const orbusSection = this.$('orbus-section');
         if (orbusSection) {
@@ -5299,13 +5311,15 @@ window.TraineeSystem = {
         }
 
         const chinuchSection = this.$('chinuch-section');
-        if (chinuchDone.size > 0) {
-            chinuchSection.style.display = 'block';
-            const pct = Math.min((chinuchDone.size / 50) * 100, 100);
-            this.$('chinuch-bar-fill').style.width = pct + '%';
-            this.$('chinuch-count').innerText = `${chinuchDone.size} / 50 שיעורים`;
-        } else {
-            chinuchSection.style.display = 'none';
+        if (chinuchSection) {
+            if (chinuchDone.size > 0) {
+                chinuchSection.style.display = 'block';
+                const pct = Math.min((chinuchDone.size / 50) * 100, 100);
+                this.$('chinuch-bar-fill').style.width = pct + '%';
+                this.$('chinuch-count').innerText = `${chinuchDone.size} / 50 שיעורים`;
+            } else {
+                chinuchSection.style.display = 'none';
+            }
         }
 
         const s2label = isTech ? 'מבנה דיפו' : 'מבנה קו';
@@ -8418,6 +8432,7 @@ const _V100_LOG_LABELS = {
   remove_mentor: '🗑️ הסרת חונך',
   save_weekly_sched: '📆 שמירת שיבוץ שבועי',
   edit_unified_report: '✏️ עריכת סיכום יום',
+  fix_stuck_lesson: '🔧 שיוך מספר שיעור',
   send_message: '✉️ שליחת הודעה',
   send_message_to_admin: '✉️ הודעה למנהל',
   'שמירת נסיעה': '💾 שמירת נסיעה',
@@ -16902,6 +16917,149 @@ function _showTraineeReport(){
   }
 }
 
+// 2026-08-19: כלי מנהל — דיווחי חניכים ישנים (מלפני התיקון) נשמרו עם ציונים אך
+// בלי lessonNums, כך שהרכבת/מד ההתקדמות אף פעם לא זזה בגללם ולא סומנו כ"בוצע".
+// הכלי מאתר את כל הדיווחים ה"תקועים" האלה ומאפשר שיוך מספר שיעור בדיעבד.
+const NUMBERED_MISSIONS = ['קורס מעשי סיטאדיס','קורס מעשי','קורס','קורס מעשי אורבוס','חניכה'];
+
+function _parseLessonNumsInput(raw){
+  const out = [];
+  (raw||'').split(',').forEach(part => {
+    part = part.trim();
+    if (!part) return;
+    if (part.includes('-')) {
+      const [a,b] = part.split('-').map(s=>parseInt(s.trim(),10));
+      if (!isNaN(a) && !isNaN(b)) for (let n=Math.min(a,b); n<=Math.max(a,b); n++) out.push(n);
+    } else {
+      const n = parseInt(part,10);
+      if (!isNaN(n)) out.push(n);
+    }
+  });
+  return [...new Set(out)].sort((a,b)=>a-b);
+}
+
+async function openStuckLessonsManager(){
+  document.getElementById('stuckLessonsOverlay')?.remove(); // מונע חלוניות כפולות
+  showToast('⏳ סורק דיווחים...','info');
+
+  if (typeof TraineeSystem !== 'undefined' && !(TraineeSystem.courses?.length)
+      && !(typeof _isDemoMode === 'function' && _isDemoMode())) {
+    try {
+      if (!TraineeSystem.coursesRef) TraineeSystem.initFirebase();
+      await TraineeSystem.loadCourses();
+    } catch(e) { console.warn('[stuckLessons] course load failed:', e); }
+  }
+
+  const groups = [];
+  if (typeof TraineeSystem !== 'undefined') {
+    if (Array.isArray(TraineeSystem.courses) && TraineeSystem.courses.length) {
+      TraineeSystem.courses.forEach(c => groups.push({ courseId: c.id, trainees: c.trainees||[] }));
+    } else if (Array.isArray(TraineeSystem.trainees)) {
+      groups.push({ courseId: null, trainees: TraineeSystem.trainees });
+    }
+  }
+
+  const stuck = [];
+  groups.forEach(({courseId, trainees}) => {
+    trainees.forEach(t => {
+      (t.lessons||[]).forEach((les, idx) => {
+        if (!NUMBERED_MISSIONS.includes(les.mission)) return;
+        if (les.lessonNums && les.lessonNums.length) return;
+        const hasScore = [1,2,3,4,5].some(n => les['s'+n] != null);
+        if (!hasScore && !les.note && !les.extraDesc) return;
+        stuck.push({ traineeId: t.id, traineeName: t.name, courseId, lesson: les, idx });
+      });
+    });
+  });
+  stuck.sort((a,b) => (a.lesson.date||'').localeCompare(b.lesson.date||''));
+
+  window._stuckLessonsData = stuck;
+
+  const overlay = document.createElement('div');
+  overlay.id = 'stuckLessonsOverlay';
+  overlay.className = 'log-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9800;display:flex;align-items:center;justify-content:center;';
+
+  const rowsHtml = stuck.length ? stuck.map((s,i) => {
+    const scoresStr = [1,2,3,4,5].map(n => s.lesson['s'+n]).filter(v=>v!=null).join('/') || '—';
+    return `<tr id="stuck-row-${i}" style="border-bottom:1px solid #f0f0f0;">
+      <td style="padding:7px 9px;font-size:11px;color:#888;white-space:nowrap;">${_esc(s.lesson.date||'—')}</td>
+      <td style="padding:7px 9px;font-size:12px;font-weight:bold;">${_esc(s.traineeName)}</td>
+      <td style="padding:7px 9px;font-size:11px;color:#555;">${_esc(s.lesson.ins||'—')}</td>
+      <td style="padding:7px 9px;font-size:11px;">${_esc(s.lesson.mission||'')}</td>
+      <td style="padding:7px 9px;font-size:11px;text-align:center;">${scoresStr}</td>
+      <td style="padding:7px 9px;">
+        <div style="display:flex;gap:4px;align-items:center;">
+          <input type="text" id="stuck-input-${i}" placeholder="לדוגמה: 23 או 23-24" style="width:100px;padding:4px 6px;border:1.5px solid #ddd;border-radius:6px;font-size:12px;">
+          <button onclick="_saveStuckLessonNum(${i})" style="width:auto;padding:4px 10px;background:var(--success);color:white;border:none;border-radius:6px;font-size:11px;font-weight:bold;cursor:pointer;">💾</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('') : `<tr><td colspan="6" style="text-align:center;padding:24px;color:#aaa;">✅ לא נמצאו דיווחים תקועים — כל הדיווחים כוללים מספר שיעור</td></tr>`;
+
+  overlay.innerHTML = `
+    <div style="background:white;border-radius:16px;width:min(880px,96vw);max-height:85vh;overflow:hidden;display:flex;flex-direction:column;direction:rtl;">
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:2px solid #eef2f8;">
+        <h3 style="margin:0;font-size:16px;">🔧 שיוך מספרי שיעור לדיווחים ישנים <span style="font-size:11px;font-weight:400;color:#888;">(${stuck.length} דיווחים)</span></h3>
+        <button onclick="this.closest('.log-overlay').remove()" style="width:auto !important;background:none;border:none;font-size:22px;cursor:pointer;color:#888;">×</button>
+      </div>
+      <div style="padding:10px 20px;font-size:11px;color:#888;">דיווחים עם ציונים/הערות אך בלי מספר שיעור משויך — עד לשיוך, לא נכללים בהתקדמות במסלול. ניתן להזין מספר בודד (23) או טווח (23-24).</div>
+      <div style="overflow-y:auto;flex:1;padding:0 20px 16px;">
+        <table style="width:100%;border-collapse:collapse;">
+          <thead><tr style="background:#f8faff;position:sticky;top:0;">
+            <th style="padding:7px 9px;text-align:right;font-size:11px;color:#888;">תאריך</th>
+            <th style="padding:7px 9px;text-align:right;font-size:11px;color:#888;">חניך</th>
+            <th style="padding:7px 9px;text-align:right;font-size:11px;color:#888;">מדריך</th>
+            <th style="padding:7px 9px;text-align:right;font-size:11px;color:#888;">משימה</th>
+            <th style="padding:7px 9px;text-align:center;font-size:11px;color:#888;">ציונים</th>
+            <th style="padding:7px 9px;text-align:right;font-size:11px;color:#888;">מספר שיעור</th>
+          </tr></thead>
+          <tbody id="stuck-lessons-tbody">${rowsHtml}</tbody>
+        </table>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+}
+
+async function _saveStuckLessonNum(i){
+  const s = window._stuckLessonsData?.[i];
+  if (!s) return;
+  const input = document.getElementById(`stuck-input-${i}`);
+  const nums = _parseLessonNumsInput(input?.value);
+  if (!nums.length) { showToast('יש להזין מספר שיעור תקין', 'warning'); return; }
+
+  s.lesson.lessonNums = nums;
+
+  try {
+    if (typeof TraineeSystem !== 'undefined') {
+      if (typeof _isDemoMode === 'function' && _isDemoMode()) {
+        try { _saveDemoTraineeData(TraineeSystem.trainees, TraineeSystem.instructors); } catch(e) {}
+      } else if (s.courseId && TraineeSystem.coursesRef) {
+        // 2026-08-19: לא persist() הגנרי — הוא שומר רק את this.currentCourseId,
+        // וחניך "תקוע" עשוי להיות בקורס אחר לגמרי מזה שפעיל כרגע במסך. שמירה
+        // ישירה לקורס הנכון מונעת אובדן שקט של השיוך בטעינה הבאה.
+        const course = TraineeSystem.courses.find(c => c.id === s.courseId);
+        const tData = {};
+        (course?.trainees || []).forEach(t => { tData[TraineeSystem._fbKey(t.id)] = t; });
+        await TraineeSystem.coursesRef.child(s.courseId).child('trainees').set(tData);
+      } else {
+        TraineeSystem.persist();
+      }
+      if (TraineeSystem.currentId === s.traineeId) TraineeSystem.renderDetail();
+      TraineeSystem.renderList();
+      // 2026-08-19: תיקון באג — התפלגות שלבים/רמות בדשבורד ממוטמנת (window._traineeSummaryCache)
+      // ולא מתעדכנת לבד. בלי איפוס מפורש, השיוך "לא נראה" בדשבורד למרות שנשמר בפועל.
+      window._traineeSummaryCache = null;
+      try { _renderTraineeSummaryPanel(); } catch(e) {}
+    }
+  } catch(e) { console.warn('save stuck lesson:', e); showToast('שגיאה בשמירה', 'warning'); return; }
+
+  _logAction('fix_stuck_lesson', `שויך מספר שיעור ${nums.join(',')} ל${s.traineeName} (${s.lesson.date})`);
+  const row = document.getElementById(`stuck-row-${i}`);
+  if (row) { row.style.background = '#eafaf1'; row.style.opacity = '0.6'; if(input) input.disabled = true; }
+  showToast('✅ מספר השיעור שויך', 'success');
+}
+
 function _populateSettingsFields(){
   // Populate the modal s_* fields from current settings
   const cfg=loadSettings();
@@ -20921,6 +21079,7 @@ async function submitUnifiedReport() {
 // הטפסים בטווח התאריכים הנבחר (בורר משותף לדוחות), עם חיפוש, ופתיחה לאותה חלונית
 // תצוגה קומפקטית (openViewUnifiedReport) בלי לשכפל אותה.
 async function openUnifiedReportsArchive(){
+  document.getElementById('unifiedArchiveOverlay')?.remove(); // מונע חלוניות כפולות אם כבר פתוחה
   const {start,end,label}=_resolveReportDates();
   showToast('⏳ טוען טפסים...','info');
   const allReports=await loadDateRangeTaskReports(start,end);
@@ -20930,6 +21089,7 @@ async function openUnifiedReportsArchive(){
   unified.sort((a,b)=> b[1].date.localeCompare(a[1].date) || (a[1].instructorName||'').localeCompare(b[1].instructorName||''));
 
   const overlay=document.createElement('div');
+  overlay.id='unifiedArchiveOverlay';
   overlay.className='log-overlay';
   overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9800;display:flex;align-items:center;justify-content:center;';
 
@@ -21072,6 +21232,7 @@ async function openViewUnifiedReport(date, instructorName) {
         });
       });
     } catch(e) {}
+    window._vurMatches = matches; // 2026-08-19: לשימוש _assignInlineLessonNum בשיוך שנתון ישירות מכאן
 
     const skills = (typeof TraineeSystem !== 'undefined' && TraineeSystem.settings?.skills?.length)
       ? TraineeSystem.settings.skills : [];
@@ -21081,16 +21242,27 @@ async function openViewUnifiedReport(date, instructorName) {
         ? `<div style="color:#aaa;font-size:13px;">דווחו ${report.feedbackCount} משובים, אך לא נמצא פירוט (ייתכן שנשמרו כשם חד-פעמי שלא נקשר לחניך קבוע).</div>`
         : `<div style="color:#aaa;font-size:13px;">לא מולאו משובי חניכים ביום זה.</div>`;
     } else {
-      let html = matches.map(({trainee, lesson}) => {
+      let html = matches.map(({trainee, lesson}, idx) => {
         const scoresHtml = skills.map(sk => {
           const v = lesson[sk.id];
           if (v === undefined || v === null) return '';
           return `<span style="display:inline-flex;align-items:center;gap:4px;background:#eef3fb;border-radius:6px;padding:2px 8px;font-size:12px;margin:2px 2px 2px 0;"><b>${_esc(sk.name)}:</b> ${v}/10</span>`;
         }).join('');
-        const lessonNumsStr = (lesson.lessonNums || []).length ? `שיעורים: ${lesson.lessonNums.join(', ')}` : '';
-        return `<div style="border:1px solid #eee;border-radius:8px;padding:10px 12px;margin-bottom:8px;background:#fff;">
+        const hasNums = (lesson.lessonNums || []).length > 0;
+        const lessonNumsStr = hasNums ? `שיעורים: ${lesson.lessonNums.join(', ')}` : '';
+        // 2026-08-19: אם אין מספר שיעור משויך — שדה שיוך ישיר כאן, במקום להפנות
+        // לכלי נפרד. שיוך מיידי מחשב מחדש את בר ההתקדמות וחוסם את השיעור בטופס.
+        const assignHtml = !hasNums
+          ? `<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;background:#fff8ee;border:1px solid #f5d9a8;border-radius:8px;padding:6px 10px;">
+              <span style="font-size:11px;color:#8a5a1a;">⚠️ אין מספר שיעור — לא נכלל בהתקדמות</span>
+              <input type="text" id="vur-assign-input-${idx}" placeholder="למשל: 23" style="width:80px;padding:3px 6px;border:1.5px solid #ddd;border-radius:6px;font-size:12px;">
+              <button onclick="_assignInlineLessonNum(${idx})" style="width:auto;padding:3px 10px;background:var(--success);color:white;border:none;border-radius:6px;font-size:11px;font-weight:bold;cursor:pointer;">💾 שייך</button>
+            </div>`
+          : '';
+        return `<div id="vur-match-row-${idx}" style="border:1px solid #eee;border-radius:8px;padding:10px 12px;margin-bottom:8px;background:#fff;">
           <div style="font-weight:bold;font-size:13px;margin-bottom:4px;">${_esc(trainee.name)} <span style="color:#888;font-weight:400;font-size:12px;">— ${_esc(lesson.mission||'')}</span></div>
           ${lessonNumsStr ? `<div style="font-size:12px;color:#666;margin-bottom:4px;">${_esc(lessonNumsStr)}</div>` : ''}
+          ${assignHtml}
           ${scoresHtml ? `<div style="margin-bottom:4px;">${scoresHtml}</div>` : ''}
           ${lesson.extraDesc ? `<div style="font-size:12px;color:#555;margin-bottom:4px;">${_esc(lesson.extraDesc)}</div>` : ''}
           ${lesson.note ? `<div style="font-size:12px;color:#333;white-space:pre-wrap;">💬 ${_esc(lesson.note)}</div>` : ''}
@@ -21102,6 +21274,51 @@ async function openViewUnifiedReport(date, instructorName) {
       feedbackEl.innerHTML = html;
     }
   }
+}
+
+// 2026-08-19: שיוך מספר שיעור ישירות מתוך חלונית הצפייה בדוח — אותה לוגיקה כמו
+// כלי "שיוך מספרי שיעור לדיווחים ישנים" הגלובלי, אבל בהקשר הממוקד של דוח ספציפי.
+async function _assignInlineLessonNum(idx) {
+  const m = window._vurMatches?.[idx];
+  if (!m) return;
+  const input = document.getElementById(`vur-assign-input-${idx}`);
+  const nums = _parseLessonNumsInput(input?.value);
+  if (!nums.length) { showToast('יש להזין מספר שיעור תקין', 'warning'); return; }
+
+  m.lesson.lessonNums = nums;
+
+  try {
+    if (typeof TraineeSystem !== 'undefined') {
+      if (typeof _isDemoMode === 'function' && _isDemoMode()) {
+        try { _saveDemoTraineeData(TraineeSystem.trainees, TraineeSystem.instructors); } catch(e) {}
+      } else {
+        // מאתר את הקורס של החניך הזה לשמירה נכונה (לא persist() הגנרי שרק שומר קורס פעיל)
+        let courseId = null;
+        if (Array.isArray(TraineeSystem.courses)) {
+          const owner = TraineeSystem.courses.find(c => (c.trainees||[]).some(t => t.id === m.trainee.id));
+          if (owner) courseId = owner.id;
+        }
+        if (courseId && TraineeSystem.coursesRef) {
+          const course = TraineeSystem.courses.find(c => c.id === courseId);
+          const tData = {};
+          (course?.trainees || []).forEach(tt => { tData[TraineeSystem._fbKey(tt.id)] = tt; });
+          await TraineeSystem.coursesRef.child(courseId).child('trainees').set(tData);
+        } else {
+          TraineeSystem.persist();
+        }
+      }
+      TraineeSystem.renderList();
+      if (TraineeSystem.currentId === m.trainee.id) TraineeSystem.renderDetail();
+      // 2026-08-19: אותו תיקון — התפלגות שלבים/רמות בדשבורד ממוטמנת ולא מתעדכנת לבד.
+      window._traineeSummaryCache = null;
+      try { _renderTraineeSummaryPanel(); } catch(e) {}
+    }
+  } catch(e) { console.warn('assign inline lesson num:', e); showToast('שגיאה בשמירה', 'warning'); return; }
+
+  _logAction('fix_stuck_lesson', `שויך מספר שיעור ${nums.join(',')} ל${m.trainee.name} (${m.lesson.date}) — מתוך תצוגת דוח`);
+  showToast('✅ מספר השיעור שויך — ההתקדמות עודכנה', 'success');
+  // רענון התצוגה כדי להראות את המצב המעודכן (כולל נעילת השדה)
+  if (window._vurCurrent) openViewUnifiedReport(window._vurCurrent.date, window._vurCurrent.instructorName);
 }
 
 function closeViewUnifiedReport() {
@@ -21181,11 +21398,65 @@ async function _saveEditedUnifiedReportBasics() {
       }
       await _fbSet(_fbRef(_db, `taskReports/${newDate}/${safeKey}`), report);
     }
+
+    // 2026-08-19: תיקון פער ארכיטקטוני — הדוח (taskReports) ורשומות השיעור
+    // הפרטניות בתיק כל חניך (t.lessons[], עם שדה date משלהן) הן שני מקומות
+    // נפרדים לגמרי. עריכת תאריך בדוח בלבד השאירה את רשומות השיעור עם התאריך
+    // הישן — כלים אחרים (שיוך שנתונים, תיק החניך עצמו) המשיכו להתייחס לתאריך
+    // הקודם. כאן "מודבק" עדכון התאריך גם לכל רשומה מקושרת (אותו מדריך+תאריך).
+    let _lessonsFixed = 0;
+    if (dateChanged && typeof TraineeSystem !== 'undefined') {
+      const affectedCourseIds = new Set();
+      const courseGroups = (Array.isArray(TraineeSystem.courses) && TraineeSystem.courses.length)
+        ? TraineeSystem.courses.map(c => ({courseId: c.id, trainees: c.trainees||[]}))
+        : [{courseId: null, trainees: TraineeSystem.trainees||[]}];
+      courseGroups.forEach(({courseId, trainees}) => {
+        trainees.forEach(t => {
+          (t.lessons||[]).forEach(les => {
+            if (les.ins === cur.instructorName && les.date === cur.date) {
+              les.date = newDate;
+              _lessonsFixed++;
+              affectedCourseIds.add(courseId);
+            }
+          });
+        });
+      });
+      for (const courseId of affectedCourseIds) {
+        try {
+          if (typeof _isDemoMode === 'function' && _isDemoMode()) {
+            _saveDemoTraineeData(TraineeSystem.trainees, TraineeSystem.instructors);
+          } else if (courseId && TraineeSystem.coursesRef) {
+            const course = TraineeSystem.courses.find(c => c.id === courseId);
+            const tData = {};
+            (course?.trainees || []).forEach(tt => { tData[TraineeSystem._fbKey(tt.id)] = tt; });
+            await TraineeSystem.coursesRef.child(courseId).child('trainees').set(tData);
+          } else {
+            TraineeSystem.persist();
+          }
+        } catch(e) { console.warn('cascade date update persist:', e); }
+      }
+      if (affectedCourseIds.size) {
+        try { TraineeSystem.renderList(); } catch(e) {}
+        try { if (TraineeSystem.currentId) TraineeSystem.renderDetail(); } catch(e) {}
+        // 2026-08-19: אותו תיקון — התפלגות שלבים/רמות בדשבורד ממוטמנת ולא מתעדכנת לבד.
+        window._traineeSummaryCache = null;
+        try { _renderTraineeSummaryPanel(); } catch(e) {}
+      }
+    }
   } catch(e) { console.warn('edit unified report save:', e); showToast('שגיאה בשמירת השינויים', 'warning'); return; }
 
-  _logAction('edit_unified_report', `עריכת סיכום יום: ${cur.instructorName} — ${cur.date}${dateChanged ? ' → ' + newDate : ''}`);
-  showToast('✅ השינויים נשמרו', 'success');
+  _logAction('edit_unified_report', `עריכת סיכום יום: ${cur.instructorName} — ${cur.date}${dateChanged ? ' → ' + newDate : ''}${_lessonsFixed ? ` (${_lessonsFixed} רשומות שיעור עודכנו)` : ''}`);
+  showToast(_lessonsFixed ? `✅ השינויים נשמרו (כולל ${_lessonsFixed} רשומות שיעור בתיקי חניכים)` : '✅ השינויים נשמרו', 'success');
   try { renderDaySummary(); } catch(e) {}
+  // 2026-08-19: תיקון באג — אם חלונית הארכיון פתוחה ברקע, שורתה הייתה נשארת עם
+  // הנתונים הישנים (כולל התאריך הישן), וללחוץ עליה שוב חיפש לפי מפתח שכבר נמחק/
+  // הועבר — "לא נמצא סיכום יום". מרעננים את הארכיון בפועל אם הוא פתוח.
+  if (document.getElementById('unifiedArchiveOverlay')) {
+    try { openUnifiedReportsArchive(); } catch(e) {}
+  }
+  if (document.getElementById('stuckLessonsOverlay')) {
+    try { openStuckLessonsManager(); } catch(e) {}
+  }
   openViewUnifiedReport(newDate, cur.instructorName);
 }
 
@@ -24028,12 +24299,78 @@ function _loadDemoTraineeData() {
 
 const TRAINEE_SUMMARY_CONFIG_KEY = 'v100_trainee_summary_config';
 
+// 2026-08-19: תוקן באג משמעותי — חישוב ממוצע דרש בעבר שכל 5 המיומנויות ימולאו
+// (l.s1!=null && ... && l.s5!=null) כדי שהשיעור ייחשב בכלל. במציאות מדריכים
+// לא תמיד ממלאים את כל המיומנויות — כתוצאה, אף שיעור אמיתי לא נחשב, וממוצע/רמה/
+// מגמה יצאו תמיד N/A או ריקים, לא משנה כמה משובים מולאו בפועל.
+//
+// עודכן לבקשת לביא: מילוי חלקי מותר בחופשיות רק בתחילת כל שלב (1-10 בסיטאדיס,
+// 1-3 באורבוס — ניתן לקביעה). מהשיעור שאחריו ואילך נדרש אחוז מיומנויות מוגדר
+// (ברירת מחדל 80%, מעוגל למטה) כדי שהשיעור ייחשב בחישוב הממוצע/רמה/מגמה.
+// תומך גם במספר מיומנויות דינמי (לא בהכרח בדיוק 5) — נגזר מ-TraineeSystem.settings.skills.
+function _getSkillIds() {
+  if (typeof TraineeSystem !== 'undefined' && TraineeSystem.settings?.skills?.length) {
+    return TraineeSystem.settings.skills.map(s => s.id);
+  }
+  return ['s1','s2','s3','s4','s5'];
+}
+
+function _lessonMeetsScoreThreshold(l) {
+  const skillIds = _getSkillIds();
+  const filledCount = skillIds.filter(id => l[id] != null).length;
+  if (filledCount === 0) return false;
+
+  const cfg = _getTraineeSummaryConfig();
+  const lessonNum = (l.lessonNums && l.lessonNums.length) ? Math.max(...l.lessonNums) : null;
+
+  let cutoff = null; // null = אין סף לשלב הזה — מילוי חלקי תמיד מספיק (כמו קודם)
+  if (l.mission === 'קורס מעשי סיטאדיס' || l.mission === 'קורס מעשי' || l.mission === 'קורס') {
+    cutoff = cfg.sitadisFullScoreFrom;
+  } else if (l.mission === 'קורס מעשי אורבוס') {
+    cutoff = cfg.orbusFullScoreFrom;
+  }
+
+  if (cutoff === null || lessonNum === null || lessonNum < cutoff) return true;
+
+  const required = Math.floor((cfg.partialScorePct / 100) * skillIds.length);
+  return filledCount >= required;
+}
+
+function _lessonScoreAvg(l) {
+  if (!_lessonMeetsScoreThreshold(l)) return null;
+  const skillIds = _getSkillIds();
+  const vals = skillIds.map(id => l[id]).filter(v => v != null);
+  return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
+}
+
+// 2026-08-19: תג רמה/סטטוס בתיק החניך עצמו — היה קיים רק על הכרטיס ברשימה
+// הראשית (level-red/yellow/green), לא בתיק הפרטני. אותו חישוב וספים בדיוק.
+function _renderDetailLevelBadge(t) {
+  const el = document.getElementById('det-level-badge');
+  if (!el) return;
+  const scored = (t.lessons || []).filter(l => _lessonScoreAvg(l) !== null);
+  if (!scored.length) { el.innerHTML = ''; return; }
+  const avg = scored.reduce((s, l) => s + _lessonScoreAvg(l), 0) / scored.length;
+  const cfg = (typeof _getTraineeSummaryConfig === 'function')
+    ? _getTraineeSummaryConfig() : { lowScoreRed: 5, lowScoreOrange: 8 };
+  const [label, bg, fg] = avg < cfg.lowScoreRed    ? ['🔴 מתקשה', '#fdecea', '#c0392b']
+                         : avg < cfg.lowScoreOrange ? ['🟡 בינוני', '#fef9e7', '#b7860b']
+                         :                            ['🟢 מתקדם', '#eafaf1', '#1e8449'];
+  el.innerHTML = `<span style="background:${bg};color:${fg};font-size:13px;font-weight:bold;padding:4px 12px;border-radius:14px;">${label} · ${avg.toFixed(1)}</span>`;
+}
+
 function _getTraineeSummaryConfig() {
   const defaults = {
     inactiveDaysAlert:   21,
     lowScoreRed:         5,
     lowScoreOrange:      8,
     extraHoursRiskCount: 2,
+    // 2026-08-19: מילוי חלקי של מיומנויות מותר עד שיעור מסוים בכל שלב (ללא מינימום),
+    // ומהשיעור שאחריו ואילך נדרש אחוז מיומנויות (partialScorePct) לפחות כדי שהשיעור
+    // ייחשב "מדווח כראוי" ויוכנס לחישוב הממוצע/רמה/מגמה.
+    sitadisFullScoreFrom: 11,  // 1-10 בסיטאדיס: מילוי חלקי חופשי. מ-11 ואילך: נדרש האחוז.
+    orbusFullScoreFrom:   4,   // 1-3 באורבוס: מילוי חלקי חופשי. מ-4 ואילך: נדרש האחוז.
+    partialScorePct:      80,  // אחוז המיומנויות הנדרש (מעוגל למטה) מהשיעור-סף ואילך
   };
   try {
     const saved = JSON.parse(
@@ -24089,29 +24426,20 @@ function _generateTraineeSummary() {
     ).length;
 
     // Scores
-    const scoredLessons = lessons.filter(l =>
-      l.s1 != null && l.s2 != null &&
-      l.s3 != null && l.s4 != null && l.s5 != null
-    );
+    const scoredLessons = lessons.filter(l => _lessonScoreAvg(l) !== null);
     const avgScore = scoredLessons.length
-      ? scoredLessons.reduce((sum, l) =>
-          sum + (l.s1 + l.s2 + l.s3 + l.s4 + l.s5) / 5, 0
-        ) / scoredLessons.length
+      ? scoredLessons.reduce((sum, l) => sum + _lessonScoreAvg(l), 0) / scoredLessons.length
       : null;
 
     const recentAvg = scoredLessons.length >= 3
-      ? scoredLessons.slice(-3).reduce((sum, l) =>
-          sum + (l.s1 + l.s2 + l.s3 + l.s4 + l.s5) / 5, 0
-        ) / 3
+      ? scoredLessons.slice(-3).reduce((sum, l) => sum + _lessonScoreAvg(l), 0) / 3
       : avgScore;
 
     // Trend
     let trend = 'stable';
     if (scoredLessons.length >= 6) {
       const prev3Avg = scoredLessons.slice(-6, -3)
-        .reduce((sum, l) =>
-          sum + (l.s1 + l.s2 + l.s3 + l.s4 + l.s5) / 5, 0
-        ) / 3;
+        .reduce((sum, l) => sum + _lessonScoreAvg(l), 0) / 3;
       const diff = (recentAvg || 0) - prev3Avg;
       if (diff >= 1)  trend = 'improving';
       if (diff <= -1) trend = 'declining';
@@ -24496,6 +24824,24 @@ function _renderTraineeSummaryPanel() {
   h.push('</div>');
   _endGrp();
 
+  // 2026-08-19: ספי מילוי חלקי — עד איזה שיעור בכל שלב מותר למדריך למלא רק חלק
+  // מהמיומנויות, ומאיזה אחוז נדרש מהשיעור-סף ואילך כדי שהשיעור ייכלל בממוצע.
+  _grp('📝', 'מילוי חלקי של מיומנויות — לפי שלב', '#2c3e50');
+  h.push('<div style="font-size:11px;color:#888;margin:-4px 0 2px;">עד השיעור המצוין — מילוי חלקי תמיד מספיק. אחריו — נדרש האחוז שלמטה.</div>');
+  h.push('<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">');
+  h.push('<label style="font-size:12px;color:#555;flex:1;">בקורס מעשי סיטאדיס: מילוי חלקי חופשי עד שיעור</label>');
+  h.push('<input type="number" id="tsc-sitadisFullFrom" min="1" max="49" step="1" style="width:70px;padding:5px 8px;border:1px solid #ccc;border-radius:6px;font-size:13px;text-align:center;">');
+  h.push('</div>');
+  h.push('<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">');
+  h.push('<label style="font-size:12px;color:#555;flex:1;">בקורס מעשי אורבוס: מילוי חלקי חופשי עד שיעור</label>');
+  h.push('<input type="number" id="tsc-orbusFullFrom" min="1" max="6" step="1" style="width:70px;padding:5px 8px;border:1px solid #ccc;border-radius:6px;font-size:13px;text-align:center;">');
+  h.push('</div>');
+  h.push('<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">');
+  h.push('<label style="font-size:12px;color:#555;flex:1;">מהשיעור הבא ואילך: אחוז מיומנויות נדרש</label>');
+  h.push('<div style="display:flex;align-items:center;gap:4px;"><input type="number" id="tsc-partialScorePct" min="10" max="100" step="5" style="width:60px;padding:5px 8px;border:1px solid #ccc;border-radius:6px;font-size:13px;text-align:center;"><span style="font-size:12px;color:#888;">%</span></div>');
+  h.push('</div>');
+  _endGrp();
+
   // -- Action buttons -------------------------------------
   h.push('<div style="display:flex;gap:8px;justify-content:flex-start;align-items:center;padding-top:10px;border-top:1px solid #dee2e6;">');
   h.push('<button onclick="try{_saveTraineeSummaryConfig();}catch(e){}" style="padding:7px 18px;background:#2980b9;color:white;border:none;border-radius:7px;cursor:pointer;font-size:13px;font-weight:bold;">שמור והחל</button>');
@@ -24531,6 +24877,9 @@ function _populateTraineeSummaryConfigForm() {
   set('tsc-extraHoursRiskCount', cfg.extraHoursRiskCount);
   set('tsc-levelRedMax',         cfg.lowScoreRed - 1);
   set('tsc-levelGreenMin',       cfg.lowScoreOrange);
+  set('tsc-sitadisFullFrom',     cfg.sitadisFullScoreFrom);
+  set('tsc-orbusFullFrom',       cfg.orbusFullScoreFrom);
+  set('tsc-partialScorePct',     cfg.partialScorePct);
   try { _updateLevelMidPreview(); } catch(e) {}
 }
 
@@ -24552,6 +24901,9 @@ function _saveTraineeSummaryConfig() {
     extraHoursRiskCount: parseInt((get('tsc-extraHoursRiskCount')||{}).value) || 2,
     lowScoreRed:         (parseInt((get('tsc-levelRedMax')  ||{}).value, 10) || 4) + 1,
     lowScoreOrange:      parseInt((get('tsc-levelGreenMin')||{}).value, 10)   || 8,
+    sitadisFullScoreFrom: parseInt((get('tsc-sitadisFullFrom')||{}).value, 10) || 11,
+    orbusFullScoreFrom:   parseInt((get('tsc-orbusFullFrom')||{}).value, 10)   || 4,
+    partialScorePct:      Math.min(100, Math.max(10, parseInt((get('tsc-partialScorePct')||{}).value, 10) || 80)),
   };
   // Validation
   if (cfg.lowScoreRed > cfg.lowScoreOrange) {
