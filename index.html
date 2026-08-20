@@ -14,7 +14,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 53</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 58</title>
 
 <style>
 
@@ -1420,7 +1420,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 113;
+  const APP_VERSION = 118;
 
   function initFirebase() {
     try {
@@ -3725,6 +3725,42 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 /* =========================================================
    TraineeSystem — מודול Vanilla JS מבודד
    ========================================================= */
+const TRAINEE_INSIGHTS_CONFIG_KEY = 'v100_trainee_insights_config';
+function _getInsightsConfig() {
+  const defaults = {
+    knowledgeGapThreshold: 15,    // פער בין "ידע" ל"תפעול" -> התרעה כתומה (משווה 2 מיומנויות — לא נתמך במבנה כלל-לפי-מיומנות-בודדת של טאב "ספי התרעות")
+    decliningSevereDiff: -2,      // ירידה בין 3 שיעורים אחרונים לקודמים -> התרעה משמעותית
+    decliningModerateDiff: -1,    // ירידה קלה
+    improvingSevereDiff: 2,       // שיפור בולט
+    improvingModerateDiff: 1,     // שיפור מתמיד
+    readyMinLessons: 25,
+    readyMinAvgPct: 85,
+    inactivityDaysAlert: 14,
+  };
+  try {
+    const saved = JSON.parse(localStorage.getItem(TRAINEE_INSIGHTS_CONFIG_KEY) || '{}');
+    return { ...defaults, ...saved };
+  } catch(e) { return defaults; }
+}
+function _saveInsightsConfig(cfg) {
+  try { localStorage.setItem(TRAINEE_INSIGHTS_CONFIG_KEY, JSON.stringify(cfg)); } catch(e) {}
+}
+function _saveInsightsConfigFromUI() {
+  const g = id => { const el = document.getElementById(id); return el ? parseFloat(el.value) : NaN; };
+  const cfg = {
+    knowledgeGapThreshold: g('ts-ins-gap') || 15,
+    decliningSevereDiff:   g('ts-ins-decline-severe') || -2,
+    decliningModerateDiff: g('ts-ins-decline-mild') || -1,
+    improvingSevereDiff:   g('ts-ins-improve-severe') || 2,
+    improvingModerateDiff: g('ts-ins-improve-mild') || 1,
+    readyMinLessons:       g('ts-ins-ready-lessons') || 25,
+    readyMinAvgPct:        g('ts-ins-ready-avg') || 85,
+    inactivityDaysAlert:   g('ts-ins-inactivity') || 14,
+  };
+  _saveInsightsConfig(cfg);
+  showToast('✅ הספים הנוספים נשמרו', 'success');
+}
+
 window.TraineeSystem = {
     container: null,
     trainees: [],
@@ -4135,6 +4171,7 @@ window.TraineeSystem = {
                         🚂
                     </div>
 
+                    <div id="course-ticks-numbers" style="position:relative;height:9px;margin-bottom:1px;"></div>
                     <div id="course-bar-outer"
                          style="width:100%; height:32px; border-radius:6px;
                                 overflow:hidden; position:relative; border:1px solid #ccc;">
@@ -4159,6 +4196,7 @@ window.TraineeSystem = {
                 <span>🚋 השתלמות אורבוס</span>
                 <span id="orbus-count" style="color:#a0aec0;font-weight:400;">0 / 7 שיעורים</span>
               </div>
+              <div id="orbus-ticks-numbers" style="position:relative;height:9px;margin-bottom:1px;"></div>
               <div id="orbus-bar-outer" style="width:100%;height:28px;border-radius:6px;overflow:hidden;position:relative;border:1px solid #ccc;background:#eee;">
                 <div id="orbus-bar-fill" style="position:absolute;top:0;bottom:0;right:0;width:0%;background:#e67e22;transition:width .8s ease;"></div>
                 <div id="orbus-ticks" style="position:absolute;inset:0;"></div>
@@ -4180,6 +4218,7 @@ window.TraineeSystem = {
                     חניכה מעשית
                     <span id="chinuch-count">0 / 50 שיעורים</span>
                 </div>
+                <div id="chinuch-ticks-numbers" style="position:relative;height:9px;margin-bottom:1px;"></div>
                 <div class="chinuch-bar-outer">
                     <div id="chinuch-bar-fill" class="chinuch-bar-fill" style="width:0%"></div>
                     <div class="chinuch-bar-ticks" id="chinuch-ticks"></div>
@@ -4313,6 +4352,45 @@ window.TraineeSystem = {
       </div>
       <div id="ts-alerts-list"></div>
       <button class="ts-add-btn" data-action="ts-add-alert">+ הוסף כלל</button>
+
+      <div style="margin-top:20px;padding-top:16px;border-top:1.5px dashed #ddd;">
+        <p style="font-size:12px;color:#888;margin:0 0 10px;">כללים נוספים (משווים בין מיומנויות/מגמות, לא נתמכים בטבלה למעלה):</p>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+            <label style="font-size:12px;color:#555;flex:1;">פער בין "ידע כללי" ל"תפעול" (%) שמפעיל התרעה</label>
+            <input type="number" id="ts-ins-gap" min="1" max="100" style="width:70px;padding:5px 8px;border:1px solid #ccc;border-radius:6px;font-size:13px;text-align:center;">
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+            <label style="font-size:12px;color:#555;flex:1;">ירידה חדה בין 3 שיעורים אחרונים לקודמים (נק')</label>
+            <input type="number" id="ts-ins-decline-severe" step="0.5" style="width:70px;padding:5px 8px;border:1px solid #ccc;border-radius:6px;font-size:13px;text-align:center;">
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+            <label style="font-size:12px;color:#555;flex:1;">ירידה קלה (נק')</label>
+            <input type="number" id="ts-ins-decline-mild" step="0.5" style="width:70px;padding:5px 8px;border:1px solid #ccc;border-radius:6px;font-size:13px;text-align:center;">
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+            <label style="font-size:12px;color:#555;flex:1;">שיפור בולט (נק')</label>
+            <input type="number" id="ts-ins-improve-severe" step="0.5" style="width:70px;padding:5px 8px;border:1px solid #ccc;border-radius:6px;font-size:13px;text-align:center;">
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+            <label style="font-size:12px;color:#555;flex:1;">שיפור מתמיד (נק')</label>
+            <input type="number" id="ts-ins-improve-mild" step="0.5" style="width:70px;padding:5px 8px;border:1px solid #ccc;border-radius:6px;font-size:13px;text-align:center;">
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+            <label style="font-size:12px;color:#555;flex:1;">מינימום שיעורים ל"מוכן להסמכה"</label>
+            <input type="number" id="ts-ins-ready-lessons" min="1" style="width:70px;padding:5px 8px;border:1px solid #ccc;border-radius:6px;font-size:13px;text-align:center;">
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+            <label style="font-size:12px;color:#555;flex:1;">ממוצע מינימלי בכל המיומנויות ל"מוכן להסמכה" (%)</label>
+            <input type="number" id="ts-ins-ready-avg" min="1" max="100" style="width:70px;padding:5px 8px;border:1px solid #ccc;border-radius:6px;font-size:13px;text-align:center;">
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+            <label style="font-size:12px;color:#555;flex:1;">ימים ללא שיעור לתזכורת המשך הכשרה</label>
+            <input type="number" id="ts-ins-inactivity" min="1" style="width:70px;padding:5px 8px;border:1px solid #ccc;border-radius:6px;font-size:13px;text-align:center;">
+          </div>
+          <button onclick="_saveInsightsConfigFromUI()" style="width:auto;padding:8px 16px;background:var(--success);color:white;border:none;border-radius:8px;font-size:13px;font-weight:bold;cursor:pointer;align-self:flex-start;">💾 שמור ספים נוספים</button>
+        </div>
+      </div>
     </div>
     <!-- Tab: Load limits -->
     <div class="ts-spanel" id="ts-panel-load">
@@ -4604,7 +4682,12 @@ window.TraineeSystem = {
         c.addEventListener('click', (e) => {
             const card = e.target.closest('.trainee-card');
             if (!card || e.target.closest('.cab')) return;
-            const id = parseInt(card.dataset.id, 10);
+            // 2026-08-19: תוקן באג משמעותי — מזהי חניך אמיתיים נוצרים עם
+            // Date.now()+Math.random() (מכיל חלק עשרוני, למשל 1783580045101.3809).
+            // parseInt קטע את החלק העשרוני, כך ש-currentId לעולם לא היה שווה בדיוק
+            // ל-t.id האמיתי (===), renderDetail() לא מצא התאמה ויצא מיד באילם —
+            // בלי לעדכן שם/רכבת/כלום, בלי שום שגיאה בקונסולה. parseFloat שומר על הערך המדויק.
+            const id = parseFloat(card.dataset.id);
             if (id) this.openTrainee(id);
         });
 
@@ -4799,6 +4882,12 @@ window.TraineeSystem = {
         const container = this.$(containerId);
         if (!container) return;
         container.innerHTML = '';
+        // 2026-08-19: תיקון — מספרי השיעור הוצבו בעבר עם top:-13px בתוך תא שממוקם
+        // בתוך מכל עם overflow:hidden (לצורך הפינות המעוגלות של הבר), כך שהם
+        // נחתכו ונעלמו לגמרי, גם שהם היו קיימים ב-DOM. עכשיו נבנים במכל נפרד,
+        // ממוקם מעל הבר ולא נחתך.
+        const numbersContainer = this.$(containerId + '-numbers');
+        if (numbersContainer) numbersContainer.innerHTML = '';
         for (let i = 1; i < count; i++) {
             const line = document.createElement('div');
             line.style.cssText = `position:absolute;top:0;bottom:0;width:1px;background:rgba(0,0,0,0.12);right:${(i/count)*100}%;`;
@@ -4819,14 +4908,14 @@ window.TraineeSystem = {
                 mark.className = 'lesson-content-mark';
                 cell.appendChild(mark);
             }
-            // 2026-08-19: מספר שיעור גלוי תמיד מעל השנתון — קודם הוצג רק בריחוף (title),
-            // ובנייד אין ריחוף, אז לא היה ניתן לזהות מספר שיעור בלי ללחוץ על כל תא בנפרד.
-            const numLbl = document.createElement('div');
-            numLbl.className = 'lesson-num-label';
-            numLbl.textContent = n;
-            numLbl.style.cssText = 'position:absolute;top:-13px;left:50%;transform:translateX(-50%);font-size:7px;color:#888;line-height:1;pointer-events:none;white-space:nowrap;';
-            cell.appendChild(numLbl);
             container.appendChild(cell);
+
+            if (numbersContainer) {
+                const numLbl = document.createElement('div');
+                numLbl.textContent = n;
+                numLbl.style.cssText = `position:absolute;top:0;width:${100/count}%;right:${((n-1)/count)*100}%;text-align:center;font-size:${count>20?'6px':'8px'};color:#888;line-height:9px;pointer-events:none;white-space:nowrap;`;
+                numbersContainer.appendChild(numLbl);
+            }
         }
     },
 
@@ -4857,6 +4946,23 @@ window.TraineeSystem = {
         if (train) train.style.right = pct + '%';
         const counter = this.$('course-count');
         if (counter) counter.innerText = `שיעור ${lesson} / 50`;
+
+        // 2026-08-19: תוקן — התא עצמו שקוף (הצבע מגיע מהפסים מתחתיו), אז opacity
+        // על התא לא היה נראה על הצבע בכלל, רק על העיגול הקטן (dot) של דגשי-ביצוע.
+        // עכשיו שכבת-על לבנה חצי-שקופה שיושבת מעל הצבע ומדהה אותו בפועל.
+        const ticks = this.$('course-ticks');
+        if (ticks) {
+            ticks.querySelectorAll('.lesson-content-cell').forEach(cell => {
+                const n = parseInt(cell.dataset.lessonNum, 10);
+                cell.style.background = (n <= lesson) ? 'rgba(255,255,255,0.55)' : 'transparent';
+            });
+        }
+        const nums = this.$('course-ticks-numbers');
+        if (nums) {
+            Array.from(nums.children).forEach((lbl, i) => {
+                lbl.style.opacity = ((i + 1) <= lesson) ? '0.4' : '1';
+            });
+        }
     },
 
     togglePanel(id) {
@@ -5272,7 +5378,13 @@ window.TraineeSystem = {
         let maxL = 0;
         const orbusDone = new Set();
         const chinuchDone = new Set();
+        // 2026-08-19: תוקן באג משמעותי — sums[i] הצטבר בעבר לפי (l['s'+n] || 0), כך
+        // ששיעור שבו מיומנות מסוימת לא מולאתה נספר כ-0 באותה מיומנות, ואז מחולק ב-
+        // (סה"כ שיעורים)*10 — מדלל כל מיומנות שלא מולאה בכל שיעור לציון קרוב לאפס,
+        // בלי קשר לכמה טוב היא ניקדה בפועל כשכן מולאה. עכשיו סופרים סכום וכמות
+        // בנפרד לכל מיומנות, וממוצעים רק על שיעורים שבהם היא באמת מולאה.
         let sums = [0, 0, 0, 0, 0];
+        let counts = [0, 0, 0, 0, 0];
 
         (t.lessons || []).forEach(l => {
             if (l.mission === 'קורס מעשי סיטאדיס' || l.mission === 'קורס מעשי' || l.mission === 'קורס') {
@@ -5282,7 +5394,9 @@ window.TraineeSystem = {
             } else if (l.mission === 'חניכה') {
                 (l.lessonNums || []).forEach(n => chinuchDone.add(n));
             }
-            [1, 2, 3, 4, 5].forEach((n, i) => sums[i] += (l['s' + n] || 0));
+            [1, 2, 3, 4, 5].forEach((n, i) => {
+                if (l['s' + n] != null) { sums[i] += l['s' + n]; counts[i]++; }
+            });
         });
 
         const len    = (t.lessons || []).length;
@@ -5324,15 +5438,15 @@ window.TraineeSystem = {
 
         const s2label = isTech ? 'מבנה דיפו' : 'מבנה קו';
         const labels  = ['מערכות רכבת', s2label, 'תפעול סטיק', 'נהלים', 'משמעת'];
-        const avgs    = sums.map(s => len ? (s / (len * 10)) * 100 : 0);
+        const avgs    = sums.map((s, i) => counts[i] ? (s / (counts[i] * 10)) * 100 : null);
         this.$('stats-row').innerHTML = labels.map((lbl, i) => {
             const a = avgs[i];
-            const c = !len ? 'var(--neutral)' : a < 65 ? 'var(--danger)' : a < 82 ? 'var(--warning)' : 'var(--success)';
+            const c = a === null ? 'var(--neutral)' : a < 65 ? 'var(--danger)' : a < 82 ? 'var(--warning)' : 'var(--success)';
             const newTag = (!isTech && i === 1 && maxL === 11)
                 ? `<div style="font-size:0.65em;opacity:0.85;margin-top:2px;">חדש</div>` : '';
             return `<div class="stat-card" style="background:${c}">
                         <div class="stat-label">${lbl}</div>
-                        <div class="stat-val">${a.toFixed(0)}%</div>
+                        <div class="stat-val">${a === null ? 'אין נתון' : a.toFixed(0) + '%'}</div>
                         ${newTag}
                     </div>`;
         }).join('');
@@ -5668,56 +5782,77 @@ window.TraineeSystem = {
             return;
         }
 
+        const cfg = (typeof _getInsightsConfig === 'function') ? _getInsightsConfig() : {
+            knowledgeGapThreshold:15,
+            decliningSevereDiff:-2, decliningModerateDiff:-1, improvingSevereDiff:2, improvingModerateDiff:1,
+            readyMinLessons:25, readyMinAvgPct:85, inactivityDaysAlert:14
+        };
         const alerts = { green: [], red: [], orange: [], info: [] };
 
-        if (len >= 25 && avgs.every(a => a > 85)) {
+        // 2026-08-19: תוקן — avgs[i]===null אומר "מעולם לא מולאה", לא "ציון גרוע".
+        // כל תנאי בודק null במפורש לפני השוואה לסף (לפני התיקון, null<70 היה true
+        // ב-JS, כך שכל מיומנות ריקה הפעילה בטעות את ההתרעה החמורה ביותר האפשרית).
+        if (len >= cfg.readyMinLessons && avgs.every(a => a !== null && a > cfg.readyMinAvgPct)) {
             alerts.green.push({ icon: '🟢', title: 'מוכן להסמכה', msg: 'החניך מציג יציבות גבוהה בכל הפרמטרים. ניתן לקבוע מבחן מסכם.' });
         }
 
-        if (avgs[3] < 70) {
-            alerts.red.push({ icon: '🔴', title: 'דגש בטיחות דחוף', msg: 'רמת הנהלים נמוכה מהנדרש. נדרש ריענון חוקה מיידי — החניך אינו מוכן לקו ללא שיפור.' });
-        }
-        if (avgs[4] < 60) {
-            alerts.red.push({ icon: '🔴', title: 'חריגת משמעת', msg: 'רמת המשמעת המקצועית נמוכה. נדרשת שיחת בירור עם החניך.' });
-        }
+        // 2026-08-19: חיבור אמיתי לטאב "ספי התרעות" הקיים בהגדרות (this.settings.
+        // alertThresholds) — היה בנוי במלואו כולל UI לעריכה, אך *מעולם לא נקרא
+        // בשום מקום*, כך שההתרעות תמיד הגיעו מ-3 בדיקות קשיחות נפרדות (avgs[2]/
+        // [3]/[4] מול 70/60/70). עכשיו כל כלל בטאב באמת קובע איזו התרעה תופיע,
+        // עבור איזו מיומנות, ובאיזה טקסט — ניתן לעריכה מלאה בלי לגעת בקוד.
+        const skillList = this.settings?.skills || [];
+        (this.settings?.alertThresholds || []).forEach(rule => {
+            const skillIdx = skillList.findIndex(s => s.id === rule.skillId);
+            if (skillIdx === -1) return;
+            const a = avgs[skillIdx];
+            if (a === null || a === undefined) return; // אין נתון עדיין למיומנות הזו — לא מציגים התרעה
+            const triggered = rule.direction === 'above' ? a > rule.threshold : a < rule.threshold;
+            if (!triggered) return;
+            const sevMap = { critical: 'red', warning: 'orange', ok: 'green', info: 'info' };
+            const iconMap = { critical: '🔴', warning: '🟠', ok: '🟢', info: '💡' };
+            const bucket = sevMap[rule.severity] || 'orange';
+            alerts[bucket].push({ icon: iconMap[rule.severity] || '🟠', title: skillList[skillIdx]?.name || 'התרעה', msg: rule.message || `${skillList[skillIdx]?.name}: ${a.toFixed(0)}%` });
+        });
 
-        if (avgs[2] < 70) {
-            alerts.orange.push({ icon: '🟠', title: 'קושי בתפעול', msg: 'ציון סטיק נמוך. נדרש תרגול מגרש/מוסך (ללא נוסעים) לפני חזרה לקו.' });
-        }
-        if ((avgs[0] - avgs[2]) >= 15) {
+        if (avgs[0] !== null && avgs[2] !== null && (avgs[0] - avgs[2]) >= cfg.knowledgeGapThreshold) {
             alerts.orange.push({ icon: '🟠', title: 'פער תפעולי', msg: 'הידע המערכתי גבוה משמעותית מהיכולת המעשית בסטיק. נדרש תרגול פיזי מוגבר.' });
         }
 
         if (len >= 6) {
-            const lessons = t.lessons || [];
-            const avgAll  = l => ([1, 2, 3, 4, 5].reduce((s, n) => s + (l['s' + n] || 0), 0) / 5);
-            const recent  = lessons.slice(-3).map(avgAll);
-            const prev    = lessons.slice(-6, -3).map(avgAll);
-            const avgR    = recent.reduce((a, b) => a + b, 0) / 3;
-            const avgP    = prev.reduce((a, b) => a + b, 0) / 3;
-            const diff    = avgR - avgP;
-            if (diff <= -2) {
-                alerts.orange.push({ icon: '📉', title: 'ירידה משמעותית בביצועים', msg: 'שיעורים אחרונים מראים ירידה בולטת ביחס לקודמיהם. מומלץ לקיים שיחת משוב עם החניך ולבחון גורמים אפשריים כמו עומס, עייפות או קושי ספציפי בחומר.' });
-            } else if (diff <= -1) {
-                alerts.orange.push({ icon: '📉', title: 'ירידה קלה בביצועים', msg: 'זוהתה ירידה קלה בשיעורים האחרונים. כדאי לבדוק האם מדובר בתנודה זמנית או בקושי מתפתח.' });
+            const lessons = (t.lessons || []).filter(l => (typeof _lessonScoreAvg === 'function' ? _lessonScoreAvg(l) : null) !== null);
+            const avgAll  = (typeof _lessonScoreAvg === 'function') ? _lessonScoreAvg : (l => ([1,2,3,4,5].reduce((s,n)=>s+(l['s'+n]||0),0)/5));
+            if (lessons.length >= 6) {
+                const recent  = lessons.slice(-3).map(avgAll);
+                const prev    = lessons.slice(-6, -3).map(avgAll);
+                const avgR    = recent.reduce((a, b) => a + b, 0) / 3;
+                const avgP    = prev.reduce((a, b) => a + b, 0) / 3;
+                const diff    = avgR - avgP;
+                if (diff <= cfg.decliningSevereDiff) {
+                    alerts.orange.push({ icon: '📉', title: 'ירידה משמעותית בביצועים', msg: 'שיעורים אחרונים מראים ירידה בולטת ביחס לקודמיהם. מומלץ לקיים שיחת משוב עם החניך ולבחון גורמים אפשריים כמו עומס, עייפות או קושי ספציפי בחומר.' });
+                } else if (diff <= cfg.decliningModerateDiff) {
+                    alerts.orange.push({ icon: '📉', title: 'ירידה קלה בביצועים', msg: 'זוהתה ירידה קלה בשיעורים האחרונים. כדאי לבדוק האם מדובר בתנודה זמנית או בקושי מתפתח.' });
+                }
             }
         }
 
         const hasWarnings = alerts.red.length > 0 || alerts.orange.length > 0;
         if (!hasWarnings) {
             if (len >= 6) {
-                const lessons = t.lessons || [];
-                const avgAll  = l => ([1, 2, 3, 4, 5].reduce((s, n) => s + (l['s' + n] || 0), 0) / 5);
-                const recent  = lessons.slice(-3).map(avgAll);
-                const prev    = lessons.slice(-6, -3).map(avgAll);
-                const diff    = (recent.reduce((a, b) => a + b, 0) / 3) - (prev.reduce((a, b) => a + b, 0) / 3);
-                if (diff >= 2) {
-                    alerts.info.push({ icon: '📈', title: 'שיפור בולט בביצועים', msg: 'שיעורים אחרונים מראים עלייה בולטת לעומת הקודמים. החניך בפסגת הביצועים שלו — כדאי לנצל את המומנטום ולהתקדם לחומר מאתגר יותר.' });
-                } else if (diff >= 1) {
-                    alerts.info.push({ icon: '📈', title: 'שיפור מתמיד', msg: 'ביצועי החניך בשיפור מתמיד בשיעורים האחרונים. כדאי לשמר את קצב ההתקדמות.' });
+                const lessons = (t.lessons || []).filter(l => (typeof _lessonScoreAvg === 'function' ? _lessonScoreAvg(l) : null) !== null);
+                const avgAll  = (typeof _lessonScoreAvg === 'function') ? _lessonScoreAvg : (l => ([1,2,3,4,5].reduce((s,n)=>s+(l['s'+n]||0),0)/5));
+                if (lessons.length >= 6) {
+                    const recent  = lessons.slice(-3).map(avgAll);
+                    const prev    = lessons.slice(-6, -3).map(avgAll);
+                    const diff    = (recent.reduce((a, b) => a + b, 0) / 3) - (prev.reduce((a, b) => a + b, 0) / 3);
+                    if (diff >= cfg.improvingSevereDiff) {
+                        alerts.info.push({ icon: '📈', title: 'שיפור בולט בביצועים', msg: 'שיעורים אחרונים מראים עלייה בולטת לעומת הקודמים. החניך בפסגת הביצועים שלו — כדאי לנצל את המומנטום ולהתקדם לחומר מאתגר יותר.' });
+                    } else if (diff >= cfg.improvingModerateDiff) {
+                        alerts.info.push({ icon: '📈', title: 'שיפור מתמיד', msg: 'ביצועי החניך בשיפור מתמיד בשיעורים האחרונים. כדאי לשמר את קצב ההתקדמות.' });
+                    }
                 }
             }
-            if (avgs[2] > 85 && maxL > 10) {
+            if (avgs[2] !== null && avgs[2] > 85 && maxL > 10) {
                 alerts.info.push({ icon: '✅', title: 'ביצועי סטיק מצוינים', msg: 'ניתן להתקדם לתרגול קטעים מורכבים בקו.' });
             }
             if (maxL > 30 && maxL < 45) {
@@ -5735,7 +5870,7 @@ window.TraineeSystem = {
             const lastLesson = (t.lessons || []).slice(-1)[0];
             if (lastLesson?.date) {
                 const days = Math.floor((Date.now() - new Date(lastLesson.date)) / 86400000);
-                if (days > 14) {
+                if (days > cfg.inactivityDaysAlert) {
                     alerts.info.push({ icon: '⏰', title: 'תזכורת המשך הכשרה', msg: `לא בוצע שיעור כבר ${days} ימים. מומלץ לתזמן המשך הכשרה בהקדם.` });
                 }
             }
@@ -5888,6 +6023,27 @@ window.TraineeSystem = {
         }
 
         if (!loaded) this.settings = defaults;
+
+        // 2026-08-19: מיגרציה חד-פעמית — alertThresholds תמיד היה ריק כברירת מחדל,
+        // ומעולם לא נכתב אליו כלום עד שהאדמין פותח את הטאב "ספי התרעות" ולוחץ שמור.
+        // בפועל renderAlerts() אף פעם לא קרא מהטאב הזה בכלל — היו לו ספים קשיחים
+        // נפרדים לגמרי. ממלאים כללי ברירת מחדל תואמים להתנהגות המקורית, כדי
+        // שהטאב יהיה חיבור אמיתי מעכשיו והלאה, לא תצוגה ריקה ללא השפעה.
+        if (!this.settings.alertThresholds || !this.settings.alertThresholds.length) {
+            this.settings.alertThresholds = [
+                {id:'al_proc', skillId:'s4', threshold:70, direction:'below', severity:'critical', message:'רמת הנהלים נמוכה מהנדרש. נדרש ריענון חוקה מיידי — החניך אינו מוכן לקו ללא שיפור.'},
+                {id:'al_disc', skillId:'s5', threshold:60, direction:'below', severity:'critical', message:'רמת המשמעת המקצועית נמוכה. נדרשת שיחת בירור עם החניך.'},
+                {id:'al_ops',  skillId:'s3', threshold:70, direction:'below', severity:'warning',  message:'ציון סטיק נמוך. נדרש תרגול מגרש/מוסך (ללא נוסעים) לפני חזרה לקו.'}
+            ];
+            try {
+                if (typeof _isDemoMode === 'function' && _isDemoMode()) {
+                    localStorage.setItem('trainee_settings', JSON.stringify(this.settings));
+                } else if (this.settingsRef) {
+                    await this.settingsRef.child('alertThresholds').set(this.settings.alertThresholds);
+                    localStorage.setItem('trainee_settings', JSON.stringify(this.settings));
+                }
+            } catch(e) { console.warn('alertThresholds migration:', e); }
+        }
     },
 
     async saveSettings() {
@@ -6257,6 +6413,19 @@ window.TraineeSystem = {
         const list = this.$('ts-alerts-list');
         if (!list || !this.settings) return;
         const alerts = this.settings.alertThresholds || [];
+        // 2026-08-19: אכלוס שדות "ספים נוספים" (פער/מגמות/מוכנות/חוסר-פעילות) מהאחסון
+        try {
+            const ic = _getInsightsConfig();
+            const set = (id, v) => { const el = this.$(id); if (el) el.value = v; };
+            set('ts-ins-gap', ic.knowledgeGapThreshold);
+            set('ts-ins-decline-severe', ic.decliningSevereDiff);
+            set('ts-ins-decline-mild', ic.decliningModerateDiff);
+            set('ts-ins-improve-severe', ic.improvingSevereDiff);
+            set('ts-ins-improve-mild', ic.improvingModerateDiff);
+            set('ts-ins-ready-lessons', ic.readyMinLessons);
+            set('ts-ins-ready-avg', ic.readyMinAvgPct);
+            set('ts-ins-inactivity', ic.inactivityDaysAlert);
+        } catch(e) {}
         const skillOpts = (this.settings.skills || []).map(s => `<option value="${s.id}">${_esc(s.name)}</option>`).join('');
         const sevOpts = [
             {v:'critical', l:'🔴'},
@@ -24642,12 +24811,12 @@ function _toggleTsBucket(kind, key) {
   var list = (window._tsPerTrainee || []).filter(function(t) {
     return kind === 'stage' ? t.stage === key : _levelOf(t) === key;
   });
+  // 2026-08-19: עיצוב קומפקטי — צ'יפים עוטפים (לא שורה מלאה-רוחב לכל חניך),
+  // ולחיצה על השם עצמו פותחת את התיק ישירות (לא כפתור נפרד "פתח תיק").
   var htm = list.length
-    ? list.map(function(t) {
-        return '<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 4px;border-bottom:1px solid #eee;">'
-          + '<span style="font-size:13px;color:#2c3e50;">' + _esc(t.name) + '</span>'
-          + '<button onclick="try{if(typeof TraineeSystem!==\'undefined\')TraineeSystem.openTrainee&&TraineeSystem.openTrainee(' + t.id + ');}catch(ex){}" style="padding:2px 9px;background:#2980b9;color:white;border:none;border-radius:6px;cursor:pointer;font-size:11px;">פתח תיק ←</button></div>';
-      }).join('')
+    ? '<div style="display:flex;flex-wrap:wrap;gap:6px;">' + list.map(function(t) {
+        return '<button onclick="try{if(typeof TraineeSystem!==\'undefined\')TraineeSystem.openTrainee&&TraineeSystem.openTrainee(' + t.id + ');}catch(ex){}" style="width:auto;margin:0;padding:5px 12px;background:#eef3fb;border:1px solid #b5d4f4;color:#2c3e50;border-radius:16px;cursor:pointer;font-size:12px;font-family:inherit;white-space:nowrap;">' + _esc(t.name) + '</button>';
+      }).join('') + '</div>'
     : '<div style="padding:6px 4px;color:#888;font-size:12px;">אין חניכים</div>';
   cont.innerHTML = htm;
   cont.setAttribute('data-key', key);
