@@ -3225,6 +3225,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
       <div style="display:flex;gap:6px;">
         <button onclick="approveAllPending()" style="width:auto;padding:7px 12px;background:#27ae60;color:white;border:none;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;">✅ אשר הכל</button>
         <button onclick="loadApprovalPanel()" style="width:auto;padding:7px 12px;background:#f0f4f8;border:1px solid #ccc;border-radius:7px;cursor:pointer;font-size:12px;">🔄 רענן</button>
+        <button onclick="closeApprovalPanel()" title="סגור" style="width:auto;padding:7px 10px;background:#fdf2f2;border:1px solid #e74c3c;color:#e74c3c;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;">✕</button>
       </div>
     </div>
 
@@ -5837,6 +5838,24 @@ window.TraineeSystem = {
             }
         }
 
+        // Fix (2026-08-23, per Lavi): the overall average score never fed into these
+        // alerts at all — only per-skill custom rules and 6+-lesson trend checks did.
+        // A trainee at avg 5.0 with only 4 lessons (right at the "מתקשה" threshold)
+        // fell through everything and landed on the generic "all fine" fallback below.
+        // Reuse the same avg + lowScoreRed/lowScoreOrange thresholds already used for
+        // the trainee card badge (renderList()) so the two stay consistent.
+        const _scoredLessonsForAvg = (t.lessons || []).filter(l => (typeof _lessonScoreAvg === 'function' ? _lessonScoreAvg(l) : null) !== null);
+        const _overallAvg = _scoredLessonsForAvg.length
+            ? _scoredLessonsForAvg.reduce((sum, l) => sum + _lessonScoreAvg(l), 0) / _scoredLessonsForAvg.length
+            : null;
+        const _summaryCfg = (typeof _getTraineeSummaryConfig === 'function')
+            ? _getTraineeSummaryConfig() : { lowScoreRed: 5, lowScoreOrange: 8 };
+        if (_overallAvg !== null && _overallAvg < _summaryCfg.lowScoreRed) {
+            alerts.red.push({ icon: '🔴', title: 'ממוצע ציונים נמוך', msg: `הממוצע הכולל (${_overallAvg.toFixed(1)}) מתחת לסף ההתרעה. מומלץ לבחון לעומק ולשקול ליווי צמוד, גם בשלב מוקדם של ההכשרה.` });
+        } else if (_overallAvg !== null && _overallAvg < _summaryCfg.lowScoreOrange) {
+            alerts.orange.push({ icon: '🟠', title: 'ממוצע ציונים בינוני', msg: `הממוצע הכולל (${_overallAvg.toFixed(1)}) בטווח הבינוני. מומלץ להקפיד על מעקב צמוד בהמשך ההכשרה.` });
+        }
+
         const hasWarnings = alerts.red.length > 0 || alerts.orange.length > 0;
         if (!hasWarnings) {
             if (len >= 6) {
@@ -6763,7 +6782,19 @@ window.TraineeSystem = {
 
     // Public: inject a lesson from external form (unified daily report)
     addLessonFromExternal(traineeId, lessonData) {
-        const t = this.trainees.find(x => String(x.id) === String(traineeId));
+        let t = this.trainees.find(x => String(x.id) === String(traineeId));
+        let _owningCourse = null;
+        if (!t) {
+            // Fix: the day-summary form lets an instructor pick a trainee from ANY active
+            // course, but this.trainees only holds the DEFAULT course's trainees. A trainee
+            // from a non-default course was silently dropped here (console.warn only) —
+            // no lesson/hours ever reached their file, and nothing showed up later in the
+            // archive reconstruction either. Search all courses before giving up.
+            for (const c of (this.courses || [])) {
+                const found = (c.trainees || []).find(x => String(x.id) === String(traineeId));
+                if (found) { t = found; _owningCourse = c; break; }
+            }
+        }
         if (!t) { console.warn('addLessonFromExternal: trainee not found', traineeId); return; }
         if (!t.lessons) t.lessons = [];
         const lesson = {
@@ -6789,9 +6820,41 @@ window.TraineeSystem = {
         t.lessons.push(lesson);
         // Skip persist/renderList during batch demo injection — caller handles it
         if (!lessonData._fromDemoReport) {
-            this.persist();
+            // Fix: persist() only ever saves this.currentCourseId's trainees. If the
+            // trainee we just updated belongs to a DIFFERENT course, persist() would
+            // silently save nothing for them — save that course's trainees directly.
+            if (_owningCourse && _owningCourse.id !== this.currentCourseId) {
+                this._persistCourseTrainees(_owningCourse);
+            } else {
+                this.persist();
+            }
             this.renderList();
         }
+    },
+
+    // Saves a single (non-active) course's trainees — companion to persist(), which
+    // only ever touches the currently-active course. See addLessonFromExternal fix above.
+    _persistCourseTrainees(course) {
+        if (!course || !course.id) return;
+        if (typeof _isDemoMode === 'function' && _isDemoMode()) return;
+        if (this.coursesRef) {
+            try {
+                const tData = {};
+                (course.trainees || []).forEach(t => { tData[this._fbKey(t.id)] = t; });
+                this.coursesRef.child(course.id).child('trainees').set(tData).catch(err => {
+                    console.error('_persistCourseTrainees failed:', err);
+                    if (typeof showToast === 'function') showToast('❌ שמירת החניכים נכשלה — בדוק חיבור אינטרנט', 'error');
+                });
+            } catch(e) {
+                console.warn('_persistCourseTrainees:', e);
+                if (typeof showToast === 'function') showToast('❌ שמירת החניכים נכשלה (שגיאה מקומית: ' + (e && e.message || e) + ')', 'error');
+            }
+        }
+        try {
+            const coursesToSave = this.courses.filter(c => !c._temp);
+            localStorage.setItem('trainee_courses', JSON.stringify(coursesToSave));
+        } catch(e) {}
+        window._traineeSummaryCache = null;
     },
 
     // Public: get alert thresholds matching a skill and score
@@ -8882,6 +8945,7 @@ function _refreshTabVisibility() {
   const dayPlanner = document.getElementById('dayPlannerDetails');
   const tripLog = document.getElementById('tripLogSection');
   const timeline = document.getElementById('timelineSectionAdmin');
+  const approvalPanel = document.getElementById('approvalPanel');
   const auditLog = document.getElementById('auditLogPanel');
   const settingsSec = document.getElementById('settingsSection');
   const reportsSec = document.getElementById('reportsSection');
@@ -8898,6 +8962,12 @@ function _refreshTabVisibility() {
   }
   if (timeline) {
     timeline.style.display = (activeTab === 'planner') ? '' : 'none';
+  }
+  if (approvalPanel && activeTab !== 'planner') {
+    // Fix: panel belongs only to the planner tab — force-close if user
+    // navigates away instead of leaking display:block into other tabs.
+    approvalPanel.style.display = 'none';
+    _approvalPanelOpen = false;
   }
 
   // --- trips: Trip Log, Manual Section (Add Trip) ---
@@ -18786,6 +18856,12 @@ function toggleApprovalPanel(){
   }
 }
 
+function closeApprovalPanel(){
+  _approvalPanelOpen=false;
+  const panel=document.getElementById('approvalPanel');
+  if(panel)panel.style.display='none';
+}
+
 function toggleMonthlyDash(){
   _monthlyDashOpen=!_monthlyDashOpen;
   _approvalPanelOpen=false;
@@ -24758,6 +24834,12 @@ function _generateTraineeSummary() {
     }
     if (avgScore !== null && avgScore < cfg.lowScoreOrange && trend === 'declining') {
       infoNotes.push('ממוצע ' + avgScore.toFixed(1) + ' עם מגמת ירידה');
+    }
+    // 2026-08-23, לפי בקשת לביא: התרעת מידע כשחניך מתקרב לסף "מתקשים" (ציון
+    // lowScoreRed, בברירת מחדל 5) מלמעלה — לפני שהוא בפועל חוצה אותו. לא משפיע
+    // על riskLevel/atRisk (עדיין ציונים בלבד, כבר-מתחת-לסף), רק מידע מקדים למנהל.
+    if (avgScore !== null && avgScore >= cfg.lowScoreRed && avgScore < cfg.lowScoreRed + 1) {
+      infoNotes.push('מתקרב לסף "מתקשים" — ממוצע ' + avgScore.toFixed(1) + ' (הסף: ' + cfg.lowScoreRed + ')');
     }
     if (!msStatus.test10 && extraHoursCount >= cfg.extraHoursRiskCount) {
       infoNotes.push('לא עבר טסט 10, קיבל ' + extraHoursCount + ' שעות נוספות/כשירות');
