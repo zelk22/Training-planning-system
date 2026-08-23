@@ -3800,7 +3800,19 @@ window.TraineeSystem = {
                 <div style="font-size:1em;">מתחבר למסד הנתונים...</div>
             </div>`;
         this.loadSettings().then(() => { this.applySkillLabels(); this.applySigVisibility(); });
-        this.loadCourses().then(() => { this.loadData(); });
+        this.loadCourses().then(() => {
+            this.loadData();
+            // Fix (2026-08-23, per Lavi): the dashboard widgets (level/stage distribution,
+            // "N/A" summary cards, etc.) were only ever refreshed by guessing with a fixed
+            // setTimeout (150-200ms) BEFORE this async Firebase fetch resolved. On a slow
+            // connection the guess ran out too early, so the panel kept showing zeros/N/A
+            // until switching tabs happened to trigger another render attempt after the
+            // data had already arrived. Refresh for real once the data is actually here.
+            try {
+                window._traineeSummaryCache = null;
+                if (typeof _renderTraineeSummaryPanel === 'function') _renderTraineeSummaryPanel();
+            } catch(e) {}
+        });
         this._initLessonContent();
     },
 
