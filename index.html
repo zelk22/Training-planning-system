@@ -5173,7 +5173,12 @@ window.TraineeSystem = {
         l.innerHTML = '';
         // Fix #78: soft-deleted (archived) trainees stay in the data but never show in the
         // active list.
-        const _visible = this.trainees.filter(t => !t.archived);
+        // Fix (2026-08-23, per Lavi): חונכים (mentor) רואים רק חניכים שהגיעו
+        // בפועל לשלב החניכה — לא לפני (לא "מוכן לחניכה" ומטה).
+        const _isMentorView = (typeof currentRole !== 'undefined' && currentRole === 'mentor');
+        const _visible = this.trainees
+            .filter(t => !t.archived)
+            .filter(t => !_isMentorView || (typeof _traineeStageIsChinuch === 'function' && _traineeStageIsChinuch(t)));
         if (!_visible.length) { emp.style.display = 'block'; return; }
         emp.style.display = 'none';
         // Fix #79: color-code cards by the trainee's developing skill-rating average, using the
@@ -6197,6 +6202,133 @@ window.TraineeSystem = {
     // LESSON CONTENT — Sprint 3: Admin UI + render methods
     // ═══════════════════════════════════════════════════════════
 
+    // 2026-08-23, לפי בקשת לביא: תוכנית ההכשרה הרשמית של סיטאדיס (50 שיעורים,
+    // מחולקת ל-3 שלבים: טכני/תפעולי/מסחרי) — משמשת כעת ככותרת/תווית לכל שיעור
+    // בטאב "דגשי ביצוע", במקום התווית הגנרית "#N" בלבד. תוכן שכבר הוזן ע"י
+    // לביא נשמר ומוצג כרגיל לפי מספר השיעור — רק התווית מעל תיבת הטקסט משתנה.
+    // אורבוס וחניכה ימשיכו להציג "#N" בלבד עד שתסופק תוכנית מקבילה עבורם.
+    SITADIS_LESSON_TOPICS: {
+        1: { cat: 'טכני', title: 'החניך יתפעל את ארון החשמל' },
+        2: { cat: 'טכני', title: 'החניך יתפעל את שולחן העבודה' },
+        3: { cat: 'טכני', title: 'החניך יתפעל את מערכת ה HMI' },
+        4: { cat: 'טכני', title: 'החניך יתפעל את מערכת ה AVLS' },
+        5: { cat: 'טכני', title: 'החניך יתמצא בדיפו' },
+        6: { cat: 'טכני', title: 'החניך יאיץ יאט ויבלום את הרכבת' },
+        7: { cat: 'טכני', title: 'החניך יציית לאיתותים (סימון יד) תמרורי ורמזורי הדיפו' },
+        8: { cat: 'טכני', title: 'החניך ינהג על פי העקרונות' },
+        9: { cat: 'טכני', title: 'החניך יפעל על פי שמונה פעולות החירום' },
+        10: { cat: 'טכני', title: 'החניך יתייחס לשינוים בדיפו' },
+        11: { cat: 'תפעולי', title: 'החניך יתאר את מבנה הקרון' },
+        12: { cat: 'תפעולי', title: 'החניך יבצע הכנת רכבת' },
+        13: { cat: 'תפעולי', title: 'החניך יתפעל את דלתות הרכבת' },
+        14: { cat: 'תפעולי', title: 'החניך ינהג על פי מערכת התמרון' },
+        15: { cat: 'תפעולי', title: 'החניך יתאר את מבנה הקו' },
+        16: { cat: 'תפעולי', title: 'החניך יזהה את אזורי המפלגים והכיס' },
+        17: { cat: 'תפעולי', title: 'החניך יתנהל באזורי הפיקוד הבאים: דיפו, גבעה, ח"א והרצל' },
+        18: { cat: 'תפעולי', title: 'החניך ינהג על פי המהירויות הקבועות בקו' },
+        19: { cat: 'תפעולי', title: 'החניך יתקשר עם חדר הבקרה' },
+        20: { cat: 'תפעולי', title: 'החניך ינהג בקו' },
+        21: { cat: 'תפעולי', title: 'החניך יפעל על פי נוהל מכשול בקו' },
+        22: { cat: 'תפעולי', title: 'החניך יפעל על פי נוהל שריפה' },
+        23: { cat: 'תפעולי', title: 'החניך יפעל על פי נוהל שימוט' },
+        24: { cat: 'תפעולי', title: 'החניך יפעל על פי נוהל כניסה לצומת במצב מונמך' },
+        25: { cat: 'תפעולי', title: 'החניך יפעל על פי נוהל חלון שבור' },
+        26: { cat: 'תפעולי', title: 'החניך יפעל על פי נוהל פגיעה ברכב או הולך רגל כולל מילוי טופס מתאים' },
+        27: { cat: 'תפעולי', title: 'החניך יפעל על פי נוהל מפגש רכבות' },
+        28: { cat: 'תפעולי', title: 'החניך יפעל על פי נוהל ניתוק בקו' },
+        29: { cat: 'תפעולי', title: 'החניך יתפעל תקלות בלמים' },
+        30: { cat: 'תפעולי', title: 'החניך יבצע החלפת מסילות' },
+        31: { cat: 'מסחרי', title: 'החניך ינהג במתינות ובהתחשב בנוסעים' },
+        32: { cat: 'מסחרי', title: 'החניך ינהג בהתאם לזמנים בקו' },
+        33: { cat: 'מסחרי', title: 'החניך יכנס לתחנה' },
+        34: { cat: 'מסחרי', title: 'החניך יבצע עצירה מלאה בקו תחנה' },
+        35: { cat: 'מסחרי', title: 'החניך יצא מתחנה' },
+        36: { cat: 'מסחרי', title: 'החניך יפעל על פי נוהל פינוי מבוקר' },
+        37: { cat: 'מסחרי', title: 'החניך יפעל על פי נוהל פינוי חירום' },
+        38: { cat: 'מסחרי', title: 'החניך יפעל על פי נוהל נוסע במצוקה' },
+        39: { cat: 'מסחרי', title: 'החניך יפעל על פי נוהל הפרעה ברכבת' },
+        40: { cat: 'מסחרי', title: 'החניך יפעל על פי נוהל הפעלת ידית חירום' },
+        41: { cat: 'מסחרי', title: 'החניך יפעל על פי נוהל צפיפות בתחנה' },
+        42: { cat: 'מסחרי', title: 'החניך יפעל על פי נוהל אי עצירה בקו תחנה' },
+        43: { cat: 'מסחרי', title: 'החניך יפעל על פי נוהל פתיחת דלתות בצד שגוי' },
+        44: { cat: 'מסחרי', title: 'החניך יתפעל תקלות בלמים (יבצע בידוד בלם) כולל גרירה דחיפה' },
+        45: { cat: 'מסחרי', title: 'החניך יתפעל תקלות דלתות' },
+        46: { cat: 'מסחרי', title: 'החניך יכרוז על פי נהלים' },
+        47: { cat: 'מסחרי', title: 'החניך יתפעל אירוע חירום כללי מול חדר הבקרה' },
+        48: { cat: 'מסחרי', title: 'החניך ינהג על פי העקרונות' },
+        49: { cat: 'מסחרי', title: 'החניך יפעל על פי נוהל נהג במצוקה' },
+        50: { cat: 'מסחרי', title: 'החניך יצפה את הסכנות בקו' }
+    },
+
+    // 2026-08-23, לפי בקשת לביא: תוכנית ההכשרה של אורבוס (7 שיעורים). ללא חלוקה
+    // לקטגוריות/צבעים — רק רשימת מספר שיעור + נושא, בדיוק כמו סיטאדיס.
+    ORBUS_LESSON_TOPICS: {
+        1: { title: 'החניך יתפעל את ארון החשמל' },
+        2: { title: 'החניך יתפעל את שולחן העבודה' },
+        3: { title: 'החניך יתפעל את מערכת ה HMI' },
+        4: { title: 'החניך יתפעל את מערכת ה AVLS' },
+        5: { title: 'החניך יאיץ יאט ויבלום את הרכבת' },
+        6: { title: 'החניך יתאר את מבנה הקרון' },
+        7: { title: 'החניך יתפעל את דלתות הרכבת' }
+    },
+
+    // 2026-08-23, לפי בקשת לביא: תוכנית ההכשרה של שלב חניכה (50 שיעורים). הוסרו
+    // הסיומות "(מ55)" וכו' מהמקור (מספור פנימי לא רלוונטי לתצוגה) — פרטים בסוגריים
+    // שאינם מהתבנית הזו (כמו "(log off)" או "(חסכון אנרגטי)") נשמרו כפי שהם.
+    // ללא חלוקה לקטגוריות/צבעים, כמו אורבוס.
+    CHINUCH_LESSON_TOPICS: {
+        1: { title: 'הנהג יבצע הכנת רכבת מסחרית' },
+        2: { title: 'הנהג יצא על פי סידור מהדיפו וח"א' },
+        3: { title: 'הנהג ינהג על פי סידור נסיעה' },
+        4: { title: 'הנהג יבצע נסיעה ריקה' },
+        5: { title: 'הנהג יכנס לתחנה' },
+        6: { title: 'הנהג יעצור בקו תחנה' },
+        7: { title: 'הנהג יבצע פתיחת דלתות' },
+        8: { title: 'הנהג יקבל ויפנה נוסעים בתחנה' },
+        9: { title: 'הנהג יבצע מיקום מחדש (log off)' },
+        10: { title: 'הנהג ינהג בתנאי עומס דרך ונוסעים' },
+        11: { title: 'הנהג יעמוד בזמנים' },
+        12: { title: 'הנהג יתקשר עם הנוסעים בקו' },
+        13: { title: 'הנהג יבצע שטיפת רכבת' },
+        14: { title: 'הנהג יפעל על פי נוהל תקשורת' },
+        15: { title: 'הנהג יכרוז על פי ההנחיות' },
+        16: { title: 'הנהג יבצע הכנת רכבת מסחרית (כולל פתיחת ציר)' },
+        17: { title: 'הנהג ינהג בהתאם לעקרונות הנהיגה החסכונית וההדרגתית (חסכון אנרגטי)' },
+        18: { title: 'הנהג יתפעל את הרכבת על פי הנהלים וההנחיות' },
+        19: { title: 'הנהג יתפעל את הרכבת על פי הנהלים וההנחיות' },
+        20: { title: 'הנהג יתפעל את הרכבת על פי הנהלים וההנחיות' },
+        21: { title: 'הנהג יתפעל את הרכבת על פי הנהלים וההנחיות' },
+        22: { title: 'הנהג יתפעל את הרכבת על פי הנהלים וההנחיות' },
+        23: { title: 'הנהג יתפעל את הרכבת על פי הנהלים וההנחיות' },
+        24: { title: 'הנהג יתפעל את הרכבת על פי הנהלים וההנחיות' },
+        25: { title: 'הנהג יתפעל את הרכבת על פי הנהלים וההנחיות' },
+        26: { title: 'הנהג יתפעל את הרכבת על פי הנהלים וההנחיות' },
+        27: { title: 'הנהג יתפעל את הרכבת על פי הנהלים וההנחיות' },
+        28: { title: 'הנהג יתפעל את הרכבת על פי הנהלים וההנחיות' },
+        29: { title: 'הנהג יתפעל את הרכבת על פי הנהלים וההנחיות' },
+        30: { title: 'הנהג יתפעל את הרכבת על פי הנהלים וההנחיות' },
+        31: { title: 'הנהג יתפעל את הרכבת על פי הנהלים וההנחיות' },
+        32: { title: 'הנהג יתפעל את הרכבת על פי הנהלים וההנחיות' },
+        33: { title: 'הנהג יתפעל את הרכבת על פי הנהלים וההנחיות' },
+        34: { title: 'הנהג יתפעל את הרכבת על פי הנהלים וההנחיות' },
+        35: { title: 'הנהג יתפעל את הרכבת על פי הנהלים וההנחיות' },
+        36: { title: 'הנהג יתפעל את הרכבת על פי הנהלים וההנחיות' },
+        37: { title: 'הנהג יתפעל את הרכבת על פי הנהלים וההנחיות' },
+        38: { title: 'הנהג יתפעל את הרכבת על פי הנהלים וההנחיות' },
+        39: { title: 'הנהג יתפעל את הרכבת על פי הנהלים וההנחיות' },
+        40: { title: 'הנהג יתפעל את הרכבת על פי הנהלים וההנחיות' },
+        41: { title: 'הנהג יתפעל את הרכבת על פי הנהלים וההנחיות' },
+        42: { title: 'הנהג יתפעל את הרכבת על פי הנהלים וההנחיות' },
+        43: { title: 'הנהג יתפעל את הרכבת על פי הנהלים וההנחיות' },
+        44: { title: 'הנהג יתפעל את הרכבת על פי הנהלים וההנחיות' },
+        45: { title: 'הנהג יתפעל את הרכבת על פי הנהלים וההנחיות' },
+        46: { title: 'הנהג יתפעל את הרכבת על פי הנהלים וההנחיות' },
+        47: { title: 'הנהג יתפעל את הרכבת על פי הנהלים וההנחיות' },
+        48: { title: 'הנהג יתפעל את הרכבת על פי הנהלים וההנחיות' },
+        49: { title: 'הנהג יתפעל את הרכבת על פי הנהלים וההנחיות' },
+        50: { title: 'הנהג יתפעל את הרכבת על פי הנהלים וההנחיות' }
+    },
+
     _tsHighlightType: 'sitadis',
 
     // Called automatically by switchSettingsTab via _renderTab_highlights pattern
@@ -6210,14 +6342,42 @@ window.TraineeSystem = {
         const type  = this._tsHighlightType || 'sitadis';
         const count = type === 'orbus' ? 7 : 50;
         const data  = this.lessonContent?.[type] || {};
+        // Fix (2026-08-23, per Lavi): אורבוס מקבל עכשיו רשימת נושאים תואמת, בלי
+        // חלוקה לצבעים (הוא לא מחולק לשלבים כמו סיטאדיס).
+        const topics = type === 'sitadis' ? this.SITADIS_LESSON_TOPICS
+                     : type === 'orbus'   ? this.ORBUS_LESSON_TOPICS
+                     : type === 'chinuch' ? this.CHINUCH_LESSON_TOPICS
+                     : null;
+        // אותם צבעי ירוק/כתום/כחול המשמשים לשלבי טכני/תפעולי/מסחרי בפס ההתקדמות
+        // של החניך, כדי ששתי התצוגות יתאמו חזותית (רלוונטי לסיטאדיס בלבד).
+        const CAT_COLORS = { 'טכני': '#27ae60', 'תפעולי': '#f39c12', 'מסחרי': '#3498db' };
         let html = '';
+        let _lastCat = null;
         for (let n = 1; n <= count; n++) {
             const val = data[n] || '';
-            html += `<div style="display:flex;gap:10px;align-items:flex-start;">
-              <span style="min-width:34px;padding-top:8px;font-weight:bold;color:#888;font-size:13px;">#${n}</span>
-              <textarea data-ts-highlight-idx="${n}" rows="2" placeholder="דגש לשיעור ${n}..."
-                style="flex:1;padding:8px 10px;border:1.5px solid #ddd;border-radius:8px;font-size:13px;direction:rtl;resize:vertical;">${_esc(val)}</textarea>
-            </div>`;
+            const topic = topics ? topics[n] : null;
+            const catColor = (topic && topic.cat) ? (CAT_COLORS[topic.cat] || '#888') : '#888';
+            // כותרת קטגוריה (טכני/תפעולי/מסחרי) כשהיא משתנה — רק לסיטאדיס, שיש לו קטגוריות.
+            if (topic && topic.cat && topic.cat !== _lastCat) {
+                _lastCat = topic.cat;
+                html += '<div style="flex-shrink:0;margin:' + (n === 1 ? '0' : '18px') + ' 0 6px;padding:5px 10px;background:' + catColor + '1a;border-right:4px solid ' + catColor + ';border-radius:6px;font-size:12px;font-weight:bold;color:' + catColor + ';">' + _esc(_lastCat) + '</div>';
+            }
+            // רשימה מכווצת (accordion) — לחיצה על השורה פותחת/סוגרת את דגשי הביצוע שלה.
+            const label = topic ? ('#' + n + ' — ' + _esc(topic.title)) : ('שיעור ' + n);
+            const hasContent = !!val.trim();
+            const rowBorder = topic ? catColor : '#ddd';
+            html += '<div class="ts-hl-row" style="flex-shrink:0;border-right:4px solid ' + rowBorder + ';border-radius:8px;margin-bottom:6px;overflow:hidden;background:white;box-shadow:0 1px 3px rgba(0,0,0,0.06);">'
+                  +   '<div onclick="TraineeSystem._toggleHighlightRow(' + n + ')" style="display:flex;align-items:center;justify-content:space-between;padding:9px 12px;cursor:pointer;gap:8px;">'
+                  +     '<span style="font-size:13px;color:#2c3e50;font-weight:' + (topic ? '600' : '400') + ';">' + label + '</span>'
+                  +     '<span style="display:flex;align-items:center;gap:8px;">'
+                  +       (hasContent ? ('<span style="font-size:11px;color:' + catColor + ';">✓ יש תוכן</span>') : '')
+                  +       '<span id="ts-hl-arrow-' + n + '" style="font-size:10px;color:#aaa;display:inline-block;transition:transform .15s;">◀</span>'
+                  +     '</span>'
+                  +   '</div>'
+                  +   '<div id="ts-hl-body-' + n + '" style="display:none;padding:0 12px 12px;">'
+                  +     '<textarea data-ts-highlight-idx="' + n + '" rows="3" placeholder="דגש לשיעור ' + n + '..." style="width:100%;padding:8px 10px;border:1.5px solid #ddd;border-radius:8px;font-size:13px;direction:rtl;resize:vertical;">' + _esc(val) + '</textarea>'
+                  +   '</div>'
+                  + '</div>';
         }
         list.innerHTML = html;
         this.container.querySelectorAll('.ts-hl-type-btn').forEach(b => {
@@ -6228,6 +6388,15 @@ window.TraineeSystem = {
             b.style.borderColor  = active ? '#3498db' : '#ddd';
         });
         this._applyLessonContentPermissions();
+    },
+
+    _toggleHighlightRow(n) {
+        const body  = this.$('ts-hl-body-' + n);
+        const arrow = this.$('ts-hl-arrow-' + n);
+        if (!body) return;
+        const open = body.style.display !== 'none';
+        body.style.display = open ? 'none' : 'block';
+        if (arrow) arrow.style.transform = open ? '' : 'rotate(-90deg)';
     },
 
     _applyLessonContentPermissions() {
@@ -8447,6 +8616,13 @@ function enterMentorView(name){
     if(typeof TraineeSystem!=='undefined'){
       TraineeSystem.updateInMissionSelect();
       TraineeSystem.updateInsDropdown();
+      // Fix (2026-08-23, per Lavi): if TraineeSystem was already initialized/rendered
+      // earlier in this same session (e.g. admin previewing as mentor, or switching
+      // between mentors), the trainee-card list stays exactly as it was rendered
+      // under the PREVIOUS role — nothing here used to force a re-render, so the
+      // "only שלב חניכה" filter in renderList() never actually re-ran for mentors
+      // who arrived via an existing session rather than a fresh page load.
+      if (typeof TraineeSystem.renderList === 'function') TraineeSystem.renderList();
     }
   }catch(e){}
   // Reset open sections
@@ -8886,6 +9062,9 @@ function enterApp(role,name){
 
       // Load task reports and render today's tasks
       setTimeout(_updateTraineeBtnVisibility, 300);
+      // Fix (2026-08-23, per Lavi): real (non-preview) instructor login also never
+      // forced the trainee summary dashboard to (re)render for the new role.
+      setTimeout(()=>{ try{ if(typeof _renderTraineeSummaryPanel==='function') _renderTraineeSummaryPanel(); }catch(e){} }, 300);
       try{
         const _td=_localDateStr(new Date());
         loadTaskReportsForDate(_td).then(()=>renderTodayTasks()).catch(()=>renderTodayTasks());
@@ -9605,23 +9784,21 @@ function renderInstrView(){
 
 
 function renderGanttInto(targetId){
-
+  // Fix (2026-08-23, per Lavi's security audit request): mentors get this whole
+  // section hidden by CSS only (.mentor-mode #timelineSectionInstr{display:none}),
+  // but the DOM node is still reachable — this function had no role check of its
+  // own, so calling it directly (e.g. from devtools console) would still render
+  // every instructor's real schedule/route into the page for a mentor session.
+  // The CSS hide is now backed by a real data-level gate.
+  if (targetId === 'ganttGridInstr' && typeof currentRole !== 'undefined' && currentRole === 'mentor') return;
   const main=document.getElementById('ganttGrid');
-
   const target=document.getElementById(targetId);
-
   if(!main||!target)return;
-
   main.id='_gt';
-
   target.id='ganttGrid';
-
   renderTimeline();
-
   target.id=targetId;
-
   main.id='ganttGrid';
-
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -18128,6 +18305,9 @@ function _exitMentorPreview(){
     const _swBtnExit=document.getElementById('switchViewBtn');if(_swBtnExit)_swBtnExit.style.display='inline-block';
     showToast('🔙 חזרת לממשק המנהל','info');
     setTimeout(()=>moveManualSectionToManager(),50);
+    // Fix (2026-08-23, per Lavi): restore the full trainee list when leaving mentor
+    // preview — same stale-render issue as entering, just in reverse.
+    try{ if(typeof TraineeSystem!=='undefined'&&typeof TraineeSystem.renderList==='function') TraineeSystem.renderList(); }catch(e){}
   } else {
     // Was in instructor preview — go back there (don't show mentor button for instructor)
     currentRole=role;currentUserName=name;
@@ -20340,6 +20520,11 @@ function switchToInstructorView(previewName){
   try{if(typeof startInstrSync==='function')startInstrSync();}catch(e){}
   setTimeout(_updateTraineeBtnVisibility, 200);
   setTimeout(_updateTraineeAlertBadge, 250);
+  // Fix (2026-08-23, per Lavi): same stale-render issue as the mentor entry point —
+  // if TraineeSystem/the summary panel already rendered earlier under a different
+  // role in this session, nothing here forced it to re-render for 'instructor', so
+  // the dashboard (KPIs/התפלגות רמות/שלבים/אבני דרך) could silently stay hidden.
+  setTimeout(()=>{ try{ if(typeof _renderTraineeSummaryPanel==='function') _renderTraineeSummaryPanel(); }catch(e){} }, 250);
   setTimeout(()=>{
     try{renderLog();}catch(e){}
     try{if(typeof renderInstrView==='function')renderInstrView();}catch(e){}
@@ -24740,6 +24925,32 @@ function _getTraineeSummaryConfig() {
   }
 }
 
+// 2026-08-23, לפי בקשת לביא: חונכים (mentor) רואים ברשימת "ניהול חניכים" רק
+// חניכים שהגיעו בפועל לשלב החניכה עצמו — לא לפני (לא "מוכן לחניכה" ומטה).
+// אותו חישוב בדיוק כמו "stage" ב-_generateTraineeSummary למטה, כדי שהשתיים
+// יישארו תואמות (מי שנחשב "בחניכה" בדשבורד הוא בדיוק מי שיוצג לחונך).
+function _traineeStageIsChinuch(t) {
+  try {
+    const passMap = window._milestonePassMap || {};
+    const lessons = t.lessons || [];
+    const sitadisLessons = lessons
+      .filter(l => l.mission === 'קורס מעשי סיטאדיס' || l.mission === 'קורס מעשי' || l.mission === 'קורס')
+      .flatMap(l => l.lessonNums || []);
+    const maxSitadis = sitadisLessons.length ? Math.max(...sitadisLessons) : 0;
+    const orbusLessons = lessons
+      .filter(l => l.mission === 'קורס מעשי אורבוס')
+      .flatMap(l => l.lessonNums || []);
+    const maxOrbus = orbusLessons.length ? Math.max(...orbusLessons) : 0;
+    const msEntry = passMap[String(t.id)] || {};
+    const chinuchMs = !!(msEntry['chinuch-ms'] || (maxSitadis >= 50 && maxOrbus >= 7));
+    const maxChinuch = lessons.reduce((acc, l) => {
+      if (l.mission === 'חניכה') acc += (l.lessonNums || []).length;
+      return acc;
+    }, 0);
+    return chinuchMs && maxChinuch > 0;
+  } catch(e) { return false; }
+}
+
 function _generateTraineeSummary() {
   // Guard
   if (typeof TraineeSystem === 'undefined' || !TraineeSystem.trainees) {
@@ -25047,7 +25258,16 @@ function _toggleInfoAlerts() {
 function _renderTraineeSummaryPanel() {
   var panel = document.getElementById('trainee-summary-panel');
   if (!panel) return;
-  if (typeof currentRole === 'undefined' || currentRole !== 'admin') {
+  // Fix (2026-08-23, per Lavi): מדריכים/חונכים רואים כעת את אותו הדשבורד כללי,
+  // "התפלגות רמות", "התפלגות שלבים" ואבני הדרך שהמנהל רואה — אבל בלי "התרעות
+  // מידע למנהל" ובלי כפתור/פאנל "קריטריונים להתפלגות רמות" (שני אלה חסומים
+  // בהמשך הפונקציה מאחורי isAdmin). מי שאינו מחובר בכלל (currentRole לא מוגדר)
+  // עדיין לא רואה כלום.
+  var isAdmin = (typeof currentRole !== 'undefined' && currentRole === 'admin');
+  // Fix (2026-08-23, per Lavi): מדריכים בלבד (currentRole === 'instructor') —
+  // לא חונכים (mentor). למרות ש-mentor-mode עושה שימוש חוזר בממשק המדריך.
+  var isStaff = isAdmin || (typeof currentRole !== 'undefined' && currentRole === 'instructor');
+  if (!isStaff) {
     panel.style.display = 'none';
     return;
   }
@@ -25128,7 +25348,7 @@ function _renderTraineeSummaryPanel() {
   }
   // 2026-08-19: התרעות מידע למנהל — שעות נוספות תקועות / מגמת ירידה — לא קובעות
   // "מתקשה" (הוצאו מהסיווג ביוזמת לביא), רק מוצגות למידע. אזור מתקפל (מכווץ כברירת מחדל).
-  if(summary.infoAlerts&&summary.infoAlerts.length){
+  if(isAdmin && summary.infoAlerts&&summary.infoAlerts.length){
     h.push('<div style="background:white;border:1px solid #f5e3c3;border-radius:10px;padding:12px 16px;margin-bottom:12px;direction:rtl;">');
     h.push('<button onclick="try{_toggleInfoAlerts();}catch(e){}" style="width:100%;background:none;border:none;padding:0;cursor:pointer;display:flex;align-items:center;justify-content:space-between;font-family:inherit;">'
       +'<span style="font-size:13px;font-weight:bold;color:#2c3e50;">💡 התרעות מידע למנהל <span style="font-size:11px;font-weight:400;color:#888;">('+summary.infoAlerts.length+')</span></span>'
@@ -25140,7 +25360,8 @@ function _renderTraineeSummaryPanel() {
   var ts=summary.generatedAt?new Date(summary.generatedAt).toLocaleTimeString('he-IL'):'';
   h.push('<div style="display:flex;justify-content:space-between;align-items:center;direction:rtl;font-size:11px;color:#aaa;padding:4px 2px 0;margin-bottom:10px;"><span>עודכן: '+ts+'</span><button onclick="try{window._traineeSummaryCache=null;_renderTraineeSummaryPanel();}catch(e){}" style="padding:3px 10px;background:#f0f4f8;border:1px solid #ccc;border-radius:6px;cursor:pointer;font-size:11px;color:#666;">רענן</button></div>');
 
-  // ── Settings toggle button ──────────────────────────────
+  // ── Settings toggle button (admin only; per Lavi 2026-08-23) ──────────────
+  if (isAdmin) {
   h.push('<div id="tsc-settings-area">');
   h.push('<button onclick="try{_toggleTraineeSummarySettings();}catch(e){}" style="width:100%;padding:8px 14px;background:#f8f9fa;border:1px solid #dee2e6;border-radius:8px;cursor:pointer;font-size:12px;color:#555;direction:rtl;text-align:right;display:flex;align-items:center;gap:6px;" id="tsc-settings-btn">');
   h.push('<span>&#9881;&#65039; קריטריונים להתפלגות רמות</span><span id="tsc-settings-arrow" style="margin-right:auto;font-size:10px;">&#9660;</span></button>');
@@ -25214,6 +25435,7 @@ function _renderTraineeSummaryPanel() {
 
   h.push('</div>'); // end tsc-settings-panel
   h.push('</div>'); // end tsc-settings-area
+  } // end if(isAdmin) settings area
 
   panel.innerHTML=h.join('');
 
