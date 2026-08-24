@@ -5869,6 +5869,38 @@ window.TraineeSystem = {
             }
         }
 
+        // 2026-08-23, לפי בקשת לביא (שלב א' — "תיוג שיעורים כבטיחותי-קריטי"):
+        // ציון נמוך על שיעור המתויג critical:true ב-SITADIS_LESSON_TOPICS מקבל
+        // התרעה ייעודית תמיד — גם אם הממוצע הכללי של החניך תקין לגמרי. זה בדיוק
+        // המקרה שממוצע כללי מדלל: 8-9 טוב, אבל השיעור הקריטי הבודד נכשל.
+        // סף: משתמשים ב-lowScoreOrange (בברירת מחדל 8) כך שגם "בינוני-בקושי"
+        // בנושא בטיחותי כבר יעלה כתום, לא רק אדום מובהק.
+        if (typeof this.SITADIS_LESSON_TOPICS === 'object') {
+            const _critCfg = (typeof _getTraineeSummaryConfig === 'function')
+                ? _getTraineeSummaryConfig() : { lowScoreRed: 5, lowScoreOrange: 8 };
+            const _seenCritical = new Set(); // מספר שיעור → נמנע מהתרעה כפולה אם דווח כמה פעמים
+            (t.lessons || []).forEach(l => {
+                if (!Array.isArray(l.lessonNums)) return;
+                const score = (typeof _lessonScoreAvg === 'function') ? _lessonScoreAvg(l) : null;
+                if (score === null) return;
+                l.lessonNums.forEach(num => {
+                    const topic = this.SITADIS_LESSON_TOPICS[num];
+                    if (!topic || !topic.critical) return;
+                    if (score >= _critCfg.lowScoreOrange) return; // ציון תקין על הנושא הזה
+                    const key = num + '|' + (score < _critCfg.lowScoreRed ? 'red' : 'orange');
+                    if (_seenCritical.has(key)) return;
+                    _seenCritical.add(key);
+                    const bucket = score < _critCfg.lowScoreRed ? 'red' : 'orange';
+                    const icon = bucket === 'red' ? '🔴' : '🟠';
+                    alerts[bucket].push({
+                        icon,
+                        title: `נושא בטיחותי-קריטי: שיעור ${num}`,
+                        msg: `"${topic.title}" — ציון ${score.toFixed(1)} (מתחת לסף). זהו נושא בטיחותי מרכזי בתוכנית ההכשרה, ולכן מקבל התרעה ייעודית גם אם הממוצע הכללי של החניך תקין.`
+                    });
+                });
+            });
+        }
+
         // Fix (2026-08-23, per Lavi): the overall average score never fed into these
         // alerts at all — only per-skill custom rules and 6+-lesson trend checks did.
         // A trainee at avg 5.0 with only 4 lessons (right at the "מתקשה" threshold)
@@ -6230,7 +6262,7 @@ window.TraineeSystem = {
         6: { cat: 'טכני', title: 'החניך יאיץ יאט ויבלום את הרכבת' },
         7: { cat: 'טכני', title: 'החניך יציית לאיתותים (סימון יד) תמרורי ורמזורי הדיפו' },
         8: { cat: 'טכני', title: 'החניך ינהג על פי העקרונות' },
-        9: { cat: 'טכני', title: 'החניך יפעל על פי שמונה פעולות החירום' },
+        9: { cat: 'טכני', title: 'החניך יפעל על פי שמונה פעולות החירום', critical: true },
         10: { cat: 'טכני', title: 'החניך יתייחס לשינוים בדיפו' },
         11: { cat: 'תפעולי', title: 'החניך יתאר את מבנה הקרון' },
         12: { cat: 'תפעולי', title: 'החניך יבצע הכנת רכבת' },
@@ -6242,14 +6274,14 @@ window.TraineeSystem = {
         18: { cat: 'תפעולי', title: 'החניך ינהג על פי המהירויות הקבועות בקו' },
         19: { cat: 'תפעולי', title: 'החניך יתקשר עם חדר הבקרה' },
         20: { cat: 'תפעולי', title: 'החניך ינהג בקו' },
-        21: { cat: 'תפעולי', title: 'החניך יפעל על פי נוהל מכשול בקו' },
-        22: { cat: 'תפעולי', title: 'החניך יפעל על פי נוהל שריפה' },
-        23: { cat: 'תפעולי', title: 'החניך יפעל על פי נוהל שימוט' },
-        24: { cat: 'תפעולי', title: 'החניך יפעל על פי נוהל כניסה לצומת במצב מונמך' },
-        25: { cat: 'תפעולי', title: 'החניך יפעל על פי נוהל חלון שבור' },
-        26: { cat: 'תפעולי', title: 'החניך יפעל על פי נוהל פגיעה ברכב או הולך רגל כולל מילוי טופס מתאים' },
-        27: { cat: 'תפעולי', title: 'החניך יפעל על פי נוהל מפגש רכבות' },
-        28: { cat: 'תפעולי', title: 'החניך יפעל על פי נוהל ניתוק בקו' },
+        21: { cat: 'תפעולי', title: 'החניך יפעל על פי נוהל מכשול בקו', critical: true },
+        22: { cat: 'תפעולי', title: 'החניך יפעל על פי נוהל שריפה', critical: true },
+        23: { cat: 'תפעולי', title: 'החניך יפעל על פי נוהל שימוט', critical: true },
+        24: { cat: 'תפעולי', title: 'החניך יפעל על פי נוהל כניסה לצומת במצב מונמך', critical: true },
+        25: { cat: 'תפעולי', title: 'החניך יפעל על פי נוהל חלון שבור', critical: true },
+        26: { cat: 'תפעולי', title: 'החניך יפעל על פי נוהל פגיעה ברכב או הולך רגל כולל מילוי טופס מתאים', critical: true },
+        27: { cat: 'תפעולי', title: 'החניך יפעל על פי נוהל מפגש רכבות', critical: true },
+        28: { cat: 'תפעולי', title: 'החניך יפעל על פי נוהל ניתוק בקו', critical: true },
         29: { cat: 'תפעולי', title: 'החניך יתפעל תקלות בלמים' },
         30: { cat: 'תפעולי', title: 'החניך יבצע החלפת מסילות' },
         31: { cat: 'מסחרי', title: 'החניך ינהג במתינות ובהתחשב בנוסעים' },
@@ -6257,14 +6289,14 @@ window.TraineeSystem = {
         33: { cat: 'מסחרי', title: 'החניך יכנס לתחנה' },
         34: { cat: 'מסחרי', title: 'החניך יבצע עצירה מלאה בקו תחנה' },
         35: { cat: 'מסחרי', title: 'החניך יצא מתחנה' },
-        36: { cat: 'מסחרי', title: 'החניך יפעל על פי נוהל פינוי מבוקר' },
-        37: { cat: 'מסחרי', title: 'החניך יפעל על פי נוהל פינוי חירום' },
-        38: { cat: 'מסחרי', title: 'החניך יפעל על פי נוהל נוסע במצוקה' },
-        39: { cat: 'מסחרי', title: 'החניך יפעל על פי נוהל הפרעה ברכבת' },
-        40: { cat: 'מסחרי', title: 'החניך יפעל על פי נוהל הפעלת ידית חירום' },
-        41: { cat: 'מסחרי', title: 'החניך יפעל על פי נוהל צפיפות בתחנה' },
-        42: { cat: 'מסחרי', title: 'החניך יפעל על פי נוהל אי עצירה בקו תחנה' },
-        43: { cat: 'מסחרי', title: 'החניך יפעל על פי נוהל פתיחת דלתות בצד שגוי' },
+        36: { cat: 'מסחרי', title: 'החניך יפעל על פי נוהל פינוי מבוקר', critical: true },
+        37: { cat: 'מסחרי', title: 'החניך יפעל על פי נוהל פינוי חירום', critical: true },
+        38: { cat: 'מסחרי', title: 'החניך יפעל על פי נוהל נוסע במצוקה', critical: true },
+        39: { cat: 'מסחרי', title: 'החניך יפעל על פי נוהל הפרעה ברכבת', critical: true },
+        40: { cat: 'מסחרי', title: 'החניך יפעל על פי נוהל הפעלת ידית חירום', critical: true },
+        41: { cat: 'מסחרי', title: 'החניך יפעל על פי נוהל צפיפות בתחנה', critical: true },
+        42: { cat: 'מסחרי', title: 'החניך יפעל על פי נוהל אי עצירה בקו תחנה', critical: true },
+        43: { cat: 'מסחרי', title: 'החניך יפעל על פי נוהל פתיחת דלתות בצד שגוי', critical: true },
         44: { cat: 'מסחרי', title: 'החניך יתפעל תקלות בלמים (יבצע בידוד בלם) כולל גרירה דחיפה' },
         45: { cat: 'מסחרי', title: 'החניך יתפעל תקלות דלתות' },
         46: { cat: 'מסחרי', title: 'החניך יכרוז על פי נהלים' },
