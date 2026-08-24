@@ -1412,6 +1412,8 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 .ur-trainee-block-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;}
 .ur-remove-feedback{background:none;border:none;color:#e74c3c;font-size:18px;cursor:pointer;width:auto !important;padding:0 4px;}
 .ur-add-feedback-btn{width:100%;padding:10px;border:2px dashed #3498db;background:#f0f8ff;color:#2980b9;border-radius:9px;cursor:pointer;font-size:13px;font-weight:bold;margin-top:4px;}
+.ur-add-delay-btn{display:inline-block;padding:7px 16px;border:1.5px solid #f5b7b1;background:#fdecea;color:#c0392b;border-radius:8px;cursor:pointer;font-size:12px;font-weight:bold;margin-top:2px;}
+.ur-add-delay-btn:hover{background:#fadbd8;}
 .unified-report-footer{padding:14px 22px;display:flex;gap:10px;justify-content:flex-end;}
 .unified-report-footer button{padding:10px 22px;border-radius:9px;font-size:13px;font-weight:bold;cursor:pointer;border:none;width:auto !important;}
 .ur-btn-save{background:#27ae60;color:white;}
@@ -21186,17 +21188,23 @@ function _urAddDelayBlock() {
   const block = document.createElement('div');
   block.className = 'ur-delay-block';
   block.id = 'ur-delay-block-' + idx;
-  block.style.cssText = 'display:flex;gap:8px;align-items:flex-start;margin-bottom:8px;padding:10px;background:#fdf6ec;border:1px solid #f5deb3;border-radius:8px;';
+  block.style.cssText = 'display:flex;flex-direction:column;gap:8px;margin-bottom:8px;padding:10px;background:#fdf6ec;border:1px solid #f5deb3;border-radius:8px;';
+  // Fix (2026-08-24, per Lavi — תיקון שני): "סיבת העיכוב" מקבלת שורה משלה, מלאה
+  // עד הקצה, עם textarea שמתרחב אוטומטית אם הטקסט ארוך (לא input חד-שורתי
+  // שגולש/נחתך). "דק'" ותיבת ההסרה יושבות יחד בשורה קטנה ונפרדת.
   block.innerHTML = `
-    <div style="width:110px;flex-shrink:0;">
-      <label style="font-size:11px;color:#888;">משך (דק')</label>
-      <input type="number" id="ur-delay-${idx}-min" min="1" max="480" step="5" placeholder="0" style="width:100%;padding:6px;border:1.5px solid #ddd;border-radius:6px;">
+    <div style="display:flex;align-items:center;gap:8px;">
+      <label style="font-size:11px;color:#888;white-space:nowrap;">משך (דק')</label>
+      <input type="number" id="ur-delay-${idx}-min" min="1" max="480" step="5" placeholder="0" style="width:64px;padding:6px 4px;border:1.5px solid #ddd;border-radius:6px;text-align:center;">
+      <div style="flex:1;"></div>
+      <button type="button" onclick="_urRemoveDelayBlock(${idx})" title="הסר עיכוב" style="background:none;border:none;color:#e74c3c;font-size:17px;cursor:pointer;padding:2px 6px;flex-shrink:0;">✕</button>
     </div>
-    <div style="flex:1;">
-      <label style="font-size:11px;color:#888;">סיבת העיכוב</label>
-      <input type="text" id="ur-delay-${idx}-reason" placeholder="תאר בקצרה..." style="width:100%;padding:6px;border:1.5px solid #ddd;border-radius:6px;">
+    <div>
+      <label style="font-size:11px;color:#888;display:block;margin-bottom:3px;">סיבת העיכוב</label>
+      <textarea id="ur-delay-${idx}-reason" placeholder="תאר בקצרה מה גרם לעיכוב..." rows="1"
+        oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px';"
+        style="width:100%;box-sizing:border-box;padding:8px 10px;border:1.5px solid #ddd;border-radius:6px;font-size:14px;font-family:inherit;resize:vertical;overflow:hidden;min-height:38px;"></textarea>
     </div>
-    <button type="button" onclick="_urRemoveDelayBlock(${idx})" title="הסר עיכוב" style="margin-top:16px;background:none;border:none;color:#e74c3c;font-size:16px;cursor:pointer;padding:2px 6px;">✕</button>
   `;
   container.appendChild(block);
 }
@@ -26146,7 +26154,9 @@ function _resetTraineeSummaryConfig() {
     <div class="unified-report-section">
       <h4>⏱️ עיכובים</h4>
       <div id="ur-delay-blocks"></div>
-      <button class="ur-add-feedback-btn" onclick="_urAddDelayBlock()">➕ הוסף עיכוב</button>
+      <div style="text-align:right;">
+        <button class="ur-add-delay-btn" onclick="_urAddDelayBlock()">➕ הוסף עיכוב</button>
+      </div>
     </div>
 
     <!-- Section B: Trainee Feedback -->
