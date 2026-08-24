@@ -1035,6 +1035,10 @@ body.dark-mode .msg-card{background:#1e2d42;border-color:#2a3a52;}
 .mentor-mode #manualSection,
 .mentor-mode #instrNavBar,
 .mentor-mode #navInstrTabTrips { display:none !important; }
+/* Fix (2026-08-23, per Lavi): mentors don't submit unified daily reports (that's
+   the instructor-only "trips" workflow, already hidden above), so the "my reports"
+   tab has nothing to show them either. */
+.mentor-mode #navInstrTabMyReports { display:none !important; }
 .mentor-mode #teamViewToggleInstr { display:none !important; } /* Fix #74: mentors don't get the schedule "team view" toggle, matching the existing team-tab restriction */
 .mentor-mode #teamTodaySection { display:none !important; } /* Fix #92: mentors don't get the "team today" section either, same precedent as #74 */
 
@@ -2488,6 +2492,9 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
         <button class="v100-nav-tab" onclick="v100InstrNavTo('trainees')" id="navInstrTabTrainees">
           <span class="v100-tab-icon">🎓</span><span class="v100-tab-label">חניכים</span>
         </button>
+        <button class="v100-nav-tab" onclick="v100InstrNavTo('myreports')" id="navInstrTabMyReports">
+          <span class="v100-tab-icon">📄</span><span class="v100-tab-label">הדוחות שלי</span>
+        </button>
       </div>
     </div>
 
@@ -2616,6 +2623,13 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 
       <div class="cal-grid" id="calGridInstr" style="margin-top:3px;"></div>
 
+    </div>
+
+    <!-- ══ MY REPORTS (instructor-only, read-only archive of own daily summaries) ══ -->
+    <div class="schedule-section" id="instrMyReportsSection" style="display:none;">
+      <h4 style="margin:0 0 10px;">📄 הדוחות שלי</h4>
+      <input type="text" id="instrMyReportsSearch" placeholder="🔍 חיפוש לפי תאריך..." oninput="_filterMyReportsList(this.value)" style="width:100%;padding:8px 12px;border:1.5px solid #ddd;border-radius:8px;font-size:13px;margin-bottom:10px;">
+      <div id="instrMyReportsList"><div style="padding:24px;text-align:center;color:#aaa;font-size:13px;">⏳ טוען דוחות...</div></div>
     </div>
 
   </div>
@@ -9337,18 +9351,21 @@ function _refreshInstrTabVisibility(){
     trainee.style.display=(tab==='trainees')?'':'none';
     if(trainee.tagName==='DETAILS'&&tab==='trainees')trainee.open=true;
   }
+
+  const myReports=document.getElementById('instrMyReportsSection');
+  if(myReports)myReports.style.display=(tab==='myreports')?'':'none';
 }
 
 function v100InstrNavTo(tab){
   _v100InstrActiveTab=tab;
   document.querySelectorAll('#v100InstrNav .v100-nav-tab').forEach(b=>b.classList.remove('v100-nav-active'));
-  const tabIdMap={home:'navInstrTabHome',trips:'navInstrTabTrips',sched:'navInstrTabSched',trainees:'navInstrTabTrainees'};
+  const tabIdMap={home:'navInstrTabHome',trips:'navInstrTabTrips',sched:'navInstrTabSched',trainees:'navInstrTabTrainees',myreports:'navInstrTabMyReports'};
   const btn=document.getElementById(tabIdMap[tab]);
   if(btn)btn.classList.add('v100-nav-active');
 
   _refreshInstrTabVisibility();
 
-  const sectionIdMap={home:'todayTasksCard',trips:'instrTripLogSection',sched:'instrScheduleSection',trainees:'traineeSection'};
+  const sectionIdMap={home:'todayTasksCard',trips:'instrTripLogSection',sched:'instrScheduleSection',trainees:'traineeSection',myreports:'instrMyReportsSection'};
   const secId=sectionIdMap[tab];
   if(secId){
     const el=document.getElementById(secId);
@@ -9358,8 +9375,17 @@ function v100InstrNavTo(tab){
   const instrActions={
     trips:()=>{setTimeout(()=>{try{renderLog();}catch(e){}},100);},
     sched:()=>{setTimeout(()=>{try{renderCalendar();}catch(e){}},100);},
-    trainees:()=>{try{_initTraineeIfNeeded();}catch(e){}}
+    trainees:()=>{try{_initTraineeIfNeeded();}catch(e){}},
+    myreports:()=>{try{renderMyReportsList();}catch(e){}}
   };
+  // Fix (2026-08-23, per Lavi's security-audit precedent): don't rely on the CSS
+  // hide alone — mentors have no unified daily reports, and shouldn't be able to
+  // reach this tab's content even via devtools/direct call.
+  if (tab === 'myreports' && typeof currentRole !== 'undefined' && currentRole === 'mentor') {
+    const myReportsGuard = document.getElementById('instrMyReportsSection');
+    if (myReportsGuard) myReportsGuard.style.display = 'none';
+    return;
+  }
   if(instrActions[tab])instrActions[tab]();
 }
 
@@ -17093,16 +17119,27 @@ function openAutoGenModal(){
     showToast('לא נמצאו שיבוצים בלוח. הזן שיבוצים תחילה דרך "שיבוץ שבועי" או לחיצה על יום בלוח.','warning');
     return;
   }
+  // Fix (2026-08-23, per Lavi): הרשימה תתחיל מהיום הנוכחי ותלך אחורה (מהתאריך
+  // הכי קרוב להיום ועד הרחוק ביותר), במקום התאריך המוקדם ביותר ראשון.
+  datesWithEntries.sort((a,b)=>b.date.localeCompare(a.date));
   const listEl=document.getElementById('autoGenDateList');
   if(!listEl){showToast('שגיאה: רכיב חסר בדף','warning');return;}
   const SHIFT_LABELS={morning:'בוקר',afternoon:'צהריים',evening:'ערב',custom:'מותאם'};
   listEl.innerHTML=datesWithEntries.map(({date,entries})=>{
     const d=new Date(date+'T12:00:00');
     const label=d.toLocaleDateString('he-IL',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
-    const instrList=entries.map(e=>`<span style="font-size:11px;background:#eaf2fb;border-radius:4px;padding:2px 6px;margin:2px 1px;display:inline-block;">${_esc(e.name)} (${_esc(SHIFT_LABELS[e.shift]||e.shift)})</span>`).join('');
+    // Fix: ברירת מחדל — רק היום הנוכחי מסומן ברמת היום; שאר הימים נשארים לא
+    // מסומנים עד שלביא יבחר אותם ידנית.
+    const dayChecked=(date===currentDate)?'checked':'';
+    // Fix: תיבת סימון נפרדת לכל מדריך (מסומנת כברירת מחדל) כדי לאפשר לייצר
+    // נסיעות רק לחלק מהמדריכים המשובצים לאותו יום.
+    const instrList=entries.map(e=>`<label style="font-size:11px;background:#eaf2fb;border-radius:4px;padding:2px 6px 2px 4px;margin:2px 1px;display:inline-flex;align-items:center;gap:4px;cursor:pointer;">
+        <input type="checkbox" class="autogen-instr-cb" data-date="${date}" value="${_esc(e.name)}" checked style="width:13px;height:13px;margin:0;accent-color:var(--secondary);">
+        ${_esc(e.name)} (${_esc(SHIFT_LABELS[e.shift]||e.shift)})
+      </label>`).join('');
     return`<div style="padding:10px 0;border-bottom:1px solid #f0f4f8;">
       <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;">
-        <input type="checkbox" class="autogen-date-cb" value="${date}" checked style="width:16px;height:16px;margin-top:2px;accent-color:var(--secondary);flex-shrink:0;">
+        <input type="checkbox" class="autogen-date-cb" value="${date}" ${dayChecked} style="width:16px;height:16px;margin-top:2px;accent-color:var(--secondary);flex-shrink:0;">
         <div>
           <div style="font-weight:bold;font-size:13px;color:var(--primary);">${label}</div>
           <div style="margin-top:4px;">${instrList}</div>
@@ -17122,12 +17159,21 @@ function closeAutoGenModal(){
 
 function autoGenSelectAll(checked){
   document.querySelectorAll('.autogen-date-cb').forEach(cb=>cb.checked=checked);
-  showToast(checked?'✅ כל הימים נבחרו':'כל הבחירות בוטלו','info');
+  document.querySelectorAll('.autogen-instr-cb').forEach(cb=>cb.checked=checked);
+  showToast(checked?'✅ כל הימים והמדריכים נבחרו':'כל הבחירות בוטלו','info');
 }
 
 async function runAutoGenSelected(){
   const selected=[...document.querySelectorAll('.autogen-date-cb:checked')].map(cb=>cb.value);
   if(!selected.length){showToast('יש לבחור לפחות יום אחד','warning');return;}
+  // Fix (2026-08-23, per Lavi): בנוסף לבחירת הימים, מכבדים גם אילו מדריכים
+  // סומנו בפועל לכל יום (ולא כולם בהכרח) — שם+תאריך נאספים מהתיבות הפרטניות.
+  const selectedInstrByDate={};
+  document.querySelectorAll('.autogen-instr-cb:checked').forEach(cb=>{
+    const d=cb.getAttribute('data-date');
+    if(!selectedInstrByDate[d])selectedInstrByDate[d]=new Set();
+    selectedInstrByDate[d].add(cb.value);
+  });
   closeAutoGenModal();
   showToast(`🔄 מתכנן נסיעות עבור ${selected.length} ימים...`,'info');
   const gap=(_settings&&_settings.defaultGap)||40;
@@ -17137,10 +17183,13 @@ async function runAutoGenSelected(){
   const summaryLines=[];
   const nowMin=new Date().getHours()*60+new Date().getMinutes();
   for(const date of selected){
+    const _selNames=selectedInstrByDate[date];
     const entries=(schedData[date]||[]).filter(e=>{
       if(e.status!=='approved'&&e.status!=='pending')return false;
       const tDef=taskDefs.find(t=>t.id===e.task);
-      return tDef?tDef.isTrip:false;
+      if(!tDef?.isTrip)return false;
+      if(_selNames&&!_selNames.has(e.name))return false; // instructor unchecked for this day
+      return true;
     });
     // Names of instructors who currently have a valid trip-task assignment
     const assignedNames=new Set(entries.map(e=>e.name));
@@ -18879,6 +18928,14 @@ const GUIDE_SECTIONS = [
       <p><b>"📅 דוח יומי"</b> בראש המסך מציג תצוגה מקדימה של כל היום — שיבוצים, נסיעות, וסטטוס דיווח — עם הדפסה/CSV.</p>`
   },
   {
+    id: 'tripplanning', icon: '🚌', title: 'תכנון נסיעות', roles: ['admin'],
+    body: `
+      <p><b>תכנון יום הדרכה (הכלי הראשי):</b> בונים את היום ידנית שורה-שורה — "+ הוסף מדריך" מוסיף שורה עם שם, שעות משמרת, מיקום התחלה/סיום והפסקה. "⚡ תכנן אוטומטי" מפעיל את אלגוריתם בניית המסלולים על כל השורות בו-זמנית, לפי הפרמטרים שהוזנו (פער בטיחות, מיקומים וכו').</p>
+      <p><b>תכנון נסיעה ידני (מסלול קבוע):</b> לכל שורה אפשר לוותר על האלגוריתם ולבחור "מסלול מועדף" שמור מראש (⭐) — המסלול המדויק הזה ישויך לאותו מדריך במקום שהמערכת תחשב אחד עבורו. שימושי כשרוצים לשחזר מסלול קבוע בלי תלות בזמינות/פערים.</p>
+      <p><b>⚡ תכנון נסיעות אוטומטי מהשיבוצים:</b> בשונה מהכלי הראשי (שמתכנן יום אחד בכל פעם ודורש הזנת שורות ידנית), הכלי הזה קורא ישירות מלוח השיבוצים (שיבוץ שבועי/חודשי) ובונה נסיעות למספר ימים בבת אחת, בלי להזין שורות. הרשימה מציגה את כל הימים עם שיבוצי נסיעה, מסודרת מהיום הנוכחי אחורה. ברירת מחדל: רק היום הנוכחי מסומן; לכל מדריך יש תיבת סימון נפרדת (מסומנת כברירת מחדל) כדי לכלול/להוציא מדריכים ספציפיים מאותו יום. "בחר הכל"/"בטל הכל" משפיעים גם על הימים וגם על המדריכים.</p>
+      <p><b>שיעורי דיפו:</b> לא ניתן להגדיר "נסיעת דיפו" מראש בשום כלי תכנון. ההמרה קורית רק <u>אחרי</u> שהנסיעה כבר קיימת — אוטומטית כששייכים אליה חניך שכולו בשלב טכני (עד 6 שיעורי דיפו למשמרת), או ידנית בלחיצה על 🏭 בטבלת הנסיעות.</p>`
+  },
+  {
     id: 'weekly', icon: '🗓️', title: 'שיבוץ שבועי', roles: ['admin','instructor','mentor'],
     body: `
       <p><b>למדריך/חונך:</b> בלוח השיבוצים יש שני מצבי תצוגה — <b>"שלי"</b> (השיבוצים האישיים שלך, לחיצה על יום פותחת טופס בקשת שיבוץ) ו-<b>"צוות"</b> (רואים את כל הצוות; לחיצה על יום פותחת תצוגה לצפייה בלבד — שעות ומשימות של כולם, לא ניתן לערוך).</p>
@@ -19235,7 +19292,7 @@ async function loadMonthlyDash(){
   for(const [date,dayTrips] of Object.entries(monthData)){
     for(const t of dayTrips){
       if(!t.name)continue;
-      if(!stats[t.name])stats[t.name]={trips:0,lessons:0,minutes:0,delays:0,delayMinTotal:0,delayNotes:[]};
+      if(!stats[t.name])stats[t.name]={trips:0,lessons:0,minutes:0,delays:0,delayMinTotal:0,delayNotes:[],reportOnly:0};
       const s=stats[t.name];
       s.trips++;
       const dur=(t.route||[]).reduce((a,r)=>a+(r.t||0),0);
@@ -19244,12 +19301,53 @@ async function loadMonthlyDash(){
     }
   }
 
+  // Fix (2026-08-23, per Lavi): a day where the instructor never used "תכנון נסיעה"
+  // (so no formal trip got logged into history) but DID fill a "סיכום יום" — with
+  // real shift hours and trainee feedback/lesson numbers — was completely invisible
+  // here, even though real training happened and was documented. Fold in any unified
+  // daily report that has NO matching trip-log entry for that instructor+date, using
+  // the shift hours they reported as a stand-in for trip duration (same /45 lessons
+  // conversion already used above for real trips, so the two stay comparable).
+  const activeDaySet = new Set(Object.keys(monthData));
+  try {
+    const _tripCoverage = new Set();
+    for (const [date, dayTrips] of Object.entries(monthData)) {
+      for (const t of dayTrips) { if (t.name) _tripCoverage.add(date + '|' + t.name); }
+    }
+    const _monthStart = `${yr}-${String(mo+1).padStart(2,'0')}-01`;
+    const _monthEnd = _localDateStr(new Date(yr, mo+1, 0));
+    const _allReports = await loadDateRangeTaskReports(_monthStart, _monthEnd);
+    const _unifiedNoTrip = Object.values(_allReports || {}).filter(v =>
+      v && v.type === 'unified_daily' && v.instructorName &&
+      !_tripCoverage.has(v.date + '|' + v.instructorName)
+    );
+    _unifiedNoTrip.forEach(v => {
+      const name = v.instructorName;
+      if (!stats[name]) stats[name] = {trips:0,lessons:0,minutes:0,delays:0,delayMinTotal:0,delayNotes:[],reportOnly:0};
+      const s = stats[name];
+      let dur = 0;
+      if (v.shiftStart && v.shiftEnd) {
+        const [sh,sm] = v.shiftStart.split(':').map(Number);
+        const [eh,em] = v.shiftEnd.split(':').map(Number);
+        if (!isNaN(sh) && !isNaN(eh)) {
+          dur = (eh*60+em) - (sh*60+sm);
+          if (dur < 0) dur += 24*60; // overnight shift
+        }
+      }
+      s.trips += 1;
+      s.reportOnly = (s.reportOnly||0) + 1;
+      s.minutes += dur;
+      if (dur > 0) s.lessons += dur/45;
+      activeDaySet.add(v.date);
+    });
+  } catch(e) { console.warn('loadMonthlyDash unified fallback:', e); }
+
   // KPIs
   const allNames=Object.keys(stats);
   const totalTrips=Object.values(stats).reduce((a,v)=>a+v.trips,0);
   const totalLessons=Object.values(stats).reduce((a,v)=>a+v.lessons,0);
   const totalDelays=Object.values(stats).reduce((a,v)=>a+v.delays,0);
-  const activeDays=Object.keys(monthData).length;
+  const activeDays=activeDaySet.size;
 
   if(kpiEl){
     kpiEl.innerHTML=`
@@ -19292,7 +19390,7 @@ async function loadMonthlyDash(){
       const perfPct=Math.round((s.lessons/maxLessons)*100);
       const perfColor=perfPct>=80?'#27ae60':perfPct>=50?'#f39c12':'#e74c3c';
       return`<tr>
-        <td><b>${_esc(name)}</b></td>
+        <td><b>${_esc(name)}</b>${s.reportOnly ? ` <span title="${s.reportOnly} מתוך ${s.trips} מבוססים על סיכום יום בלבד (ללא תכנון נסיעה)" style="font-size:11px;color:#e67e22;">📝×${s.reportOnly}</span>` : ''}</td>
         <td style="text-align:center;">${s.trips}</td>
         <td style="text-align:center;font-weight:bold;color:var(--secondary);">${s.lessons.toFixed(1)}</td>
         <td style="text-align:center;">${Math.round(s.minutes/60*10)/10} שע'</td>
@@ -21681,6 +21779,54 @@ function _filterUnifiedArchive(query){
   document.querySelectorAll('#uraTbody tr').forEach(tr=>{
     const name=tr.children[1]?.textContent.toLowerCase()||'';
     tr.style.display=(!q||name.includes(q))?'':'none';
+  });
+}
+
+// 2026-08-23, לפי בקשת לביא: "הדוחות שלי" — טאב במדריך שמציג את כל טפסי סיכום
+// היום שהמדריך עצמו הגיש, לצפייה בלבד. שימוש חוזר מלא בתשתית הארכיון הקיימת של
+// המנהל (loadDateRangeTaskReports + openViewUnifiedReport), רק מסונן לפי השם של
+// המדריך המחובר. טווח ברירת מחדל: שנה אחורה — מספיק להיסטוריה מלאה בלי בורר טווח.
+async function renderMyReportsList(){
+  const listEl = document.getElementById('instrMyReportsList');
+  if (!listEl) return;
+  if (typeof currentRole !== 'undefined' && currentRole === 'mentor') return;
+  listEl.innerHTML = '<div style="padding:24px;text-align:center;color:#aaa;font-size:13px;">⏳ טוען דוחות...</div>';
+  const end = _localDateStr(new Date());
+  const startD = new Date(); startD.setDate(startD.getDate() - 365);
+  const start = _localDateStr(startD);
+  let allReports = {};
+  try { allReports = await loadDateRangeTaskReports(start, end); } catch(e) { console.warn('renderMyReportsList:', e); }
+  const mine = Object.entries(allReports || {})
+    .filter(([k,v]) => v && v.type === 'unified_daily' && v.instructorName === currentUserName);
+  mine.forEach(([k,v]) => { window._taskReportsCache[k] = v; });
+  mine.sort((a,b) => b[1].date.localeCompare(a[1].date));
+
+  if (!mine.length) {
+    listEl.innerHTML = '<div style="padding:24px;text-align:center;color:#aaa;font-size:13px;">אין עדיין דוחות שהוגשו בשנה האחרונה.</div>';
+    return;
+  }
+
+  const rowsHtml = mine.map(([k,v]) => {
+    const dObj = new Date(v.date+'T12:00:00');
+    const dLabel = dObj.toLocaleDateString('he-IL',{day:'2-digit',month:'2-digit',year:'2-digit',weekday:'short'});
+    const shiftStr = (v.shiftStart && v.shiftEnd) ? `${v.shiftStart}–${v.shiftEnd}` : '—';
+    const safeName = (v.instructorName||'').replace(/'/g,"\\'").replace(/"/g,'&quot;');
+    return `<div class="my-report-row" data-date-label="${_esc(dLabel)}" onclick="openViewUnifiedReport('${v.date}','${safeName}')"
+      style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;background:white;border:1px solid #eee;border-radius:9px;margin-bottom:6px;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+      <span style="font-size:13px;color:#888;min-width:90px;">${dLabel}</span>
+      <span style="font-size:12px;color:#555;flex:1;text-align:center;">${_esc(shiftStr)}</span>
+      <span style="font-size:12px;color:#555;">${v.lightHours||0} ש' הדרכה קלה</span>
+      <span style="font-size:12px;color:#2980b9;">${v.feedbackCount ? `${v.feedbackCount} 🎓` : '—'}</span>
+    </div>`;
+  }).join('');
+  listEl.innerHTML = `<div style="font-size:11px;color:#aaa;margin-bottom:6px;">${mine.length} דוחות • השנה האחרונה</div>` + rowsHtml;
+}
+
+function _filterMyReportsList(query){
+  const q = query.trim();
+  document.querySelectorAll('#instrMyReportsList .my-report-row').forEach(row => {
+    const label = row.getAttribute('data-date-label') || '';
+    row.style.display = (!q || label.includes(q)) ? '' : 'none';
   });
 }
 
