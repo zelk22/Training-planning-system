@@ -22753,7 +22753,15 @@ function toggleDaySummary(){
 }
 
 function _getDaySummaryDate(){
-  return _daySummaryDate||currentDate||_localDateStr(new Date());
+  if (_daySummaryDate) return _daySummaryDate;
+  // Fix (2026-08-23, per Lavi): מטרת הפאנל הזה היא להראות למנהל את סטטוס
+  // הביצוע של היום הקודם שכבר הסתיים — לא של היום הנוכחי שעדיין באמצע.
+  // ברירת המחדל היא אתמול; לחיצה על ‹/› או בורר התאריך משנה את זה כרגיל
+  // (ברגע ש-_daySummaryDate נקבע במפורש, ה-fallback הזה לא חוזר לפעול).
+  const base = currentDate || _localDateStr(new Date());
+  const d = new Date(base + 'T12:00:00');
+  d.setDate(d.getDate() - 1);
+  return _localDateStr(d);
 }
 
 function changeDaySummaryDate(delta){
