@@ -9432,7 +9432,7 @@ function populateInstrSelect(){
 
       const raw=localStorage.getItem('v100_instructors');
 
-      if(raw){_instrNames=JSON.parse(raw);}
+      if(raw){_instrNames=[...new Set(JSON.parse(raw))];}
 
     }catch(e){}
 
@@ -10016,7 +10016,7 @@ function loadFromLocalStorage(){
 
     if(rawInstrs){
 
-      _instrNames=JSON.parse(rawInstrs);
+      _instrNames=[...new Set(JSON.parse(rawInstrs))];
 
       renderInstructorSelects(_instrNames);
 
@@ -10188,7 +10188,11 @@ async function loadInstructors(){
         const val=snap.val();
 
         // val can be object {key:name,...} or array
-        _instrNames=Object.values(val).filter(Boolean).sort();
+        // Fix (2026-08-24, per Lavi): שני מפתחות שונים ב-Firebase יכולים להחזיק
+        // בטעות את אותו שם מדריך (למשל אם הוזן פעמיים בעבר) — זו הסיבה שהיה
+        // מופיע כפול בבורר "בחר מדריך לתצוגה" ובתפריטים אחרים. מסננים כפילויות
+        // בטעינה, לא רק כשמוסיפים/מוחקים.
+        _instrNames=[...new Set(Object.values(val).filter(Boolean))].sort();
 
         // Mirror to localStorage so other environments can see them
         try{localStorage.setItem('v100_instructors',JSON.stringify(_instrNames));}catch(e){}
@@ -10217,7 +10221,7 @@ async function loadInstructors(){
 
     const raw=localStorage.getItem('v100_instructors');
 
-    _instrNames=raw?JSON.parse(raw):[];
+    _instrNames=raw?[...new Set(JSON.parse(raw))]:[];
 
   }catch(e){_instrNames=[];}
 
@@ -13833,10 +13837,13 @@ function renderDashboard(){
   }
 
   const totalTrips=trips.length;
-  const totalMin=trips.reduce((s,t)=>s+t.route.reduce((ss,r)=>ss+r.t,0),0);
-  // Fix (2026-08-23, per Lavi): נסיעת דיפו סופרת "שיעורים" לפי כמה שיעורים
-  // סומנו כבוצעו ב-checklist, לא לפי משך הזמן של הנסיעה (שיכול להיות ארוך
-  // בהרבה — הוא תופס את טווח המשמרת, לא רק את 45 הדקות שבפועל בוצעו).
+  // Fix (2026-08-24, per Lavi): נבחרה אופציה 2 — "דקות" ו"שיעורים" תמיד יתאמו.
+  // לנסיעת דיפו, המשך נספר לפי checklist_done×45, לא לפי טווח הזמן של הנסיעה
+  // (שתופס את כל המשמרת/קטע-המשנה המקורי, גם אם רק חלק מהשיעורים בוצעו בפועל).
+  const _tripEffectiveMin=t=>t.isDepotLesson
+    ? (t.depotChecklist||[]).filter(x=>x&&x.done).length*45
+    : t.route.reduce((ss,r)=>ss+r.t,0);
+  const totalMin=trips.reduce((s,t)=>s+_tripEffectiveMin(t),0);
   const totalLessons=trips.reduce((s,t)=>s+(t.isDepotLesson
     ? (t.depotChecklist||[]).filter(x=>x&&x.done).length
     : t.route.reduce((ss,r)=>ss+r.t,0)/45), 0);
@@ -13856,7 +13863,7 @@ function renderDashboard(){
   trips.forEach(t=>{
     if(!byName[t.name])byName[t.name]={trips:0,min:0};
     byName[t.name].trips++;
-    byName[t.name].min+=t.route.reduce((s,r)=>s+r.t,0);
+    byName[t.name].min+=_tripEffectiveMin(t);
   });
   const maxMin=Math.max(...Object.values(byName).map(v=>v.min),1);
 
@@ -19427,9 +19434,10 @@ async function loadMonthlyDash(){
       const s=stats[t.name];
       s.trips++;
       const dur=(t.route||[]).reduce((a,r)=>a+(r.t||0),0);
-      s.minutes+=dur;
-      // Fix (2026-08-23, per Lavi): נסיעת דיפו סופרת "שיעורים" לפי checklist
-      // שסומן, לא לפי משך זמן הנסיעה (שתופס כעת את טווח המשמרת המלאה).
+      // Fix (2026-08-24, per Lavi): "דקות" ו"שיעורים" תמיד יתאמו — לנסיעת דיפו
+      // המשך נספר לפי checklist_done×45, לא לפי טווח הזמן של הנסיעה.
+      const depotDur=t.isDepotLesson ? (t.depotChecklist||[]).filter(x=>x&&x.done).length*45 : dur;
+      s.minutes+=depotDur;
       s.lessons+=t.isDepotLesson ? (t.depotChecklist||[]).filter(x=>x&&x.done).length : dur/45;
       if(t.delayMin>0)s.delays++;
     }
@@ -19996,8 +20004,8 @@ async function renderComparison(){
         const s=stats[t.name];
         s.trips++;
         const dur=(t.route||[]).reduce((a,r)=>a+(r.t||0),0);
-        s.minutes+=dur;
-        // Fix (2026-08-23, per Lavi): אותו תיקון — checklist, לא משך זמן.
+        // Fix (2026-08-24, per Lavi): "דקות" ו"שיעורים" תמיד יתאמו.
+        s.minutes+=t.isDepotLesson ? (t.depotChecklist||[]).filter(x=>x&&x.done).length*45 : dur;
         s.lessons+=t.isDepotLesson ? (t.depotChecklist||[]).filter(x=>x&&x.done).length : dur/45;
         if(t.delayMin>0)s.delays++;
       }
@@ -20565,8 +20573,8 @@ async function exportPDFReport(){
       const s=statsPerInstr[t.name];
       s.trips++;
       const dur=(t.route||[]).reduce((a,r)=>a+(r.t||0),0);
-      s.minutes+=dur;
-      // Fix (2026-08-23, per Lavi): אותו תיקון — checklist, לא משך זמן.
+      // Fix (2026-08-24, per Lavi): "דקות" ו"שיעורים" תמיד יתאמו.
+      s.minutes+=t.isDepotLesson ? (t.depotChecklist||[]).filter(x=>x&&x.done).length*45 : dur;
       s.lessons+=t.isDepotLesson ? (t.depotChecklist||[]).filter(x=>x&&x.done).length : dur/45;
       if(t.delayMin>0)s.delays++;
     }
