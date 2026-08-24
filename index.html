@@ -19439,7 +19439,7 @@ async function loadMonthlyDash(){
       const depotDur=t.isDepotLesson ? (t.depotChecklist||[]).filter(x=>x&&x.done).length*45 : dur;
       s.minutes+=depotDur;
       s.lessons+=t.isDepotLesson ? (t.depotChecklist||[]).filter(x=>x&&x.done).length : dur/45;
-      if(t.delayMin>0)s.delays++;
+      if(t.delayMin>0){s.delays++;s.delayMinTotal=(s.delayMinTotal||0)+t.delayMin;}
     }
   }
 
@@ -19482,6 +19482,21 @@ async function loadMonthlyDash(){
       if (dur > 0) s.lessons += dur/45;
       activeDaySet.add(v.date);
     });
+
+    // 2026-08-24, לפי בקשת לביא: עיכובים שדווחו בטופס "סיכום יום" הם שכבה
+    // נוספת — נספרים על גבי עיכובי הנסיעות הקיימים (לא רק לימים בלי נסיעה
+    // פורמלית), כי אלה שני מקורות דיווח שונים שיכולים להתקיים זה לצד זה.
+    Object.values(_allReports || {}).forEach(v => {
+      if (!v || v.type !== 'unified_daily' || !v.instructorName || !Array.isArray(v.delays) || !v.delays.length) return;
+      const name = v.instructorName;
+      if (!stats[name]) stats[name] = {trips:0,lessons:0,minutes:0,delays:0,delayMinTotal:0,delayNotes:[],reportOnly:0};
+      const s = stats[name];
+      s.delays += v.delays.length;
+      v.delays.forEach(d => {
+        s.delayMinTotal = (s.delayMinTotal||0) + (d.minutes||0);
+        if (d.reason) (s.delayNotes = s.delayNotes||[]).push(d.reason);
+      });
+    });
   } catch(e) { console.warn('loadMonthlyDash unified fallback:', e); }
 
   // KPIs
@@ -19489,6 +19504,9 @@ async function loadMonthlyDash(){
   const totalTrips=Object.values(stats).reduce((a,v)=>a+v.trips,0);
   const totalLessons=Object.values(stats).reduce((a,v)=>a+v.lessons,0);
   const totalDelays=Object.values(stats).reduce((a,v)=>a+v.delays,0);
+  // 2026-08-24, לפי בקשת לביא: סך כל דקות העיכוב בחודש (משני המקורות — נסיעות
+  // וגם דיווח בטופס סיכום יום), לצד ספירת מספר האירועים שכבר קיימת.
+  const totalDelayMin=Object.values(stats).reduce((a,v)=>a+(v.delayMinTotal||0),0);
   const activeDays=activeDaySet.size;
 
   if(kpiEl){
@@ -19512,6 +19530,10 @@ async function loadMonthlyDash(){
       <div style="background:${totalDelays>0?'#faeeda':'#eaf3de'};border-radius:9px;padding:14px;text-align:center;border:1px solid ${totalDelays>0?'#fac775':'#c0dd97'};">
         <div style="font-size:24px;font-weight:bold;color:${totalDelays>0?'#854F0B':'#3B6D11'};">${totalDelays}</div>
         <div style="font-size:12px;color:#666;">עיכובים</div>
+      </div>
+      <div style="background:${totalDelayMin>0?'#faeeda':'#eaf3de'};border-radius:9px;padding:14px;text-align:center;border:1px solid ${totalDelayMin>0?'#fac775':'#c0dd97'};">
+        <div style="font-size:24px;font-weight:bold;color:${totalDelayMin>0?'#854F0B':'#3B6D11'};">${totalDelayMin}</div>
+        <div style="font-size:12px;color:#666;">דק' עיכוב סה"כ</div>
       </div>`;
   }
 
@@ -20580,6 +20602,18 @@ async function exportPDFReport(){
     }
   }
 
+  // 2026-08-24, לפי בקשת לביא: עיכובים שדווחו בטופס "סיכום יום" — שכבה נוספת
+  // שנספרת יחד עם עיכובי הנסיעות, לא במקומם.
+  try {
+    const _rangeReports = await loadDateRangeTaskReports(start,end);
+    Object.values(_rangeReports || {}).forEach(v => {
+      if (!v || v.type !== 'unified_daily' || !v.instructorName || !Array.isArray(v.delays) || !v.delays.length) return;
+      const name = v.instructorName;
+      if (!statsPerInstr[name]) statsPerInstr[name] = {trips:0,lessons:0,minutes:0,delays:0};
+      statsPerInstr[name].delays += v.delays.length;
+    });
+  } catch(e) { console.warn('exportPDFReport unified delays fallback:', e); }
+
   const instrRows=Object.entries(statsPerInstr).sort((a,b)=>b[1].lessons-a[1].lessons)
     .map(([name,s])=>`<tr>
       <td>${_esc(name)}</td>
@@ -21040,6 +21074,7 @@ function renderInstrTeamToday(today){
 // ══════════════════════════════════════════════════════
 
 let _urFeedbackCount = 0;
+let _urDelayCount = 0;
 
 function openUnifiedReport(prefillDate) {
   const overlay = document.getElementById('unifiedReportOverlay');
@@ -21101,6 +21136,11 @@ function openUnifiedReport(prefillDate) {
   const fb = document.getElementById('ur-feedback-blocks');
   if (fb) fb.innerHTML = '';
 
+  // Clear delay blocks
+  _urDelayCount = 0;
+  const db = document.getElementById('ur-delay-blocks');
+  if (db) db.innerHTML = '';
+
   overlay.classList.add('open');
   overlay.scrollTop = 0;
 }
@@ -21132,6 +21172,38 @@ function _urRenderCustomFields() {
 
 function _getUrCustomFields() {
   try { return JSON.parse(localStorage.getItem('ur_custom_fields') || '[]'); } catch(e) { return []; }
+}
+
+// 2026-08-24, לפי בקשת לביא: "עיכובים" בטופס סיכום יום — שכבת דיווח נוספת
+// לצד הדרך הקיימת (⏱️ על נסיעה ספציפית ביומן הנסיעות), נספרת לאותו מדד
+// "עיכובים" בדוחות/דשבורדים (לא מחליפה, נערמת עליה). כמה עיכובים אפשריים
+// באותה משמרת, כל אחד עם משך ("כמה זמן") וסיבה חופשית.
+function _urAddDelayBlock() {
+  _urDelayCount++;
+  const idx = _urDelayCount;
+  const container = document.getElementById('ur-delay-blocks');
+  if (!container) return;
+  const block = document.createElement('div');
+  block.className = 'ur-delay-block';
+  block.id = 'ur-delay-block-' + idx;
+  block.style.cssText = 'display:flex;gap:8px;align-items:flex-start;margin-bottom:8px;padding:10px;background:#fdf6ec;border:1px solid #f5deb3;border-radius:8px;';
+  block.innerHTML = `
+    <div style="width:110px;flex-shrink:0;">
+      <label style="font-size:11px;color:#888;">משך (דק')</label>
+      <input type="number" id="ur-delay-${idx}-min" min="1" max="480" step="5" placeholder="0" style="width:100%;padding:6px;border:1.5px solid #ddd;border-radius:6px;">
+    </div>
+    <div style="flex:1;">
+      <label style="font-size:11px;color:#888;">סיבת העיכוב</label>
+      <input type="text" id="ur-delay-${idx}-reason" placeholder="תאר בקצרה..." style="width:100%;padding:6px;border:1.5px solid #ddd;border-radius:6px;">
+    </div>
+    <button type="button" onclick="_urRemoveDelayBlock(${idx})" title="הסר עיכוב" style="margin-top:16px;background:none;border:none;color:#e74c3c;font-size:16px;cursor:pointer;padding:2px 6px;">✕</button>
+  `;
+  container.appendChild(block);
+}
+
+function _urRemoveDelayBlock(idx) {
+  const el = document.getElementById('ur-delay-block-' + idx);
+  if (el) el.remove();
 }
 
 async function _urAddFeedbackBlock() {
@@ -21734,6 +21806,18 @@ async function submitUnifiedReport() {
     report['custom_' + f.id] = f.type === 'checkbox' ? el.checked : (f.type === 'number' ? (parseFloat(el.value)||0) : el.value.trim());
   });
 
+  // ── Section A2: Delays reported by the instructor (2026-08-24, per Lavi) ──
+  const delayBlocks = document.querySelectorAll('#ur-delay-blocks .ur-delay-block');
+  report.delays = [];
+  delayBlocks.forEach(block => {
+    const idx = block.id.replace('ur-delay-block-', '');
+    const minEl = document.getElementById('ur-delay-' + idx + '-min');
+    const reasonEl = document.getElementById('ur-delay-' + idx + '-reason');
+    const minutes = parseFloat(minEl?.value || '0') || 0;
+    const reason = reasonEl?.value.trim() || '';
+    if (minutes > 0 || reason) report.delays.push({ minutes, reason });
+  });
+
   // ── Section B: Trainee feedback ──
   const feedbackBlocks = document.querySelectorAll('#ur-feedback-blocks .ur-trainee-block');
   const lessonResults = [];
@@ -22022,6 +22106,12 @@ async function openViewUnifiedReport(date, instructorName) {
     `<div><b>שעות סינריון:</b> ${report.sinerioHours || 0}</div>`,
     `<div><b>שעות הדרכה קלה:</b> ${report.lightHours || 0}</div>`
   ];
+  // 2026-08-24, לפי בקשת לביא: הצגת עיכובים שדווחו בטופס (שכבה נוספת לצד
+  // עיכובי הנסיעות שכבר מוצגים בטבלת הנסיעות של אותו יום).
+  if (Array.isArray(report.delays) && report.delays.length) {
+    const delaySummary = report.delays.map(d => `${d.minutes||0} דק'${d.reason ? ' — ' + _esc(d.reason) : ''}`).join(' | ');
+    basicRows.push(`<div><b>⏱️ עיכובים שדווחו:</b> ${delaySummary}</div>`);
+  }
   const customFields = (typeof _getUrCustomFields === 'function') ? _getUrCustomFields() : [];
   customFields.forEach(f => {
     const val = report['custom_' + f.id];
@@ -23158,7 +23248,12 @@ async function openDailyReportPreview(dateOverride){
   const rows=_buildDaySummaryRowsHtml(dateStr,dayTrips,dayStatuses,dayEntries,false);
 
   const totalTrips=dayTrips.length;
-  const totalDelays=dayTrips.filter(t=>t.delayMin>0).length;
+  const totalDelays=dayTrips.filter(t=>t.delayMin>0).length
+    // 2026-08-24, לפי בקשת לביא: עיכובים שדווחו בטופס "סיכום יום" — שכבה
+    // נוספת שנספרת יחד עם עיכובי הנסיעות, לא במקומם.
+    + Object.entries(window._taskReportsCache||{})
+        .filter(([k,v])=>k.startsWith(dateStr+'__')&&v&&v.type==='unified_daily'&&Array.isArray(v.delays))
+        .reduce((s,[,v])=>s+v.delays.length,0);
   // Fix (2026-08-23, per Lavi): נסיעת דיפו סופרת שעות שיעור לפי checklist
   // שסומן (45 דק' לכל שיעור שבוצע), לא לפי משך זמן הנסיעה — שתופס כעת את
   // טווח המשמרת המלאה ולא רק את מה שבפועל בוצע.
@@ -26043,6 +26138,15 @@ function _resetTraineeSummaryConfig() {
       </div>
       <!-- Custom fields (added by manager) -->
       <div id="ur-custom-fields"></div>
+    </div>
+
+    <!-- Section A2: Delays reported by the instructor (2026-08-24, per Lavi: "שכבה
+         נוספת" — לצד הדרך הקיימת להוסיף עיכוב על נסיעה ספציפית ביומן הנסיעות,
+         נספר לאותו מדד "עיכובים" בדוחות/דשבורדים) -->
+    <div class="unified-report-section">
+      <h4>⏱️ עיכובים</h4>
+      <div id="ur-delay-blocks"></div>
+      <button class="ur-add-feedback-btn" onclick="_urAddDelayBlock()">➕ הוסף עיכוב</button>
     </div>
 
     <!-- Section B: Trainee Feedback -->
