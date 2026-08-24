@@ -2170,6 +2170,8 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 
           <div class="sfield"><label>מקסימום מדריכים למקטע</label><input type="number" id="s_maxPerSeg" min="0" max="20"><div class="sfield-note">0 = ללא הגבלה</div></div>
 
+          <div class="sfield"><label>זמן התארגנות לפני נסיעה ראשונה</label><input type="number" id="s_checkInBuffer" min="0" max="120" step="5"><div class="sfield-note">ברירת מחדל: 30 דק' — כמה זמן אחרי שעת ההתייצבות תתחיל הנסיעה הראשונה</div></div>
+
         </div>
 
         <div class="ssection-title" style="margin-top:18px;">הגבלת יציאה מ-D4 (דרום)</div>
@@ -3619,6 +3621,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
           <div class="sfield"><label>אורך משמרת ברירת מחדל</label><input type="number" id="si_shiftLen" min="60" max="720" step="30"><div class="sfield-note">ברירת מחדל: 510 דק' (8.5 ש')</div></div>
           <div class="sfield"><label>הפסקה מינימלית בין נסיעות</label><input type="number" id="si_minBreak" min="0" max="240" step="5"><div class="sfield-note">ברירת מחדל: 75 דק'</div></div>
           <div class="sfield"><label>מקסימום מדריכים למקטע</label><input type="number" id="si_maxPerSeg" min="0" max="20"><div class="sfield-note">0 = ללא הגבלה</div></div>
+          <div class="sfield"><label>זמן התארגנות לפני נסיעה ראשונה</label><input type="number" id="si_checkInBuffer" min="0" max="120" step="5"><div class="sfield-note">ברירת מחדל: 30 דק' — כמה זמן אחרי שעת ההתייצבות תתחיל הנסיעה הראשונה</div></div>
         </div>
         <div class="ssection-title" style="margin-top:18px;">הגבלת יציאה מ-D4 (דרום)</div>
         <div class="sfield-grid">
@@ -10882,7 +10885,10 @@ function _isTraineeInTechnicalStage(traineeId) {
 }
 
 function _routeLabel(trip) {
-  if (trip && trip.isDepotLesson) return '🏭 שיעור דיפו';
+  if (trip && trip.isDepotLesson) {
+    const done = (trip.depotChecklist || []).filter(x => x && x.done).length;
+    return `🏭 שיעור דיפו (${done}/6 בוצעו)`;
+  }
   return (trip && trip.timeline || []).map(x => x.id).join('➤');
 }
 
@@ -10890,35 +10896,72 @@ function _convertTripToDepot(tripId) {
   const idx = trips.findIndex(t => String(t.id) === String(tripId));
   if (idx < 0) return false;
   const trip = trips[idx];
-  const startMin = (trip.timeline && trip.timeline.length) ? trip.timeline[0].startMin : timeToMin(trip.startStr || '00:00');
+  let startMin = (trip.timeline && trip.timeline.length) ? trip.timeline[0].startMin : timeToMin(trip.startStr || '00:00');
+  let endMin = (trip.timeline && trip.timeline.length) ? trip.timeline[trip.timeline.length - 1].endMin : startMin;
+  // Fix (2026-08-23, per Lavi — תיקון שני): הטווח שהיה בשימוש עד עכשיו הוא
+  // טווח הנסיעה הבודדת שהומרה — לא טווח המשמרת המלאה של המדריך. אם קיים
+  // שיבוץ אמיתי (schedData) לאותו מדריך/תאריך, משתמשים בשעות המשמרת שהוגדרו
+  // שם, כדי שהנסיעה תשקף את זמן העבודה האמיתי ולא רק את קטע-המשנה שהיה לה
+  // מסלול (שיכול להיות קצר בהרבה מהמשמרת כולה, כמו 06:00-08:50 מתוך משמרת
+  // 06:00-14:00).
+  try {
+    const dayEntries = (typeof schedData !== 'undefined' && schedData[currentDate]) || [];
+    const shEntry = dayEntries.find(e => e.name === trip.name && (e.status === 'approved' || e.status === 'pending') && taskDefs.find(td => td.id === e.task)?.isTrip);
+    if (shEntry) {
+      const sh = SHIFT_HOURS[shEntry.shift] || { s: shEntry.startTime || null, e: shEntry.endTime || null };
+      const sStr = shEntry.shift === 'custom' ? shEntry.startTime : sh.s;
+      const eStr = shEntry.shift === 'custom' ? shEntry.endTime : sh.e;
+      if (sStr && eStr) {
+        let sMin = timeToMin(sStr), eMin = timeToMin(eStr);
+        if (eMin <= sMin) eMin += 24 * 60;
+        startMin = sMin; endMin = eMin;
+      }
+    }
+  } catch(e) { console.warn('_convertTripToDepot shift lookup:', e); }
+  // שיעורי דיפו כבר לא רצים לפי שעות משלהם. הנסיעה שומרת על טווח הזמן (כעת:
+  // טווח המשמרת המלאה) כדי שתמשיך להופיע נכון בציר הזמן/Gantt, והמסלול
+  // המקורי נמחק (כפי שאושר) ומוחלף בבלוק דיפו יחיד לאותו טווח. בתוך הנסיעה
+  // מנוהלת רשימת 6 "שיעורים" בלי שעות — המדריך מסמן אותם כבוצעו בקצב שלו.
   trip.isDepotLesson = true;
-  trip.route = [{id:'DEPOT', t:45, label:'שיעור דיפו'}];
-  trip.timeline = [{id:'DEPOT', startMin, endMin: startMin + 45}];
+  trip.route = [{ id: 'DEPOT', t: (endMin - startMin) || 45, label: 'שיעור דיפו' }];
+  trip.timeline = [{ id: 'DEPOT', startMin, endMin: endMin > startMin ? endMin : startMin + 45 }];
   trip.startStr = toHHMM(startMin);
+  if (!Array.isArray(trip.depotChecklist) || trip.depotChecklist.length !== 6) {
+    trip.depotChecklist = Array.from({ length: 6 }, () => ({ done: false }));
+  }
   return true;
 }
 
-function buildDepotLessons(row) {
-  const result = [];
-  let cursor = row.startMin;
-  while (result.length < 6 && cursor + 45 <= row.endMin) {
-    result.push({
-      startMin: cursor, endMin: cursor + 45, tripMin: 45,
-      route: [{id:'DEPOT', t:45, label:'שיעור דיפו'}],
-      timeline: [{id:'DEPOT', startMin: cursor, endMin: cursor + 45}],
-      isDepotLesson: true
-    });
-    cursor += 45 + row.breakMin;
-  }
-  return result;
+// Fix (2026-08-23, per Lavi): פותח/סוגר את רשימת 6 שיעורי הדיפו לסימון.
+function toggleDepotChecklist(tripId) {
+  const trip = trips.find(t => String(t.id) === String(tripId));
+  if (!trip || !trip.isDepotLesson) return;
+  const el = document.getElementById('depotChecklist_' + tripId);
+  if (el) el.style.display = (el.style.display === 'none' || !el.style.display) ? 'table-row' : 'none';
+}
+
+function toggleDepotItem(tripId, itemIdx) {
+  const trip = trips.find(t => String(t.id) === String(tripId));
+  if (!trip || !trip.isDepotLesson) return;
+  if (!Array.isArray(trip.depotChecklist)) trip.depotChecklist = Array.from({ length: 6 }, () => ({ done: false }));
+  if (!trip.depotChecklist[itemIdx]) trip.depotChecklist[itemIdx] = { done: false };
+  trip.depotChecklist[itemIdx].done = !trip.depotChecklist[itemIdx].done;
+  saveToStorage();
+  renderLog();
 }
 
 function _manualConvertToDepot(tripId) {
   const trip = trips.find(t => String(t.id) === String(tripId));
   if (!trip) return;
   if (trip.isDepotLesson) { showToast('נסיעה זו כבר מסומנת כשיעור דיפו', 'info'); return; }
-  const depotCount = trips.filter(t => t.name === trip.name && t.isDepotLesson).length;
-  if (depotCount >= 6) { showToast('⚠️ הגעת למקסימום 6 שיעורי דיפו למשמרת', 'warning'); return; }
+  // Fix (2026-08-23, per Lavi): נסיעת דיפו אחת כבר מכילה עד 6 שיעורים (checklist),
+  // אז המגבלה השתנתה מ"6 נסיעות דיפו נפרדות למשמרת" ל"נסיעת דיפו אחת בלבד
+  // למדריך/יום" — אם כבר קיימת, מסמנים שיעורים בתוכה במקום ליצור נוספת.
+  const existingDepot = trips.find(t => t.name === trip.name && t.isDepotLesson);
+  if (existingDepot) {
+    showToast('⚠️ כבר קיימת נסיעת דיפו למדריך הזה היום — ניתן לסמן עד 6 שיעורים בתוכה, לא ליצור נסיעה נוספת', 'warning');
+    return;
+  }
   _convertTripToDepot(tripId);
   saveToStorage();
   renderLog();
@@ -10938,9 +10981,11 @@ function saveTraineeAssign() {
       const anyTechnical = statuses.some(Boolean);
 
       if (allTechnical) {
-        const depotCount = trips.filter(t => t.name === trips[idx].name && t.isDepotLesson).length;
-        if (depotCount >= 6) {
-          showToast('⚠️ הגעת למקסימום 6 שיעורי דיפו למשמרת — לא בוצעה המרה נוספת', 'warning');
+        // Fix (2026-08-23, per Lavi): אותה מגבלה חדשה — נסיעת דיפו אחת בלבד
+        // למדריך/יום (מכילה עד 6 שיעורים בפנים), לא ספירת נסיעות דיפו נפרדות.
+        const existingDepot = trips.find(t => t.name === trips[idx].name && t.isDepotLesson);
+        if (existingDepot) {
+          showToast('⚠️ כבר קיימת נסיעת דיפו למדריך הזה היום — לא בוצעה המרה נוספת', 'warning');
         } else {
           _convertTripToDepot(trips[idx].id);
           showToast('🏭 הנסיעה הומרה לשיעור דיפו — חניך בשלב טכני', 'success');
@@ -11476,11 +11521,18 @@ function renderLog(){
 
     const endMin=last.endMin||0;
 
-    const loc=last.id.includes('N')?'נווה יעקב':last.id.includes('O')?'הדסה':'דיפו';
+    // Fix (2026-08-23, per Lavi): 'DEPOT' עצמו מכיל את האות 'O' — הבדיקה הישנה
+    // הייתה תופסת אותה בטעות כ"הדסה" (includes('O')) לפני שהגיעה לברירת המחדל
+    // "דיפו". בודקים isDepotLesson במפורש קודם כל.
+    const loc=t.isDepotLesson?'דיפו':(last.id.includes('N')?'נווה יעקב':last.id.includes('O')?'הדסה':'דיפו');
 
     const routeStr=_routeLabel(t);
 
-    const lessons=(t.route.reduce((s,r)=>s+r.t,0)/45).toFixed(1);
+    // Fix (2026-08-23, per Lavi): לנסיעת דיפו "שיעורים" נספר לפי כמה שיעורים
+    // סומנו כבוצעו ברשימה (checklist), לא לפי משך הזמן שהנסיעה תופסת בציר.
+    const lessons=t.isDepotLesson
+      ? (t.depotChecklist||[]).filter(x=>x&&x.done).length.toFixed(1)
+      : (t.route.reduce((s,r)=>s+r.t,0)/45).toFixed(1);
 
     const delayTag=t.delayMin>0?`<span style="color:var(--warning);font-size:11px;"> (+${t.delayMin} דק')</span>`:'';
 
@@ -11558,7 +11610,9 @@ function renderLog(){
 
       <td data-label="מדריך"><b>${_esc(t.name)}</b></td>
 
-      <td data-label="מסלול"><small title="${_esc(routeStr)}">${_esc(routeStr.length>22?routeStr.slice(0,22)+'…':routeStr)}</small></td>
+      <td data-label="מסלול">${t.isDepotLesson
+        ? `<small style="cursor:pointer;color:#16a085;text-decoration:underline dotted;" onclick="toggleDepotChecklist('${t.id}')" title="לחץ לסימון שיעורי דיפו">${_esc(routeStr)}</small>`
+        : `<small title="${_esc(routeStr)}">${_esc(routeStr.length>22?routeStr.slice(0,22)+'…':routeStr)}</small>`}</td>
 
       <td data-label="יציאה">${t.startStr}${delayTag}</td>
 
@@ -11581,7 +11635,20 @@ function renderLog(){
           <button class="btn-sm del" onclick="delTrip('${t.id}')" title="מחק נסיעה">🗑️</button>
           <button class="btn-sm" onclick="openTraineeAssign('${t.id}')" title="שייך חניכים" style="background:#8e44ad;color:white;border-color:#8e44ad;">🎓</button>${!t.isDepotLesson?`<button class="btn-sm" onclick="_manualConvertToDepot('${t.id}')" title="המר לשיעור דיפו" style="background:#16a085;color:white;border-color:#16a085;">🏭</button>`:''}</td>
 
-    </tr>`;
+    </tr>${t.isDepotLesson ? `<tr id="depotChecklist_${t.id}" style="display:none;background:#f4fdf9;">
+      <td colspan="10" style="padding:10px 16px;">
+        <div style="font-size:12px;color:#16a085;font-weight:bold;margin-bottom:6px;">🏭 שיעורי דיפו — סמן שיעורים שבוצעו בפועל (ללא שעות קבועות):</div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;">
+          ${Array.from({length:6}, (_,i)=>{
+              const item=(t.depotChecklist&&t.depotChecklist[i])||{done:false};
+              return `<label style="display:flex;align-items:center;gap:5px;font-size:12px;background:${item.done?'#d4f7e8':'white'};border:1px solid ${item.done?'#27ae60':'#ddd'};border-radius:7px;padding:5px 10px;cursor:pointer;">
+                <input type="checkbox" ${item.done?'checked':''} onchange="toggleDepotItem('${t.id}',${i})" style="width:14px;height:14px;margin:0;accent-color:#27ae60;">
+                שיעור ${i+1}
+              </label>`;
+            }).join('')}
+        </div>
+      </td>
+    </tr>` : ''}`;
 
   }).join('');
 
@@ -11962,7 +12029,13 @@ function buildInstructorTrips(row,existingTls,gap){
 
   const result=[];
 
-  let cursor=row.startMin,currentSeg=row.startSeg;
+  // Fix (2026-08-23, per Lavi): הנסיעה הראשונה בכל משמרת מתחילה כעת חצי שעה
+  // אחרי שעת ההתייצבות, לא באותה שנייה — כדי לשקף זמן התארגנות של המדריך
+  // (הכנה, קבלת רכבת וכו'). חל בכל כלי יצירת הנסיעות (תכנון יום הדרכה ותכנון
+  // אוטומטי מהשיבוצים כאחד, ששניהם קוראים לפונקציה הזו). ניתן להגדרה תחת
+  // הגדרות ← ברירות מחדל תפעוליות ← "זמן התארגנות לפני נסיעה ראשונה".
+  const CHECK_IN_BUFFER_MIN = (typeof _settings!=='undefined' && _settings && _settings.checkInBuffer!=null) ? _settings.checkInBuffer : 30;
+  let cursor=Math.min(row.startMin+CHECK_IN_BUFFER_MIN,row.endMin),currentSeg=row.startSeg;
 
   const wantEnd=row.endSeg&&row.endSeg!=='any';
 
@@ -12283,9 +12356,13 @@ function buildTripsFromFixedRoute(row,existingTls,gap){
 
   const results=[];
 
-  let currentMin=row.startMin;
-
   const endMin=row.endMin+(row.endMin<row.startMin?24*60:0);
+
+  // Fix (2026-08-23, per Lavi): אותו באפר לאחר ההתייצבות, גם כשמשתמשים
+  // במסלול קבוע/מועדף — לא רק בבנייה האלגוריתמית. ניתן להגדרה תחת הגדרות ←
+  // ברירות מחדל תפעוליות.
+  const CHECK_IN_BUFFER_MIN = (typeof _settings!=='undefined' && _settings && _settings.checkInBuffer!=null) ? _settings.checkInBuffer : 30;
+  let currentMin=Math.min(row.startMin+CHECK_IN_BUFFER_MIN,endMin);
 
   let tripCount=0;
 
@@ -12680,7 +12757,7 @@ const DEFAULTS={
 
   TURN:7,TURN_ORA:10,TURN_HADAS:7,
 
-  defaultGap:40,shiftLen:510,minBreak:75,maxPerSeg:0,
+  defaultGap:40,shiftLen:510,minBreak:75,maxPerSeg:0,checkInBuffer:30,
 
   d4Start:'06:00',d4End:'19:00'
 
@@ -13441,6 +13518,8 @@ async function saveSettings(){
 
     maxPerSeg:getInt('s_maxPerSeg',DEFAULTS.maxPerSeg)||getInt('si_maxPerSeg',DEFAULTS.maxPerSeg),
 
+    checkInBuffer:getInt('s_checkInBuffer',DEFAULTS.checkInBuffer)||getInt('si_checkInBuffer',DEFAULTS.checkInBuffer),
+
     d4Start:getStr('s_d4Start',DEFAULTS.d4Start)||getStr('si_d4Start',DEFAULTS.d4Start),
 
     d4End:getStr('s_d4End',DEFAULTS.d4End)||getStr('si_d4End',DEFAULTS.d4End),
@@ -13755,7 +13834,12 @@ function renderDashboard(){
 
   const totalTrips=trips.length;
   const totalMin=trips.reduce((s,t)=>s+t.route.reduce((ss,r)=>ss+r.t,0),0);
-  const totalLessons=totalMin/45;
+  // Fix (2026-08-23, per Lavi): נסיעת דיפו סופרת "שיעורים" לפי כמה שיעורים
+  // סומנו כבוצעו ב-checklist, לא לפי משך הזמן של הנסיעה (שיכול להיות ארוך
+  // בהרבה — הוא תופס את טווח המשמרת, לא רק את 45 הדקות שבפועל בוצעו).
+  const totalLessons=trips.reduce((s,t)=>s+(t.isDepotLesson
+    ? (t.depotChecklist||[]).filter(x=>x&&x.done).length
+    : t.route.reduce((ss,r)=>ss+r.t,0)/45), 0);
   const names=[...new Set(trips.map(t=>t.name))];
   const gap=parseInt(document.getElementById('gapV')?.value)||40;
   let conflicts=0;
@@ -17142,6 +17226,10 @@ function openAutoGenModal(){
   Object.keys(schedData).sort().forEach(date=>{
     const entries=(schedData[date]||[]).filter(e=>{
       if(e.status!=='approved'&&e.status!=='pending')return false;
+      // Fix (2026-08-23, per Lavi): שיבוצי "חופש" (יום חופש) לא אמורים להופיע כאן
+      // בכלל — אין נסיעה לתכנן למישהו שמשובץ לחופש. אותה בדיקה בדיוק שכבר
+      // קיימת במקומות אחרים בקוד (_isVacationShiftKey), לא רק isTrip.
+      if(typeof _isVacationShiftKey==='function'&&_isVacationShiftKey(e.shift))return false;
       const tDef=taskDefs.find(t=>t.id===e.task);
       return tDef?tDef.isTrip:false;
     });
@@ -17151,9 +17239,14 @@ function openAutoGenModal(){
     showToast('לא נמצאו שיבוצים בלוח. הזן שיבוצים תחילה דרך "שיבוץ שבועי" או לחיצה על יום בלוח.','warning');
     return;
   }
-  // Fix (2026-08-23, per Lavi): הרשימה תתחיל מהיום הנוכחי ותלך אחורה (מהתאריך
-  // הכי קרוב להיום ועד הרחוק ביותר), במקום התאריך המוקדם ביותר ראשון.
-  datesWithEntries.sort((a,b)=>b.date.localeCompare(a.date));
+  // Fix (2026-08-23, per Lavi — תיקון שני): הכוונה האמיתית הייתה "היום הנוכחי
+  // ראשון ברשימה", לא "מהתאריך העתידי ביותר להיום". המיון הנכון הוא לפי מרחק
+  // מוחלט מהיום הנוכחי (הקרוב ביותר להיום — עבר או עתיד — תמיד ראשון), כך
+  // שבמערך תאריכים עתידיים בלבד הרשימה תתחיל מהיום/הקרוב אליו ותתקדם קדימה,
+  // ובמערך תאריכים שכולם בעבר היא תתחיל מהקרוב ביותר לאחור.
+  const _today=currentDate||_localDateStr(new Date());
+  const _dayDiff=(d)=>Math.abs(new Date(d+'T12:00:00')-new Date(_today+'T12:00:00'));
+  datesWithEntries.sort((a,b)=>_dayDiff(a.date)-_dayDiff(b.date));
   const listEl=document.getElementById('autoGenDateList');
   if(!listEl){showToast('שגיאה: רכיב חסר בדף','warning');return;}
   const SHIFT_LABELS={morning:'בוקר',afternoon:'צהריים',evening:'ערב',custom:'מותאם'};
@@ -17354,6 +17447,7 @@ function _populateSettingsInline(){
     ['s_TURN','si_TURN'],['s_TURN_ORA','si_TURN_ORA'],['s_TURN_HADAS','si_TURN_HADAS'],
     ['s_defaultGap','si_defaultGap'],['s_shiftLen','si_shiftLen'],
     ['s_minBreak','si_minBreak'],['s_maxPerSeg','si_maxPerSeg'],
+    ['s_checkInBuffer','si_checkInBuffer'],
     ['s_d4Start','si_d4Start'],['s_d4End','si_d4End']
   ];
   // First populate the modal fields (runs existing openSettings logic)
@@ -17579,6 +17673,7 @@ function _populateSettingsFields(){
     s_TURN:'TURN',s_TURN_ORA:'TURN_ORA',s_TURN_HADAS:'TURN_HADAS',
     s_defaultGap:'defaultGap',s_shiftLen:'shiftLen',
     s_minBreak:'minBreak',s_maxPerSeg:'maxPerSeg',
+    s_checkInBuffer:'checkInBuffer',
     s_d4Start:'d4Start',s_d4End:'d4End'
   };
   Object.entries(map).forEach(([elId,key])=>{
@@ -17649,6 +17744,8 @@ function openSettings(){
     f('s_minBreak',S.minBreak??D.minBreak);
 
     f('s_maxPerSeg',S.maxPerSeg??0);
+
+    f('s_checkInBuffer',S.checkInBuffer??D.checkInBuffer);
 
     f('s_d4Start',S.d4Start||'06:00');f('s_d4End',S.d4End||'19:00');
 
@@ -17885,9 +17982,11 @@ function renderInstrTripJournal(){
     }
     const last=t.timeline[t.timeline.length-1];
     const endMin=last.endMin||0;
-    const loc=last.id.includes('N')?'נווה יעקב':last.id.includes('O')?'הדסה':'דיפו';
+    const loc=t.isDepotLesson?'דיפו':(last.id.includes('N')?'נווה יעקב':last.id.includes('O')?'הדסה':'דיפו');
     const routeStr=_routeLabel(t);
-    const lessons=(t.route.reduce((s,r)=>s+r.t,0)/45).toFixed(1);
+    const lessons=t.isDepotLesson
+      ? (t.depotChecklist||[]).filter(x=>x&&x.done).length.toFixed(1)
+      : (t.route.reduce((s,r)=>s+r.t,0)/45).toFixed(1);
     const delayTag=t.delayMin>0?`<span style="color:var(--warning);font-size:11px;"> (+${t.delayMin} דק')</span>`:'';
     const tripStartMin=timeToMin(t.startStr||'00:00');
     const isStarted=currentDate===today&&tripStartMin<=nowM;
@@ -19328,7 +19427,10 @@ async function loadMonthlyDash(){
       const s=stats[t.name];
       s.trips++;
       const dur=(t.route||[]).reduce((a,r)=>a+(r.t||0),0);
-      s.minutes+=dur;s.lessons+=dur/45;
+      s.minutes+=dur;
+      // Fix (2026-08-23, per Lavi): נסיעת דיפו סופרת "שיעורים" לפי checklist
+      // שסומן, לא לפי משך זמן הנסיעה (שתופס כעת את טווח המשמרת המלאה).
+      s.lessons+=t.isDepotLesson ? (t.depotChecklist||[]).filter(x=>x&&x.done).length : dur/45;
       if(t.delayMin>0)s.delays++;
     }
   }
@@ -19556,7 +19658,10 @@ async function exportMonthlyReport(){
   for(const [date,dayTrips] of Object.entries(rangeData).sort()){
     for(const t of dayTrips){
       const routeStr=_routeLabel(t);
-      const lessons=((t.route||[]).reduce((a,r)=>a+(r.t||0),0)/45).toFixed(1);
+      // Fix (2026-08-23, per Lavi): אותו תיקון — checklist, לא משך זמן, לדיפו.
+      const lessons=(t.isDepotLesson
+        ? (t.depotChecklist||[]).filter(x=>x&&x.done).length
+        : (t.route||[]).reduce((a,r)=>a+(r.t||0),0)/45).toFixed(1);
       const endMin=t.timeline?.length?t.timeline[t.timeline.length-1].endMin:0;
       rows.push([
         t.name||'',date,routeStr,t.startStr||'',
@@ -19892,7 +19997,8 @@ async function renderComparison(){
         s.trips++;
         const dur=(t.route||[]).reduce((a,r)=>a+(r.t||0),0);
         s.minutes+=dur;
-        s.lessons+=dur/45;
+        // Fix (2026-08-23, per Lavi): אותו תיקון — checklist, לא משך זמן.
+        s.lessons+=t.isDepotLesson ? (t.depotChecklist||[]).filter(x=>x&&x.done).length : dur/45;
         if(t.delayMin>0)s.delays++;
       }
     }
@@ -20459,7 +20565,9 @@ async function exportPDFReport(){
       const s=statsPerInstr[t.name];
       s.trips++;
       const dur=(t.route||[]).reduce((a,r)=>a+(r.t||0),0);
-      s.minutes+=dur;s.lessons+=dur/45;
+      s.minutes+=dur;
+      // Fix (2026-08-23, per Lavi): אותו תיקון — checklist, לא משך זמן.
+      s.lessons+=t.isDepotLesson ? (t.depotChecklist||[]).filter(x=>x&&x.done).length : dur/45;
       if(t.delayMin>0)s.delays++;
     }
   }
@@ -21582,6 +21690,24 @@ async function submitUnifiedReport() {
   const instructor = currentUserName;
   if (!date || !instructor) { showToast('שגיאה: חסר תאריך או שם מדריך', 'error'); return; }
 
+  // 2026-08-23, לפי בקשת לביא: "שעות הדרכה קלה" הפך לשדה חובה — הטופס לא
+  // נשלח/נסגר בלעדיו, רק מתריע ומדגיש את השדה החסר.
+  const _lightHoursEl = document.getElementById('ur-light-hours');
+  const _lightHoursRaw = _lightHoursEl?.value?.trim() || '';
+  if (_lightHoursRaw === '') {
+    showToast('⚠️ יש להשלים את שדה "שעות הדרכה קלה" לפני שמירת הטופס', 'warning');
+    if (_lightHoursEl) {
+      _lightHoursEl.style.border = '2px solid #e74c3c';
+      _lightHoursEl.focus();
+      _lightHoursEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      _lightHoursEl.addEventListener('input', function _clearLightHoursErr() {
+        _lightHoursEl.style.border = '';
+        _lightHoursEl.removeEventListener('input', _clearLightHoursErr);
+      });
+    }
+    return;
+  }
+
   // ── Section A: Day summary ──
   const report = {
     date, instructorName: instructor,
@@ -21589,7 +21715,7 @@ async function submitUnifiedReport() {
     submittedAt: Date.now(),
     shiftStart: document.getElementById('ur-shift-start')?.value || '',
     shiftEnd:   document.getElementById('ur-shift-end')?.value   || '',
-    lightHours: parseFloat(document.getElementById('ur-light-hours')?.value  || '0') || 0,
+    lightHours: parseFloat(_lightHoursRaw) || 0,
     sinerioHours: parseFloat(document.getElementById('ur-sinerio-hours')?.value || '0') || 0,
     notes: document.getElementById('ur-notes')?.value.trim() || ''
   };
@@ -23025,7 +23151,12 @@ async function openDailyReportPreview(dateOverride){
 
   const totalTrips=dayTrips.length;
   const totalDelays=dayTrips.filter(t=>t.delayMin>0).length;
-  const totalLessonHours=dayTrips.reduce((s,t)=>s+((t.route||[]).reduce((a,r)=>a+(r.t||0),0)),0)/60;
+  // Fix (2026-08-23, per Lavi): נסיעת דיפו סופרת שעות שיעור לפי checklist
+  // שסומן (45 דק' לכל שיעור שבוצע), לא לפי משך זמן הנסיעה — שתופס כעת את
+  // טווח המשמרת המלאה ולא רק את מה שבפועל בוצע.
+  const totalLessonHours=dayTrips.reduce((s,t)=>s+(t.isDepotLesson
+    ? (t.depotChecklist||[]).filter(x=>x&&x.done).length*45
+    : (t.route||[]).reduce((a,r)=>a+(r.t||0),0)), 0)/60;
   const activeCount=dayEntries.length;
   const missingReports=dayEntries.filter(e=>{
     const k=`${dateStr}__${e.name}__unified`;
@@ -25887,8 +26018,8 @@ function _resetTraineeSummaryConfig() {
       <div class="ur-row-2">
         <div class="ur-field">
           <div class="ur-num-field">
-            <label>שעות הדרכה קלה</label>
-            <input type="number" id="ur-light-hours" min="0" max="16" step="1" placeholder="0">
+            <label>שעות הדרכה קלה <span style="color:#e74c3c;">*</span></label>
+            <input type="number" id="ur-light-hours" min="0" max="16" step="1" placeholder="0" required>
           </div>
         </div>
         <div class="ur-field">
