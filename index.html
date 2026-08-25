@@ -14,7 +14,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 61</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 62</title>
 
 <style>
 
@@ -1426,7 +1426,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 121;
+  const APP_VERSION = 122;
 
   function initFirebase() {
     try {
@@ -3557,6 +3557,11 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
           <span style="font-size:13px;font-weight:600;color:#8a5a1a;">שיוך מספרי שיעור לדיווחים ישנים</span>
           <span style="font-size:11px;color:#888;">דיווחים עם ציונים אך בלי מספר שיעור — פוגע בהתקדמות במסלול</span>
         </button>
+        <button onclick="openLessonBreakdownReport()" style="display:flex;flex-direction:column;align-items:flex-start;gap:4px;padding:14px 16px;background:#f8faff;border:1.5px solid #d0e4f7;border-radius:10px;cursor:pointer;text-align:right;">
+          <span style="font-size:18px;">🔍</span>
+          <span style="font-size:13px;font-weight:600;color:#2c3e50;">פילוח שיעורים</span>
+          <span style="font-size:11px;color:#888;">מי לימד איזה שיעור ולאיזה חניך — סינון לפי מדריך/שיעור/חניך/קורס</span>
+        </button>
       </div>
     </div>
 
@@ -3574,6 +3579,59 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
     </div>
 
   </div><!-- /reportsSection -->
+
+  <!-- 2026-08-24, לפי בקשת לביא: פילוח שיעורים — מי לימד איזה שיעור ולאיזה חניך,
+       עם סינון לפי מדריך/מספר שיעור/חניך/קורס. סורק את כל הקורסים (לא רק
+       ברירת המחדל), ברירת מחדל בפילטר הקורס = הקורס הנוכחי/פעיל. -->
+  <div id="lessonBreakdownOverlay" class="unified-report-overlay">
+    <div class="unified-report-box" style="max-width:1000px;">
+      <div class="unified-report-header">
+        <span style="font-size:14px;font-weight:600;color:#2c3e50;">🔍 פילוח שיעורים</span>
+        <button onclick="closeLessonBreakdownReport()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#888;">✕</button>
+      </div>
+      <div style="padding:16px 22px;">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:14px;">
+          <div>
+            <label style="font-size:11px;color:#888;display:block;margin-bottom:3px;">קורס</label>
+            <select id="lb-course" onchange="_renderLessonBreakdownTable()" style="width:100%;padding:7px;border:1.5px solid #ddd;border-radius:7px;font-size:13px;"></select>
+          </div>
+          <div>
+            <label style="font-size:11px;color:#888;display:block;margin-bottom:3px;">מדריך</label>
+            <select id="lb-instructor" onchange="_renderLessonBreakdownTable()" style="width:100%;padding:7px;border:1.5px solid #ddd;border-radius:7px;font-size:13px;"><option value="">הכל</option></select>
+          </div>
+          <div>
+            <label style="font-size:11px;color:#888;display:block;margin-bottom:3px;">חניך</label>
+            <select id="lb-trainee" onchange="_renderLessonBreakdownTable()" style="width:100%;padding:7px;border:1.5px solid #ddd;border-radius:7px;font-size:13px;"><option value="">הכל</option></select>
+          </div>
+          <div>
+            <label style="font-size:11px;color:#888;display:block;margin-bottom:3px;">מספר שיעור</label>
+            <select id="lb-lessonnum" onchange="_renderLessonBreakdownTable()" style="width:100%;padding:7px;border:1.5px solid #ddd;border-radius:7px;font-size:13px;"><option value="">הכל</option></select>
+          </div>
+          <div>
+            <label style="font-size:11px;color:#888;display:block;margin-bottom:3px;">מתאריך</label>
+            <input type="date" id="lb-from" onchange="_renderLessonBreakdownTable()" style="width:100%;padding:6px;border:1.5px solid #ddd;border-radius:7px;font-size:13px;">
+          </div>
+          <div>
+            <label style="font-size:11px;color:#888;display:block;margin-bottom:3px;">עד תאריך</label>
+            <input type="date" id="lb-to" onchange="_renderLessonBreakdownTable()" style="width:100%;padding:6px;border:1.5px solid #ddd;border-radius:7px;font-size:13px;">
+          </div>
+        </div>
+        <div id="lb-summary" style="background:#eaf4fd;border-radius:9px;padding:10px 14px;margin-bottom:12px;font-size:13px;color:#2c3e50;font-weight:bold;"></div>
+        <div style="overflow-x:auto;max-height:440px;overflow-y:auto;">
+          <table class="mgmt-table" style="width:100%;min-width:700px;">
+            <thead><tr>
+              <th>תאריך</th><th>מדריך</th><th>חניך</th><th>משימה</th><th>מספרי שיעור</th><th>ציון ממוצע</th><th>הערה</th>
+            </tr></thead>
+            <tbody id="lb-tbody"></tbody>
+          </table>
+        </div>
+        <div style="margin-top:12px;text-align:left;">
+          <button onclick="exportLessonBreakdownCSV()" style="width:auto;padding:8px 16px;background:#f0fff6;border:1.5px solid #a9dfbf;color:#217346;border-radius:8px;cursor:pointer;font-size:12px;font-weight:bold;">📥 ייצוא CSV</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
 
   <div id="settingsSection" style="display:none;padding:0 0 32px 0;">
 
@@ -10939,10 +10997,14 @@ function _convertTripToDepot(tripId) {
 }
 
 // Fix (2026-08-23, per Lavi): פותח/סוגר את רשימת 6 שיעורי הדיפו לסימון.
-function toggleDepotChecklist(tripId) {
+function toggleDepotChecklist(tripId, ctx) {
+  // Fix (2026-08-24, per Lavi): הטבלה של המנהל (logBody) והטבלה של המדריך
+  // (myTripsList) יכולות שתיהן להיות בדף בו-זמנית (אחת מוסתרת ב-CSS לפי
+  // תפקיד) — לכן שורת ה-checklist מקבלת מזהה ייחודי לפי הקשר (admin/instr),
+  // כדי שלא יתנגשו שני אלמנטים עם אותו ID.
   const trip = trips.find(t => String(t.id) === String(tripId));
   if (!trip || !trip.isDepotLesson) return;
-  const el = document.getElementById('depotChecklist_' + tripId);
+  const el = document.getElementById('depotChecklist_' + (ctx || 'admin') + '_' + tripId);
   if (el) el.style.display = (el.style.display === 'none' || !el.style.display) ? 'table-row' : 'none';
 }
 
@@ -10954,6 +11016,9 @@ function toggleDepotItem(tripId, itemIdx) {
   trip.depotChecklist[itemIdx].done = !trip.depotChecklist[itemIdx].done;
   saveToStorage();
   renderLog();
+  // Fix (2026-08-24, per Lavi): מדריך צריך לראות את הסימון מתעדכן גם ב"יומן
+  // הנסיעות שלי" (טבלה נפרדת מזו של המנהל), לא רק ב-renderLog של הניהול.
+  try { if (typeof renderInstrTripJournal === 'function') renderInstrTripJournal(); } catch(e) {}
 }
 
 function _manualConvertToDepot(tripId) {
@@ -11617,7 +11682,7 @@ function renderLog(){
       <td data-label="מדריך"><b>${_esc(t.name)}</b></td>
 
       <td data-label="מסלול">${t.isDepotLesson
-        ? `<small style="cursor:pointer;color:#16a085;text-decoration:underline dotted;" onclick="toggleDepotChecklist('${t.id}')" title="לחץ לסימון שיעורי דיפו">${_esc(routeStr)}</small>`
+        ? `<small style="cursor:pointer;color:#16a085;text-decoration:underline dotted;" onclick="toggleDepotChecklist('${t.id}','admin')" title="לחץ לסימון שיעורי דיפו">${_esc(routeStr)}</small>`
         : `<small title="${_esc(routeStr)}">${_esc(routeStr.length>22?routeStr.slice(0,22)+'…':routeStr)}</small>`}</td>
 
       <td data-label="יציאה">${t.startStr}${delayTag}</td>
@@ -11641,7 +11706,7 @@ function renderLog(){
           <button class="btn-sm del" onclick="delTrip('${t.id}')" title="מחק נסיעה">🗑️</button>
           <button class="btn-sm" onclick="openTraineeAssign('${t.id}')" title="שייך חניכים" style="background:#8e44ad;color:white;border-color:#8e44ad;">🎓</button>${!t.isDepotLesson?`<button class="btn-sm" onclick="_manualConvertToDepot('${t.id}')" title="המר לשיעור דיפו" style="background:#16a085;color:white;border-color:#16a085;">🏭</button>`:''}</td>
 
-    </tr>${t.isDepotLesson ? `<tr id="depotChecklist_${t.id}" style="display:none;background:#f4fdf9;">
+    </tr>${t.isDepotLesson ? `<tr id="depotChecklist_admin_${t.id}" style="display:none;background:#f4fdf9;">
       <td colspan="10" style="padding:10px 16px;">
         <div style="font-size:12px;color:#16a085;font-weight:bold;margin-bottom:6px;">🏭 שיעורי דיפו — סמן שיעורים שבוצעו בפועל (ללא שעות קבועות):</div>
         <div style="display:flex;flex-wrap:wrap;gap:8px;">
@@ -18025,7 +18090,9 @@ function renderInstrTripJournal(){
     }
 
     return`<tr id="instr-row-${t.id}">
-      <td data-label="מסלול"><small title="${routeStr}">${routeStr.length>22?routeStr.slice(0,22)+'…':routeStr}</small></td>
+      <td data-label="מסלול">${t.isDepotLesson
+        ? `<small style="cursor:pointer;color:#16a085;text-decoration:underline dotted;" onclick="toggleDepotChecklist('${t.id}','instr')" title="לחץ לסימון שיעורי דיפו">${_esc(routeStr)}</small>`
+        : `<small title="${routeStr}">${routeStr.length>22?routeStr.slice(0,22)+'…':routeStr}</small>`}</td>
       <td data-label="יציאה">${t.startStr}${delayTag}</td>
       <td data-label="סיום">${toHHMM(endMin)}</td>
       <td style="color:var(--danger);font-weight:bold;font-size:12px;">${toHHMM(endMin+75)}</td>
@@ -18038,7 +18105,20 @@ function renderInstrTripJournal(){
         <button class="btn-sm del" onclick="delTrip('${t.id}')" title="מחק נסיעה">🗑️</button>
         <button class="btn-sm" onclick="openTraineeAssign('${t.id}')" title="שייך חניכים לנסיעה" style="background:#8e44ad;color:white;border-color:#8e44ad;">🎓</button>
       </td>
-    </tr>`;
+    </tr>${t.isDepotLesson ? `<tr id="depotChecklist_instr_${t.id}" style="display:none;background:#f4fdf9;">
+      <td colspan="8" style="padding:10px 16px;">
+        <div style="font-size:12px;color:#16a085;font-weight:bold;margin-bottom:6px;">🏭 שיעורי דיפו — סמן שיעורים שביצעת בפועל (ללא שעות קבועות):</div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;">
+          ${Array.from({length:6}, (_,i)=>{
+              const item=(t.depotChecklist&&t.depotChecklist[i])||{done:false};
+              return `<label style="display:flex;align-items:center;gap:5px;font-size:12px;background:${item.done?'#d4f7e8':'white'};border:1px solid ${item.done?'#27ae60':'#ddd'};border-radius:7px;padding:5px 10px;cursor:pointer;">
+                <input type="checkbox" ${item.done?'checked':''} onchange="toggleDepotItem('${t.id}',${i})" style="width:14px;height:14px;margin:0;accent-color:#27ae60;">
+                שיעור ${i+1}
+              </label>`;
+            }).join('')}
+        </div>
+      </td>
+    </tr>` : ''}`;
   }).join('');
 }
 
@@ -19469,15 +19549,10 @@ async function loadMonthlyDash(){
       const name = v.instructorName;
       if (!stats[name]) stats[name] = {trips:0,lessons:0,minutes:0,delays:0,delayMinTotal:0,delayNotes:[],reportOnly:0};
       const s = stats[name];
-      let dur = 0;
-      if (v.shiftStart && v.shiftEnd) {
-        const [sh,sm] = v.shiftStart.split(':').map(Number);
-        const [eh,em] = v.shiftEnd.split(':').map(Number);
-        if (!isNaN(sh) && !isNaN(eh)) {
-          dur = (eh*60+em) - (sh*60+sm);
-          if (dur < 0) dur += 24*60; // overnight shift
-        }
-      }
+      // Fix (2026-08-24, per Lavi — אופציה 2): להשתמש ב"שעות הדרכה קלה" שדווחו
+      // בפועל (lightHours), לא במשך המשמרת המלאה — משמרת שלמה/45 נתן הערכה
+      // מנופחת (עד 11+ "שיעורים" ליום), כי לא כל שעות המשמרת הן נהיגה בפועל.
+      const dur = (v.lightHours || 0) * 60;
       s.trips += 1;
       s.reportOnly = (s.reportOnly||0) + 1;
       s.minutes += dur;
@@ -19735,6 +19810,165 @@ async function exportScheduleReport(){
 
 // 2026-08-19: דוח ביצועי משימות — כמה שיבוצים הוקצו לכל סוג משימה (לא רק נסיעות),
 // לפי טווח התאריכים שנבחר. schedData כבר בזיכרון במלואו, לא צריך fetch.
+// 2026-08-24, לפי בקשת לביא: פילוח שיעורים — מי לימד איזה שיעור ולאיזה חניך.
+// סורק את כל הקורסים (כמו התיקון ב-#107 ל-addLessonFromExternal), לא רק את
+// הקורס הפעיל. ברירת מחדל בפילטר הקורס = הקורס הנוכחי/פעיל.
+let _lbAllLessonRows = []; // cache: {date, ins, traineeName, mission, lessonNums, avgScore, note}
+
+function _lbCollectAllLessons() {
+  const rows = [];
+  if (typeof TraineeSystem === 'undefined') return rows;
+  const seenCourses = new Set();
+  const allCourses = (TraineeSystem.courses && TraineeSystem.courses.length)
+    ? TraineeSystem.courses
+    : [{ id: '_default', name: 'ברירת מחדל', trainees: TraineeSystem.trainees || [] }];
+  allCourses.forEach(course => {
+    if (seenCourses.has(course.id)) return;
+    seenCourses.add(course.id);
+    (course.trainees || []).forEach(t => {
+      (t.lessons || []).forEach(l => {
+        const avg = (typeof _lessonScoreAvg === 'function') ? _lessonScoreAvg(l) : null;
+        rows.push({
+          courseId: course.id,
+          courseName: course.name || course.id,
+          date: l.date || '',
+          ins: l.ins || l.instructor || '',
+          traineeName: t.name || '',
+          mission: l.mission || '',
+          lessonNums: (l.lessonNums || []).join(', '),
+          avgScore: avg,
+          note: l.note || ''
+        });
+      });
+    });
+  });
+  return rows;
+}
+
+function openLessonBreakdownReport() {
+  // Fix: TraineeSystem may not be initialized yet if the admin never opened
+  // the "חניכים ומשובים" tab this session — same guard used elsewhere (_initTraineeIfNeeded).
+  try { if (typeof _initTraineeIfNeeded === 'function') _initTraineeIfNeeded(); } catch(e) {}
+  _lbAllLessonRows = _lbCollectAllLessons();
+
+  // Populate course filter — default selection = current/active course
+  const courseSel = document.getElementById('lb-course');
+  if (courseSel) {
+    const courses = (typeof TraineeSystem !== 'undefined' && TraineeSystem.courses && TraineeSystem.courses.length)
+      ? TraineeSystem.courses : [{ id: '_default', name: 'ברירת מחדל' }];
+    const currentId = (typeof TraineeSystem !== 'undefined') ? TraineeSystem.currentCourseId : null;
+    courseSel.innerHTML = '<option value="">כל הקורסים</option>' +
+      courses.map(c => `<option value="${_esc(c.id)}" ${c.id === currentId ? 'selected' : ''}>${_esc(c.name || c.id)}</option>`).join('');
+  }
+
+  // Populate instructor filter
+  const insSel = document.getElementById('lb-instructor');
+  if (insSel) {
+    const names = [...new Set(_lbAllLessonRows.map(r => r.ins).filter(Boolean))].sort();
+    insSel.innerHTML = '<option value="">הכל</option>' + names.map(n => `<option value="${_esc(n)}">${_esc(n)}</option>`).join('');
+  }
+
+  // Populate trainee filter
+  const traineeSel = document.getElementById('lb-trainee');
+  if (traineeSel) {
+    const names = [...new Set(_lbAllLessonRows.map(r => r.traineeName).filter(Boolean))].sort();
+    traineeSel.innerHTML = '<option value="">הכל</option>' + names.map(n => `<option value="${_esc(n)}">${_esc(n)}</option>`).join('');
+  }
+
+  // Populate lesson-number filter (1-50, generic across mission types)
+  const lnSel = document.getElementById('lb-lessonnum');
+  if (lnSel) {
+    let opts = '<option value="">הכל</option>';
+    for (let n = 1; n <= 50; n++) opts += `<option value="${n}">${n}</option>`;
+    lnSel.innerHTML = opts;
+  }
+
+  document.getElementById('lb-from').value = '';
+  document.getElementById('lb-to').value = '';
+
+  document.getElementById('lessonBreakdownOverlay').classList.add('open');
+  _renderLessonBreakdownTable();
+
+  // Fix: if TraineeSystem was cold (first time opening this session), the initial
+  // collection above may have run before Firebase finished loading. Re-collect
+  // once after a short delay so the report doesn't silently look empty.
+  if (!_lbAllLessonRows.length) {
+    setTimeout(() => {
+      _lbAllLessonRows = _lbCollectAllLessons();
+      if (_lbAllLessonRows.length) _renderLessonBreakdownTable();
+    }, 1000);
+  }
+}
+
+function closeLessonBreakdownReport() {
+  document.getElementById('lessonBreakdownOverlay').classList.remove('open');
+}
+
+function _lbFilteredRows() {
+  const courseId = document.getElementById('lb-course')?.value || '';
+  const ins = document.getElementById('lb-instructor')?.value || '';
+  const trainee = document.getElementById('lb-trainee')?.value || '';
+  const lessonNum = document.getElementById('lb-lessonnum')?.value || '';
+  const from = document.getElementById('lb-from')?.value || '';
+  const to = document.getElementById('lb-to')?.value || '';
+
+  return _lbAllLessonRows.filter(r => {
+    if (courseId && r.courseId !== courseId) return false;
+    if (ins && r.ins !== ins) return false;
+    if (trainee && r.traineeName !== trainee) return false;
+    if (lessonNum && !r.lessonNums.split(',').map(s => s.trim()).includes(lessonNum)) return false;
+    if (from && r.date && r.date < from) return false;
+    if (to && r.date && r.date > to) return false;
+    if (!r.date) return false; // skip rows with no date (can't filter/sort meaningfully)
+    return true;
+  }).sort((a, b) => b.date.localeCompare(a.date));
+}
+
+function _renderLessonBreakdownTable() {
+  const rows = _lbFilteredRows();
+  const tbody = document.getElementById('lb-tbody');
+  const summaryEl = document.getElementById('lb-summary');
+  if (!tbody) return;
+
+  if (!rows.length) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#aaa;padding:20px;">אין רשומות תואמות לסינון</td></tr>';
+    if (summaryEl) summaryEl.textContent = '0 שיעורים';
+    return;
+  }
+
+  tbody.innerHTML = rows.map(r => `<tr>
+      <td>${_esc(r.date)}</td>
+      <td><b>${_esc(r.ins)}</b></td>
+      <td>${_esc(r.traineeName)}</td>
+      <td>${_esc(r.mission)}</td>
+      <td>${_esc(r.lessonNums)}</td>
+      <td style="text-align:center;">${r.avgScore != null ? r.avgScore.toFixed(1) : '—'}</td>
+      <td style="font-size:11px;color:#555;">${_esc(r.note)}</td>
+    </tr>`).join('');
+
+  // Summary insight bar — updates live with the current filter selection.
+  const uniqueInstructors = new Set(rows.map(r => r.ins).filter(Boolean)).size;
+  const uniqueTrainees = new Set(rows.map(r => r.traineeName).filter(Boolean)).size;
+  const scored = rows.filter(r => r.avgScore != null);
+  const avgAll = scored.length ? (scored.reduce((s, r) => s + r.avgScore, 0) / scored.length).toFixed(1) : '—';
+  if (summaryEl) {
+    summaryEl.textContent = `${rows.length} שיעורים · ${uniqueInstructors} מדריכים · ${uniqueTrainees} חניכים · ציון ממוצע ${avgAll}`;
+  }
+}
+
+function exportLessonBreakdownCSV() {
+  const rows = _lbFilteredRows();
+  const csvRows = [['תאריך', 'מדריך', 'חניך', 'משימה', 'מספרי שיעור', 'ציון ממוצע', 'הערה']];
+  rows.forEach(r => csvRows.push([r.date, r.ins, r.traineeName, r.mission, r.lessonNums, r.avgScore != null ? r.avgScore.toFixed(1) : '', r.note]));
+  const csv = csvRows.map(row => row.map(c => `"${String(c ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'lesson_breakdown_' + _localDateStr(new Date()) + '.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 async function exportTaskTypeReport(){
   const {start,end,label}=_resolveReportDates();
   const byTask={}; // taskId -> {label, count, hours, instrs:Set}
@@ -24374,7 +24608,19 @@ async function renderTasksTab(){
     const ds=`${prefix}-${String(d).padStart(2,'0')}`;
     try{const raw=localStorage.getItem('trips_'+ds);if(raw){const p=JSON.parse(raw);const arr=Array.isArray(p)?p:Object.values(p);monthTrips.push(...arr);}}catch(e){}
   }
-  if(!monthTrips.length)monthTrips.push(...Object.values(_monthHistoryCache||{}).flat());
+  // Fix (2026-08-24, per Lavi): localStorage רק שומר נסיעות שהמכשיר הזה טען
+  // בפועל (בד"כ יום נוכחי/ימים שנצפו) — לא את כל החודש. הקוד הישן נפל חזרה
+  // ל-_monthHistoryCache (המלא, מ-Firebase) רק אם ל-localStorage לא היה שום
+  // דבר בכלל; אם היה בו אפילו נסיעה אחת (מדריך אחד, יום אחד) — כל שאר החודש
+  // נעלם בשקט. ה-cache המלא כבר נטען קודם ב-loadMonthlyDash — ממזגים אותו
+  // תמיד (לא כ-fallback), עם דה-דופ לפי מזהה נסיעה כדי לא לספור נסיעה פעמיים
+  // אם היא מופיעה בשני המקורות.
+  const _cacheTripSet = new Set(monthTrips.map(t=>t&&t.id).filter(Boolean));
+  Object.values(_monthHistoryCache||{}).flat().forEach(t=>{
+    if(!t)return;
+    if(t.id && _cacheTripSet.has(t.id))return;
+    monthTrips.push(t);
+  });
   const taskReports={};
   for(let d=1;d<=daysInMonth;d++){
     const ds=`${prefix}-${String(d).padStart(2,'0')}`;
@@ -24416,7 +24662,12 @@ async function renderTasksTab(){
       html+=`<div style="margin-bottom:20px;"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;"><div style="font-size:15px;font-weight:bold;color:var(--primary);">${tDef.icon||'🚇'} ${_esc(tDef.label)}</div><div style="display:flex;gap:8px;"><span style="background:#eaf4fb;color:var(--primary);border-radius:20px;padding:2px 10px;font-size:12px;font-weight:bold;">${tot.trips} נסיעות</span><span style="background:#eaffea;color:#27ae60;border-radius:20px;padding:2px 10px;font-size:12px;">${tot.lessons.toFixed(1)} שיעורים</span></div></div><table style="width:100%;border-collapse:collapse;background:white;border-radius:10px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.06);"><thead><tr style="background:#eaf4fb;"><th style="padding:7px 10px;font-size:11px;text-align:right;border-bottom:2px solid #c8e0f5;">מדריך</th><th style="padding:7px 10px;font-size:11px;text-align:center;border-bottom:2px solid #c8e0f5;">נסיעות</th><th style="padding:7px 10px;font-size:11px;text-align:center;border-bottom:2px solid #c8e0f5;">שיעורים</th><th style="padding:7px 10px;font-size:11px;text-align:center;border-bottom:2px solid #c8e0f5;">שעות</th></tr></thead><tbody>${rows}</tbody></table></div>`;
     });
   }
-  const nonTripTaskIds=[...new Set([...Object.keys(schedByTask),...Object.values(taskReports).map(r=>r.taskId).filter(Boolean)])];
+  const nonTripTaskIds=[...new Set([...Object.keys(schedByTask),...Object.values(taskReports).map(r=>r.taskId).filter(Boolean)])]
+    // Fix (2026-08-24, per Lavi): דוחות "סיכום יום" (unified_daily) אין להם
+    // taskId בכלל — אם taskId הפך לשקוף כ-string "undefined" (ולא ה-undefined
+    // האמיתי, שכבר מסונן ע"י filter(Boolean) למעלה) מ-key-building במקום אחר
+    // בקוד, זה יצר סקציה עם כותרת "undefined". חוסם את שני הערכים המזיקים.
+    .filter(id=>id!=='undefined'&&id!=='null');
   nonTripTaskIds.forEach(taskId=>{
     const tDef=taskDefs.find(t=>t.id===taskId)||{id:taskId,label:taskId,icon:'📋',driverFields:false,requiresSummary:false,isTrip:false};
     if(tDef.isTrip)return;
