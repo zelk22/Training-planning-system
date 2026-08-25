@@ -14,7 +14,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 62</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 63</title>
 
 <style>
 
@@ -1426,7 +1426,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 122;
+  const APP_VERSION = 123;
 
   function initFirebase() {
     try {
@@ -2504,6 +2504,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 
 
     <!-- ══ TODAY TASKS AREA ══════════════════════════════ -->
+    <div id="missingDailyReportWarningsInstr"></div>
     <div id="todayTasksCard" style="background:white;border-radius:12px;border:1px solid #dce3ec;padding:14px 16px;margin-bottom:12px;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
         <div style="display:flex;align-items:center;gap:6px;">
@@ -2757,6 +2758,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
     </div>
 
     <div id="recurringTaskWarnings"></div>
+    <div id="missingDailyReportWarnings"></div>
 
     <div class="kpi-grid" id="kpiGrid"><div style="color:#aaa;font-size:13px;">אין נסיעות להיום</div></div>
 
@@ -3604,6 +3606,10 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
             <select id="lb-trainee" onchange="_renderLessonBreakdownTable()" style="width:100%;padding:7px;border:1.5px solid #ddd;border-radius:7px;font-size:13px;"><option value="">הכל</option></select>
           </div>
           <div>
+            <label style="font-size:11px;color:#888;display:block;margin-bottom:3px;">משימה</label>
+            <select id="lb-mission" onchange="_renderLessonBreakdownTable()" style="width:100%;padding:7px;border:1.5px solid #ddd;border-radius:7px;font-size:13px;"><option value="">הכל</option></select>
+          </div>
+          <div>
             <label style="font-size:11px;color:#888;display:block;margin-bottom:3px;">מספר שיעור</label>
             <select id="lb-lessonnum" onchange="_renderLessonBreakdownTable()" style="width:100%;padding:7px;border:1.5px solid #ddd;border-radius:7px;font-size:13px;"><option value="">הכל</option></select>
           </div>
@@ -4022,8 +4028,8 @@ window.TraineeSystem = {
     .trainee-module .chip-selected  { background: var(--success); color: white; cursor: pointer; border: 2px solid #1e8449; box-shadow: 0 2px 8px rgba(39,174,96,0.45); }
     .trainee-module .chip-available { background: #dff0fa; color: #1a3a5c; border: 2px solid #3498db; cursor: pointer; }
     .trainee-module .chip-disabled  { background: #1e2c3a; color: #445f72; opacity: 0.6; cursor: default; border: 1px solid rgba(255,255,255,0.05); }
-    .trainee-module .chip-ms-blocked { background: #4a1a1a; color: #e07070; cursor: not-allowed; border: 1px solid #7a2a2a; opacity: 0.85; }
-    .trainee-module .chip-ms-blocked { background: #4a1a1a; color: #e07070; cursor: not-allowed; border: 1px solid #7a2a2a; opacity: 0.85; }
+    .trainee-module .chip-ms-blocked { background: #4a1a1a; color: #e07070; cursor: pointer; border: 1px solid #7a2a2a; opacity: 0.85; }
+    .trainee-module .chip-ms-blocked { background: #4a1a1a; color: #e07070; cursor: pointer; border: 1px solid #7a2a2a; opacity: 0.85; }
 
     .trainee-module .skill-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-top: 20px; }
     .trainee-module .skill-box { background: rgba(255,255,255,0.1); padding: 14px 8px 12px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.2); text-align: center; }
@@ -4369,6 +4375,9 @@ window.TraineeSystem = {
             <div id="lesson-chips"></div>
             <div class="fg" id="extra-wrap" style="display:none; margin-top:12px;">
                 <input type="text" id="in-extra" placeholder="פרט נושא השיעור / הכשירות...">
+                <!-- 2026-08-24, לפי בקשת לביא: מספר שעות בפועל למפגש "שעות נוספות/כשירות",
+                     כדי שדוחות יוכלו להציג סכום שעות ולא רק ספירת מפגשים. -->
+                <input type="number" id="in-extra-hours" min="0" max="24" step="0.5" placeholder="משך (שעות)" style="margin-top:6px;width:140px;">
             </div>
 
             <div class="skill-grid">
@@ -5214,11 +5223,16 @@ window.TraineeSystem = {
                 autoPassed = def.threshold !== null && maxL >= def.threshold;
             }
             const passed       = manualPassed || autoPassed;
+            // Fix (2026-08-24, per Lavi): "אוטומטי" (הגעה למספר שיעורים) לא זהה
+            // ל"עבר בפועל" — זו רק זכאות/הערכה, לא אישור שהחניך ניגש לטסט וקיבל
+            // אותו. הבחנה ויזואלית: מאושר-ידנית = ירוק מלא; אוטומטי-בלבד = כתום
+            // ("ממתין לאישור"), לא אותו ✅ ירוק שנראה כמו אישור סופי.
+            const tentative     = autoPassed && !manualPassed;
             const mode         = _getMilestoneMode(def.key);
-            const color        = passed ? '#27ae60' : (mode === 'ignore' ? '#aaa' : mode === 'warn' ? '#e67e22' : '#e74c3c');
-            const bg           = passed ? '#eafaf1' : (mode === 'ignore' ? '#f8f9fa' : mode === 'warn' ? '#fef9ec' : '#fdf2f2');
-            const icon         = passed ? '✅' : (mode === 'ignore' ? '✅' : mode === 'warn' ? '⚠️' : '🔒');
-            const hint         = manualPassed ? ' (ידני)' : autoPassed ? ' (אוטומטי)' : '';
+            const color        = manualPassed ? '#27ae60' : tentative ? '#e67e22' : (mode === 'ignore' ? '#aaa' : mode === 'warn' ? '#e67e22' : '#e74c3c');
+            const bg           = manualPassed ? '#eafaf1' : tentative ? '#fef9ec' : (mode === 'ignore' ? '#f8f9fa' : mode === 'warn' ? '#fef9ec' : '#fdf2f2');
+            const icon         = manualPassed ? '✅' : tentative ? '🟡' : (mode === 'ignore' ? '✅' : mode === 'warn' ? '⚠️' : '🔒');
+            const hint         = manualPassed ? ' (ידני)' : autoPassed ? ' (אוטומטי — טרם אושר)' : '';
             const adminToggle  = isAdmin
                 ? ` <span data-ms-det-trainee="${t.id}" data-ms-det-key="${def.key}"
                        style="font-size:10px;text-decoration:underline;cursor:pointer;color:${color};margin-right:4px;"
@@ -5704,6 +5718,19 @@ window.TraineeSystem = {
                     }
                     this.updateChips();
                 };
+            } else if (cls === 'chip-ms-blocked') {
+                // Fix (2026-08-24, per Lavi): לחיצה על שיעור חסום כעת מסבירה למה
+                // (לא סתם cursor:not-allowed בלי הסבר), ומאפשרת למדריך לסמן בעצמו
+                // שהחניך עבר את הטסט — למקרה שהמנהל שכח לעדכן.
+                chip.onclick = () => {
+                    const testNum = _msBlockAbove - 1;
+                    const blockedKey = _msBlockAbove === 11 ? 'test10' : _msBlockAbove === 31 ? 'test30' : null;
+                    if (typeof showToast === 'function')
+                        showToast(`🔒 שיעור ${i} חסום — טסט ${testNum} טרם סומן כ"עבר".`, 'warning');
+                    if (blockedKey && confirm(`שיעור ${i} חסום כי טסט ${testNum} טרם סומן כ"עבר" עבור חניך זה.\n\nהאם ברצונך לסמן כעת שהחניך עבר את טסט ${testNum}? (במידה והמנהל שכח לעדכן)`)) {
+                        this._toggleMilestonePass(this.currentId, blockedKey).then(() => this.updateChips());
+                    }
+                };
             }
             chips.appendChild(chip);
         }
@@ -5751,6 +5778,7 @@ window.TraineeSystem = {
             mission,
             lessonNums: [...this.selectedLessons],
             extraDesc:  this.$('in-extra').value,
+            extraHours: mission === 'שעות נוספות' ? (parseFloat(this.$('in-extra-hours')?.value) || 0) : 0,
             ins,
             s1: scores[0], s2: scores[1], s3: scores[2], s4: scores[3], s5: scores[4],
             notes: this.$('in-notes').value
@@ -5820,6 +5848,7 @@ window.TraineeSystem = {
         this.$('in-date').valueAsDate = new Date();
         this.$('in-notes').value      = '';
         this.$('in-extra').value      = '';
+        if (this.$('in-extra-hours')) this.$('in-extra-hours').value = '';
         this.selectedLessons = [];
         [1, 2, 3, 4, 5].forEach(i => { this.$('s' + i).value = ''; });
         this.clearSig();
@@ -7093,6 +7122,7 @@ window.TraineeSystem = {
             mission:    lessonData.mission     || 'קורס מעשי סיטאדיס',
             lessonNums: Array.isArray(lessonData.lessonNums) ? lessonData.lessonNums : [],
             extraDesc:  lessonData.extraDesc   || '',
+            extraHours: lessonData.extraHours  || 0,
             note:       lessonData.note        || '',
             s1: lessonData.s1 || null,
             s2: lessonData.s2 || null,
@@ -7936,6 +7966,25 @@ async function _setHiddenInstr(name, hide){
   }
   renderSettingsInstrList();
   try{_populateSiInstrs();}catch(e){}
+}
+
+// 2026-08-24, לפי בקשת לביא: הרשאת "מעקב טפסים" — צ'קבוקס ליד כל מדריך ברשימת
+// "צוות הדרכה" (מיקום נגיש, לא סקציה נפרדת). נשמר ישירות ב-settings (כמו
+// _setHiddenInstr) — לא צריך ללחוץ "שמור הגדרות" כדי שהשינוי ייכנס לתוקף.
+async function _setFormTrackingInstr(name, grant){
+  if(typeof _settings==='undefined'||!_settings)return;
+  if(!Array.isArray(_settings.formTrackingInstructors))_settings.formTrackingInstructors=[];
+  if(grant){
+    if(!_settings.formTrackingInstructors.includes(name))_settings.formTrackingInstructors.push(name);
+  }else{
+    _settings.formTrackingInstructors=_settings.formTrackingInstructors.filter(n=>n!==name);
+  }
+  try{localStorage.setItem('v100_settings',JSON.stringify(_settings));}catch(e){}
+  if(window._fbDb){
+    try{await _fbSet(_fbRef(_db,'settings/formTrackingInstructors'),_settings.formTrackingInstructors);}catch(e){}
+  }
+  renderSettingsInstrList();
+  showToast(grant?`✅ ${name} יקבל התרעות מעקב טפסים לכל הצוות`:`הוסרה הרשאת מעקב טפסים מ-${name}`,'info');
 }
 
 async function _setHiddenMentor(name, hide){
@@ -12828,7 +12877,7 @@ const DEFAULTS={
 
   TURN:7,TURN_ORA:10,TURN_HADAS:7,
 
-  defaultGap:40,shiftLen:510,minBreak:75,maxPerSeg:0,checkInBuffer:30,
+  defaultGap:40,shiftLen:510,minBreak:75,maxPerSeg:0,checkInBuffer:30,formTrackingInstructors:[],
 
   d4Start:'06:00',d4End:'19:00'
 
@@ -13406,6 +13455,9 @@ function renderSettingsInstrList(){
   // Use data-index to avoid name-escaping issues in onclick
   container.innerHTML=_instrNames.map((name,i)=>{
     const isHidden=_hiddenInstrs&&_hiddenInstrs.has(name);
+    // Fix (2026-08-24, per Lavi): מיקום נכון יותר לצ'קבוקס "מעקב טפסים" —
+    // ליד כל מדריך ברשימה הזו, לא בסקציה נפרדת שקל לפספס.
+    const isFormTracker=(typeof _settings!=='undefined'&&Array.isArray(_settings.formTrackingInstructors)&&_settings.formTrackingInstructors.includes(name));
     const nameDisplay=isHidden?`<span style="text-decoration:line-through;color:#aaa;">${_esc(name)}</span>`:_esc(name);
     return`<div style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid #f0f4f8;${isHidden?'opacity:0.6':''}">
 
@@ -13415,6 +13467,12 @@ function renderSettingsInstrList(){
         <input type="checkbox" ${isHidden?'checked':''} onchange="_setHiddenInstr('${name.replace(/'/g,"\'")}',this.checked)"
           style="accent-color:#e74c3c;width:15px;height:15px;cursor:pointer;">
         <span style="font-size:11px;color:${isHidden?'#e74c3c':'#888'};white-space:nowrap;">${isHidden?'מוסתר משיבוצים':'הסתר משיבוצים'}</span>
+      </label>
+
+      <label title="הרשאת צפייה בהתרעת &quot;טפסי סיכום יום חסרים&quot; עבור כל הצוות" style="display:flex;align-items:center;gap:4px;cursor:pointer;flex-shrink:0;">
+        <input type="checkbox" ${isFormTracker?'checked':''} onchange="_setFormTrackingInstr('${name.replace(/'/g,"\'")}',this.checked)"
+          style="accent-color:#2980b9;width:15px;height:15px;cursor:pointer;">
+        <span style="font-size:11px;color:${isFormTracker?'#2980b9':'#888'};white-space:nowrap;">מעקב טפסים</span>
       </label>
 
       <div style="display:flex;gap:6px;align-items:center;">
@@ -13590,6 +13648,11 @@ async function saveSettings(){
     maxPerSeg:getInt('s_maxPerSeg',DEFAULTS.maxPerSeg)||getInt('si_maxPerSeg',DEFAULTS.maxPerSeg),
 
     checkInBuffer:getInt('s_checkInBuffer',DEFAULTS.checkInBuffer)||getInt('si_checkInBuffer',DEFAULTS.checkInBuffer),
+
+    // Fix (2026-08-24, per Lavi): מנוהל כעת ישירות דרך _setFormTrackingInstr()
+    // (צ'קבוקס לכל מדריך ברשימת "צוות הדרכה", נשמר מיידית) — לא דרך שדה בטופס
+    // הזה. משמרים את הערך הקיים כדי שלא יימחק בטעות בכל שמירת הגדרות כלליות.
+    formTrackingInstructors:(_settings&&Array.isArray(_settings.formTrackingInstructors))?_settings.formTrackingInstructors:DEFAULTS.formTrackingInstructors,
 
     d4Start:getStr('s_d4Start',DEFAULTS.d4Start)||getStr('si_d4Start',DEFAULTS.d4Start),
 
@@ -14493,6 +14556,83 @@ function _renderRecurringTaskWarnings(){
     instrEl.innerHTML=warnings.length?`<div style="background:#fff9e6;border:1px solid #f0d98c;border-radius:8px;margin-bottom:10px;overflow:hidden;">${warnings.map(fmtRow).join('<div style="border-top:1px solid #f5e9c0;"></div>')}</div>`:'';
   }
 }
+
+// 2026-08-24, לפי בקשת לביא: התרעה בולטת (לא רק "מעקב יזום") כשמדריך לא מילא
+// "סיכום יום" עבור יום שהיה משובץ בו לנסיעה. בודקת אתמול והיום-קודם (2 ימים
+// אחורה) מול schedData (מי היה משובץ למשימת-נסיעה) לעומת taskReports (מי
+// הגיש unified_daily). "היום" עצמו לא נבדק — המשמרת עוד לא הסתיימה בהכרח.
+// 2026-08-24, לפי בקשת לביא: פונקציית עזר משותפת — "האם מדריך X היה משובץ
+// למשימת נסיעה/קורס מעשי בתאריך Y" — משמשת גם להתרעת "טפסים חסרים" וגם
+// לדרישת המשוב בטופס עצמו (רק אם היה משובץ לקורס מעשי אותו יום, לא לכל יום).
+function _wasAssignedToTripTaskOnDate(name, dateStr){
+  const dayEntries=(typeof schedData!=='undefined'?schedData[dateStr]:null)||[];
+  return dayEntries.some(e=>{
+    if(e.name!==name)return false;
+    if(e.status!=='approved'&&e.status!=='pending')return false;
+    if(typeof _isVacationShiftKey==='function'&&_isVacationShiftKey(e.shift))return false;
+    const tDef=(typeof taskDefs!=='undefined')?taskDefs.find(t=>t.id===e.task):null;
+    return tDef?tDef.isTrip:false;
+  });
+}
+
+function _getMissingDailyReportWarnings(forName){
+  const warnings=[];
+  const names=forName?[forName]:(typeof _instrNames!=='undefined'?_instrNames:[]);
+  for(let back=1;back<=2;back++){
+    const d=new Date(); d.setDate(d.getDate()-back);
+    const dateStr=_localDateStr(d);
+    names.forEach(name=>{
+      if(!_wasAssignedToTripTaskOnDate(name,dateStr))return;
+      const reportKey=`${dateStr}__${name}__unified`;
+      const hasReport=!!(window._taskReportsCache&&window._taskReportsCache[reportKey]);
+      if(!hasReport)warnings.push({name,date:dateStr});
+    });
+  }
+  return warnings;
+}
+
+async function _renderMissingDailyReportWarnings(){
+  // Ensure recent task reports are loaded into the cache before checking.
+  try{
+    if(!window._taskReportsCache)window._taskReportsCache={};
+    for(let back=1;back<=2;back++){
+      const d=new Date(); d.setDate(d.getDate()-back);
+      const dateStr=_localDateStr(d);
+      if(typeof loadTaskReportsForDate==='function')await loadTaskReportsForDate(dateStr);
+    }
+  }catch(e){console.warn('_renderMissingDailyReportWarnings load:',e);}
+
+  const fmtRow=(w)=>{
+    const d=new Date(w.date+'T12:00:00');
+    const dayLabel=d.toLocaleDateString('he-IL',{weekday:'short',day:'numeric',month:'short'});
+    return `<div style="padding:7px 12px;font-size:12.5px;">🚨 <b>${_esc(w.name)}</b> לא מילא "סיכום יום" עבור ${dayLabel}</div>`;
+  };
+
+  const adminEl=document.getElementById('missingDailyReportWarnings');
+  if(adminEl){
+    const warnings=_getMissingDailyReportWarnings();
+    adminEl.innerHTML=warnings.length?`<div style="background:#fdecea;border:1.5px solid #f5b7b1;border-radius:8px;margin-bottom:12px;overflow:hidden;">
+      <div style="padding:7px 12px;font-weight:bold;color:#c0392b;font-size:12.5px;border-bottom:1px solid #f5b7b1;">🚨 טפסי סיכום יום חסרים (${warnings.length})</div>
+      ${warnings.map(fmtRow).join('<div style="border-top:1px solid #fadbd8;"></div>')}
+    </div>`:'';
+  }
+
+  // Fix (2026-08-24, per Lavi): מדריך שקיבל הרשאת "מעקב מילוי טפסים" (מוגדר
+  // ע"י המנהל בהגדרות) רואה את אותה התרעה בדיוק — על כל המדריכים, לא רק על
+  // עצמו — למרות שהוא לא admin. הרשאת-צפייה חריגה, מוקצית לפי בחירת המנהל.
+  const instrEl=document.getElementById('missingDailyReportWarningsInstr');
+  if(instrEl){
+    const canTrack=(typeof currentUserName!=='undefined'&&currentRole==='instructor'
+      &&typeof _settings!=='undefined'&&Array.isArray(_settings.formTrackingInstructors)
+      &&_settings.formTrackingInstructors.includes(currentUserName));
+    const warnings=canTrack?_getMissingDailyReportWarnings():[];
+    instrEl.innerHTML=warnings.length?`<div style="background:#fdecea;border:1.5px solid #f5b7b1;border-radius:8px;margin-bottom:10px;overflow:hidden;">
+      <div style="padding:7px 12px;font-weight:bold;color:#c0392b;font-size:12.5px;border-bottom:1px solid #f5b7b1;">🚨 טפסי סיכום יום חסרים — כל הצוות (${warnings.length})</div>
+      ${warnings.map(fmtRow).join('<div style="border-top:1px solid #fadbd8;"></div>')}
+    </div>`:'';
+  }
+}
+
 async function saveSchedEntry(date,entry){
   _updateRecurringTaskTracking(date,entry); // fire-and-forget, cheap tracking update
   // 1. Update in-memory
@@ -14616,6 +14756,7 @@ function renderCalendar(){
   try{updateApprovalBadge();}catch(e){}
   try{checkCoverageAlerts();}catch(e){}
   try{_renderRecurringTaskWarnings();}catch(e){}
+  try{_renderMissingDailyReportWarnings();}catch(e){}
 
   const managerCal=document.getElementById('calGrid');
 
@@ -14712,7 +14853,10 @@ function renderCalendar(){
     // branches on role for that), so this is view-only and can't be used to edit others' shifts.
     const isAdmin = (currentRole === 'admin');
     const showAll = isAdmin || (forInstructor && _instrTeamView);
-    const filtered = showAll ? entries : entries.filter(e=>e.name===currentUserName);
+    // Fix (2026-08-24, per Lavi): בקשת שיבוץ שנדחתה לא צריכה להמשיך להופיע על
+    // הלוח בכלל (לא רק את סימון ה-❌) — היא כבר לא רלוונטית.
+    const filtered = (showAll ? entries : entries.filter(e=>e.name===currentUserName))
+      .filter(e=>e.status!=='rejected');
 
     // Sort by actual shift CATEGORY (same categorization used for the color/badge) — not by the raw
     // shift key. The raw key ('custom', named variants, etc.) doesn't reliably map to morning/evening/
@@ -19153,7 +19297,8 @@ const GUIDE_SECTIONS = [
       <p><b>תכנון יום הדרכה (הכלי הראשי):</b> בונים את היום ידנית שורה-שורה — "+ הוסף מדריך" מוסיף שורה עם שם, שעות משמרת, מיקום התחלה/סיום והפסקה. "⚡ תכנן אוטומטי" מפעיל את אלגוריתם בניית המסלולים על כל השורות בו-זמנית, לפי הפרמטרים שהוזנו (פער בטיחות, מיקומים וכו').</p>
       <p><b>תכנון נסיעה ידני (מסלול קבוע):</b> לכל שורה אפשר לוותר על האלגוריתם ולבחור "מסלול מועדף" שמור מראש (⭐) — המסלול המדויק הזה ישויך לאותו מדריך במקום שהמערכת תחשב אחד עבורו. שימושי כשרוצים לשחזר מסלול קבוע בלי תלות בזמינות/פערים.</p>
       <p><b>⚡ תכנון נסיעות אוטומטי מהשיבוצים:</b> בשונה מהכלי הראשי (שמתכנן יום אחד בכל פעם ודורש הזנת שורות ידנית), הכלי הזה קורא ישירות מלוח השיבוצים (שיבוץ שבועי/חודשי) ובונה נסיעות למספר ימים בבת אחת, בלי להזין שורות. הרשימה מציגה את כל הימים עם שיבוצי נסיעה, מסודרת מהיום הנוכחי אחורה. ברירת מחדל: רק היום הנוכחי מסומן; לכל מדריך יש תיבת סימון נפרדת (מסומנת כברירת מחדל) כדי לכלול/להוציא מדריכים ספציפיים מאותו יום. "בחר הכל"/"בטל הכל" משפיעים גם על הימים וגם על המדריכים.</p>
-      <p><b>שיעורי דיפו:</b> לא ניתן להגדיר "נסיעת דיפו" מראש בשום כלי תכנון. ההמרה קורית רק <u>אחרי</u> שהנסיעה כבר קיימת — אוטומטית כששייכים אליה חניך שכולו בשלב טכני (עד 6 שיעורי דיפו למשמרת), או ידנית בלחיצה על 🏭 בטבלת הנסיעות.</p>`
+      <p><b>שיעורי דיפו:</b> נסיעה שהומרה לדיפו (🏭) שומרת על טווח הזמן המלא של המשמרת (לא מכווצת לזמן קבוע), ובתוכה רשימת <u>6 שיעורים ללא שעות משלהם</u> — לחיצה על שם המסלול בטבלת הנסיעות פותחת/סוגרת את רשימת הסימון, המדריך או המנהל מסמנים שיעורים שבוצעו בקצב חופשי. נסיעת דיפו אחת בלבד מותרת למדריך/יום (לא 6 נסיעות נפרדות) — היא כבר מכילה עד 6 שיעורים בפנים. ההמרה עצמה עדיין אפשרית רק <u>אחרי</u> שהנסיעה כבר קיימת (אוטומטית או ידנית ב-🏭), לא בשלב התכנון.</p>
+      <p><b>זמן התארגנות:</b> הנסיעה הראשונה בכל משמרת (בכל כלי יצירה) מתחילה כברירת מחדל 30 דק' אחרי ההתייצבות, לא מייד — ניתן לשינוי בהגדרות ← ברירות מחדל תפעוליות ← "זמן התארגנות לפני נסיעה ראשונה".</p>`
   },
   {
     id: 'weekly', icon: '🗓️', title: 'שיבוץ שבועי', roles: ['admin','instructor','mentor'],
@@ -19165,9 +19310,14 @@ const GUIDE_SECTIONS = [
   {
     id: 'daysummary', icon: '📝', title: 'טופס "סיכום יום"', roles: ['admin','instructor','mentor'],
     body: `
-      <p>מוגש בסוף משמרת: שעות סינריון, שעות הדרכה קלה, הערות חופשיות, ומשוב לכל חניך שהודרך באותו יום.</p>
+      <p>מוגש בסוף משמרת: שעות סינריון, שעות הדרכה קלה, הערות חופשיות, עיכובים, ומשוב לכל חניך שהודרך באותו יום.</p>
+      <p><b>שדות חובה:</b> "שעות הדרכה קלה" — הטופס לא נשמר בלעדיו. וגם: אם המדריך היה משובץ באותו תאריך למשימת נסיעה/קורס מעשי — <u>לפחות משוב חניך אחד</u> הופך לחובה גם הוא (יום עיוני/atp/חופש לא דורש משוב). בשני המקרים תופיע התרעה והשדה החסר יודגש, בלי לשמור עד שמשלימים.</p>
+      <p><b>⏱️ עיכובים:</b> אפשר לדווח כמה עיכובים באותה משמרת (משך בדקות + סיבה חופשית) — זו שכבת דיווח נוספת, נספרת יחד עם עיכובי הנסיעות (המדווחים דרך יומן הנסיעות) באותם דוחות/דשבורדים, לא במקומם.</p>
+      <p><b>שעות נוספות/כשירות:</b> כשבוחרים משימה מסוג "כשירות מעשית/שעות נוספות" נפתח שדה משך בשעות (בנוסף לתיאור החופשי) — כדי שדוחות יוכלו לסכם שעות בפועל, לא רק לספור מפגשים.</p>
       <p><b>חשוב מאוד — מספר שיעור (שנתון):</b> לכל משוב חניך <u>חובה</u> לבחור באיזה שיעור מדובר (הכפתורים הממוספרים). בלי זה, המערכת לא סופרת את השיעור בכלל — לא בממוצע, לא בבר ההתקדמות ("הרכבת"), ולא בסטטוס הכשירות של החניך. שיעור שכבר בוצע מופיע עם קו חוצה ולא ניתן לבחירה חוזרת; לחיצה חוזרת על שיעור שנבחר עכשיו מבטלת את הבחירה.</p>
-      <p><b>עריכה בדיעבד (מנהל בלבד):</b> טופס שכבר הוגש ניתן לפתוח מה"ארכיון" (בדוחות) וללחוץ "✏️ ערוך פרטים" — לתיקון תאריך/שעות/הערות. אם שיעור נשמר בלי מספר, אפשר לשייך לו מספר ישירות מתוך אותה תצוגה.</p>`
+      <p><b>עריכה בדיעבד (מנהל בלבד):</b> טופס שכבר הוגש ניתן לפתוח מה"ארכיון" (בדוחות) וללחוץ "✏️ ערוך פרטים" — לתיקון תאריך/שעות/הערות. אם שיעור נשמר בלי מספר, אפשר לשייך לו מספר ישירות מתוך אותה תצוגה.</p>
+      <p><b>"הדוחות שלי" (מדריך):</b> טאב נפרד בממשק המדריך — ארכיון קריאה-בלבד של כל הדוחות שהוא עצמו הגיש (שנה אחורה), עם חיפוש לפי תאריך. לא זמין לחונכים.</p>
+      <p><b>התרעה למנהל על טופס חסר:</b> אם מדריך היה משובץ לנסיעה אתמול/שלשום ולא הגיש טופס, מופיעה התרעה בולטת (אדומה) בדשבורד. ניתן להעניק גם למדריך ספציפי הרשאת "מעקב טפסים" (בהגדרות ← צוות הדרכה, צ'קבוקס ליד שם המדריך) — אז הוא יראה את אותה התרעה על כל הצוות, לא רק על עצמו.</p>`
   },
   {
     id: 'trainees', icon: '🎓', title: 'חניכים ומשובים', roles: ['admin','instructor','mentor'],
@@ -19175,6 +19325,8 @@ const GUIDE_SECTIONS = [
       <p><b>קורסים:</b> ניתן לנהל כמה קורסי חניכים במקביל (בורר "📚 קורס" בראש המסך). כל קורס שומר את החניכים שלו בנפרד.</p>
       <p><b>תיק חניך:</b> לחיצה על שם החניך פותחת תיק מלא — בר התקדמות ("הרכבת", עד שיעור 50), התקדמות אורבוס/חניכה, סטטוס כשירות לפי מיומנות, ותובנות והמלצות אוטומטיות.</p>
       <p><b>תג רמה:</b> ליד שם החניך — 🔴 מתקשה / 🟡 בינוני / 🟢 מתקדם, לפי ממוצע הציונים בפועל (לא צריך למלא את כל המיומנויות בכל שיעור — הממוצע מחושב רק ממה שבאמת מולא).</p>
+      <p><b>תובנות והמלצות:</b> כוללות התרעה על ממוצע ציונים נמוך/בינוני, התרעת "מתקרב לסף מתקשים" (ממוצע 5-6, למנהל בלבד), והתרעה ייעודית על ציון נמוך בשיעור המתויג "בטיחותי-קריטי" — גם אם הממוצע הכללי של החניך תקין.</p>
+      <p><b>סימוני "עבר טסט" — אוטומטי מול ידני:</b> תג 🟡 כתום ("אוטומטי — טרם אושר") מציין שהחניך הגיע למספר השיעורים הנדרש, אך איש לא אישר בפועל שהוא ניגש לטסט וקיבל אותו — זו זכאות, לא אישור סופי. תג ✅ ירוק מלא מופיע רק אחרי סימון ידני. מנהל יכול לסמן/לבטל ידנית מתיק החניך; מדריך שנתקל בשיעור חסום (למשל שיעור 11 לפני שטסט 10 אושר) מקבל הסבר בלחיצה, ויכול לסמן בעצמו שהחניך עבר את הטסט אם המנהל שכח.</p>
       <p><b>סימון דיווחים:</b> כרטיס חניך עם דיווחים קיימים מסומן בתג ירוק בולט ("✅ N דיווחים"), לעומת תג אפור לחניך ללא דיווחים.</p>`
   },
   {
@@ -19183,14 +19335,17 @@ const GUIDE_SECTIONS = [
       <p><b>טווח תאריכים:</b> בראש טאב הדוחות יש בורר משותף (7/30 ימים אחרונים, החודש שעבר, או טווח מותאם) — משפיע על כל הדוחות התקופתיים למטה. ללא בחירה — ברירת המחדל היא החודש המוצג בדשבורד החודשי.</p>
       <p><b>כל הדוחות</b> (נסיעות, שיבוצים, Excel מלא, PDF, ביצועי משימות, נוכחות, לוג פעולות) נטענים עצמאית בלחיצה ונפתחים בתצוגה מקדימה — עם כפתורי הדפסה/הורדה <u>בתוך</u> החלון, לא הורדה מיידית.</p>
       <p><b>🗂️ ארכיון טפסי סיכום יום:</b> רשימה חיפושית של כל הטפסים שהוגשו בטווח הנבחר — לחיצה על שורה פותחת את הטופס המלא, כולל אפשרות עריכה.</p>
-      <p><b>🔧 שיוך מספרי שיעור לדיווחים ישנים:</b> מאתר את כל הדיווחים עם ציונים אך בלי מספר שיעור (מהתקופה שלפני התיקון), ומאפשר לשייך מספר בדיעבד כדי שההתקדמות תתעדכן.</p>`
+      <p><b>🔧 שיוך מספרי שיעור לדיווחים ישנים:</b> מאתר את כל הדיווחים עם ציונים אך בלי מספר שיעור (מהתקופה שלפני התיקון), ומאפשר לשייך מספר בדיעבד כדי שההתקדמות תתעדכן.</p>
+      <p><b>🔍 פילוח שיעורים:</b> טבלה שטוחה של כל שיעור שדווח בכל הקורסים (כולל לא-ברירת-מחדל) — סינון לפי קורס (ברירת מחדל: הקורס הנוכחי), מדריך, חניך, משימה, מספר שיעור וטווח תאריכים. שורת תובנה חיה מציגה סה"כ שיעורים/מדריכים/חניכים/ציון ממוצע; כשמסננים למשימה ספציפית (למשל "כשירות/שעות נוספות") מופיע גם פירוט שעות לפי מדריך. ייצוא ל-CSV זמין.</p>`
   },
   {
     id: 'settings', icon: '⚙️', title: 'הגדרות מערכת', roles: ['admin'],
     body: `
-      <p><b>צוות הדרכה:</b> ניהול רשימת מדריכים, הסתרה/הצגה בשיבוצים, וכן שדה שם המנהל (מוצג בתג העליון ובברכה).</p>
+      <p><b>צוות הדרכה:</b> ניהול רשימת מדריכים, הסתרה/הצגה בשיבוצים, וכן שדה שם המנהל (מוצג בתג העליון ובברכה). צ'קבוקס "מעקב טפסים" ליד כל מדריך מעניק לו הרשאת צפייה בהתרעת "טפסי סיכום יום חסרים" עבור כל הצוות, לא רק על עצמו — נשמר מיידית, לא צריך לשמור הגדרות בנפרד.</p>
+      <p><b>ברירות מחדל תפעוליות:</b> כוללות גם "זמן התארגנות לפני נסיעה ראשונה" — כמה זמן אחרי ההתייצבות תתחיל הנסיעה הראשונה בכל כלי תכנון.</p>
+      <p><b>בקשות שיבוץ:</b> בקשה שנדחתה לא מוצגת יותר בלוח כלל. מהפאנל אפשר גם למחוק בקשות (לא רק לאשר/לדחות) — כולל סקציית "היסטוריית בקשות שטופלו" מתקפלת עם אפשרות מחיקה בודדת או "נקה הכל".</p>
       <p><b>קריטריונים להתפלגות רמות:</b> טווחי ציון למתקשים/בינוניים/מתקדמים, ספי מילוי חלקי לפי שלב (סיטאדיס/אורבוס), וסף חוסר-פעילות.</p>
-      <p><b>בטאב "חניכים ומשובים" ⚙️ הגדרות:</b> מיומנויות (שמות, סדר), סוגי משימות, <b>ספי התרעות</b> — כאן קובעים אילו התרעות יופיעו בתיק חניך (איזו מיומנות, איזה סף %, איזו חומרה, איזה טקסט) — ניתן לעריכה מלאה בלי צורך בתיקון קוד.</p>`
+      <p><b>בטאב "חניכים ומשובים" ⚙️ הגדרות:</b> מיומנויות (שמות, סדר), סוגי משימות, <b>ספי התרעות</b> — כאן קובעים אילו התרעות יופיעו בתיק חניך (איזו מיומנות, איזה סף %, איזו חומרה, איזה טקסט) — ניתן לעריכה מלאה בלי צורך בתיקון קוד. <b>דגשי ביצוע</b> — רשימה מכווצת לפי שיעור (סיטאדיס/אורבוס/חניכה), עם כותרות אמיתיות מתוכנית ההכשרה וצבעי קטגוריה (טכני/תפעולי/מסחרי).</p>`
   },
   {
     id: 'auditlog', icon: '🔍', title: 'לוג פעולות', roles: ['admin'],
@@ -19356,6 +19511,8 @@ async function loadApprovalPanel(){
 
   // Collect ALL pending entries across ALL months (up to 3 months back)
   const allPending=[];
+  // 2026-08-24, לפי בקשת לביא: גם בקשות שכבר טופלו (מאושרות/נדחות) — לניקוי.
+  const allHandled=[];
   const today=new Date();
   for(let m=-2;m<=1;m++){
     const d=new Date(today.getFullYear(),today.getMonth()+m,1);
@@ -19367,6 +19524,7 @@ async function loadApprovalPanel(){
       if(!date.startsWith(prefix))continue;
       for(const e of entries){
         if(e.status==='pending')allPending.push({...e,date});
+        else if(e.status==='approved'||e.status==='rejected')allHandled.push({...e,date});
       }
     }
   }
@@ -19379,7 +19537,8 @@ async function loadApprovalPanel(){
   }
 
   if(!allPending.length){
-    body.innerHTML='<div style="color:#27ae60;font-size:14px;padding:20px;text-align:center;">✅ אין בקשות ממתינות לאישור</div>';
+    body.innerHTML='<div style="color:#27ae60;font-size:14px;padding:20px;text-align:center;">✅ אין בקשות ממתינות לאישור</div>'
+      + _renderHandledSchedHistory(allHandled);
     return;
   }
 
@@ -19402,6 +19561,7 @@ async function loadApprovalPanel(){
         <td style="white-space:nowrap;">
           <button onclick="quickApprove('${e.date}','${e.id}')" style="width:auto;padding:4px 10px;background:#27ae60;color:white;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:bold;margin:0 2px;">✓ אשר</button>
           <button onclick="quickReject('${e.date}','${e.id}')" style="width:auto;padding:4px 10px;background:#fdf2f2;color:#e74c3c;border:1px solid #e74c3c;border-radius:6px;cursor:pointer;font-size:12px;font-weight:bold;margin:0 2px;">✕ דחה</button>
+          <button onclick="quickDeleteSchedRequest('${e.date}','${e.id}')" title="מחק בקשה" style="width:auto;padding:4px 8px;background:none;color:#888;border:1px solid #ccc;border-radius:6px;cursor:pointer;font-size:12px;margin:0 2px;">🗑️</button>
         </td>
       </tr>`;
     }).join('');
@@ -19417,7 +19577,63 @@ async function loadApprovalPanel(){
         <tbody>${rows}</tbody>
       </table>
     </div>`;
+  }).join('') + _renderHandledSchedHistory(allHandled);
+}
+
+// 2026-08-24, לפי בקשת לביא: סקציה מתקפלת (מכווצת כברירת מחדל) לניקוי בקשות
+// שכבר טופלו (מאושרות/נדחות) — לא רק ממתינות. עד 50 האחרונות, מהחדש לישן.
+function _renderHandledSchedHistory(allHandled){
+  if(!allHandled || !allHandled.length) return '';
+  // Cache for clearAllHandledSchedRequests() to use without re-scanning.
+  window._lastHandledSchedList = allHandled;
+  const sorted=[...allHandled].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,50);
+  const rows=sorted.map(e=>{
+    const d=new Date(e.date+'T12:00:00');
+    const dayLabel=d.toLocaleDateString('he-IL',{weekday:'short',day:'numeric',month:'short'});
+    const shiftLabel=SHIFT_LABELS[e.shift]||(e.shift==='custom'?`⏰ ${e.startTime||''}–${e.endTime||''}`:'—');
+    const statusBadge=e.status==='approved'
+      ?'<span style="color:#27ae60;font-weight:bold;">✅ מאושר</span>'
+      :'<span style="color:#e74c3c;font-weight:bold;">❌ נדחה</span>';
+    return`<tr>
+      <td style="font-size:13px;white-space:nowrap;">${dayLabel}</td>
+      <td style="font-size:13px;">${_esc(e.name)}</td>
+      <td style="font-size:13px;">${shiftLabel}</td>
+      <td style="font-size:12px;">${statusBadge}</td>
+      <td style="white-space:nowrap;">
+        <button onclick="quickDeleteSchedRequest('${e.date}','${e.id}')" title="מחק" style="width:auto;padding:4px 8px;background:none;color:#888;border:1px solid #ccc;border-radius:6px;cursor:pointer;font-size:12px;">🗑️</button>
+      </td>
+    </tr>`;
   }).join('');
+  return `<div style="margin-top:14px;">
+    <button onclick="_toggleSchedHistorySection()" style="width:100%;text-align:right;padding:8px 12px;background:#f8f9fa;border:1px solid #dee2e6;border-radius:8px;cursor:pointer;font-size:12px;color:#555;display:flex;justify-content:space-between;align-items:center;">
+      <span>🗂️ היסטוריית בקשות שטופלו (${allHandled.length}) — לניקוי</span>
+      <span id="schedHistoryArrow" style="font-size:10px;">▼</span>
+    </button>
+    <div id="schedHistoryBody" style="display:none;margin-top:8px;">
+      <div style="text-align:left;margin-bottom:8px;">
+        <button onclick="clearAllHandledSchedRequests()" style="width:auto;padding:6px 14px;background:#fdf2f2;color:#e74c3c;border:1.5px solid #e74c3c;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;">🗑️ נקה הכל</button>
+      </div>
+      <table style="width:100%;border-collapse:collapse;font-size:13px;">
+        <thead><tr style="background:#eef2f8;">
+          <th style="padding:6px;text-align:right;">תאריך</th>
+          <th style="padding:6px;text-align:right;">מדריך</th>
+          <th style="padding:6px;text-align:right;">משמרת</th>
+          <th style="padding:6px;text-align:right;">סטטוס</th>
+          <th style="padding:6px;"></th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+  </div>`;
+}
+
+function _toggleSchedHistorySection(){
+  const body=document.getElementById('schedHistoryBody');
+  const arrow=document.getElementById('schedHistoryArrow');
+  if(!body)return;
+  const open=body.style.display!=='none';
+  body.style.display=open?'none':'block';
+  if(arrow)arrow.textContent=open?'▼':'▲';
 }
 
 async function quickApprove(date,id){
@@ -19435,6 +19651,33 @@ async function quickReject(date,id){
   if(schedData[date]){const e=schedData[date].find(x=>x.id===id);if(e)e.status='rejected';}
   try{const e=(schedData[date]||[]).find(x=>x.id===id);logAudit('דחיית שיבוץ',`${e?.name||'?'} | ${date}`);}catch(er){}
   showToast('❌ בקשת השיבוץ נדחתה','info');
+  await loadApprovalPanel();
+  renderCalendar();
+}
+
+// 2026-08-24, לפי בקשת לביא: מחיקה ישירה של בקשת שיבוץ (לא רק אישור/דחייה) —
+// גם ניקוי בקשות שכבר טופלו (מאושרות/נדחות), לא רק ממתינות.
+async function quickDeleteSchedRequest(date,id){
+  if(!confirm('למחוק בקשת שיבוץ זו לצמיתות? לא ניתן לשחזר.'))return;
+  try{const e=(schedData[date]||[]).find(x=>x.id===id);logAudit('מחיקת בקשת שיבוץ',`${e?.name||'?'} | ${date}`);}catch(er){}
+  await deleteSchedEntry(date,id);
+  showToast('🗑️ בקשת השיבוץ נמחקה','info');
+  await loadApprovalPanel();
+  renderCalendar();
+}
+
+// 2026-08-24, לפי בקשת לביא: "נקה הכל" עבור היסטוריית בקשות שטופלו (מאושרות/
+// נדחות) — לא נוגע בבקשות ממתינות.
+async function clearAllHandledSchedRequests(){
+  const list=window._lastHandledSchedList||[];
+  if(!list.length){showToast('אין מה לנקות','info');return;}
+  if(!confirm(`למחוק לצמיתות את כל ${list.length} הבקשות שטופלו (מאושרות/נדחות)? לא ניתן לשחזר.`))return;
+  showToast(`🔄 מוחק ${list.length} בקשות...`,'info');
+  for(const e of list){
+    try{await deleteSchedEntry(e.date,e.id);}catch(err){console.warn('clearAllHandledSchedRequests:',err);}
+  }
+  try{logAudit('ניקוי היסטוריית בקשות שיבוץ',`${list.length} בקשות`);}catch(er){}
+  showToast('🗑️ ההיסטוריה נוקתה','success');
   await loadApprovalPanel();
   renderCalendar();
 }
@@ -19837,7 +20080,8 @@ function _lbCollectAllLessons() {
           mission: l.mission || '',
           lessonNums: (l.lessonNums || []).join(', '),
           avgScore: avg,
-          note: l.note || ''
+          note: l.note || '',
+          extraHours: l.extraHours || 0
         });
       });
     });
@@ -19875,6 +20119,13 @@ function openLessonBreakdownReport() {
     traineeSel.innerHTML = '<option value="">הכל</option>' + names.map(n => `<option value="${_esc(n)}">${_esc(n)}</option>`).join('');
   }
 
+  // Populate mission filter — e.g. to isolate "כשירות מעשית/ שעות נוספות" specifically.
+  const missionSel = document.getElementById('lb-mission');
+  if (missionSel) {
+    const missions = [...new Set(_lbAllLessonRows.map(r => r.mission).filter(Boolean))].sort();
+    missionSel.innerHTML = '<option value="">הכל</option>' + missions.map(m => `<option value="${_esc(m)}">${_esc(m)}</option>`).join('');
+  }
+
   // Populate lesson-number filter (1-50, generic across mission types)
   const lnSel = document.getElementById('lb-lessonnum');
   if (lnSel) {
@@ -19908,6 +20159,7 @@ function _lbFilteredRows() {
   const courseId = document.getElementById('lb-course')?.value || '';
   const ins = document.getElementById('lb-instructor')?.value || '';
   const trainee = document.getElementById('lb-trainee')?.value || '';
+  const mission = document.getElementById('lb-mission')?.value || '';
   const lessonNum = document.getElementById('lb-lessonnum')?.value || '';
   const from = document.getElementById('lb-from')?.value || '';
   const to = document.getElementById('lb-to')?.value || '';
@@ -19916,6 +20168,7 @@ function _lbFilteredRows() {
     if (courseId && r.courseId !== courseId) return false;
     if (ins && r.ins !== ins) return false;
     if (trainee && r.traineeName !== trainee) return false;
+    if (mission && r.mission !== mission) return false;
     if (lessonNum && !r.lessonNums.split(',').map(s => s.trim()).includes(lessonNum)) return false;
     if (from && r.date && r.date < from) return false;
     if (to && r.date && r.date > to) return false;
@@ -19941,7 +20194,7 @@ function _renderLessonBreakdownTable() {
       <td><b>${_esc(r.ins)}</b></td>
       <td>${_esc(r.traineeName)}</td>
       <td>${_esc(r.mission)}</td>
-      <td>${_esc(r.lessonNums)}</td>
+      <td>${r.extraHours ? `⏱️ ${r.extraHours} ש'` : _esc(r.lessonNums)}</td>
       <td style="text-align:center;">${r.avgScore != null ? r.avgScore.toFixed(1) : '—'}</td>
       <td style="font-size:11px;color:#555;">${_esc(r.note)}</td>
     </tr>`).join('');
@@ -19952,14 +20205,34 @@ function _renderLessonBreakdownTable() {
   const scored = rows.filter(r => r.avgScore != null);
   const avgAll = scored.length ? (scored.reduce((s, r) => s + r.avgScore, 0) / scored.length).toFixed(1) : '—';
   if (summaryEl) {
-    summaryEl.textContent = `${rows.length} שיעורים · ${uniqueInstructors} מדריכים · ${uniqueTrainees} חניכים · ציון ממוצע ${avgAll}`;
+    summaryEl.innerHTML = `${rows.length} שיעורים · ${uniqueInstructors} מדריכים · ${uniqueTrainees} חניכים · ציון ממוצע ${avgAll}`;
+    // 2026-08-24, לפי בקשת לביא: כשמסננים לפי "משימה" ספציפית (למשל "כשירות
+    // מעשית/ שעות נוספות"), מוסיפים פירוט "כמה לכל מדריך" — ללא זה יש רק
+    // ספירה כוללת, לא ברור מי לקח כמה. הערה: זו ספירת מפגשים, לא שעות בפועל —
+    // אין שדה משך-זמן מספרי נפרד לרשומות "שעות נוספות" (רק תיאור חופשי).
+    const missionFilter = document.getElementById('lb-mission')?.value || '';
+    if (missionFilter) {
+      const perInstr = {};
+      rows.forEach(r => {
+        if (!perInstr[r.ins]) perInstr[r.ins] = { count: 0, hours: 0 };
+        perInstr[r.ins].count++;
+        perInstr[r.ins].hours += (r.extraHours || 0);
+      });
+      const hasHours = Object.values(perInstr).some(v => v.hours > 0);
+      const breakdown = Object.entries(perInstr)
+        .sort((a, b) => b[1].count - a[1].count)
+        .map(([name, v]) => hasHours ? `${_esc(name)}: ${v.hours} ש'` : `${_esc(name)}: ${v.count}`)
+        .join(' · ');
+      const label = hasHours ? 'שעות בפועל' : 'מספר מפגשים (אין נתוני שעות ישנים לרשומות אלה)';
+      summaryEl.innerHTML += `<div style="font-weight:normal;font-size:12px;color:#555;margin-top:6px;">פירוט "${_esc(missionFilter)}" לפי מדריך (${label}): ${breakdown}</div>`;
+    }
   }
 }
 
 function exportLessonBreakdownCSV() {
   const rows = _lbFilteredRows();
-  const csvRows = [['תאריך', 'מדריך', 'חניך', 'משימה', 'מספרי שיעור', 'ציון ממוצע', 'הערה']];
-  rows.forEach(r => csvRows.push([r.date, r.ins, r.traineeName, r.mission, r.lessonNums, r.avgScore != null ? r.avgScore.toFixed(1) : '', r.note]));
+  const csvRows = [['תאריך', 'מדריך', 'חניך', 'משימה', 'מספרי שיעור', 'שעות נוספות', 'ציון ממוצע', 'הערה']];
+  rows.forEach(r => csvRows.push([r.date, r.ins, r.traineeName, r.mission, r.lessonNums, r.extraHours || '', r.avgScore != null ? r.avgScore.toFixed(1) : '', r.note]));
   const csv = csvRows.map(row => row.map(c => `"${String(c ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
   const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
@@ -21593,6 +21866,10 @@ async function _urAddFeedbackBlock() {
       <div id="ur-fb-${idx}-chips" style="display:flex;flex-wrap:wrap;gap:5px;"></div>
       <input id="ur-fb-${idx}-extra" type="text" placeholder="פרט את נושא השיעור ומספר השיעורים שניתנו..."
         style="display:none;width:100%;padding:7px 10px;border:1.5px solid #ddd;border-radius:7px;font-size:13px;direction:rtl;box-sizing:border-box;margin-top:6px;">
+      <!-- 2026-08-24, לפי בקשת לביא: משך בשעות למפגש "שעות נוספות/כשירות" — כדי
+           שדוחות יוכלו לסכם שעות בפועל, לא רק לספור מפגשים. -->
+      <input id="ur-fb-${idx}-extra-hours" type="number" min="0" max="24" step="0.5" placeholder="משך (שעות)"
+        style="display:none;width:140px;padding:7px 10px;border:1.5px solid #ddd;border-radius:7px;font-size:13px;direction:rtl;box-sizing:border-box;margin-top:6px;">
     </div>
     <div style="margin-bottom:10px;">
       <label style="font-size:12px;font-weight:600;color:#555;display:block;margin-bottom:6px;">ציוני מיומניות (1–10)</label>
@@ -21856,6 +22133,7 @@ function _urUpdateChips(idx) {
   const chipsWrap = document.getElementById(`ur-fb-${idx}-chips-wrap`);
   const chipsEl   = document.getElementById(`ur-fb-${idx}-chips`);
   const extraEl   = document.getElementById(`ur-fb-${idx}-extra`);
+  const extraHoursEl = document.getElementById(`ur-fb-${idx}-extra-hours`);
   if (!chipsEl) return;
 
   // כשירות/שעות נוספות → text field only, no chips
@@ -21863,10 +22141,12 @@ function _urUpdateChips(idx) {
     chipsEl.style.display = 'none';
     document.getElementById(`ur-fb-${idx}-chips-label`).style.display = 'none';
     if (extraEl) { extraEl.style.display = 'block'; extraEl.placeholder = 'פרט את נושא השיעור ומספר השיעורים שניתנו...'; }
+    if (extraHoursEl) extraHoursEl.style.display = 'block';
     return;
   }
   // All other types → show chips 1-50
   if (extraEl) extraEl.style.display = 'none';
+  if (extraHoursEl) extraHoursEl.style.display = 'none';
   chipsEl.style.display = 'flex';
   document.getElementById(`ur-fb-${idx}-chips-label`).style.display = 'block';
 
@@ -22094,10 +22374,14 @@ async function submitUnifiedReport() {
     // Extra text for כשירות
     const extraEl = document.getElementById(`ur-fb-${idx}-extra`);
     const extraDesc = extraEl?.style.display !== 'none' ? (extraEl?.value.trim() || '') : '';
+    // 2026-08-24, לפי בקשת לביא: משך בשעות בפועל למפגש "שעות נוספות/כשירות".
+    const extraHoursEl = document.getElementById(`ur-fb-${idx}-extra-hours`);
+    const extraHours = (extraHoursEl?.style.display !== 'none') ? (parseFloat(extraHoursEl?.value) || 0) : 0;
     const lesson = {
       date, instructor, mission: missionName,
       lessonNums: lessonNums.sort((a,b)=>a-b),
       extraDesc,
+      extraHours,
       note: document.getElementById(`ur-fb-${idx}-note`)?.value.trim() || ''
     };
     skills.forEach(sk => {
@@ -22106,6 +22390,18 @@ async function submitUnifiedReport() {
     });
     lessonResults.push({ traineeId, freeName, freeCourseId, lesson, idx });
   });
+
+  // 2026-08-24, לפי בקשת לביא: "לפחות משוב חניך אחד" נדרש רק אם המדריך היה
+  // בפועל משובץ למשימת נסיעה/קורס מעשי **באותו תאריך שנבחר בטופס** (לא
+  // בהכרח היום הנוכחי — דוח יכול להיות מוגש בדיעבד לתאריך קודם) — לא לכל יום
+  // סתם (יום עיוני/atp/חופש וכו' לא אמור לדרוש משוב חניך).
+  const _wasTripDay = (typeof _wasAssignedToTripTaskOnDate === 'function') && _wasAssignedToTripTaskOnDate(instructor, date);
+  if (_wasTripDay && !lessonResults.length) {
+    showToast('⚠️ יש להוסיף לפחות משוב חניך אחד לפני שמירת הטופס (היית משובץ לקורס מעשי בתאריך זה)', 'warning');
+    const fbSection = document.getElementById('ur-feedback-blocks');
+    if (fbSection) fbSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    return;
+  }
 
   // 2026-08-19: תיקון באג — משוב חניך נשמר לפעמים עם ציונים אך בלי מספר שיעור
   // נבחר (lessonNums ריק), כי לא הייתה ולידציה שמחייבת בחירת שנתון. setTrain()
