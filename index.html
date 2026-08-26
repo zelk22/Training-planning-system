@@ -14,7 +14,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 63</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 67</title>
 
 <style>
 
@@ -1426,7 +1426,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 123;
+  const APP_VERSION = 127;
 
   function initFirebase() {
     try {
@@ -7198,7 +7198,8 @@ window.TraineeSystem = {
             priority: 1,
             isDefault: true,
             status: 'active',
-            trainees: JSON.parse(JSON.stringify(existingTrainees || []))
+            trainees: JSON.parse(JSON.stringify(existingTrainees || [])),
+            resourceGroups: {}
         };
     },
 
@@ -7300,6 +7301,20 @@ window.TraineeSystem = {
         return Promise.resolve(true);
     },
 
+    // חלוקת קבוצות תיעדוף (א׳/ב׳/ג׳) — שיוך יחיד לחניך, נשמר על הקורס הפעיל.
+    // admin בלבד (נאכף גם ב-JS כאן, לא רק בהסתרת ה-select בתצוגה).
+    setTraineeGroup(traineeId, group) {
+        if (typeof currentRole !== 'undefined' && currentRole !== 'admin') return;
+        const course = this.courses.find(c => c.id === this.currentCourseId);
+        if (!course) return;
+        if (!course.resourceGroups) course.resourceGroups = {};
+        const key = this._fbKey(traineeId);
+        if (group) course.resourceGroups[key] = group;
+        else delete course.resourceGroups[key];
+        this._saveCourses();
+        try { _renderResourceGroupsBody(); } catch(e) {}
+    },
+
     switchCourse(courseId) {
         if (!courseId) return;
         const course = this.courses.find(c => c.id === courseId);
@@ -7357,7 +7372,8 @@ window.TraineeSystem = {
             priority: maxPriority + 1,
             isDefault: false,
             status: 'active',
-            trainees: []
+            trainees: [],
+            resourceGroups: {}
         };
         this.courses.push(newCourse);
         this._saveCourses();
@@ -19346,7 +19362,8 @@ const GUIDE_SECTIONS = [
       <p><b>ברירות מחדל תפעוליות:</b> כוללות גם "זמן התארגנות לפני נסיעה ראשונה" — כמה זמן אחרי ההתייצבות תתחיל הנסיעה הראשונה בכל כלי תכנון.</p>
       <p><b>בקשות שיבוץ:</b> בקשה שנדחתה לא מוצגת יותר בלוח כלל. מהפאנל אפשר גם למחוק בקשות (לא רק לאשר/לדחות) — כולל סקציית "היסטוריית בקשות שטופלו" מתקפלת עם אפשרות מחיקה בודדת או "נקה הכל".</p>
       <p><b>קריטריונים להתפלגות רמות:</b> טווחי ציון למתקשים/בינוניים/מתקדמים, ספי מילוי חלקי לפי שלב (סיטאדיס/אורבוס), וסף חוסר-פעילות.</p>
-      <p><b>בטאב "חניכים ומשובים" ⚙️ הגדרות:</b> מיומנויות (שמות, סדר), סוגי משימות, <b>ספי התרעות</b> — כאן קובעים אילו התרעות יופיעו בתיק חניך (איזו מיומנות, איזה סף %, איזו חומרה, איזה טקסט) — ניתן לעריכה מלאה בלי צורך בתיקון קוד. <b>דגשי ביצוע</b> — רשימה מכווצת לפי שיעור (סיטאדיס/אורבוס/חניכה), עם כותרות אמיתיות מתוכנית ההכשרה וצבעי קטגוריה (טכני/תפעולי/מסחרי).</p>`
+      <p><b>בטאב "חניכים ומשובים" ⚙️ הגדרות:</b> מיומנויות (שמות, סדר), סוגי משימות, <b>ספי התרעות</b> — כאן קובעים אילו התרעות יופיעו בתיק חניך (איזו מיומנות, איזה סף %, איזו חומרה, איזה טקסט) — ניתן לעריכה מלאה בלי צורך בתיקון קוד. <b>דגשי ביצוע</b> — רשימה מכווצת לפי שיעור (סיטאדיס/אורבוס/חניכה), עם כותרות אמיתיות מתוכנית ההכשרה וצבעי קטגוריה (טכני/תפעולי/מסחרי).</p>
+      <p><b>🗂️ חלוקת קבוצות תיעדוף (א'/ב'/ג'):</b> ווידג'ט בדשבורד (לפי הקורס הנבחר) לשיוך כל חניך לקבוצת תיעדוף משאבים אחת — נפרד מדירוג הציונים. כרטיס חניך מציג שם, ממוצע ציון ומספר שיעור נוכחי. מנהל בלבד משנה שיוך (בורר); מדריכים רואים באותה תצוגה בצפייה בלבד; חונכים לא רואים את הסעיף.</p>`
   },
   {
     id: 'auditlog', icon: '🔍', title: 'לוג פעולות', roles: ['admin'],
@@ -22516,7 +22533,8 @@ async function openUnifiedReportsArchive(){
   const unified=Object.entries(allReports).filter(([k,v])=>v&&v.type==='unified_daily');
   // ממזג למטמון הגלובלי כדי ש"צפה" יעבוד (openViewUnifiedReport קורא משם)
   unified.forEach(([k,v])=>{ window._taskReportsCache[k]=v; });
-  unified.sort((a,b)=> b[1].date.localeCompare(a[1].date) || (a[1].instructorName||'').localeCompare(b[1].instructorName||''));
+  // מיון: תאריך יורד → שעת תחילת משמרת עולה (סדר כרונולוגי של יום העבודה) → שם מדריך (תיקו בלבד)
+  unified.sort((a,b)=> b[1].date.localeCompare(a[1].date) || (a[1].shiftStart||'').localeCompare(b[1].shiftStart||'') || (a[1].instructorName||'').localeCompare(b[1].instructorName||''));
 
   const overlay=document.createElement('div');
   overlay.id='unifiedArchiveOverlay';
@@ -26231,6 +26249,96 @@ function _toggleInfoAlerts() {
   if (arrow) arrow.innerHTML = '&#9660;';
 }
 
+// חלוקת קבוצות תיעדוף (א׳/ב׳/ג׳) — לפי קורס נבחר. מנהל: עריכה מלאה (select).
+// מדריך: אותה תצוגה, ללא select (צפייה בלבד). חונך לא מגיע לכאן כלל — הפאנל
+// כולו מוסתר לחונכים ב-_renderTraineeSummaryPanel (isStaff).
+// אזור מתקפל (כברירת מחדל סגור) — בדומה לתבנית "התרעות מידע למנהל".
+function _renderResourceGroupsBlock(isAdmin) {
+  var h = [];
+  h.push('<div style="background:white;border:1px solid #e8edf5;border-radius:10px;padding:12px 16px;margin-bottom:12px;direction:rtl;">');
+  h.push('<button onclick="try{_toggleResourceGroups();}catch(e){}" style="width:100%;background:none;border:none;padding:0;cursor:pointer;display:flex;align-items:center;justify-content:space-between;font-family:inherit;">'
+    + '<span style="font-size:13px;font-weight:bold;color:#2c3e50;">🗂️ חלוקת קבוצות תיעדוף (א׳/ב׳/ג׳)'
+    + (isAdmin ? '' : ' <span style="font-weight:400;color:#aaa;font-size:11px;">(צפייה בלבד)</span>') + '</span>'
+    + '<span id="ts-groups-arrow" style="font-size:10px;color:#aaa;">&#9654;</span></button>');
+  h.push('<div id="ts-groups-body" style="display:none;margin-top:10px;"></div>');
+  h.push('</div>');
+  return h.join('');
+}
+
+function _toggleResourceGroups() {
+  var body  = document.getElementById('ts-groups-body');
+  var arrow = document.getElementById('ts-groups-arrow');
+  if (!body) return;
+  var open = body.style.display === 'block';
+  if (open) {
+    body.style.display = 'none';
+    if (arrow) arrow.innerHTML = '&#9654;';
+    return;
+  }
+  body.style.display = 'block';
+  if (arrow) arrow.innerHTML = '&#9660;';
+  _renderResourceGroupsBody();
+}
+
+// בונה/מרענן רק את גוף האזור (נקרא גם מ-setTraineeGroup כדי לרענן ללא כיווץ מחדש)
+function _renderResourceGroupsBody() {
+  var body = document.getElementById('ts-groups-body');
+  if (!body) return; // סגור/לא נבנה עדיין — אין מה לרענן
+  if (typeof TraineeSystem === 'undefined' || !TraineeSystem.courses) { body.innerHTML = ''; return; }
+  var course = TraineeSystem.courses.find(function(c){ return c.id === TraineeSystem.currentCourseId; });
+  if (!course) { body.innerHTML = '<div style="font-size:12px;color:#aaa;">אין קורס נבחר</div>'; return; }
+  var isAdmin = (typeof currentRole !== 'undefined' && currentRole === 'admin');
+  var groups = course.resourceGroups || {};
+  var perTraineeMap = {};
+  (window._tsPerTrainee || []).forEach(function(t){ perTraineeMap[String(t.id)] = t; });
+  var trainees = (TraineeSystem.trainees || []).filter(function(t){ return !t.archived; });
+  var order  = ['', 'א', 'ב', 'ג'];
+  var labels = {'': 'לא משויך', 'א': 'קבוצה א׳', 'ב': 'קבוצה ב׳', 'ג': 'קבוצה ג׳'};
+  var shortLabels = {'': '—', 'א': 'א׳', 'ב': 'ב׳', 'ג': 'ג׳'};
+  var colors = {'': '#95a5a6', 'א': '#2980b9', 'ב': '#8e44ad', 'ג': '#16a085'};
+  var buckets = {'': [], 'א': [], 'ב': [], 'ג': []};
+  trainees.forEach(function(t){
+    var g = groups[TraineeSystem._fbKey(t.id)] || '';
+    if (!buckets[g]) g = '';
+    buckets[g].push(t);
+  });
+  var h = [];
+  h.push('<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;">');
+  order.forEach(function(g){
+    var list = buckets[g] || [];
+    var c = colors[g];
+    h.push('<div style="border:1px solid ' + c + ';border-radius:8px;padding:6px;background:#fafbfc;">');
+    h.push('<div style="font-size:11px;font-weight:bold;color:' + c + ';margin-bottom:5px;">' + labels[g] +
+      ' <span style="color:#888;font-weight:400;">(' + list.length + ')</span></div>');
+    h.push('<div style="max-height:260px;overflow-y:auto;">');
+    if (!list.length) {
+      h.push('<div style="font-size:11px;color:#aaa;padding:3px 0;">—</div>');
+    } else {
+      list.sort(function(a,b){ return (a.name||'').localeCompare(b.name||'', 'he'); });
+      list.forEach(function(t){
+        var pt = perTraineeMap[String(t.id)];
+        var avg = (pt && pt.avgScore != null) ? pt.avgScore.toFixed(1) : '—';
+        var lesson = pt ? (pt.maxSitadis || 0) : 0;
+        h.push('<div style="display:flex;align-items:center;gap:4px;background:white;border:1px solid #eee;border-radius:6px;padding:3px 5px;margin-bottom:3px;">');
+        h.push('<div style="flex:1 1 auto;min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">'
+          + '<span style="font-size:11px;font-weight:bold;color:#2c3e50;">' + _esc(t.name) + '</span>'
+          + '<span style="font-size:10px;color:#888;"> · ' + avg + ' · שיעור ' + lesson + '</span></div>');
+        if (isAdmin) {
+          h.push('<select onchange="try{TraineeSystem.setTraineeGroup(' + JSON.stringify(t.id) + ',this.value);}catch(e){}" style="flex:0 0 auto;width:34px;font-size:10px;padding:1px;border-radius:4px;border:1px solid #ccc;">');
+          order.forEach(function(og){
+            h.push('<option value="' + og + '" ' + (og === g ? 'selected' : '') + '>' + shortLabels[og] + '</option>');
+          });
+          h.push('</select>');
+        }
+        h.push('</div>');
+      });
+    }
+    h.push('</div></div>');
+  });
+  h.push('</div>');
+  body.innerHTML = h.join('');
+}
+
 function _renderTraineeSummaryPanel() {
   var panel = document.getElementById('trainee-summary-panel');
   if (!panel) return;
@@ -26299,6 +26407,7 @@ function _renderTraineeSummaryPanel() {
     lOrder.forEach(function(s){var n=levelDist[s];if(!n)return;var c=lColors[s];h.push('<button onclick="try{_toggleTsBucket(\'level\',\''+s+'\');}catch(e){}" style="width:auto;margin:0;cursor:pointer;display:inline-flex;align-items:center;gap:6px;background:'+c[1]+';border:1px solid '+c[0]+';border-radius:20px;padding:4px 12px;font-family:inherit;"><span style="font-size:13px;font-weight:bold;color:'+c[0]+';">'+n+'</span><span style="font-size:12px;color:#555;">'+s+'</span></button>');});
     h.push('</div><div id="ts-level-detail" style="display:none;margin-top:10px;padding-top:10px;border-top:1px dashed #dee2e6;"></div></div>');
   }
+  h.push(_renderResourceGroupsBlock(isAdmin));
   if(summary.milestoneStats){
     var ms=summary.milestoneStats;var tot=summary.activeTrainees||1;
     var msDefs=[['טסט 10',ms.test10,'#3498db'],['טסט 30',ms.test30,'#f39c12'],['טסט 50',ms.test50,'#8e44ad'],['תנאי חניכה',ms.chinuchMs,'#e67e22']];
