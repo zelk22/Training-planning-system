@@ -13464,13 +13464,13 @@ function renderSettingsInstrList(){
       <span style="font-size:14px;font-weight:500;flex:1;"><span style="color:#aaa;font-size:12px;margin-left:8px;">${i+1}.</span>${nameDisplay}</span>
 
       <label title="הצג/הסתר בשיבוצים" style="display:flex;align-items:center;gap:4px;cursor:pointer;flex-shrink:0;">
-        <input type="checkbox" ${isHidden?'checked':''} onchange="_setHiddenInstr('${name.replace(/'/g,"\'")}',this.checked)"
+        <input type="checkbox" data-instr-name="${_esc(name)}" ${isHidden?'checked':''} onchange="_setHiddenInstr(this.dataset.instrName,this.checked)"
           style="accent-color:#e74c3c;width:15px;height:15px;cursor:pointer;">
         <span style="font-size:11px;color:${isHidden?'#e74c3c':'#888'};white-space:nowrap;">${isHidden?'מוסתר משיבוצים':'הסתר משיבוצים'}</span>
       </label>
 
       <label title="הרשאת צפייה בהתרעת &quot;טפסי סיכום יום חסרים&quot; עבור כל הצוות" style="display:flex;align-items:center;gap:4px;cursor:pointer;flex-shrink:0;">
-        <input type="checkbox" ${isFormTracker?'checked':''} onchange="_setFormTrackingInstr('${name.replace(/'/g,"\'")}',this.checked)"
+        <input type="checkbox" data-instr-name="${_esc(name)}" ${isFormTracker?'checked':''} onchange="_setFormTrackingInstr(this.dataset.instrName,this.checked)"
           style="accent-color:#2980b9;width:15px;height:15px;cursor:pointer;">
         <span style="font-size:11px;color:${isFormTracker?'#2980b9':'#888'};white-space:nowrap;">מעקב טפסים</span>
       </label>
@@ -15321,9 +15321,10 @@ function _schedAddExtraTask(btn, instrName) {
   newRow.dataset.extraName = instrName;
   newRow.dataset.extraIdx = Date.now();
   newRow.style.display = btnRow.style.display;
-  const _escapedName = instrName.replace(/'/g, "\'");
+  // Fix (2026-08-25, per Lavi): שם עם גרש (כמו "ג'רמי עזר") שבר את ה-escaping
+  // הידני הישן ב-onclick — data attribute + _esc() לא תלוי בהחלט בתו המפריד.
   newRow.innerHTML = `<td></td><td style="color:#888;font-size:11px;padding-right:8px;">└ משימה נוספת</td>
-    <td><select class="sched-extra-task" onchange="_schedCheckDupTask(this,'${_escapedName}')">${taskOptsDefault}</select></td>
+    <td><select class="sched-extra-task" data-instr-name="${_esc(instrName)}" onchange="_schedCheckDupTask(this,this.dataset.instrName)">${taskOptsDefault}</select></td>
     <td><input type="text" class="sched-extra-note" placeholder="הערה..."></td>
     <td><button class="sched-del-task-btn" onclick="_schedDelExtraTask(this)" title="הסר" style="font-size:16px;padding:3px 10px;width:auto !important;border:1.5px solid #e74c3c;border-radius:6px;color:#e74c3c;background:#fdf2f2;cursor:pointer;">✕</button></td>`;
   insertAfter.after(newRow);
