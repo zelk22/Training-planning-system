@@ -14,7 +14,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 71</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 74</title>
 
 <style>
 
@@ -1426,7 +1426,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 131;
+  const APP_VERSION = 134;
 
   function initFirebase() {
     try {
@@ -2967,7 +2967,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
           <th>שיעורים</th>
           <th>שעות נסיעה</th>
           <th>עיכובים</th>
-          <th>ממוצע עיכוב (דק')</th>
+          <th>ממוצע עיכוב</th>
           <th>ביצוע</th>
         </tr></thead>
         <tbody id="monthlyInstrBody">
@@ -3195,6 +3195,14 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 
             <b id="lessonCount">0.0 שיעורים</b>
 
+          </div>
+
+          <div id="lessonsOverrideBox" style="display:none;margin:6px 0;padding:8px 10px;background:#fff8ee;border:1px solid #f5d9a8;border-radius:8px;">
+            <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#7a5a1e;flex-wrap:wrap;">
+              <span>מספר שיעורים בפועל (אם שונה מהמחושב — למשל עקב עיכוב):</span>
+              <input type="number" id="tripLessonsOverride" step="0.5" min="0" placeholder="השאר ריק לחישוב אוטומטי"
+                style="width:110px;padding:4px 6px;border:1px solid #ddd;border-radius:6px;text-align:center;">
+            </label>
           </div>
 
           <div class="route-pre" id="routePre">מסלול: -</div>
@@ -3992,7 +4000,7 @@ window.TraineeSystem = {
     .trainee-module .insight-content span { color: #555; font-size: 0.95em; line-height: 1.5; }
 
     .trainee-module .section-title { font-size: 1.15em; font-weight: bold; margin: 28px 0 14px 0; color: var(--rail-dark); border-right: 5px solid var(--rail-blue); padding-right: 14px; }
-    .trainee-module .stats-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }
+    .trainee-module .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 12px; }
     .trainee-module .stat-card { padding: 18px 8px; border-radius: 14px; text-align: center; color: white; font-weight: bold; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
     .trainee-module .stat-label { font-size: 0.74em; opacity: 0.95; margin-bottom: 6px; line-height: 1.3; }
     .trainee-module .stat-val   { font-size: 1.8em; }
@@ -4381,13 +4389,16 @@ window.TraineeSystem = {
                 <input type="number" id="in-extra-hours" min="0" max="24" step="0.5" placeholder="משך (שעות)" style="margin-top:6px;width:140px;">
             </div>
 
-            <div class="skill-grid">
+            <div class="skill-grid" id="skill-grid-container">
                 <div class="skill-box"><label id="skill-label-s1">מערכות רכבת</label><div class="skill-stepper"><button type="button" data-skill="s1" data-delta="-1">−</button><input type="number" id="s1" min="1" max="10" placeholder="—"><button type="button" data-skill="s1" data-delta="1">+</button></div></div>
                 <div class="skill-box" id="s2-box"><label id="skill-label-s2">מבנה דיפו</label><div class="skill-stepper"><button type="button" data-skill="s2" data-delta="-1">−</button><input type="number" id="s2" min="1" max="10" placeholder="—"><button type="button" data-skill="s2" data-delta="1">+</button></div></div>
                 <div class="skill-box"><label id="skill-label-s3">תפעול סטיק</label><div class="skill-stepper"><button type="button" data-skill="s3" data-delta="-1">−</button><input type="number" id="s3" min="1" max="10" placeholder="—"><button type="button" data-skill="s3" data-delta="1">+</button></div></div>
                 <div class="skill-box"><label id="skill-label-s4">נהלים</label><div class="skill-stepper"><button type="button" data-skill="s4" data-delta="-1">−</button><input type="number" id="s4" min="1" max="10" placeholder="—"><button type="button" data-skill="s4" data-delta="1">+</button></div></div>
                 <div class="skill-box"><label id="skill-label-s5">משמעת</label><div class="skill-stepper"><button type="button" data-skill="s5" data-delta="-1">−</button><input type="number" id="s5" min="1" max="10" placeholder="—"><button type="button" data-skill="s5" data-delta="1">+</button></div></div>
             </div>
+            <!-- 2026-08-27, לפי בקשת לביא: התוכן הסטטי מעל הוא ברירת מחדל בלבד (למקרה
+                 שההגדרות עוד לא נטענו) — renderSkillGrid() דורס אותו בפועל בכל טעינה
+                 כדי לתמוך במספר/סדר/שמות מיומנויות דינמי לגמרי, כמו בטופס "סיכום יום". -->
             <div id="s2-hint" style="font-size:0.78em;color:#b0c4d4;margin-top:8px;text-align:center;"></div>
 
             <div class="fg" style="margin-top:20px;">
@@ -4931,33 +4942,13 @@ window.TraineeSystem = {
         window._traineeSummaryCache = null;
     },
 
+    // 2026-08-27, לפי בקשת לביא: הפונקציה הזו נהגה לדרוס בכוח את שם תיבת "s2"
+    // ל"מבנה דיפו"/"מבנה קו" לפי התקדמות החניך — זה התנגש עם מיומנויות מותאמות-
+    // אישית שהמנהל מגדיר עכשיו בהגדרות (renderSkillGrid קורא את השם האמיתי
+    // מ-settings.skills). הושבתה בכוונה כדי לא לדרוס שם שהמנהל בחר במפורש.
+    // אם רוצים חזרה להתנהגות המתחלפת אוטומטית — אפשר להוסיף זאת כהגדרה נפרדת.
     updateS2Label() {
-        const t = this.trainees.find(x => x.id === this.currentId);
-        if (!t) return;
-        let maxCourse = 0;
-        (t.lessons || []).forEach(l => {
-            if (l.mission === 'קורס מעשי סיטאדיס' || l.mission === 'קורס מעשי' || l.mission === 'קורס')
-                (l.lessonNums || []).forEach(n => { if (n > maxCourse) maxCourse = n; });
-        });
-        const _s2MissionVal = this.$('in-mission')?.value;
-        if ((_s2MissionVal === 'קורס מעשי סיטאדיס' || _s2MissionVal === 'קורס מעשי אורבוס') && this.selectedLessons.length)
-            maxCourse = Math.max(maxCourse, Math.max(...this.selectedLessons));
-
-        const isTech = maxCourse < 11;
-        const lbl    = this.$('s2-label');
-        const hint   = this.$('s2-hint');
-        const box    = this.$('s2-box');
-        if (!lbl) return;
-
-        if (isTech) {
-            lbl.textContent = 'מבנה דיפו';
-            if (hint) hint.textContent = 'פרמטר זה ישתנה ל"מבנה קו" החל משיעור 11';
-            if (box)  box.style.border = '';
-        } else {
-            lbl.textContent = 'מבנה קו';
-            if (hint) hint.textContent = '';
-            if (box)  box.style.border = '';
-        }
+        return;
     },
 
     buildRoadmap() {
@@ -5577,8 +5568,17 @@ window.TraineeSystem = {
         // (סה"כ שיעורים)*10 — מדלל כל מיומנות שלא מולאה בכל שיעור לציון קרוב לאפס,
         // בלי קשר לכמה טוב היא ניקדה בפועל כשכן מולאה. עכשיו סופרים סכום וכמות
         // בנפרד לכל מיומנות, וממוצעים רק על שיעורים שבהם היא באמת מולאה.
-        let sums = [0, 0, 0, 0, 0];
-        let counts = [0, 0, 0, 0, 0];
+        // 2026-08-27, לפי בקשת לביא: הוחלף מ-5 שדות קשיחים (s1-s5) למספר/סדר
+        // מיומנויות דינמי לגמרי לפי this.settings.skills — בדיוק כמו בטופס
+        // "סיכום יום". רשומות שיעור היסטוריות (עם s1-s5 ישנים) לא עוברות מיגרציה
+        // (לפי בקשת לביא) — הן פשוט ממשיכות להיספר לפי מה שקיים בכל רשומה, מול
+        // סדר/שמות המיומנויות הנוכחיים.
+        const skillList = (this.settings?.skills?.length) ? this.settings.skills : [
+            {id:'s1', name:'מערכות רכבת'}, {id:'s2', name:'מבנה קו'}, {id:'s3', name:'תפעול סטיק'},
+            {id:'s4', name:'נהלים'}, {id:'s5', name:'משמעת'}
+        ];
+        let sums = skillList.map(() => 0);
+        let counts = skillList.map(() => 0);
 
         (t.lessons || []).forEach(l => {
             if (l.mission === 'קורס מעשי סיטאדיס' || l.mission === 'קורס מעשי' || l.mission === 'קורס') {
@@ -5588,8 +5588,9 @@ window.TraineeSystem = {
             } else if (l.mission === 'חניכה') {
                 (l.lessonNums || []).forEach(n => chinuchDone.add(n));
             }
-            [1, 2, 3, 4, 5].forEach((n, i) => {
-                if (l['s' + n] != null) { sums[i] += l['s' + n]; counts[i]++; }
+            skillList.forEach((sk, i) => {
+                const v = l[sk.id];
+                if (v != null) { sums[i] += v; counts[i]++; }
             });
         });
 
@@ -5630,18 +5631,17 @@ window.TraineeSystem = {
             }
         }
 
-        const s2label = isTech ? 'מבנה דיפו' : 'מבנה קו';
-        const labels  = ['מערכות רכבת', s2label, 'תפעול סטיק', 'נהלים', 'משמעת'];
-        const avgs    = sums.map((s, i) => counts[i] ? (s / (counts[i] * 10)) * 100 : null);
-        this.$('stats-row').innerHTML = labels.map((lbl, i) => {
+        // 2026-08-27, לפי בקשת לביא: כרטיסי "סטטוס כשירות" עכשיו נבנים לפי
+        // skillList הדינמי (אותו משתנה שחושב sums/counts למעלה) — לא רשימת שמות
+        // קשיחה. הוסר גם ה-"חדש" / דריסת השם האוטומטית של המיומנות השנייה
+        // (מבנה דיפו/קו) — המנהל שולט בשם דרך ההגדרות בלבד.
+        const avgs = sums.map((s, i) => counts[i] ? (s / (counts[i] * 10)) * 100 : null);
+        this.$('stats-row').innerHTML = skillList.map((sk, i) => {
             const a = avgs[i];
             const c = a === null ? 'var(--neutral)' : a < 65 ? 'var(--danger)' : a < 82 ? 'var(--warning)' : 'var(--success)';
-            const newTag = (!isTech && i === 1 && maxL === 11)
-                ? `<div style="font-size:0.65em;opacity:0.85;margin-top:2px;">חדש</div>` : '';
             return `<div class="stat-card" style="background:${c}">
-                        <div class="stat-label">${lbl}</div>
+                        <div class="stat-label">${_esc(sk.name)}</div>
                         <div class="stat-val">${a === null ? 'אין נתון' : a.toFixed(0) + '%'}</div>
-                        ${newTag}
                     </div>`;
         }).join('');
 
@@ -5825,22 +5825,21 @@ window.TraineeSystem = {
         const errors  = [];
         const mission = this.$('in-mission').value;
         const ins     = this.$('in-ins').value;
-        const scores  = [1, 2, 3, 4, 5].map(i => parseInt(this.$('s' + i).value));
 
-        const t2 = this.trainees.find(x => x.id === this.currentId);
-        let maxCourse2 = 0;
-        (t2?.lessons || []).forEach(l => {
-            if (l.mission === 'קורס מעשי סיטאדיס' || l.mission === 'קורס מעשי' || l.mission === 'קורס') (l.lessonNums || []).forEach(n => { if (n > maxCourse2) maxCourse2 = n; });
-        });
-        if ((mission === 'קורס מעשי סיטאדיס' || mission === 'קורס מעשי אורבוס') && this.selectedLessons.length)
-            maxCourse2 = Math.max(maxCourse2, Math.max(...this.selectedLessons));
-        const s2name = maxCourse2 < 11 ? 'מבנה דיפו' : 'מבנה קו';
+        // 2026-08-27, לפי בקשת לביא: הוחלף מ-5 שדות/שמות קשיחים (s1-s5) לרשימת
+        // מיומנויות דינמית לגמרי לפי this.settings.skills — אותו skillList
+        // המשמש גם ב-renderDetail/renderSkillGrid, כדי שהכל יישאר עקבי.
+        const skillList = (this.settings?.skills?.length) ? this.settings.skills : [
+            {id:'s1', name:'מערכות רכבת'}, {id:'s2', name:'מבנה קו'}, {id:'s3', name:'תפעול סטיק'},
+            {id:'s4', name:'נהלים'}, {id:'s5', name:'משמעת'}
+        ];
+        const scores = skillList.map(sk => parseInt(this.$(sk.id)?.value));
 
         if (!ins) errors.push('• חובה לבחור מדריך / חונך מהרשימה');
         if (mission !== 'שעות נוספות' && !this.selectedLessons.length) errors.push('• חובה לסמן לפחות שיעור אחד');
         if (mission === 'שעות נוספות' && !this.$('in-extra').value.trim()) errors.push('• חובה לפרט את נושא השעות הנוספות');
         scores.forEach((s, i) => {
-            if (isNaN(s) || s < 1 || s > 10) errors.push(`• ציון "${['מערכות רכבת', s2name, 'תפעול סטיק', 'נהלים', 'משמעת'][i]}" חסר או לא תקין (1-10)`);
+            if (isNaN(s) || s < 1 || s > 10) errors.push(`• ציון "${skillList[i].name}" חסר או לא תקין (1-10)`);
         });
         if (!this.isSigned) errors.push('• חובה לחתום על הטופס לאישור');
 
@@ -5857,24 +5856,28 @@ window.TraineeSystem = {
 
         const t = this.trainees.find(x => x.id === this.currentId);
         if (!t.lessons) t.lessons = [];
-        t.lessons.push({
+        const lessonObj = {
             date:       this.$('in-date').value,
             mission,
             lessonNums: [...this.selectedLessons],
             extraDesc:  this.$('in-extra').value,
             extraHours: mission === 'שעות נוספות' ? (parseFloat(this.$('in-extra-hours')?.value) || 0) : 0,
             ins,
-            s1: scores[0], s2: scores[1], s3: scores[2], s4: scores[3], s5: scores[4],
             notes: this.$('in-notes').value
-        });
+        };
+        skillList.forEach((sk, i) => { lessonObj[sk.id] = scores[i]; });
+        t.lessons.push(lessonObj);
         this.persist();
         if (mission === 'קורס מעשי סיטאדיס') {
             const savedLesson = t.lessons[t.lessons.length - 1];
             const lessonCount = (savedLesson.lessonNums || []).length;
             if (lessonCount > 0) {
                 const allLs = t.lessons || [];
-                const totalSum = allLs.reduce((s,l) => s+(l.s1+l.s2+l.s3+l.s4+l.s5), 0);
-                const avgPct   = allLs.length ? (totalSum / (allLs.length * 50)) * 100 : 0;
+                // 2026-08-27: אותו תיקון NaN שכבר בוצע ב-showReports() — סוכמים רק
+                // ערכים שקיימים בפועל (לא כל s1..s5 קבוע), מחלקים לפי כמותם.
+                let _sum = 0, _cnt = 0;
+                allLs.forEach(l => { skillList.forEach(sk => { const v = l[sk.id]; if (v != null) { _sum += v; _cnt++; } }); });
+                const avgPct   = _cnt ? (_sum / (_cnt * 10)) * 100 : 0;
                 const maxAllowed = avgPct > 90 ? 5 : avgPct > 80 ? 4 : avgPct > 70 ? 3 : 1;
                 const level      = avgPct > 90 ? 'חזק' : avgPct > 80 ? 'בינוני' : avgPct > 70 ? 'חלש' : 'חלש מאוד';
                 if (lessonCount > maxAllowed) {
@@ -5923,11 +5926,15 @@ window.TraineeSystem = {
             // סכימת l.s1+l.s2+...+l.s5 כש-undefined מעורב (מיומנות שלא מולאה
             // באיזשהו שיעור) הופכת את כל הסכום ל-NaN. עכשיו סופרים רק ערכים
             // שקיימים בפועל (ומחלקים לפי כמותם, לא לפי ls.length*50 הקבוע).
+            // גם הוחלף למספר מיומנויות דינמי (this.settings.skills) — לא רק s1-s5.
             const ls = t.lessons || [];
+            const skillList = (this.settings?.skills?.length) ? this.settings.skills : [
+                {id:'s1'}, {id:'s2'}, {id:'s3'}, {id:'s4'}, {id:'s5'}
+            ];
             let sum = 0, cnt = 0;
             ls.forEach(l => {
-                [1,2,3,4,5].forEach(n => {
-                    const v = l['s'+n];
+                skillList.forEach(sk => {
+                    const v = l[sk.id];
                     if (v != null) { sum += v; cnt++; }
                 });
             });
@@ -5951,7 +5958,12 @@ window.TraineeSystem = {
         this.$('in-extra').value      = '';
         if (this.$('in-extra-hours')) this.$('in-extra-hours').value = '';
         this.selectedLessons = [];
-        [1, 2, 3, 4, 5].forEach(i => { this.$('s' + i).value = ''; });
+        // 2026-08-27: דינמי לפי this.settings.skills (לא רק s1-s5) — אחרת מיומנות
+        // שישית (או כל מיומנות שנוספה) הייתה נשארת עם ערך תקוע בין דיווחים.
+        const skillList = (this.settings?.skills?.length) ? this.settings.skills : [
+            {id:'s1'}, {id:'s2'}, {id:'s3'}, {id:'s4'}, {id:'s5'}
+        ];
+        skillList.forEach(sk => { const el = this.$(sk.id); if (el) el.value = ''; });
         this.clearSig();
         this.updateChips();
         // Re-run dropdown so auto-fill is always fresh after form reset
@@ -7077,13 +7089,35 @@ window.TraineeSystem = {
     },
 
     // Apply skill labels to the feedback form
+    // 2026-08-27, לפי בקשת לביא: הוחלף בלוגיקה דינמית לגמרי (renderSkillGrid),
+    // כי applySkillLabels הישן עדכן שמות רק על 5 תוויות קבועות בקוד — מיומנות
+    // שישית (או סדר שונה) לא הייתה מקבלת בכלל תיבת דירוג. נשאר בשם הישן כדי
+    // לא לשבור קריאות קיימות; פשוט מפנה הלאה.
     applySkillLabels() {
-        if (!this.settings || !this.container) return;
-        const skills = this.settings.skills || [];
-        skills.forEach((sk, i) => {
-            const lbl = this.$('skill-label-s' + (i+1));
-            if (lbl) lbl.textContent = sk.name;
-        });
+        this.renderSkillGrid();
+    },
+
+    // בונה מחדש את תיבות הדירוג ("הוסף משוב", תיק חניך) לפי this.settings.skills
+    // בדיוק — כל מספר מיומנויות, כל סדר, כל שם. מחליף את 5 התיבות הקשיחות
+    // שהיו קודם (s1-s5 בלבד). היסטוריית שיעורים ישנה (t.lessons[].s1..s5) לא
+    // עוברת מיגרציה — לפי בקשת לביא, היא נשארת כמו שהיא ומוצגת/ממוצעת לפי
+    // מה שבאמת קיים בכל רשומה (ר' renderDetail).
+    renderSkillGrid() {
+        const container = this.$('skill-grid-container');
+        if (!container) return;
+        const skills = (this.settings?.skills?.length) ? this.settings.skills : [
+            {id:'s1', name:'מערכות רכבת'}, {id:'s2', name:'מבנה קו'}, {id:'s3', name:'תפעול סטיק'},
+            {id:'s4', name:'נהלים'}, {id:'s5', name:'משמעת'}
+        ];
+        container.innerHTML = skills.map(sk => `
+            <div class="skill-box"${sk.id === 's2' ? ' id="s2-box"' : ''}>
+                <label id="skill-label-${sk.id}">${_esc(sk.name)}</label>
+                <div class="skill-stepper">
+                    <button type="button" data-skill="${sk.id}" data-delta="-1">−</button>
+                    <input type="number" id="${sk.id}" min="1" max="10" placeholder="—">
+                    <button type="button" data-skill="${sk.id}" data-delta="1">+</button>
+                </div>
+            </div>`).join('');
     },
 
     // Show/hide signature section based on setting
@@ -10623,6 +10657,18 @@ const toHHMM=minToHHMM;
 
 function timeToMin(str){const[h,m]=str.split(':').map(Number);return h*60+m;}
 
+// 2026-08-27, לפי בקשת לביא: תצוגת סיכומי עיכוב (בדקות) — מרגע ש-60 דק' ומעלה
+// מציג "X שעות Y דקות" במקום מספר דקות גולמי. לא נוגע בערך המספרי המאוחסן,
+// רק בעיצוב התצוגה.
+function _fmtDelayMinutes(totalMin){
+  const m = Math.round(totalMin || 0);
+  if (m < 60) return m + ' דק׳';
+  const h = Math.floor(m / 60);
+  const rem = m % 60;
+  const hLabel = h + (h === 1 ? ' שעה' : ' שעות');
+  return rem > 0 ? (hLabel + ' ו-' + rem + ' דק׳') : hLabel;
+}
+
 function buildTimeline(startStr,route){
 
   let cur=timeToMin(startStr),tl=[];
@@ -10641,6 +10687,28 @@ function buildTimelineFromMin(startMin,route){
 
   return tl;
 
+}
+
+// 2026-08-27, לפי בקשת לביא: מקור אחד ויחיד לחישוב "כמה שיעורים/דקות" נסיעה
+// מייצגת בפועל — במקום החזרה על אותו נוסחה (route→45 דק'/דיפו→checklist) בעשרות
+// מקומות בדשבורדים/דוחות, מה שיצר סיכון שרק חלק יתעדכנו. מוסיף כאן שכבת
+// override ידנית אופציונלית (t.lessonsOverride) לנסיעה שבה מספר השיעורים
+// שבוצע בפועל שונה ממה שהמסלול המתוכנן (t.route) משתמע ממנו — למשל עקב עיכוב
+// שגרם לביצוע שיעורים נוספים בפועל. ה-override הוא שדה תצוגה/סטטיסטיקה בלבד:
+// הוא לא נוגע ב-t.route/t.timeline/startStr, ולכן לא משפיע על תכנון המסלול,
+// זיהוי התנגשויות, הלוח השבועי, או כלי "עיכוב" (applyDelay) — כולם ממשיכים
+// לעבוד בדיוק כפי שעבדו.
+function _tripLessonStats(t){
+  if (t && t.lessonsOverride != null && t.lessonsOverride !== '') {
+    const lessons = Number(t.lessonsOverride) || 0;
+    return { minutes: lessons * 45, lessons };
+  }
+  if (t && t.isDepotLesson) {
+    const lessons = (t.depotChecklist || []).filter(x => x && x.done).length;
+    return { minutes: lessons * 45, lessons };
+  }
+  const minutes = ((t && t.route) || []).reduce((a, r) => a + (r.t || 0), 0);
+  return { minutes, lessons: minutes / 45 };
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -10834,6 +10902,13 @@ function resetS(){
   document.getElementById('editSaveB').disabled=false;
 
   document.getElementById('saveB').disabled=false;
+
+  // 2026-08-27: שדה "מספר שיעורים בפועל" רלוונטי רק בעריכת נסיעה קיימת —
+  // מוסתר ומתאפס בכל יצירת/איפוס טופס נסיעה חדשה.
+  const _lob=document.getElementById('lessonsOverrideBox');
+  if(_lob) _lob.style.display='none';
+  const _loi=document.getElementById('tripLessonsOverride');
+  if(_loi) _loi.value='';
 
 }
 
@@ -11768,11 +11843,9 @@ function renderLog(){
 
     const routeStr=_routeLabel(t);
 
-    // Fix (2026-08-23, per Lavi): לנסיעת דיפו "שיעורים" נספר לפי כמה שיעורים
-    // סומנו כבוצעו ברשימה (checklist), לא לפי משך הזמן שהנסיעה תופסת בציר.
-    const lessons=t.isDepotLesson
-      ? (t.depotChecklist||[]).filter(x=>x&&x.done).length.toFixed(1)
-      : (t.route.reduce((s,r)=>s+r.t,0)/45).toFixed(1);
+    // 2026-08-27: משתמש ב-_tripLessonStats המשותף (כולל override ידני אם קיים)
+    // במקום הנוסחה הידנית — ראה הערה ליד ההגדרה.
+    const lessons=_tripLessonStats(t).lessons.toFixed(1);
 
     const delayTag=t.delayMin>0?`<span style="color:var(--warning);font-size:11px;"> (+${t.delayMin} דק')</span>`:'';
 
@@ -14087,16 +14160,9 @@ function renderDashboard(){
   }
 
   const totalTrips=trips.length;
-  // Fix (2026-08-24, per Lavi): נבחרה אופציה 2 — "דקות" ו"שיעורים" תמיד יתאמו.
-  // לנסיעת דיפו, המשך נספר לפי checklist_done×45, לא לפי טווח הזמן של הנסיעה
-  // (שתופס את כל המשמרת/קטע-המשנה המקורי, גם אם רק חלק מהשיעורים בוצעו בפועל).
-  const _tripEffectiveMin=t=>t.isDepotLesson
-    ? (t.depotChecklist||[]).filter(x=>x&&x.done).length*45
-    : t.route.reduce((ss,r)=>ss+r.t,0);
-  const totalMin=trips.reduce((s,t)=>s+_tripEffectiveMin(t),0);
-  const totalLessons=trips.reduce((s,t)=>s+(t.isDepotLesson
-    ? (t.depotChecklist||[]).filter(x=>x&&x.done).length
-    : t.route.reduce((ss,r)=>ss+r.t,0)/45), 0);
+  // 2026-08-27: משתמש ב-_tripLessonStats המשותף (כולל override ידני אם קיים).
+  const totalMin=trips.reduce((s,t)=>s+_tripLessonStats(t).minutes,0);
+  const totalLessons=trips.reduce((s,t)=>s+_tripLessonStats(t).lessons, 0);
   const names=[...new Set(trips.map(t=>t.name))];
   const gap=parseInt(document.getElementById('gapV')?.value)||40;
   let conflicts=0;
@@ -14113,7 +14179,7 @@ function renderDashboard(){
   trips.forEach(t=>{
     if(!byName[t.name])byName[t.name]={trips:0,min:0};
     byName[t.name].trips++;
-    byName[t.name].min+=_tripEffectiveMin(t);
+    byName[t.name].min+=_tripLessonStats(t).minutes;
   });
   const maxMin=Math.max(...Object.values(byName).map(v=>v.min),1);
 
@@ -18323,9 +18389,7 @@ function renderInstrTripJournal(){
     const endMin=last.endMin||0;
     const loc=t.isDepotLesson?'דיפו':(last.id.includes('N')?'נווה יעקב':last.id.includes('O')?'הדסה':'דיפו');
     const routeStr=_routeLabel(t);
-    const lessons=t.isDepotLesson
-      ? (t.depotChecklist||[]).filter(x=>x&&x.done).length.toFixed(1)
-      : (t.route.reduce((s,r)=>s+r.t,0)/45).toFixed(1);
+    const lessons=_tripLessonStats(t).lessons.toFixed(1);
     const delayTag=t.delayMin>0?`<span style="color:var(--warning);font-size:11px;"> (+${t.delayMin} דק')</span>`:'';
     const tripStartMin=timeToMin(t.startStr||'00:00');
     const isStarted=currentDate===today&&tripStartMin<=nowM;
@@ -18442,6 +18506,14 @@ function openTripEditModal(tripId){
   curRoute=JSON.parse(JSON.stringify(trip.route||[]));
   window._originalRouteHash=_routeHash(trip.route||[]);
 
+  // 2026-08-27, לפי בקשת לביא: שדה "מספר שיעורים בפועל" — רלוונטי רק כשעורכים
+  // נסיעה קיימת (למשל אחרי עיכוב שגרם לביצוע יותר שיעורים ממה שהמסלול
+  // המתוכנן משתמע). לא נוגע ב-route/timeline עצמם — תצוגה/סטטיסטיקה בלבד.
+  const _lob=document.getElementById('lessonsOverrideBox');
+  if(_lob) _lob.style.display='block';
+  const _loi=document.getElementById('tripLessonsOverride');
+  if(_loi) _loi.value=(trip.lessonsOverride!=null&&trip.lessonsOverride!=='')?trip.lessonsOverride:'';
+
   // Set form fields
   const tS=document.getElementById('tS');if(tS)tS.value=trip.startStr||'07:00';
   const tID=document.getElementById('tID');if(tID)tID.value=trip.name||'';
@@ -18491,6 +18563,13 @@ function applyTripEditFromManual(){
   trip.route=JSON.parse(JSON.stringify(curRoute));
   trip.startStr=startStr;
   trip.timeline=buildTimeline(startStr,curRoute);
+
+  // 2026-08-27: שמירת "מספר שיעורים בפועל" (override ידני, לא חובה). ריק =
+  // ביטול ה-override וחזרה לחישוב האוטומטי מ-route/checklist.
+  const _loi=document.getElementById('tripLessonsOverride');
+  const _loVal=_loi?_loi.value.trim():'';
+  if(_loVal!==''&&!isNaN(parseFloat(_loVal))) trip.lessonsOverride=parseFloat(_loVal);
+  else delete trip.lessonsOverride;
 
   _editState.tripId=null;
   editingTripId=null;
@@ -19880,12 +19959,10 @@ async function loadMonthlyDash(){
       if(!stats[t.name])stats[t.name]={trips:0,lessons:0,minutes:0,delays:0,delayMinTotal:0,delayNotes:[],reportOnly:0};
       const s=stats[t.name];
       s.trips++;
-      const dur=(t.route||[]).reduce((a,r)=>a+(r.t||0),0);
-      // Fix (2026-08-24, per Lavi): "דקות" ו"שיעורים" תמיד יתאמו — לנסיעת דיפו
-      // המשך נספר לפי checklist_done×45, לא לפי טווח הזמן של הנסיעה.
-      const depotDur=t.isDepotLesson ? (t.depotChecklist||[]).filter(x=>x&&x.done).length*45 : dur;
-      s.minutes+=depotDur;
-      s.lessons+=t.isDepotLesson ? (t.depotChecklist||[]).filter(x=>x&&x.done).length : dur/45;
+      // 2026-08-27: משתמש ב-_tripLessonStats המשותף (כולל override ידני אם קיים).
+      const _ls=_tripLessonStats(t);
+      s.minutes+=_ls.minutes;
+      s.lessons+=_ls.lessons;
       if(t.delayMin>0){s.delays++;s.delayMinTotal=(s.delayMinTotal||0)+t.delayMin;}
     }
   }
@@ -19974,8 +20051,8 @@ async function loadMonthlyDash(){
         <div style="font-size:12px;color:#666;">עיכובים</div>
       </div>
       <div style="background:${totalDelayMin>0?'#faeeda':'#eaf3de'};border-radius:9px;padding:14px;text-align:center;border:1px solid ${totalDelayMin>0?'#fac775':'#c0dd97'};">
-        <div style="font-size:24px;font-weight:bold;color:${totalDelayMin>0?'#854F0B':'#3B6D11'};">${totalDelayMin}</div>
-        <div style="font-size:12px;color:#666;">דק' עיכוב סה"כ</div>
+        <div style="font-size:24px;font-weight:bold;color:${totalDelayMin>0?'#854F0B':'#3B6D11'};">${_fmtDelayMinutes(totalDelayMin)}</div>
+        <div style="font-size:12px;color:#666;">עיכוב סה"כ</div>
       </div>`;
   }
 
@@ -20001,7 +20078,7 @@ async function loadMonthlyDash(){
         <td style="text-align:center;font-weight:bold;color:var(--secondary);">${s.lessons.toFixed(1)}</td>
         <td style="text-align:center;">${Math.round(s.minutes/60*10)/10} שע'</td>
         <td style="text-align:center;color:${s.delays>0?'#e74c3c':'#27ae60'};">${s.delays}</td>
-        <td style="text-align:center;">${avgDelay||'—'}</td>
+        <td style="text-align:center;">${avgDelay?_fmtDelayMinutes(avgDelay):'—'}</td>
         <td>
           <div style="display:flex;align-items:center;gap:6px;">
             <div style="flex:1;background:#eee;border-radius:4px;height:8px;overflow:hidden;">
@@ -20130,10 +20207,8 @@ async function exportMonthlyReport(){
   for(const [date,dayTrips] of Object.entries(rangeData).sort()){
     for(const t of dayTrips){
       const routeStr=_routeLabel(t);
-      // Fix (2026-08-23, per Lavi): אותו תיקון — checklist, לא משך זמן, לדיפו.
-      const lessons=(t.isDepotLesson
-        ? (t.depotChecklist||[]).filter(x=>x&&x.done).length
-        : (t.route||[]).reduce((a,r)=>a+(r.t||0),0)/45).toFixed(1);
+      // 2026-08-27: משתמש ב-_tripLessonStats המשותף (כולל override ידני אם קיים).
+      const lessons=_tripLessonStats(t).lessons.toFixed(1);
       const endMin=t.timeline?.length?t.timeline[t.timeline.length-1].endMin:0;
       rows.push([
         t.name||'',date,routeStr,t.startStr||'',
@@ -20538,8 +20613,11 @@ async function renderTimesheet(){
       // Get trip data for this instructor on this day from cache
       const dayTrips=(_monthHistoryCache[dateStr]||[]).filter(t=>t.name===entry.name);
       const tripCount=dayTrips.length;
-      const tripMin=dayTrips.reduce((a,t)=>a+(t.route||[]).reduce((s,r)=>s+(r.t||0),0),0);
-      const lessons=(tripMin/45).toFixed(1);
+      // 2026-08-27: משתמש ב-_tripLessonStats המשותף (כולל override ידני אם קיים,
+      // וגם דיפו — כאן בעבר לא טופל דיפו כלל).
+      const _tripStats=dayTrips.reduce((a,t)=>{const ls=_tripLessonStats(t);return{min:a.min+ls.minutes,lessons:a.lessons+ls.lessons};},{min:0,lessons:0});
+      const tripMin=_tripStats.min;
+      const lessons=_tripStats.lessons.toFixed(1);
       const delays=dayTrips.filter(t=>t.delayMin>0).length;
       const taskDef=taskDefs.find(t=>t.id===entry.task)||{label:entry.task||'?',icon:'📋'};
 
@@ -20656,10 +20734,10 @@ async function renderComparison(){
         if(!stats[t.name])stats[t.name]={trips:0,lessons:0,minutes:0,delays:0};
         const s=stats[t.name];
         s.trips++;
-        const dur=(t.route||[]).reduce((a,r)=>a+(r.t||0),0);
-        // Fix (2026-08-24, per Lavi): "דקות" ו"שיעורים" תמיד יתאמו.
-        s.minutes+=t.isDepotLesson ? (t.depotChecklist||[]).filter(x=>x&&x.done).length*45 : dur;
-        s.lessons+=t.isDepotLesson ? (t.depotChecklist||[]).filter(x=>x&&x.done).length : dur/45;
+        // 2026-08-27: משתמש ב-_tripLessonStats המשותף (כולל override ידני אם קיים).
+        const _ls=_tripLessonStats(t);
+        s.minutes+=_ls.minutes;
+        s.lessons+=_ls.lessons;
         if(t.delayMin>0)s.delays++;
       }
     }
@@ -21225,10 +21303,10 @@ async function exportPDFReport(){
       if(!statsPerInstr[t.name])statsPerInstr[t.name]={trips:0,lessons:0,minutes:0,delays:0};
       const s=statsPerInstr[t.name];
       s.trips++;
-      const dur=(t.route||[]).reduce((a,r)=>a+(r.t||0),0);
-      // Fix (2026-08-24, per Lavi): "דקות" ו"שיעורים" תמיד יתאמו.
-      s.minutes+=t.isDepotLesson ? (t.depotChecklist||[]).filter(x=>x&&x.done).length*45 : dur;
-      s.lessons+=t.isDepotLesson ? (t.depotChecklist||[]).filter(x=>x&&x.done).length : dur/45;
+      // 2026-08-27: משתמש ב-_tripLessonStats המשותף (כולל override ידני אם קיים).
+      const _ls=_tripLessonStats(t);
+      s.minutes+=_ls.minutes;
+      s.lessons+=_ls.lessons;
       if(t.delayMin>0)s.delays++;
     }
   }
@@ -23934,12 +24012,8 @@ async function openDailyReportPreview(dateOverride){
     + Object.entries(window._taskReportsCache||{})
         .filter(([k,v])=>k.startsWith(dateStr+'__')&&v&&v.type==='unified_daily'&&Array.isArray(v.delays))
         .reduce((s,[,v])=>s+v.delays.length,0);
-  // Fix (2026-08-23, per Lavi): נסיעת דיפו סופרת שעות שיעור לפי checklist
-  // שסומן (45 דק' לכל שיעור שבוצע), לא לפי משך זמן הנסיעה — שתופס כעת את
-  // טווח המשמרת המלאה ולא רק את מה שבפועל בוצע.
-  const totalLessonHours=dayTrips.reduce((s,t)=>s+(t.isDepotLesson
-    ? (t.depotChecklist||[]).filter(x=>x&&x.done).length*45
-    : (t.route||[]).reduce((a,r)=>a+(r.t||0),0)), 0)/60;
+  // 2026-08-27: משתמש ב-_tripLessonStats המשותף (כולל override ידני אם קיים).
+  const totalLessonHours=dayTrips.reduce((s,t)=>s+_tripLessonStats(t).minutes, 0)/60;
   const activeCount=dayEntries.length;
   const missingReports=dayEntries.filter(e=>{
     const k=`${dateStr}__${e.name}__unified`;
@@ -25093,7 +25167,7 @@ async function renderTasksTab(){
   if(monthTrips.length){
     (tripTaskDefs.length?tripTaskDefs:[{id:'trip',label:'קורס מעשי סיטאדיס',icon:'🚇'}]).forEach(tDef=>{
       const byInstr={};
-      monthTrips.forEach(t=>{if(!t||!t.name)return;if(!byInstr[t.name])byInstr[t.name]={trips:0,lessons:0,min:0};byInstr[t.name].trips++;const dur=(t.route||[]).reduce((s,r)=>s+(r.t||0),0);byInstr[t.name].lessons+=dur/45;byInstr[t.name].min+=dur;});
+      monthTrips.forEach(t=>{if(!t||!t.name)return;if(!byInstr[t.name])byInstr[t.name]={trips:0,lessons:0,min:0};byInstr[t.name].trips++;const _ls=_tripLessonStats(t);byInstr[t.name].lessons+=_ls.lessons;byInstr[t.name].min+=_ls.minutes;});
       const names=Object.keys(byInstr).sort();if(!names.length)return;
       const tot={trips:names.reduce((s,n)=>s+byInstr[n].trips,0),lessons:names.reduce((s,n)=>s+byInstr[n].lessons,0),hrs:names.reduce((s,n)=>s+byInstr[n].min,0)/60};
       const rows=names.map(n=>`<tr style="border-bottom:1px solid #f5f5f5;"><td style="padding:7px 10px;font-weight:bold;">${n}</td><td style="text-align:center;font-weight:bold;color:var(--primary);">${byInstr[n].trips}</td><td style="text-align:center;color:var(--secondary);">${byInstr[n].lessons.toFixed(1)}</td><td style="text-align:center;color:#888;">${(byInstr[n].min/60).toFixed(1)} שע'</td></tr>`).join('');
@@ -25157,8 +25231,8 @@ async function exportDashboardXLSX(){
     Object.values(monthData).forEach(day=>(day||[]).forEach(t=>{
       if(!byInstr[t.name])byInstr[t.name]={trips:0,lessons:0,minutes:0,delays:0,routeChanges:0};
       const v=byInstr[t.name];v.trips++;
-      const dur=(t.route||[]).reduce((s,r)=>s+(r.t||0),0);
-      v.lessons+=dur/45;v.minutes+=dur;
+      const _ls=_tripLessonStats(t);
+      v.lessons+=_ls.lessons;v.minutes+=_ls.minutes;
       if(t.delayMin>0)v.delays++;
       if(t.routeVariant>0)v.routeChanges++;
     }));
@@ -26326,7 +26400,7 @@ function _levelOf(t) {
        : 'מתקדמים';
 }
 function _toggleTsBucket(kind, key) {
-  var contId = kind === 'stage' ? 'ts-stage-detail' : 'ts-level-detail';
+  var contId = kind === 'stage' ? 'ts-stage-detail' : kind === 'trend' ? 'ts-trend-detail' : 'ts-level-detail';
   var cont = document.getElementById(contId);
   if (!cont) return;
   if (cont.getAttribute('data-key') === key && cont.style.display !== 'none') {
@@ -26335,7 +26409,9 @@ function _toggleTsBucket(kind, key) {
     return;
   }
   var list = (window._tsPerTrainee || []).filter(function(t) {
-    return kind === 'stage' ? t.stage === key : _levelOf(t) === key;
+    if (kind === 'stage') return t.stage === key;
+    if (kind === 'trend') return t.trend === key;
+    return _levelOf(t) === key;
   });
   // 2026-08-19: עיצוב קומפקטי — צ'יפים עוטפים (לא שורה מלאה-רוחב לכל חניך),
   // ולחיצה על השם עצמו פותחת את התיק ישירות (לא כפתור נפרד "פתח תיק").
@@ -26509,14 +26585,25 @@ function _renderTraineeSummaryPanel() {
   var kpis=[
     ['🎓 חניכים',     String(summary.totalTrainees),  '#2c3e50'],
     ['⚡ פעילים',       String(summary.activeTrainees), '#2980b9'],
-    ['★ ממוצע כללי',  summary.globalAvgScore!==null?String(summary.globalAvgScore):'N/A','#8e44ad'],
-    ['📉 מגמת ירידה', String(summary.declining?summary.declining.length:0),'#e74c3c'],
-    ['📈 מגמת שיפור', String(summary.improving?summary.improving.length:0),'#27ae60']
+    ['★ ממוצע כללי',  summary.globalAvgScore!==null?String(summary.globalAvgScore):'N/A','#8e44ad']
   ];
-  h.push('<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:14px;direction:rtl;">');
+  h.push('<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:10px;direction:rtl;">');
   kpis.forEach(function(k){h.push('<div style="background:white;border:1px solid #e8edf5;border-radius:10px;padding:12px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,.05);"><div style="font-size:11px;color:#888;margin-bottom:4px;">'+k[0]+'</div><div style="font-size:22px;font-weight:bold;color:'+k[2]+';">'+k[1]+'</div></div>');});
   h.push('</div>');
-  window._tsPerTrainee = summary.perTrainee; // לשימוש handlers של פילי שלב/רמה לחיצים
+  // 2026-08-27, לפי בקשת לביא: "מגמת שיפור/ירידה" היו רק מספר בלי אפשרות לדעת
+  // במי מדובר — הפכו לכפתורים לחיצים (כמו התפלגות שלבים/רמות) שפותחים רשימת
+  // שמות לחיצה, כל שם פותח את התיק ישירות.
+  var trendKpis=[
+    ['trend','declining','📉 מגמת ירידה', summary.declining?summary.declining.length:0, '#e74c3c', '#fdecea'],
+    ['trend','improving','📈 מגמת שיפור', summary.improving?summary.improving.length:0, '#27ae60', '#eafaf1']
+  ];
+  h.push('<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:6px;direction:rtl;">');
+  trendKpis.forEach(function(k){
+    h.push('<button onclick="try{_toggleTsBucket(\''+k[0]+'\',\''+k[1]+'\');}catch(e){}" style="width:auto;margin:0;cursor:pointer;font-family:inherit;background:white;border:1px solid #e8edf5;border-radius:10px;padding:12px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,.05);"><div style="font-size:11px;color:#888;margin-bottom:4px;">'+k[2]+' <span style="color:#aaa;">(לחיצה מציגה חניכים)</span></div><div style="font-size:22px;font-weight:bold;color:'+k[4]+';">'+k[3]+'</div></button>');
+  });
+  h.push('</div>');
+  h.push('<div id="ts-trend-detail" style="display:none;margin-bottom:14px;padding:10px 12px;background:white;border:1px solid #e8edf5;border-radius:10px;direction:rtl;"></div>');
+  window._tsPerTrainee = summary.perTrainee; // לשימוש handlers של פילי שלב/רמה/מגמה לחיצים
   var byStage=summary.byStage||{};
   if(Object.keys(byStage).length){
     var sColors={'טרם התחיל':['\#95a5a6','\#f4f6f7'],'שלב טכני':['\#3498db','\#ebf5fb'],'שלב תפעולי':['\#f39c12','\#fef9e7'],'שלב מסחרי':['\#8e44ad','\#f5eef8'],'השתלמות אורבוס':['\#e67e22','\#fdf2e9'],'מוכן לחניכה':['\#27ae60','\#eafaf1'],'בחניכה':['\#16a085','\#e8f8f5']};
