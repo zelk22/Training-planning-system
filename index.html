@@ -14,7 +14,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 68</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 71</title>
 
 <style>
 
@@ -1426,7 +1426,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 128;
+  const APP_VERSION = 131;
 
   function initFirebase() {
     try {
@@ -4191,6 +4191,7 @@ window.TraineeSystem = {
                 <button id="ts-settings-btn" class="btn btn-ghost" data-action="open-ts-settings" style="display:none;width:auto !important;padding:8px 14px;">⚙️ הגדרות</button>
                 <button id="ts-add-trainee-btn" class="btn btn-blue" data-action="toggle-panel" data-panel="add-panel">+ חניך חדש</button>
             <button class="btn" data-action="show-reports" style="background:#6c3483;color:white;border:none;border-radius:8px;padding:8px 14px;cursor:pointer;font-size:13px;font-weight:bold;">📊 דוחות</button>
+            <button id="ts-archived-btn" class="btn" data-action="show-archived" style="display:none;background:#7f8c8d;color:white;border:none;border-radius:8px;padding:8px 14px;cursor:pointer;font-size:13px;font-weight:bold;">📦 חניכים שהוסרו</button>
             </div>
         </header>
 
@@ -4731,6 +4732,7 @@ window.TraineeSystem = {
             if (action === 'confirm-add-trainee-another') this.confirmAddTrainee(true);
             if (action === 'add-instructor') this.addInstructor();
             if (action === 'show-reports')   this.showReports();
+            if (action === 'show-archived')  this.showArchivedTrainees();
             if (action === 'open-ts-settings') this.openSettings();
             if (action === 'close-ts-settings') this.closeSettings();
             if (action === 'save-ts-settings')  this.saveSettings();
@@ -5147,18 +5149,100 @@ window.TraineeSystem = {
             showToast('רק מנהל יכול למחוק חניך', 'warning');
             return;
         }
-        // Fix #78: this used to permanently erase the trainee AND their training history —
-        // if they left the course (dropped out / training stopped), the manager still wants a
-        // record of what they did. Now it's a soft-delete: the trainee is hidden from the
-        // active list (and from new-feedback pickers) but their record + lesson history stays
-        // in Firebase untouched, so nothing is actually lost.
-        this.showConfirm(`להסיר את <b>${name}</b> מרשימת החניכים הפעילים?<br><span style="font-size:0.85em;color:#888;">ההיסטוריה וההכשרה שלו יישמרו במערכת לצורך תיעוד — הוא רק לא יוצג יותר ברשימה.</span>`, () => {
+        // 2026-08-27, לפי בקשת לביא: יש לתעד את סיבת ההסרה (נשירה/סיום/מעבר/אחר +
+        // פירוט חופשי) — לא רק להסתיר את החניך. נשמר על t.archiveReason.
+        this._openArchiveTraineeModal(id, name);
+    },
+
+    _openArchiveTraineeModal(id, name) {
+        const overlay = document.createElement('div');
+        overlay.id = 'ts-archive-reason-overlay';
+        overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:center;justify-content:center;';
+        const CATS = [
+            {v:'dropout',  l:'נשירה מהקורס'},
+            {v:'completed',l:'סיום מוצלח'},
+            {v:'transfer', l:'מעבר קורס/מסלול אחר'},
+            {v:'other',    l:'אחר'}
+        ];
+        overlay.innerHTML = `
+            <div style="background:white;border-radius:16px;padding:26px 28px;max-width:420px;width:92%;
+                        box-shadow:0 20px 60px rgba(0,0,0,0.3);direction:rtl;">
+                <div style="font-size:1.8em;margin-bottom:8px;text-align:center;">⚠️</div>
+                <p style="margin:0 0 16px;color:#1a2a3a;font-size:1em;line-height:1.5;text-align:center;">
+                    להסיר את <b>${_esc(name)}</b> מרשימת החניכים הפעילים?<br>
+                    <span style="font-size:0.85em;color:#888;">ההיסטוריה וההכשרה שלו יישמרו במערכת לצורך תיעוד — הוא רק לא יוצג יותר ברשימה.</span>
+                </p>
+                <label style="display:block;font-size:12.5px;font-weight:bold;color:#444;margin-bottom:4px;">סיבת ההסרה</label>
+                <select id="ts-arch-reason-cat" style="width:100%;padding:8px;border:1.5px solid #ddd;border-radius:8px;margin-bottom:10px;font-size:13px;">
+                    ${CATS.map(c=>`<option value="${c.v}">${c.l}</option>`).join('')}
+                </select>
+                <label style="display:block;font-size:12.5px;font-weight:bold;color:#444;margin-bottom:4px;">פירוט (לא חובה)</label>
+                <textarea id="ts-arch-reason-text" rows="2" placeholder="לדוגמה: עזב עקב עבודה חדשה..."
+                    style="width:100%;padding:8px;border:1.5px solid #ddd;border-radius:8px;margin-bottom:16px;font-size:13px;resize:vertical;"></textarea>
+                <div style="display:flex;gap:10px;justify-content:center;">
+                    <button id="ts-arch-yes" style="background:#e74c3c;color:white;border:none;padding:10px 24px;
+                        border-radius:8px;font-weight:700;cursor:pointer;font-size:1em;">כן, הסר</button>
+                    <button id="ts-arch-no" style="background:#f0f4f8;color:#4a5568;border:1.5px solid #e2e8f0;
+                        padding:10px 24px;border-radius:8px;font-weight:700;cursor:pointer;font-size:1em;">ביטול</button>
+                </div>
+            </div>`;
+        document.body.appendChild(overlay);
+        const close = () => { if (overlay.parentNode) document.body.removeChild(overlay); };
+        overlay.querySelector('#ts-arch-no').onclick = close;
+        overlay.onclick = (e) => { if (e.target === overlay) close(); };
+        overlay.querySelector('#ts-arch-yes').onclick = () => {
+            const cat  = document.getElementById('ts-arch-reason-cat')?.value || 'other';
+            const text = document.getElementById('ts-arch-reason-text')?.value.trim() || '';
+            const catLabel = (CATS.find(c => c.v === cat) || {}).l || cat;
             const t = this.trainees.find(x => x.id === id);
-            if (t) { t.archived = true; t.archivedAt = Date.now(); }
+            if (t) {
+                t.archived = true;
+                t.archivedAt = Date.now();
+                t.archiveReason = { category: cat, categoryLabel: catLabel, text, by: (typeof currentUserName !== 'undefined' ? currentUserName : '') };
+            }
             this.persist();
             this.renderList();
+            close();
             if (typeof showToast === 'function') showToast('👤 החניך הוסר מהרשימה — הנתונים נשמרו', 'info');
-        });
+        };
+    },
+
+    // רשימת חניכים שהוסרו (soft-deleted) + סיבת הסרה — לצפייה בלבד, מנהל בלבד.
+    showArchivedTrainees() {
+        if (typeof currentRole !== 'undefined' && currentRole !== 'admin') return;
+        const archived = (this.trainees || []).filter(t => t.archived);
+        const rows = archived.length
+            ? [...archived].sort((a,b) => (b.archivedAt||0) - (a.archivedAt||0)).map(t => {
+                const r = t.archiveReason || {};
+                const dateStr = t.archivedAt ? new Date(t.archivedAt).toLocaleDateString('he-IL') : '—';
+                return `<tr>
+                    <td style="padding:8px 10px;border-bottom:1px solid #eee;">${_esc(t.name)}</td>
+                    <td style="padding:8px 10px;border-bottom:1px solid #eee;text-align:center;white-space:nowrap;">${dateStr}</td>
+                    <td style="padding:8px 10px;border-bottom:1px solid #eee;text-align:center;">${_esc(r.categoryLabel || '—')}</td>
+                    <td style="padding:8px 10px;border-bottom:1px solid #eee;color:#555;">${_esc(r.text || '')}</td>
+                </tr>`;
+            }).join('')
+            : `<tr><td colspan="4" style="padding:16px;text-align:center;color:#aaa;">אין חניכים שהוסרו</td></tr>`;
+        const overlay = document.createElement('div');
+        overlay.id = 'ts-archived-overlay';
+        overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center;';
+        overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+        overlay.innerHTML = `<div style="background:white;border-radius:16px;padding:24px;width:min(700px,95vw);max-height:85vh;overflow-y:auto;direction:rtl;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">
+                <h3 style="margin:0;">📦 חניכים שהוסרו — ${archived.length}</h3>
+                <button onclick="this.closest('#ts-archived-overlay').remove()" style="background:none;border:none;font-size:20px;cursor:pointer;">✕</button>
+            </div>
+            <table style="width:100%;border-collapse:collapse;font-size:13px;">
+                <thead><tr style="background:#f0f4ff;">
+                    <th style="padding:10px;text-align:right;">שם</th>
+                    <th style="padding:10px;text-align:center;">תאריך הסרה</th>
+                    <th style="padding:10px;text-align:center;">סיבה</th>
+                    <th style="padding:10px;text-align:right;">פירוט</th>
+                </tr></thead>
+                <tbody>${rows}</tbody>
+            </table>
+        </div>`;
+        document.body.appendChild(overlay);
     },
 
     editName(id, curName, e) {
@@ -5834,7 +5918,21 @@ window.TraineeSystem = {
 
     showReports() {
         const total = this.trainees.length;
-        const avg = t => { const ls=t.lessons||[]; if(!ls.length)return 0; return ((ls.reduce((s,l)=>s+(l.s1+l.s2+l.s3+l.s4+l.s5),0)/(ls.length*50))*100).toFixed(0); };
+        const avg = t => {
+            // 2026-08-27, לפי בקשת לביא: תוקן אותו באג שכבר תוקן ב-renderDetail —
+            // סכימת l.s1+l.s2+...+l.s5 כש-undefined מעורב (מיומנות שלא מולאה
+            // באיזשהו שיעור) הופכת את כל הסכום ל-NaN. עכשיו סופרים רק ערכים
+            // שקיימים בפועל (ומחלקים לפי כמותם, לא לפי ls.length*50 הקבוע).
+            const ls = t.lessons || [];
+            let sum = 0, cnt = 0;
+            ls.forEach(l => {
+                [1,2,3,4,5].forEach(n => {
+                    const v = l['s'+n];
+                    if (v != null) { sum += v; cnt++; }
+                });
+            });
+            return cnt ? ((sum / (cnt*10)) * 100).toFixed(0) : 0;
+        };
         const rows = [...this.trainees].sort((a,b)=>(b.lessons||[]).length-(a.lessons||[]).length).map(t => {
             const ls=t.lessons||[]; const maxL=new Set(ls.flatMap(l=>(l.mission==='קורס מעשי סיטאדיס'||l.mission==='קורס מעשי'||l.mission==='קורס')?(l.lessonNums||[]):[]).filter(n=>n)).size;
             return `<tr><td style="padding:8px 10px;border-bottom:1px solid #eee;">${_esc(t.name)}</td><td style="padding:8px 10px;border-bottom:1px solid #eee;text-align:center;">${ls.length}</td><td style="padding:8px 10px;border-bottom:1px solid #eee;text-align:center;">${maxL}/50</td><td style="padding:8px 10px;border-bottom:1px solid #eee;text-align:center;font-weight:bold;color:${avg(t)<65?'#e74c3c':avg(t)<82?'#e67e22':'#27ae60'}">${avg(t)}%</td><td style="padding:8px 10px;border-bottom:1px solid #eee;text-align:center;">${ls.length?ls[ls.length-1].ins:'-'}</td></tr>`;
@@ -10363,8 +10461,11 @@ async function loadInstructors(){
 function populateAllInstrSelects(){
 
   const names=_instrNames;
+  // הסתר-משיבוצים חוסם גם כאן (מתכנן נסיעות) — לא רק בלוח השבועי. בורר
+  // ההתחברות (populateInstrSelect) נשאר בכוונה לא מסונן.
+  const visibleNames=names.filter(n=>!(_hiddenInstrs&&_hiddenInstrs.has(n)));
 
-  const optHtml='<option value="">— בחר מדריך —</option>'+names.map(n=>`<option value="${n}">${n}</option>`).join('');
+  const optHtml='<option value="">— בחר מדריך —</option>'+visibleNames.map(n=>`<option value="${n}">${n}</option>`).join('');
 
   // tID = manual trip entry dropdown
   const tID=document.getElementById('tID');
@@ -10377,7 +10478,7 @@ function populateAllInstrSelects(){
   // instructorList = datalist for text inputs
   const dl=document.getElementById('instructorList');
 
-  if(dl){dl.innerHTML=names.map(n=>`<option value="${_esc(n)}">`).join('');}
+  if(dl){dl.innerHTML=visibleNames.map(n=>`<option value="${_esc(n)}">`).join('');}
 
   // planner select (if any)
   document.querySelectorAll('select.instr-pick,[data-instr-select]').forEach(sel=>{
@@ -12096,7 +12197,7 @@ function renderPlannerTable(){
 
           <option value="">— בחר מדריך —</option>
 
-          ${_instrNames.map(n=>`<option value="${n}" ${n===row.name?'selected':''}>${n}</option>`).join('')}
+          ${_instrNames.filter(n=>n===row.name||!(_hiddenInstrs&&_hiddenInstrs.has(n))).map(n=>`<option value="${n}" ${n===row.name?'selected':''}>${n}</option>`).join('')}
 
         </select>
 
@@ -25780,6 +25881,9 @@ function _updateTraineeBtnVisibility() {
   // Reports button — admin only (hide for instructor AND mentor)
   const rb = cont.querySelector('[data-action="show-reports"]');
   if (rb) rb.style.display = _isAdmin ? '' : 'none';
+  // Archived trainees button — admin only (same list holds documented drop-out reasons)
+  const abtn = cont.querySelector('[data-action="show-archived"]');
+  if (abtn) abtn.style.display = _isAdmin ? '' : 'none';
   // Settings button — show only for admin
   const sbtn = cont.querySelector('#ts-settings-btn');
   if (sbtn) sbtn.style.display = _isAdmin ? '' : 'none';
