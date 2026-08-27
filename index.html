@@ -14,7 +14,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 67</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 68</title>
 
 <style>
 
@@ -1426,7 +1426,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 127;
+  const APP_VERSION = 128;
 
   function initFirebase() {
     try {
@@ -5804,6 +5804,9 @@ window.TraineeSystem = {
     },
 
     deleteLesson(idx) {
+        // 2026-08-27, לפי בקשת לביא: מחיקת רשומת שיעור (שמאפסת התקדמות/מאפשרת
+        // ביצוע מחדש) מוגבלת למנהל בלבד — נאכף גם כאן, לא רק בהסתרת הכפתור.
+        if (typeof currentRole !== 'undefined' && currentRole !== 'admin') return;
         const t = this.trainees.find(x => x.id === this.currentId);
         if (!t) return;
         const l    = t.lessons[idx];
@@ -7043,7 +7046,7 @@ window.TraineeSystem = {
                 <td>${_esc(l.ins||'')}</td>
                 <td>${[1,2,3,4,5].map(n=>`<span class="score-badge">${l['s'+n]||'—'}</span>`).join('')}</td>
                 <td style="text-align:right;color:#555;">${_esc(l.notes||'')}</td>
-                <td><button data-delete-lesson="${realIdx}" style="background:none;border:1px solid #e74c3c;color:#e74c3c;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:0.78em;">🗑️</button></td>
+                <td>${(typeof currentRole === 'undefined' || currentRole === 'admin') ? `<button data-delete-lesson="${realIdx}" style="background:none;border:1px solid #e74c3c;color:#e74c3c;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:0.78em;">🗑️</button>` : ''}</td>
             </tr>`;
         });
     },
@@ -22309,6 +22312,25 @@ async function submitUnifiedReport() {
   const date = document.getElementById('ur-date')?.value || currentDate;
   const instructor = currentUserName;
   if (!date || !instructor) { showToast('שגיאה: חסר תאריך או שם מדריך', 'error'); return; }
+
+  // 2026-08-27, לפי בקשת לביא: חסימת הגשה כפולה — הגשה חוזרת לאותו תאריך+מדריך
+  // הייתה דורסת את רשומת הדוח עצמה (מפתח קבוע) אך גם דוחפת רשומות שיעור נוספות
+  // (כפולות) לתיקי החניכים, כי addLessonFromExternal תמיד מוסיף ולא מחליף.
+  // לעריכת דוח קיים יש להשתמש ב-"✏️ ערוך פרטים" בארכיון הטפסים.
+  {
+    const _dupKey = `${date}__${instructor}__unified`;
+    let _existing = (window._taskReportsCache && window._taskReportsCache[_dupKey]) || null;
+    if (!_existing) {
+      try {
+        const _ls = JSON.parse(localStorage.getItem('taskReports_' + date) || '{}');
+        _existing = _ls[_dupKey] || null;
+      } catch(e) {}
+    }
+    if (_existing) {
+      showToast('⚠️ כבר קיים דוח "סיכום יום" לתאריך זה — לעריכה יש לפתוח את הדוח הקיים בארכיון הטפסים ("✏️ ערוך פרטים"), לא לשלוח טופס חדש', 'warning');
+      return;
+    }
+  }
 
   // 2026-08-23, לפי בקשת לביא: "שעות הדרכה קלה" הפך לשדה חובה — הטופס לא
   // נשלח/נסגר בלעדיו, רק מתריע ומדגיש את השדה החסר.
