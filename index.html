@@ -14,7 +14,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 74</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 75</title>
 
 <style>
 
@@ -1426,7 +1426,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 134;
+  const APP_VERSION = 135;
 
   function initFirebase() {
     try {
@@ -24122,6 +24122,12 @@ document.addEventListener('DOMContentLoaded',()=>{
   if(!ms)return;
   ms.addEventListener('toggle',()=>{
     if(!ms.open)return; // closing — fine
+    // 2026-08-27, לפי בקשת לביא: מנהל שעורך נסיעה של מדריך כלשהו נכנס תמיד
+    // עם currentUserName של עצמו (לא של המדריך) — הבדיקה הזו הייתה סוגרת את
+    // הסקציה מיד אחרי הפתיחה (הבהוב) כי חשבה בטעות ש"משתמש לא נכון" פתח אותה.
+    // הבדיקה רלוונטית רק למניעת דליפת עריכה בין שני מדריכים שונים (currentRole
+    // === 'instructor'), לא כשמנהל פותח אותה במכוון.
+    if(typeof currentRole!=='undefined'&&currentRole==='admin')return;
     const editFor=ms.getAttribute('data-editing-for')||'';
     if(editFor&&editFor!==currentUserName){
       // Wrong user opened it — clear edit state
