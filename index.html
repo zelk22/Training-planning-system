@@ -14,7 +14,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 82</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 84</title>
 
 <style>
 
@@ -1426,7 +1426,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 142;
+  const APP_VERSION = 144;
 
   function initFirebase() {
     try {
@@ -7272,13 +7272,20 @@ window.TraineeSystem = {
             extraDesc:  lessonData.extraDesc   || '',
             extraHours: lessonData.extraHours  || 0,
             note:       lessonData.note        || '',
-            s1: lessonData.s1 || null,
-            s2: lessonData.s2 || null,
-            s3: lessonData.s3 || null,
-            s4: lessonData.s4 || null,
-            s5: lessonData.s5 || null,
             _fromUnifiedReport: true
         };
+        // 2026-08-30, לפי בקשת לביא: הוחלף מ-5 שדות קשיחים (s1-s5) למספר/סדר
+        // מיומנויות דינמי לגמרי לפי this.settings.skills — בדיוק כמו בכל שאר
+        // המערכת (renderDetail/saveLesson/וכו'). קודם, מיומנות שישית (או כל
+        // מיומנות שנוספה מעבר ל-5) הייתה נעלמת בשקט בדיוק כאן — היא כן נשלחה
+        // מטופס "סיכום יום" בתוך lessonData, אבל מעולם לא הועתקה לרשומה
+        // שנשמרת בפועל בתיק החניך.
+        const skillList = (this.settings?.skills?.length) ? this.settings.skills : [
+            {id:'s1'}, {id:'s2'}, {id:'s3'}, {id:'s4'}, {id:'s5'}
+        ];
+        skillList.forEach(sk => {
+            if (lessonData[sk.id] != null) lesson[sk.id] = lessonData[sk.id];
+        });
         // Remove nulls and empty strings
         Object.keys(lesson).forEach(k => {
             if (lesson[k] === null) delete lesson[k];
@@ -14840,6 +14847,21 @@ function _wasAssignedToTripTaskOnDate(name, dateStr){
   });
 }
 
+// 2026-08-30, לפי בקשת לביא: גרסה רחבה יותר — לצורך התרעת "טופס סיכום יום
+// חסר" בלבד. משבצת "נסיעה/קורס מעשי" ממשיכה להשתמש ב-_wasAssignedToTripTaskOnDate
+// (חובת משוב חניך לפני שמירת הטופס — לא השתנתה, עדיין רק קורס מעשי/נסיעה).
+// כאן: כל סוג משימה משובצת (לא רק נסיעה) — למעט חופש/היעדרות — נחשבת "יום
+// עבודה" שדורש הגשת "סיכום יום", כדי שההתרעה תכסה גם ימי עיון/atp/משרד וכו'.
+function _wasAssignedToAnyTaskOnDate(name, dateStr){
+  const dayEntries=(typeof schedData!=='undefined'?schedData[dateStr]:null)||[];
+  return dayEntries.some(e=>{
+    if(e.name!==name)return false;
+    if(e.status!=='approved'&&e.status!=='pending')return false;
+    if(typeof _isVacationShiftKey==='function'&&_isVacationShiftKey(e.shift))return false;
+    return !!e.task; // כל משימה משובצת בפועל (לא שורה ריקה)
+  });
+}
+
 function _getMissingDailyReportWarnings(forName){
   const warnings=[];
   const names=forName?[forName]:(typeof _instrNames!=='undefined'?_instrNames:[]);
@@ -14847,7 +14869,7 @@ function _getMissingDailyReportWarnings(forName){
     const d=new Date(); d.setDate(d.getDate()-back);
     const dateStr=_localDateStr(d);
     names.forEach(name=>{
-      if(!_wasAssignedToTripTaskOnDate(name,dateStr))return;
+      if(!_wasAssignedToAnyTaskOnDate(name,dateStr))return;
       const reportKey=`${dateStr}__${name}__unified`;
       const hasReport=!!(window._taskReportsCache&&window._taskReportsCache[reportKey]);
       if(!hasReport)warnings.push({name,date:dateStr});
@@ -22721,7 +22743,14 @@ async function submitUnifiedReport() {
       const val = parseInt(document.getElementById(`ur-fb-${idx}-${sk.id}`)?.value || '', 10);
       if (!isNaN(val) && val >= 1 && val <= 10) lesson[sk.id] = val;
     });
-    lessonResults.push({ traineeId, freeName, freeCourseId, lesson, idx });
+    // 2026-08-30, לפי בקשת לביא: שם תצוגה נלכד כאן, ישירות מהטופס, ולא משוחזר
+    // מאוחר יותר על ידי חיפוש חוזר בתיקי החניכים (ר' report.feedbackDetails
+    // למטה) — זה מה שגרם ל"לא נמצא פירוט" גם עבור חניכים אמיתיים (לא רק שם
+    // חד-פעמי): כל תלות בשחזור אחורי היא שברירית (שם/תאריך שלא תואמים בדיוק
+    // יותר, חניך שהוזרק בכשל שקט וכו').
+    const traineeSel = document.getElementById(`ur-fb-${idx}-trainee`);
+    const traineeName = freeName || traineeSel?.options[traineeSel?.selectedIndex]?.textContent || '?';
+    lessonResults.push({ traineeId, freeName, freeCourseId, lesson, idx, traineeName });
   });
 
   // 2026-08-24, לפי בקשת לביא: "לפחות משוב חניך אחד" נדרש רק אם המדריך היה
@@ -22753,6 +22782,24 @@ async function submitUnifiedReport() {
 
   // Attach feedback count to report before saving
   report.feedbackCount = lessonResults.length;
+  // 2026-08-30, לפי בקשת לביא: שומרים את פירוט המשוב המלא *בתוך הדוח עצמו*,
+  // ישירות מהטופס בזמן ההגשה — לא רק ספירה שדורשת שחזור אחורי לא-אמין
+  // מתיקי החניכים בזמן הצפייה (ר' openViewUnifiedReport/viewUnifiedReport).
+  // כולל גם שמות חד-פעמיים (הם ממילא לא נכתבים לשום תיק חניך).
+  report.feedbackDetails = lessonResults.map(r => {
+    const sk = {};
+    skills.forEach(s => { if (r.lesson[s.id] != null) sk[s.id] = r.lesson[s.id]; });
+    return {
+      name:       r.traineeName,
+      mission:    r.lesson.mission,
+      lessonNums: r.lesson.lessonNums,
+      extraDesc:  r.lesson.extraDesc || '',
+      note:       r.lesson.note || '',
+      skills:     sk,
+    };
+  });
+  // שמות המיומנויות בזמן ההגשה (למקרה שיתעדכנו/יתחלפו בעתיד — הדוח יישאר קריא).
+  report.skillLabels = skills.map(s => ({ id: s.id, name: s.name || s.id }));
 
   // Save day summary to taskReports
   const reportKey = `${date}__${instructor}__unified`;
@@ -23054,10 +23101,34 @@ async function openViewUnifiedReport(date, instructorName) {
     const skills = (typeof TraineeSystem !== 'undefined' && TraineeSystem.settings?.skills?.length)
       ? TraineeSystem.settings.skills : [];
 
-    if (!matches.length) {
-      feedbackEl.innerHTML = (report.feedbackCount > 0)
-        ? `<div style="color:#aaa;font-size:13px;">דווחו ${report.feedbackCount} משובים, אך לא נמצא פירוט (ייתכן שנשמרו כשם חד-פעמי שלא נקשר לחניך קבוע).</div>`
-        : `<div style="color:#aaa;font-size:13px;">לא מולאו משובי חניכים ביום זה.</div>`;
+    if (!matches.length || matches.length < (report.feedbackCount || 0)) {
+      // 2026-08-30, לפי בקשת לביא: כשהשחזור האחורי חלקי/ריק (חניך שהוזרק בכשל
+      // שקט, נתונים שהשתנו מאז, וכו') — מציגים במקום זאת ישירות מ-
+      // report.feedbackDetails (נשמר בתוך הדוח כבר בזמן ההגשה — ר' submitUnifiedReport),
+      // שמובטח שלם ומדויק, גם אם זה אומר לוותר כאן על עריכת שנתון inline (אפשר
+      // עדיין דרך תיק החניך עצמו). לדוחות ישנים בלי feedbackDetails נשאר ההודעה
+      // הישנה בדיוק כפי שהייתה.
+      if (report.feedbackDetails && report.feedbackDetails.length) {
+        const labelMap = {};
+        (report.skillLabels || []).forEach(s => { labelMap[s.id] = s.name; });
+        feedbackEl.innerHTML = report.feedbackDetails.map(fb => {
+          const scoresHtml = Object.keys(fb.skills || {}).map(id => {
+            return `<span style="display:inline-flex;align-items:center;gap:4px;background:#eef3fb;border-radius:6px;padding:2px 8px;font-size:12px;margin:2px 2px 2px 0;"><b>${_esc(labelMap[id] || id)}:</b> ${fb.skills[id]}/10</span>`;
+          }).join('');
+          const lessonNumsStr = (fb.lessonNums || []).length ? `שיעורים: ${fb.lessonNums.join(', ')}` : '';
+          return `<div style="border:1px solid #eee;border-radius:8px;padding:10px 12px;margin-bottom:8px;background:#fff;">
+            <div style="font-weight:bold;font-size:13px;margin-bottom:4px;">${_esc(fb.name)} <span style="color:#888;font-weight:400;font-size:12px;">— ${_esc(fb.mission||'')}</span></div>
+            ${lessonNumsStr ? `<div style="font-size:12px;color:#666;margin-bottom:4px;">${_esc(lessonNumsStr)}</div>` : ''}
+            ${scoresHtml ? `<div style="margin-bottom:4px;">${scoresHtml}</div>` : ''}
+            ${fb.extraDesc ? `<div style="font-size:12px;color:#555;margin-bottom:4px;">${_esc(fb.extraDesc)}</div>` : ''}
+            ${fb.note ? `<div style="font-size:12px;color:#333;white-space:pre-wrap;">💬 ${_esc(fb.note)}</div>` : ''}
+          </div>`;
+        }).join('');
+      } else {
+        feedbackEl.innerHTML = (report.feedbackCount > 0)
+          ? `<div style="color:#aaa;font-size:13px;">דווחו ${report.feedbackCount} משובים, אך לא נמצא פירוט (ייתכן שנשמרו כשם חד-פעמי שלא נקשר לחניך קבוע).</div>`
+          : `<div style="color:#aaa;font-size:13px;">לא מולאו משובי חניכים ביום זה.</div>`;
+      }
     } else {
       let html = matches.map(({trainee, lesson}, idx) => {
         const scoresHtml = skills.map(sk => {
@@ -26208,34 +26279,10 @@ function _lessonScoreAvg(l) {
 }
 
 // ═══════════════════════════════════════════════════════════
-// גרפי SVG פשוטים (בלי ספריות חיצוניות) — 2026-08-30, לפי בקשת לביא: תצוגה
-// גרפית של מצב הקורס/החניכים/ההתקדמות, שלא הייתה קיימת קודם (רק טבלה
-// טקסטואלית ב-"📊 דוחות"). שימוש חוזר לכל 4 הגרפים שהתבקשו.
+// גרף SVG פשוט (בלי ספריות חיצוניות) — משמש לגרף "ציון לאורך שיעורים" בתיק
+// חניך. 2026-08-30, לפי בקשת לביא: שאר 3 הגרפים (התפלגות שלבים/ציונים,
+// התקדמות קורס) הוסרו — לא נמצאו שימושיים, וכדי לא להעמיס את הקוד.
 // ═══════════════════════════════════════════════════════════
-
-// גרף עמודות אופקי, מותאם RTL: תוויות מימין, העמודות גדלות שמאלה.
-// data: [{label, value, color}]
-function _svgBarChart(data, opts) {
-  opts = opts || {};
-  var w = opts.width || 560;
-  var rowH = opts.rowH || 34;
-  var h = Math.max(60, data.length * rowH + 16);
-  var padR = opts.padR || 130; // עמודת תוויות מימין
-  var padL = 46;               // עמודת ערכים משמאל
-  var chartW = w - padL - padR;
-  var maxVal = Math.max(1, Math.max.apply(null, data.map(function(d){ return d.value || 0; })));
-  var bars = data.map(function(d, i) {
-    var bw = chartW * ((d.value || 0) / maxVal);
-    var y = 8 + i * rowH;
-    var bh = rowH * 0.62;
-    var xEnd = w - padR;
-    var xStart = xEnd - bw;
-    return '<rect x="' + xStart.toFixed(1) + '" y="' + y + '" width="' + Math.max(bw,1).toFixed(1) + '" height="' + bh + '" fill="' + d.color + '" rx="5"></rect>'
-      + '<text x="' + (xStart - 8).toFixed(1) + '" y="' + (y + bh/2 + 4) + '" font-size="12" text-anchor="end" font-weight="bold" fill="#2c3e50">' + (d.value||0) + '</text>'
-      + '<text x="' + (xEnd + 8).toFixed(1) + '" y="' + (y + bh/2 + 4) + '" font-size="12" text-anchor="start" fill="#2c3e50">' + _esc(d.label) + '</text>';
-  }).join('');
-  return '<svg viewBox="0 0 ' + w + ' ' + h + '" width="100%" height="' + h + '" style="max-width:100%;">' + bars + '</svg>';
-}
 
 // גרף קו כרונולוגי. points: [{x:'תווית', y:number}]
 function _svgLineChart(points, opts) {
@@ -26288,18 +26335,36 @@ function _renderDetailLevelBadge(t) {
 // 2026-08-30, לפי בקשת לביא: גרף אישי לחניך — ציון (ממוצע מיומנויות, 0–10)
 // לאורך שיעורים בפועל, בסדר כרונולוגי לפי תאריך. מציג חזותית את אותה מגמה
 // שכבר מחושבת כטקסט/חץ (t.trend) בדשבורד הכללי, אבל בתיק החניך הפרטני.
+// מתקפל, מכווץ כברירת מחדל (אותה תבנית כמו "חלוקת קבוצות תיעדוף").
 function _renderTraineeProgressChart(t) {
   const el = document.getElementById('det-progress-chart');
   if (!el) return;
   const scored = (t.lessons || [])
     .filter(l => l.date && _lessonScoreAvg(l) !== null)
     .sort((a, b) => (a.date || '').localeCompare(b.date || ''));
-  if (scored.length < 2) { el.innerHTML = ''; return; }
-  const points = scored.map((l, i) => ({ x: i + 1, y: _lessonScoreAvg(l) }));
-  el.innerHTML = '<div style="font-size:0.85em;font-weight:700;color:#718096;margin-bottom:6px;">📈 ציון לאורך שיעורים</div>'
-    + '<div style="background:#fafbfc;border:1px solid #edf2f7;border-radius:10px;padding:10px 14px;">'
-    + _svgLineChart(points, { minY: 0, maxY: 10 })
+  if (scored.length < 2) { el.innerHTML = ''; window._detProgressPoints = null; return; }
+  window._detProgressPoints = scored.map((l, i) => ({ x: i + 1, y: _lessonScoreAvg(l) }));
+  el.innerHTML = '<div style="background:#fafbfc;border:1px solid #edf2f7;border-radius:10px;padding:10px 14px;">'
+    + '<button onclick="try{_toggleDetProgressChart();}catch(e){}" style="width:100%;background:none;border:none;padding:0;cursor:pointer;display:flex;align-items:center;justify-content:space-between;font-family:inherit;">'
+    + '<span style="font-size:0.85em;font-weight:700;color:#718096;">📈 ציון לאורך שיעורים</span>'
+    + '<span id="det-progress-arrow" style="font-size:10px;color:#aaa;">&#9654;</span></button>'
+    + '<div id="det-progress-body" style="display:none;margin-top:10px;"></div>'
     + '</div>';
+}
+
+function _toggleDetProgressChart() {
+  const body  = document.getElementById('det-progress-body');
+  const arrow = document.getElementById('det-progress-arrow');
+  if (!body) return;
+  const open = body.style.display === 'block';
+  if (open) {
+    body.style.display = 'none';
+    if (arrow) arrow.innerHTML = '&#9654;';
+    return;
+  }
+  body.style.display = 'block';
+  if (arrow) arrow.innerHTML = '&#9660;';
+  if (window._detProgressPoints) body.innerHTML = _svgLineChart(window._detProgressPoints, { minY: 0, maxY: 10 });
 }
 
 function _getTraineeSummaryConfig() {
@@ -26581,36 +26646,6 @@ function _generateTraineeSummary() {
   const declining = perTrainee
     .filter(t => t.trend === 'declining');
 
-  // 2026-08-30, לפי בקשת לביא: היסטוגרמת טווחי ציונים (0-10, כמו avgScore) —
-  // 5 דליים שווים, כל אחד נצבע לפי הסף (מתקשים/בינוניים/מתקדמים) שבו נופל
-  // אמצע הדלי, כדי שהצבעים יהיו עקביים עם שאר המערכת.
-  const scoreHistogram = [0,0,0,0,0]; // [0-2),[2-4),[4-6),[6-8),[8-10]
-  scored.forEach(t => {
-    let idx = Math.floor(t.avgScore / 2);
-    if (idx > 4) idx = 4;
-    if (idx < 0) idx = 0;
-    scoreHistogram[idx]++;
-  });
-
-  // 2026-08-30, לפי בקשת לביא: התקדמות קורס לאורך זמן — ממוצע ציון לפי חודש
-  // (כל השיעורים המנוקדים, מכל החניכים, מקובצים לפי חודש-שנה של l.date).
-  const monthBuckets = {};
-  trainees.forEach(t => {
-    (t.lessons || []).forEach(l => {
-      const sc = _lessonScoreAvg(l);
-      if (sc === null || !l.date) return;
-      const ym = String(l.date).slice(0, 7); // 'YYYY-MM'
-      if (!monthBuckets[ym]) monthBuckets[ym] = { sum: 0, cnt: 0 };
-      monthBuckets[ym].sum += sc;
-      monthBuckets[ym].cnt++;
-    });
-  });
-  const courseTrend = Object.keys(monthBuckets).sort().map(ym => ({
-    month: ym,
-    avg: +(monthBuckets[ym].sum / monthBuckets[ym].cnt).toFixed(2),
-    count: monthBuckets[ym].cnt
-  }));
-
   return {
     generatedAt:    new Date().toISOString(),
     totalTrainees:  trainees.length,
@@ -26625,8 +26660,6 @@ function _generateTraineeSummary() {
     infoAlerts,
     improving,
     declining,
-    scoreHistogram,
-    courseTrend,
   };
 }
 
@@ -26724,76 +26757,6 @@ function _renderResourceGroupsBlock(isAdmin) {
   h.push('<div id="ts-groups-body" style="display:none;margin-top:10px;"></div>');
   h.push('</div>');
   return h.join('');
-}
-
-// ═══════════════════════════════════════════════════════════
-// 📊 ניתוח גרפי — 2026-08-30, לפי בקשת לביא: תצוגה גרפית של מצב הקורס/
-// החניכים/ההתקדמות שלא הייתה קיימת קודם. אזור מתקפל (סגור כברירת מחדל),
-// אותה תבנית בדיוק כמו "חלוקת קבוצות תיעדוף" למעלה.
-// ═══════════════════════════════════════════════════════════
-function _renderChartsBlock() {
-  var h = [];
-  h.push('<div style="background:white;border:1px solid #e8edf5;border-radius:10px;padding:12px 16px;margin-bottom:12px;direction:rtl;">');
-  h.push('<button onclick="try{_toggleTsCharts();}catch(e){}" style="width:100%;background:none;border:none;padding:0;cursor:pointer;display:flex;align-items:center;justify-content:space-between;font-family:inherit;">'
-    + '<span style="font-size:13px;font-weight:bold;color:#2c3e50;">📊 ניתוח גרפי</span>'
-    + '<span id="ts-charts-arrow" style="font-size:10px;color:#aaa;">&#9654;</span></button>');
-  h.push('<div id="ts-charts-body" style="display:none;margin-top:10px;"></div>');
-  h.push('</div>');
-  return h.join('');
-}
-
-function _toggleTsCharts() {
-  var body  = document.getElementById('ts-charts-body');
-  var arrow = document.getElementById('ts-charts-arrow');
-  if (!body) return;
-  var open = body.style.display === 'block';
-  if (open) {
-    body.style.display = 'none';
-    if (arrow) arrow.innerHTML = '&#9654;';
-    return;
-  }
-  body.style.display = 'block';
-  if (arrow) arrow.innerHTML = '&#9660;';
-  _renderChartsBody();
-}
-
-function _renderChartsBody() {
-  var body = document.getElementById('ts-charts-body');
-  if (!body) return;
-  var summary = (typeof _getTraineeSummary === 'function') ? _getTraineeSummary() : null;
-  if (!summary) { body.innerHTML = '<div style="color:#aaa;font-size:12px;">אין נתונים</div>'; return; }
-  var cfg = (typeof _getTraineeSummaryConfig === 'function')
-    ? _getTraineeSummaryConfig() : { lowScoreRed: 5, lowScoreOrange: 8 };
-  var h = [];
-
-  // --- 1. התפלגות שלבים (גרף עמודות) ---
-  var byStage = summary.byStage || {};
-  var sColors = {'טרם התחיל':'#95a5a6','שלב טכני':'#3498db','שלב תפעולי':'#f39c12','שלב מסחרי':'#8e44ad','השתלמות אורבוס':'#e67e22','מוכן לחניכה':'#27ae60','בחניכה':'#16a085'};
-  var sOrder  = ['טרם התחיל','שלב טכני','שלב תפעולי','שלב מסחרי','השתלמות אורבוס','מוכן לחניכה','בחניכה'];
-  var stageData = sOrder.filter(function(s){ return byStage[s]; }).map(function(s){ return {label:s, value:byStage[s], color:sColors[s]||'#7f8c8d'}; });
-  h.push('<div style="margin-bottom:18px;"><div style="font-size:12.5px;font-weight:bold;color:#2c3e50;margin-bottom:6px;">התפלגות שלבים</div>');
-  h.push(stageData.length ? _svgBarChart(stageData) : '<div style="color:#aaa;font-size:12px;padding:10px;">אין נתונים</div>');
-  h.push('</div>');
-
-  // --- 2. התפלגות ציונים (היסטוגרמה) ---
-  var hist = summary.scoreHistogram || [0,0,0,0,0];
-  var histLabels = ['0–2','2–4','4–6','6–8','8–10'];
-  var histData = histLabels.map(function(lbl, i){
-    var mid = i*2 + 1;
-    var color = mid < cfg.lowScoreRed ? '#e74c3c' : mid < cfg.lowScoreOrange ? '#f1c40f' : '#27ae60';
-    return {label: lbl, value: hist[i], color: color};
-  });
-  h.push('<div style="margin-bottom:18px;"><div style="font-size:12.5px;font-weight:bold;color:#2c3e50;margin-bottom:6px;">התפלגות ציונים <span style="font-weight:400;color:#aaa;font-size:11px;">(ממוצע מיומנויות, 0–10)</span></div>');
-  h.push(hist.some(function(n){return n>0;}) ? _svgBarChart(histData) : '<div style="color:#aaa;font-size:12px;padding:10px;">אין ציונים עדיין</div>');
-  h.push('</div>');
-
-  // --- 3. התקדמות קורס לאורך זמן (קו מגמה) ---
-  var trend = summary.courseTrend || [];
-  h.push('<div><div style="font-size:12.5px;font-weight:bold;color:#2c3e50;margin-bottom:6px;">התקדמות קורס לאורך זמן <span style="font-weight:400;color:#aaa;font-size:11px;">(ממוצע ציון חודשי, כלל החניכים)</span></div>');
-  h.push(_svgLineChart(trend.map(function(m){ return {x:m.month, y:m.avg}; }), {minY:0, maxY:10}));
-  h.push('</div>');
-
-  body.innerHTML = h.join('');
 }
 
 function _toggleResourceGroups() {
@@ -26949,7 +26912,6 @@ function _renderTraineeSummaryPanel() {
     lOrder.forEach(function(s){var n=levelDist[s];if(!n)return;var c=lColors[s];h.push('<button onclick="try{_toggleTsBucket(\'level\',\''+s+'\');}catch(e){}" style="width:auto;margin:0;cursor:pointer;display:inline-flex;align-items:center;gap:6px;background:'+c[1]+';border:1px solid '+c[0]+';border-radius:20px;padding:4px 12px;font-family:inherit;"><span style="font-size:13px;font-weight:bold;color:'+c[0]+';">'+n+'</span><span style="font-size:12px;color:#555;">'+s+'</span></button>');});
     h.push('</div><div id="ts-level-detail" style="display:none;margin-top:10px;padding-top:10px;border-top:1px dashed #dee2e6;"></div></div>');
   }
-  h.push(_renderChartsBlock());
   h.push(_renderResourceGroupsBlock(isAdmin));
   if(summary.milestoneStats){
     var ms=summary.milestoneStats;var tot=summary.activeTrainees||1;
