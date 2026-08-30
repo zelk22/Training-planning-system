@@ -14,7 +14,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 75</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 77</title>
 
 <style>
 
@@ -1426,7 +1426,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 135;
+  const APP_VERSION = 137;
 
   function initFirebase() {
     try {
@@ -10910,6 +10910,20 @@ function resetS(){
   const _loi=document.getElementById('tripLessonsOverride');
   if(_loi) _loi.value='';
 
+  // 2026-08-30, לפי בקשת לביא: נסיעה חדשה של מדריך תמיד משויכת אוטומטית
+  // אליו — אין לו צורך/אפשרות לבחור מדריך אחר. מנהל כן בוחר (הבורר פעיל,
+  // ריק, מחייב בחירה — ר' _doSaveTrip). לא נוגע ב-tID בזמן עריכה — זה
+  // מטופל בנפרד ב-openTripEditModal/applyTripEditFromManual.
+  const _tID=document.getElementById('tID');
+  if(_tID){
+    if(typeof currentRole!=='undefined'&&currentRole==='instructor'){
+      _tID.value=currentUserName||'';
+      _tID.disabled=true;
+    } else {
+      _tID.disabled=false;
+    }
+  }
+
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -10920,13 +10934,26 @@ function resetS(){
 
 function _doSaveTrip(){
 
-  const nameVal=document.getElementById('tID').value.trim();
+  // 2026-08-30, לפי בקשת לביא: מדריך תמיד יוצר נסיעה עבור עצמו (הבורר נעול
+  // וכבר מוגדר ל-currentUserName ב-resetS) — אין טעם/אפשרות לבחור מישהו
+  // אחר. מנהל בוחר בפועל מהבורר, וחובה עליו לבחור מישהו (לא ברירת מחדל
+  // שקטה ל-"מדריך" כמו קודם — זה יצר נסיעות רפאים לא משויכות לאף אחד).
+  let nameVal;
+  if(typeof currentRole!=='undefined'&&currentRole==='instructor'){
+    nameVal=currentUserName;
+  } else {
+    nameVal=document.getElementById('tID').value.trim();
+    if(!nameVal){
+      showToast('⚠️ יש לבחור מדריך לפני שמירת הנסיעה','warning');
+      return;
+    }
+  }
 
-  if(nameVal)saveInstructor(nameVal);
+  saveInstructor(nameVal);
 
-  try{logAudit('שמירת נסיעה',`מדריך: ${nameVal||'?'} | ${currentDate}`);}catch(e){}
+  try{logAudit('שמירת נסיעה',`מדריך: ${nameVal} | ${currentDate}`);}catch(e){}
 
-  const name=nameVal||'מדריך';
+  const name=nameVal;
 
   const startStr=document.getElementById('tS').value;
 
@@ -11117,6 +11144,23 @@ function _loadCoursesForAssign() {
   return [];
 }
 
+// 2026-08-30, לפי בקשת לביא: התווית "X שיעורים" ליד כל חניך ברשימת "שיוך
+// חניכים" הייתה סופרת בפועל את *מספר רשומות המשוב* הגולמי של החניך
+// (tr.lessons.length) — לא את שלב ההתקדמות שלו. זה לא מדויק ומטעה (שתי
+// רשומות משוב יכולות לתעד את אותו שיעור, או לתעד "שעות נוספות" בלי שום
+// התקדמות בכלל). עכשיו מציגים את "השיעור הנוכחי" (המספר הגבוה ביותר
+// שהושלם בקורס מעשי סיטאדיס) — אותו חישוב המשמש בכל שאר הדשבורדים
+// (למשל בווידג'ט חלוקת הקבוצות).
+function _traineeCurrentLessonNum(tr) {
+  let max = 0;
+  (tr.lessons || []).forEach(l => {
+    if (l.mission === 'קורס מעשי סיטאדיס' || l.mission === 'קורס מעשי' || l.mission === 'קורס') {
+      (l.lessonNums || []).forEach(n => { if (n > max) max = n; });
+    }
+  });
+  return max;
+}
+
 function _renderTraineeAssignList(courses, courseIdx, assigned) {
   const list = document.getElementById('traineeAssignList');
   const courseBar = document.getElementById('traineeAssignCourseBar');
@@ -11148,7 +11192,7 @@ function _renderTraineeAssignList(courses, courseIdx, assigned) {
     `<label style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1.5px solid ${assigned.includes(String(tr.id))?'#8e44ad':'#eee'};border-radius:9px;cursor:pointer;background:${assigned.includes(String(tr.id))?'#f9f0ff':'white'};">
       <input type="checkbox" value="${tr.id}" ${assigned.includes(String(tr.id))?'checked':''} style="width:16px;height:16px;accent-color:#8e44ad;" onchange="this.closest('label').style.borderColor=this.checked?'#8e44ad':'#eee';this.closest('label').style.background=this.checked?'#f9f0ff':'white';">
       <span style="font-weight:600;">${_esc(tr.name)}</span>
-      <span style="color:#888;font-size:12px;margin-right:auto;">${(tr.lessons||[]).length} שיעורים</span>
+      <span style="color:#888;font-size:12px;margin-right:auto;">שיעור נוכחי: ${_traineeCurrentLessonNum(tr)}</span>
     </label>`
   ).join('');
 }
@@ -18516,7 +18560,15 @@ function openTripEditModal(tripId){
 
   // Set form fields
   const tS=document.getElementById('tS');if(tS)tS.value=trip.startStr||'07:00';
-  const tID=document.getElementById('tID');if(tID)tID.value=trip.name||'';
+  const tID=document.getElementById('tID');
+  if(tID){
+    tID.value=trip.name||'';
+    // 2026-08-30, לפי בקשת לביא: מנהל יכול לשייך את הנסיעה למדריך אחר תוך
+    // כדי עריכה (הבורר פעיל, applyTripEditFromManual קורא את הערך בפועל).
+    // מדריך יכול לערוך רק את הנסיעה של עצמו ולא לשייך אותה למישהו אחר —
+    // הבורר נעול על השם המקורי.
+    tID.disabled=(typeof currentRole!=='undefined'&&currentRole==='instructor');
+  }
 
   // updateUI() sets 'active' class on all current route segments (visual highlight)
   // and val() recalculates forecast. These are the standard routines.
@@ -18559,6 +18611,19 @@ function applyTripEditFromManual(){
 
   const startStr=document.getElementById('tS')?.value;
   if(!startStr){showToast('יש להזין שעת יציאה','warning');return;}
+
+  // 2026-08-30, לפי בקשת לביא: זו הייתה הבעיה האמיתית — עריכת נסיעה מעולם
+  // לא קראה בפועל את הבורר (tID) ולא עדכנה את trip.name, אז גם אם המנהל
+  // בחר מדריך אחר בזמן עריכה, זה נדרס בשקט ונשאר עם השם המקורי. עכשיו,
+  // מנהל בלבד יכול לשייך את הנסיעה למדריך אחר דרך עריכה (הבורר נעול
+  // למדריך בזמן עריכה — ר' openTripEditModal — כי הוא לא רשאי לשייך את
+  // הנסיעה של עצמו למישהו אחר).
+  if(typeof currentRole!=='undefined'&&currentRole==='admin'){
+    const nameVal=document.getElementById('tID')?.value.trim();
+    if(!nameVal){showToast('⚠️ יש לבחור מדריך','warning');return;}
+    if(nameVal!==trip.name){ try{saveInstructor(nameVal);}catch(e){} }
+    trip.name=nameVal;
+  }
 
   trip.route=JSON.parse(JSON.stringify(curRoute));
   trip.startStr=startStr;
@@ -24109,7 +24174,7 @@ function exitEditMode(){
     const saveB=document.getElementById('saveB');
     if(saveB){saveB.textContent='✅ אשר ושמור נסיעה';saveB.style.background='';saveB.onclick=null;saveB.disabled=false;}
     // Clear form fields
-    const tID=document.getElementById('tID');if(tID)tID.value='';
+    const tID=document.getElementById('tID');if(tID){tID.value='';tID.disabled=false;}
     const tS=document.getElementById('tS');if(tS)tS.value='07:00';
     try{updateUI();val();}catch(e){}
   }catch(e){}
