@@ -14,7 +14,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 85</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 86</title>
 
 <style>
 
@@ -1426,7 +1426,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 145;
+  const APP_VERSION = 146;
 
   function initFirebase() {
     try {
@@ -1449,6 +1449,13 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
         window._db = _db;                    // ← זה התיקון החשוב
         window._fbRef = (db, p) => db.ref(p);
         window._fbSet = (ref, v) => ref.set(v);
+        // 2026-08-30, לפי בקשת לביא: נדרש עבור saveSettings() — .set() בנתיב
+        // 'settings' השורש היה מוחק (דורס) לגמרי כל תת-מפתח שלא נכלל במפורש
+        // באובייקט שנשמר, כולל settings/hiddenInstrs, settings/hiddenMentors,
+        // settings/milestones — זו הייתה הסיבה האמיתית ש"הסתר משיבוצים" (וגם
+        // מיילסטונים) "נשכחו" בכל שמירת הגדרות כלליות. .update() ממזג ברמה
+        // העליונה בלבד — משנה רק את המפתחות שכן נכללים, לא נוגע בשאר.
+        window._fbUpdate = (ref, v) => ref.update(v);
         window._fbGet = ref => ref.once('value').then(s => ({exists: () => s.exists(), val: () => s.val()}));
         window._fbOnValue = (ref, cb) => ref.on('value', s => cb({exists: () => s.exists(), val: () => s.val()}));
         window._fbPush = (ref, v) => ref.push(v); // 2026-08-19: לוג פעולות — מפתח כרונולוגי ייחודי אוטומטי
@@ -13966,7 +13973,11 @@ async function saveSettings(){
   // Save to Firebase if available
   if(window._fbDb){
     try{
-      await _fbSet(_fbRef(_db,settingsPath()),newSettings);
+      // 2026-08-30, לפי בקשת לביא: .update() במקום .set() — ר' הערה ליד
+      // window._fbUpdate. מונע מחיקה שקטה של settings/hiddenInstrs,
+      // settings/hiddenMentors, settings/milestones וכל תת-מפתח אחר שלא
+      // נכלל כאן במפורש.
+      await _fbUpdate(_fbRef(_db,settingsPath()),newSettings);
       await _fbSet(_fbRef(_db,'taskDefs'),taskDefs);
       await _fbSet(_fbRef(_db,'shiftHours'),SHIFT_HOURS);
     }catch(e){console.warn('saveSettings Firebase:',e);}
@@ -13991,7 +14002,9 @@ function resetSettingsToDefault(){
 
   if(window._fbDb){
 
-    try{_fbSet(_fbRef(_db,settingsPath()),DEFAULTS);}catch(e){}
+    // 2026-08-30: אותו תיקון — .update() כדי לא למחוק hiddenInstrs/
+    // hiddenMentors/milestones/formTrackingInstructors בעת איפוס הגדרות.
+    try{_fbUpdate(_fbRef(_db,settingsPath()),DEFAULTS);}catch(e){}
 
   }
 
@@ -23023,6 +23036,8 @@ async function openViewUnifiedReport(date, instructorName) {
   window._vurCurrent = { date, instructorName };
   const editBtn = document.getElementById('vur-edit-btn');
   if (editBtn) editBtn.style.display = (currentRole === 'admin') ? 'inline-block' : 'none';
+  const deleteBtn = document.getElementById('vur-delete-btn');
+  if (deleteBtn) deleteBtn.style.display = (currentRole === 'admin') ? 'inline-block' : 'none';
 
   const dObj = new Date(date + 'T12:00:00');
   const dateLabel = dObj.toLocaleDateString('he-IL', {weekday:'long', day:'numeric', month:'long', year:'numeric'});
@@ -23227,6 +23242,65 @@ async function _assignInlineLessonNum(idx) {
 function closeViewUnifiedReport() {
   const overlay = document.getElementById('viewUnifiedReportOverlay');
   if (overlay) overlay.classList.remove('open');
+}
+
+// 2026-08-30, לפי בקשת לביא: מחיקת דוח "סיכום יום" קיים (מנהל בלבד) — כדי
+// לאפשר מילוי מחדש מלא במקרה הצורך (עד עכשיו אפשר היה רק "לערוך פרטים"
+// בסיסיים, לא למחוק ולהתחיל מחדש — וגם היה חסום להגיש טופס נוסף לאותו
+// תאריך+מדריך כל עוד הדוח הישן קיים). מוחקת גם את רשומות השיעור שהוזרקו
+// מהדוח הזה לתיקי החניכים (_fromUnifiedReport===true, תאריך+מדריך תואמים) —
+// אחרת מילוי מחדש היה יוצר כפילויות (התקדמות/ציונים כפולים).
+async function deleteUnifiedReport() {
+  const cur = window._vurCurrent;
+  if (!cur) return;
+  if (typeof currentRole !== 'undefined' && currentRole !== 'admin') return;
+  if (!confirm(`למחוק לצמיתות את דוח "סיכום יום" של ${cur.instructorName} מתאריך ${cur.date}?\n\nפעולה זו גם תמחק את רשומות השיעור שנוצרו מדוח זה בתיקי החניכים (כדי למנוע כפילויות במילוי מחדש). לא ניתן לשחזר.`)) return;
+
+  const { date, instructorName } = cur;
+  const reportKey = `${date}__${instructorName}__unified`;
+
+  // 1. Remove injected trainee lessons tied to this exact report (date+instructor+flag)
+  try {
+    if (typeof TraineeSystem !== 'undefined' && Array.isArray(TraineeSystem.courses)) {
+      TraineeSystem.courses.forEach(course => {
+        (course.trainees || []).forEach(t => {
+          if (!Array.isArray(t.lessons)) return;
+          t.lessons = t.lessons.filter(l => !(l._fromUnifiedReport && l.date === date && l.ins === instructorName));
+        });
+      });
+      try { TraineeSystem.persist(); } catch(e) {}
+      try {
+        localStorage.setItem('trainee_courses', JSON.stringify(TraineeSystem.courses));
+        if (window._fbDb) {
+          const _cData = {};
+          TraineeSystem.courses.forEach(c => { _cData[c.id] = c; });
+          await _fbSet(_fbRef(_db, 'courses_v20'), _cData);
+        }
+      } catch(e) { console.warn('deleteUnifiedReport trainee cleanup save:', e); }
+    }
+  } catch(e) { console.warn('deleteUnifiedReport trainee cleanup:', e); }
+
+  // 2. Remove the report record itself — cache, localStorage, Firebase
+  if (window._taskReportsCache) delete window._taskReportsCache[reportKey];
+  try {
+    const lsKey = 'taskReports_' + date;
+    const existing = JSON.parse(localStorage.getItem(lsKey) || '{}');
+    delete existing[reportKey];
+    localStorage.setItem(lsKey, JSON.stringify(existing));
+  } catch(e) {}
+  if (window._fbDb) {
+    try {
+      const safeKey = instructorName.replace(/[.#$[\]/]/g,'_') + '__unified';
+      await _fbRef(_db, `taskReports/${date}/${safeKey}`).remove();
+    } catch(e) { console.warn('deleteUnifiedReport Firebase:', e); }
+  }
+
+  closeViewUnifiedReport();
+  showToast('🗑️ הדוח נמחק — ניתן למלא טופס חדש לתאריך זה', 'success');
+  try { window._traineeSummaryCache = null; } catch(e) {}
+  // 2026-08-30: לא מרעננים כאן אוטומטית את הארכיון/הדוח היומי ברקע (לא בטוח
+  // איזה מהם פתוח מאחורי המודל הזה) — המשתמש יראה את הרשימה מעודכנת בפתיחה
+  // הבאה שלה, וזה מספיק כדי למנוע פתיחת מודל לא-רצוי בטעות.
 }
 
 // 2026-08-19: אפשרות עריכה לטופס סיכום יום שכבר בוצע — למשל מדריך שטעה בתאריך.
@@ -27374,6 +27448,7 @@ function _resetTraineeSummaryConfig() {
       <h3 id="vur-title">📝 סיכום יום</h3>
       <div style="display:flex;gap:8px;align-items:center;">
         <button id="vur-edit-btn" onclick="toggleEditUnifiedReport()" style="display:none;width:auto;padding:5px 12px;background:#eaf2fb;border:1px solid var(--secondary);color:var(--secondary);border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;">✏️ ערוך פרטים</button>
+        <button id="vur-delete-btn" onclick="deleteUnifiedReport()" style="display:none;width:auto;padding:5px 12px;background:#fdecea;border:1px solid #e74c3c;color:#c0392b;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;">🗑️ מחק דוח</button>
         <button class="unified-report-close" onclick="closeViewUnifiedReport()">×</button>
       </div>
     </div>
