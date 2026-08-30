@@ -14,7 +14,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 84</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 85</title>
 
 <style>
 
@@ -1426,7 +1426,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 144;
+  const APP_VERSION = 145;
 
   function initFirebase() {
     try {
@@ -10654,6 +10654,13 @@ function resubscribeTripsListener(){
       try{
         trips=snap.exists()?Object.values(snap.val()).map(parseTrip):[];
         renderLog();renderTimeline();
+        // 2026-08-30, לפי בקשת לביא: זה היה חסר — כשנתוני הנסיעות של התאריך
+        // החדש בפועל מגיעים מ-Firebase (א-סינכרוני, אחרי שה-listener כבר
+        // הוחלף), הדשבורד לא התרענן שוב. changeDate() כן קורא ל-renderDashboard()
+        // באופן מיידי, אבל זה קורה *לפני* שהנתונים החדשים בכלל הגיעו — כך
+        // שהדשבורד תמיד הציג את הנתונים הישנים (מהתאריך הקודם) עד לפעולה
+        // אחרת שמזדמן שתרענן אותו.
+        try{renderDashboard();}catch(e2){}
       }catch(e){console.warn('tripsListener handler:',e);}
     });
   }catch(e){showToast('שגיאה בחיבור לנסיעות — נסה לרענן','warning');console.error('resubscribeTripsListener:',e);}
@@ -15823,6 +15830,14 @@ document.addEventListener('DOMContentLoaded',()=>{
     try{await loadMentors();}catch(e){console.warn('loadMentors:',e);}
     try{await _loadShiftsFromStorage();}catch(e){console.warn('loadShifts:',e);}
     try{await loadFromStorage();}catch(e){console.warn('loadFromStorage:',e);}
+    // 2026-08-30, לפי בקשת לביא: זה היה חסר לגמרי — _loadMilestonePassMap()
+    // הייתה מוגדרת אבל אף פעם לא נקראה משום מקום. window._milestonePassMap
+    // (סימוני "עבר טסט" ידניים) התחיל ריק בכל טעינת עמוד, ורק התמלא לאט תוך
+    // כדי הסשן הנוכחי כשמנהל לחץ לסמן — כך שכל סימון שנעשה בסשן קודם (ונשמר
+    // בהצלחה ל-Firebase!) "נעלם" בכל רענון/כניסה מחדש, וחניכים שכבר סומנו
+    // כעברו טסט המשיכו להיראות "כתום"/"טרם אושר" עד שמישהו סימן אותם שוב
+    // באותו סשן ספציפי בלבד.
+    try{await _loadMilestonePassMap();}catch(e){console.warn('loadMilestonePassMap:',e);}
     console.log('✅ Initial data load complete');
     // Re-render any open settings UI
     try{if(typeof renderSettingsInstrList==='function')renderSettingsInstrList();}catch(e){}
