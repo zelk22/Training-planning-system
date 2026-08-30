@@ -14,7 +14,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 86</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 87</title>
 
 <style>
 
@@ -1426,7 +1426,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 146;
+  const APP_VERSION = 147;
 
   function initFirebase() {
     try {
@@ -23695,13 +23695,26 @@ async function loadTaskReportsForDate(date){
   if(_isDemoMode()||!window._fbDb)return;
   try{
     const snap=await _fbGet(_fbRef(_db,'taskReports/'+date));
-    if(snap.exists()){
-      const val=snap.val();
-      Object.entries(val).forEach(([k,v])=>{
-        const rk=(v&&v.type==='unified_daily')?`${v.date}__${v.instructorName}__unified`:`${v.date}__${v.instructorName}__${v.entryId}`;
-        window._taskReportsCache[rk]=v;
-      });
-    }
+    const val=snap.exists()?snap.val():{};
+    // 2026-08-30, לפי בקשת לביא: Firebase הוא מקור האמת לתאריך הזה ברגע
+    // שיש חיבור — קודם המפתחות מ-Firebase נכתבים (כמו קודם), ואז כל מפתח
+    // ששייך לתאריך הזה ב-cache/localStorage ש-Firebase כבר לא מכיר בו
+    // (למשל דוח שמנהל מחק ממכשיר אחר) נמחק גם מכאן. בלי זה, דוח שנמחק
+    // נשאר "תקוע" לנצח ב-localStorage של מכשיר אחר, וחסם הגשה חוזרת
+    // באמת אמורה להיות מותרת (בדיוק המקרה שגרם ל"הדוח עדיין קיים" אצל מדריך
+    // אחרי שהמנהל כבר מחק אותו).
+    const validKeys=new Set();
+    const cleanLocal={};
+    Object.entries(val).forEach(([k,v])=>{
+      const rk=(v&&v.type==='unified_daily')?`${v.date}__${v.instructorName}__unified`:`${v.date}__${v.instructorName}__${v.entryId}`;
+      window._taskReportsCache[rk]=v;
+      validKeys.add(rk);
+      cleanLocal[rk]=v; // localStorage key format must match reportKey (${date}__{name}__unified), not Firebase's safeKey
+    });
+    Object.keys(window._taskReportsCache).forEach(k=>{
+      if(k.startsWith(date+'__')&&!validKeys.has(k))delete window._taskReportsCache[k];
+    });
+    try{ localStorage.setItem('taskReports_'+date, JSON.stringify(cleanLocal)); }catch(e){}
   }catch(e){console.warn('loadTaskReports:',e);}
 }
 
