@@ -14,7 +14,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 77</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 80</title>
 
 <style>
 
@@ -1426,7 +1426,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 137;
+  const APP_VERSION = 140;
 
   function initFirebase() {
     try {
@@ -10723,6 +10723,23 @@ function sel(id){
 
   const last=lastReal||'START';
 
+  // 2026-08-30, לפי בקשת לביא: לחיצה על המקטע שהוא כרגע *האחרון* במסלול
+  // מסירה אותו (במקום להוסיף עוד מופע) — כולל מקטע ה"סיבוב" (TURN/TURN_ORA)
+  // שהוכנס אוטומטית ממש לפניו, אם קיים, כי הוא שייך אך ורק למעבר הזה. אחרי
+  // ההסרה, מה שהיה לפני זה הופך ל"אחרון" החדש — כך שלחיצה חוזרת ממשיכה
+  // להסיר אחורה, מקטע-מקטע (בדיוק כמו "בטל פעולה" חוזר). לחיצה על מקטע
+  // שאינו האחרון הנוכחי ממשיכה להתנהג כרגיל (הוספה קדימה, בכפוף ל-MATRIX).
+  // לביא ביקש שאדע בדיוק מה לבטל אם זה יסתבך: הביטול הוא הבלוק הבא (עד
+  // ה-return;) בלבד — שאר sel() (ההוספה) נשאר בדיוק כפי שהיה.
+  if(curRoute.length>0&&lastReal===id){
+    curRoute.pop(); // מסיר את המופע האחרון של המקטע שנלחץ
+    if(curRoute.length>0&&(curRoute[curRoute.length-1].id==='TURN'||curRoute[curRoute.length-1].id==='TURN_ORA')){
+      curRoute.pop(); // מסיר גם את סימון הסיבוב הצמוד, אם הוכנס בשביל המעבר הזה
+    }
+    updateUI();val();
+    return;
+  }
+
   if(MATRIX[last]&&MATRIX[last].includes(id)){
 
     if(last==='N1'&&id==='N2')curRoute.push({id:'TURN',t:RULES.TURN,label:'סיבוב נווה יעקב'});
@@ -10839,7 +10856,12 @@ function val(){
 
   trips.forEach(t=>{
 
-    if(t.id===editingTripId)return;
+    // 2026-08-30, לפי בקשת לביא: תוקן באג התנגשות-עצמית — editingTripId
+    // נשמר כמחרוזת (String(tripId)) אבל t.id הוא מספר (Date.now()), אז
+    // ההשוואה עם === נכשלה תמיד ומעולם לא החריגה בפועל את הנסיעה הנערכת
+    // מעצמה. כתוצאה מכך, נסיעה בעריכה "התנגשה" עם כל מקטע של עצמה (פער 0
+    // דק') בכל פעם שנפתחה לעריכה.
+    if(String(t.id)===String(editingTripId))return;
 
     t.timeline.forEach(old=>{myTl.forEach(curr=>{
 
@@ -24187,6 +24209,13 @@ document.addEventListener('DOMContentLoaded',()=>{
   if(!ms)return;
   ms.addEventListener('toggle',()=>{
     if(!ms.open)return; // closing — fine
+    // 2026-08-30, לפי בקשת לביא: תיקון הגנתי — בורר "בחר מדריך" (tID) הופיע
+    // ריק לגמרי (בלי אפילו את הכיתוב ברירת המחדל) כשנפתחה הסקציה, כנראה
+    // בגלל תזמון: populateAllInstrSelects() עוד לא רץ עד הרגע הזה (למשל אם
+    // רשימת המדריכים מגיעה מ-Firebase אחרי שהעמוד כבר נטען). קריאה חוזרת
+    // כאן, בכל פתיחה של הסקציה, מבטיחה שהבורר תמיד מלא כשמסתכלים עליו —
+    // אין נזק לקרוא לזה שוב גם אם הוא כבר מלא.
+    try{if(typeof populateAllInstrSelects==='function')populateAllInstrSelects();}catch(e){}
     // 2026-08-27, לפי בקשת לביא: מנהל שעורך נסיעה של מדריך כלשהו נכנס תמיד
     // עם currentUserName של עצמו (לא של המדריך) — הבדיקה הזו הייתה סוגרת את
     // הסקציה מיד אחרי הפתיחה (הבהוב) כי חשבה בטעות ש"משתמש לא נכון" פתח אותה.
@@ -26311,6 +26340,17 @@ function _generateTraineeSummary() {
     else if (maxSitadis > 0)                       stage = 'שלב טכני';
     else                                           stage = 'טרם התחיל';
 
+    // 2026-08-30, לפי בקשת לביא: "טסט ממתין" — הטסט שהעלה את החניך לשלב
+    // הנוכחי שלו הגיע אוטומטית (לפי מספר שיעורים) אבל טרם סומן ידנית ע"י
+    // מנהל כ"עבר בפועל" (אותה הבחנה כתומה הקיימת בתיק החניך עצמו —
+    // _renderDetailMilestoneBadges). ישמש לצביעת שם החניך בכתום בכל רשימת
+    // חניכים המסוננת לפי שלב/טסט (למשל התפלגות שלבים).
+    let pendingTest = false;
+    if      (stage === 'שלב תפעולי')                       pendingTest = maxSitadis >= 10 && !msEntry.test10;
+    else if (stage === 'שלב מסחרי')                         pendingTest = maxSitadis >= 30 && !msEntry.test30;
+    else if (stage === 'השתלמות אורבוס')                    pendingTest = maxSitadis >= 50 && !msEntry.test50;
+    else if (stage === 'מוכן לחניכה' || stage === 'בחניכה')  pendingTest = (maxSitadis >= 50 && maxOrbus >= 7) && !msEntry['chinuch-ms'];
+
     // Risk Score
     // 2026-08-19: הסיווג "מתקשה" מבוסס אך ורק על ציונים — לביא ביקש להוציא שעות
     // נוספות ומגמת ירידה מהסיווג ולהפוך אותן להתרעות מידע בלבד (לא קובעות atRisk).
@@ -26376,6 +26416,7 @@ function _generateTraineeSummary() {
       lastLessonDate,
       milestones:      msStatus,
       stage,
+      pendingTest,
       riskLevel,
       riskReasons,
       infoNotes,
@@ -26486,9 +26527,18 @@ function _toggleTsBucket(kind, key) {
   });
   // 2026-08-19: עיצוב קומפקטי — צ'יפים עוטפים (לא שורה מלאה-רוחב לכל חניך),
   // ולחיצה על השם עצמו פותחת את התיק ישירות (לא כפתור נפרד "פתח תיק").
+  // 2026-08-30, לפי בקשת לביא: חניך שהגיע אוטומטית לטסט של השלב הנוכחי שלו
+  // אבל טרם סומן ידנית ע"י מנהל (t.pendingTest) — השם שלו מוצג בכתום, כדי
+  // לזהות בקלות מי עדיין ממתין לאישור ידני. אותה משמעות כתומה כמו בתיק
+  // החניך עצמו (_renderDetailMilestoneBadges).
   var htm = list.length
     ? '<div style="display:flex;flex-wrap:wrap;gap:6px;">' + list.map(function(t) {
-        return '<button onclick="try{if(typeof TraineeSystem!==\'undefined\')TraineeSystem.openTrainee&&TraineeSystem.openTrainee(' + t.id + ');}catch(ex){}" style="width:auto;margin:0;padding:5px 12px;background:#eef3fb;border:1px solid #b5d4f4;color:#2c3e50;border-radius:16px;cursor:pointer;font-size:12px;font-family:inherit;white-space:nowrap;">' + _esc(t.name) + '</button>';
+        var pending = !!t.pendingTest;
+        var style = pending
+          ? 'background:#fef9ec;border:1.5px solid #f0ad4e;color:#a6690b;'
+          : 'background:#eef3fb;border:1px solid #b5d4f4;color:#2c3e50;';
+        var title = pending ? ' title="טסט הגיע אוטומטית לפי מספר שיעורים — טרם סומן ידנית כ\'עבר\' ע״י מנהל"' : '';
+        return '<button' + title + ' onclick="try{if(typeof TraineeSystem!==\'undefined\')TraineeSystem.openTrainee&&TraineeSystem.openTrainee(' + t.id + ');}catch(ex){}" style="width:auto;margin:0;padding:5px 12px;' + style + 'border-radius:16px;cursor:pointer;font-size:12px;font-family:inherit;font-weight:' + (pending?'bold':'normal') + ';white-space:nowrap;">' + (pending?'🟡 ':'') + _esc(t.name) + '</button>';
       }).join('') + '</div>'
     : '<div style="padding:6px 4px;color:#888;font-size:12px;">אין חניכים</div>';
   cont.innerHTML = htm;
