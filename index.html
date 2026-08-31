@@ -14,7 +14,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 90</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 91</title>
 
 <style>
 
@@ -1426,7 +1426,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 150;
+  const APP_VERSION = 151;
 
   function initFirebase() {
     try {
@@ -4022,6 +4022,17 @@ window.TraineeSystem = {
     .trainee-module th { background: #f1f3f5; padding: 13px; color: #555; font-size: 0.84em; border-bottom: 2px solid #dee2e6; text-align: center; }
     .trainee-module td { padding: 13px; border-bottom: 1px solid #eee; text-align: center; font-size: 0.9em; }
     .trainee-module .score-badge { background: #edf2f7; padding: 4px 8px; border-radius: 6px; font-weight: bold; font-size: 0.88em; margin: 0 2px; border: 1px solid #cbd5e0; }
+    /* 2026-08-31, לפי בקשת לביא: כותרת/תאי המיומנויות ב"יומן שיעורים מלא" היו
+       ראשי-תיבות קשיחים בקוד ("ר/ק/ס/נ/מ") שלא השתנו כשהמיומנויות עצמן שונו
+       דרך ההגדרות הדינמיות. עכשיו הכותרת והתאים נבנים דינמית מ-settings.skills
+       (ר' _renderHistorySkillsHeader/filterHistory) בתוך מבנה grid משותף לכותרת
+       ולשורות, עם קו מפריד אנכי בין כל מיומנות — כך שרואים בבירור איזה ציון
+       שייך לאיזו מיומנות, גם אם המספר/סדר/שמות משתנים. */
+    .trainee-module .hist-skill-grid { display: flex; direction: rtl; }
+    .trainee-module .hist-skill-grid > div { flex: 1; min-width: 22px; text-align: center; padding: 2px 3px; border-left: 1px solid #dde3ea; }
+    .trainee-module .hist-skill-grid > div:first-child { border-left: none; }
+    .trainee-module thead .hist-skill-grid > div { font-size: 0.82em; font-weight: bold; color: #556; }
+    .trainee-module tbody .hist-skill-grid > div { font-size: 0.85em; color: #444; }
 
     .trainee-module .form-section { background: #2c3e50; color: white; padding: 30px; border-radius: 20px; margin-top: 40px; }
     .trainee-module .form-section h3 { margin: 0 0 24px 0; color: #f1c40f; font-size: 1.4em; border-bottom: 1px solid #3d5166; padding-bottom: 14px; }
@@ -4356,7 +4367,7 @@ window.TraineeSystem = {
                     <thead>
                         <tr>
                           <th>תאריך</th><th>משימה</th><th>שיעורים</th><th>מדריך</th>
-                          <th>ר/ק/ס/נ/מ</th><th>הערות</th>
+                          <th id="history-skills-th">ר/ק/ס/נ/מ</th><th>הערות</th>
                           <th><select id="history-filter" onchange="TraineeSystem.filterHistory(this.value)" style="font-size:10px;padding:2px 4px;border:1px solid #ddd;border-radius:4px;direction:rtl;">
                             <option value="all">כל הסוגים</option>
                             <option value="קורס מעשי סיטאדיס">קורס מעשי סיטאדיס</option>
@@ -7258,6 +7269,22 @@ window.TraineeSystem = {
                     <button type="button" data-skill="${sk.id}" data-delta="1">+</button>
                 </div>
             </div>`).join('');
+        this._renderHistorySkillsHeader(skills);
+    },
+
+    // בונה את כותרת עמודת המיומנויות בטבלת "יומן שיעורים מלא" (תיק חניך) לפי
+    // this.settings.skills הנוכחי — ראש-אות (או 2 האותיות הראשונות אם השם קצר
+    // מזה) לכל מיומנות, באותו סדר grid כמו התאים בפועל בכל שורה (filterHistory).
+    _renderHistorySkillsHeader(skills) {
+        const th = this.$('history-skills-th');
+        if (!th) return;
+        const list = (skills && skills.length) ? skills : (this.settings?.skills?.length ? this.settings.skills : [
+            {id:'s1', name:'מערכות רכבת'}, {id:'s2', name:'מבנה קו'}, {id:'s3', name:'תפעול סטיק'},
+            {id:'s4', name:'נהלים'}, {id:'s5', name:'משמעת'}
+        ]);
+        th.innerHTML = '<div class="hist-skill-grid">' +
+            list.map(sk => `<div title="${_esc(sk.name)}">${_esc((sk.name||'').trim().charAt(0)||'?')}</div>`).join('') +
+            '</div>';
     },
 
     // Show/hide signature section based on setting
@@ -7308,16 +7335,24 @@ window.TraineeSystem = {
         const filtered = missionFilter === 'all' ? lessons
             : lessons.filter(l => l.mission === missionFilter || (missionFilter === 'כשירות מעשית/ שעות נוספות' && l.mission && l.mission.includes('כשירות')) || (missionFilter === 'קורס מעשי סיטאדיס' && (l.mission === 'קורס מעשי' || l.mission === 'קורס')));
         tbody.innerHTML = '';
+        const skillList = (this.settings?.skills?.length) ? this.settings.skills : [
+            {id:'s1', name:'מערכות רכבת'}, {id:'s2', name:'מבנה קו'}, {id:'s3', name:'תפעול סטיק'},
+            {id:'s4', name:'נהלים'}, {id:'s5', name:'משמעת'}
+        ];
+        this._renderHistorySkillsHeader(skillList);
         [...filtered].reverse().forEach((l, revIdx) => {
             const realIdx = lessons.indexOf(l);
             const mIcon = (l.mission === 'קורס מעשי סיטאדיס' || l.mission === 'קורס מעשי אורבוס' || l.mission === 'קורס מעשי' || l.mission === 'קורס') ? '🎓' : l.mission === 'חניכה' ? '🤝' : '⚙️';
+            const skillCells = '<div class="hist-skill-grid">' +
+                skillList.map(sk => `<div title="${_esc(sk.name)}">${l[sk.id] != null ? l[sk.id] : '—'}</div>`).join('') +
+                '</div>';
             tbody.innerHTML += `<tr>
                 <td>${_esc(l.date)}</td>
                 <td><span style="font-size:11px;">${mIcon} ${_esc(l.mission||'')}</span></td>
                 <td>${l.extraDesc ? _esc(l.extraDesc) : (l.lessonNums||[]).join(',')}</td>
                 <td>${_esc(l.ins||'')}</td>
-                <td>${[1,2,3,4,5].map(n=>`<span class="score-badge">${l['s'+n]||'—'}</span>`).join('')}</td>
-                <td style="text-align:right;color:#555;">${_esc(l.notes||'')}</td>
+                <td>${skillCells}</td>
+                <td style="text-align:right;color:#555;">${_esc(l.notes||l.note||'')}</td>
                 <td>${(typeof currentRole === 'undefined' || currentRole === 'admin') ? `<button data-delete-lesson="${realIdx}" style="background:none;border:1px solid #e74c3c;color:#e74c3c;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:0.78em;">🗑️</button>` : ''}</td>
             </tr>`;
         });
@@ -26663,10 +26698,13 @@ function _updateTraineeBtnVisibility() {
   const _isInstr = typeof currentRole !== 'undefined' && currentRole === 'instructor';
   const _isAdmin = typeof currentRole !== 'undefined' && currentRole === 'admin';
   _updateTraineeAlertBadge(); // sync badge with current role every time
-  // Trainee status dashboard (KPI cards, milestones, risk alerts) — admin only
+  // Trainee status dashboard (KPI cards, milestones, risk alerts) — admin + instructor
+  // (mentor excluded). Must match isStaff logic inside _renderTraineeSummaryPanel itself —
+  // this gate was still admin-only and silently re-hid the panel for instructors on every
+  // tab switch/init, even though _renderTraineeSummaryPanel() allows them (recurring bug).
   const summaryPanel = document.getElementById('trainee-summary-panel');
   if (summaryPanel) {
-    if (_isAdmin) { try { _renderTraineeSummaryPanel(); } catch(e) {} }
+    if (_isAdmin || _isInstr) { try { _renderTraineeSummaryPanel(); } catch(e) {} }
     else { summaryPanel.style.display = 'none'; }
   }
   const cont = document.getElementById('traineeSystemContainer');
