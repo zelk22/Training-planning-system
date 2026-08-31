@@ -14,7 +14,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 89</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 90</title>
 
 <style>
 
@@ -1426,7 +1426,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 149;
+  const APP_VERSION = 150;
 
   function initFirebase() {
     try {
@@ -5709,6 +5709,13 @@ window.TraineeSystem = {
         const isOrbus = (mission === 'קורס מעשי אורבוס');
         const isChinuchMission = (isFree || mission === 'חניכה') && !isOrbus
             && !(mission === 'קורס מעשי סיטאדיס' || mission === 'קורס מעשי' || mission === 'קורס');
+        const _isSitadis = (mission === 'קורס מעשי סיטאדיס' || mission === 'קורס מעשי' || mission === 'קורס');
+
+        // 2026-08-31, לפי בקשת לביא: תיקון באג — קריאה זו הייתה בסוף הפונקציה,
+        // אז כל return מוקדם (חסימת חניכה/אורבוס, למטה) דילג עליה לגמרי
+        // והשאיר בתצוגה צ'יפי טסט מהרנדור הקודם (למשל טסט 10/30/50 שנשארו
+        // גם כשעברו למשימת אורבוס). מועבר לכאן — מוקדם, לפני כל return.
+        this._renderTestChips(mission, isChinuchMission, _isSitadis, isOrbus);
 
         // -- מיילסטון חניכה: בדיקה לפני כניסה לחניכה --
         if (isChinuchMission && this.currentId && typeof _hasMilestonePassed === 'function') {
@@ -5777,7 +5784,6 @@ window.TraineeSystem = {
         let _msBlockAbove = 0; // שיעורים >= ערך זה חסומים ע"י מיילסטון
         let _msWarnAbove  = 0; // שיעורים >= ערך זה מציגים אזהרה
         let _msWarnFired  = false;
-        const _isSitadis = (mission === 'קורס מעשי סיטאדיס' || mission === 'קורס מעשי' || mission === 'קורס');
         if (_isSitadis && this.currentId && typeof _hasMilestonePassed === 'function') {
             const _msChecks = [
                 {key:'test10', threshold:10, blockFrom:11},
@@ -5796,11 +5802,25 @@ window.TraineeSystem = {
         }
         // ─────────────────────────────────────────────────────────────
 
+        // 2026-08-31, לפי בקשת לביא: סימון ✓ קטן על משבצת המספר (10/30/50
+        // בסיטאדיס, 7 באורבוס) כשהטסט המתאים כבר סומן "עבר".
+        const _passedTestChipsT = {};
+        if (this.currentId && typeof _hasMilestonePassed === 'function') {
+            if (_isSitadis) {
+                if (_hasMilestonePassed(this.currentId, 'test10', 0)) _passedTestChipsT[10] = true;
+                if (_hasMilestonePassed(this.currentId, 'test30', 0)) _passedTestChipsT[30] = true;
+                if (_hasMilestonePassed(this.currentId, 'test50', 0)) _passedTestChipsT[50] = true;
+            } else if (isOrbus) {
+                if (_hasMilestonePassed(this.currentId, 'testOrbus', 0)) _passedTestChipsT[7] = true;
+            }
+        }
+
         for (let i = 1; i <= maxChip; i++) {
             const isLocked = locked.has(i);
             const chip     = document.createElement('div');
             chip.className = 'chip';
-            chip.innerText = i;
+            chip.innerText = i + (_passedTestChipsT[i] ? ' ✓' : '');
+            if (_passedTestChipsT[i]) chip.title = 'הטסט המתאים סומן "עבר"';
 
             // בדיקת חסימת מיילסטון
             const _isMsBlocked = (_msBlockAbove > 0 && i >= _msBlockAbove);
@@ -5857,7 +5877,6 @@ window.TraineeSystem = {
             chips.appendChild(chip);
         }
         this.updateS2Label();
-        this._renderTestChips(mission, isChinuchMission, _isSitadis, isOrbus);
     },
 
     // 2026-08-30, לפי בקשת לביא: שיעורי "טסט" בתיק חניך — נפרד לגמרי מהצ'יפים
@@ -5867,19 +5886,20 @@ window.TraineeSystem = {
     _renderTestChips(mission, isChinuchMission, isSitadis, isOrbus) {
         const wrap = this.$('test-chips-wrap');
         if (!wrap) return;
-        if (isChinuchMission) { wrap.innerHTML = ''; return; }
+        const examinerName = (typeof currentUserName !== 'undefined') ? currentUserName : '';
+        const canExamine = _isExaminer(examinerName);
+        // 2026-08-31, לפי בקשת לביא: הסתרה מלאה ממי שאינו בוחן — לא רק ניטרול —
+        // כדי לא להעמיס שדות לא-רלוונטיים על מדריכים רגילים.
+        if (isChinuchMission || !canExamine) { wrap.innerHTML = ''; return; }
         const applies = isSitadis ? 'sitadis' : isOrbus ? 'orbus' : null;
         const relevant = applies ? TEST_DEFS.filter(d => d.appliesTo === applies) : [];
         if (!relevant.length) { wrap.innerHTML = ''; return; }
-        const examinerName = (typeof currentUserName !== 'undefined') ? currentUserName : '';
-        const canExamine = _isExaminer(examinerName);
         let h = '<div style="font-size:11.5px;font-weight:600;color:#8a6d1a;margin-bottom:5px;">🎯 שיעורי טסט (בוחן בלבד):</div><div style="display:flex;flex-wrap:wrap;gap:6px;">';
         relevant.forEach(d => {
             const selected = this.selectedTestKey === d.key;
-            const disabled = !canExamine;
             const bg = selected ? d.color : 'white';
-            const fg = disabled ? '#bbb' : selected ? 'white' : '#8a6d1a';
-            h += `<button type="button" data-test-key="${d.key}" ${disabled ? 'disabled' : ''} title="${disabled ? 'רק בוחן מוסמך יכול לתעד שיעור זה' : ''}" style="padding:5px 12px;border-radius:16px;border:1.5px solid ${d.color};background:${bg};color:${fg};font-size:12px;font-weight:bold;${disabled ? 'cursor:not-allowed;opacity:0.6;' : 'cursor:pointer;'}">${d.label}</button>`;
+            const fg = selected ? 'white' : '#8a6d1a';
+            h += `<button type="button" data-test-key="${d.key}" style="padding:5px 12px;border-radius:16px;border:1.5px solid ${d.color};background:${bg};color:${fg};font-size:12px;font-weight:bold;cursor:pointer;">${d.label}</button>`;
         });
         h += '</div>';
         if (this.selectedTestKey) {
@@ -5889,22 +5909,20 @@ window.TraineeSystem = {
               + '</div></div>';
         }
         wrap.innerHTML = h;
-        if (canExamine) {
-            wrap.querySelectorAll('[data-test-key]').forEach(btn => {
-                btn.onclick = () => {
-                    const key = btn.dataset.testKey;
-                    if (this.selectedTestKey === key) {
-                        this.selectedTestKey = null;
-                        this.selectedTestResult = null;
-                    } else {
-                        this.selectedTestKey = key;
-                        this.selectedTestResult = null;
-                        this.selectedLessons = []; // מדדדד הדדית עם שיעורים ממוספרים
-                    }
-                    this.updateChips();
-                };
-            });
-        }
+        wrap.querySelectorAll('[data-test-key]').forEach(btn => {
+            btn.onclick = () => {
+                const key = btn.dataset.testKey;
+                if (this.selectedTestKey === key) {
+                    this.selectedTestKey = null;
+                    this.selectedTestResult = null;
+                } else {
+                    this.selectedTestKey = key;
+                    this.selectedTestResult = null;
+                    this.selectedLessons = []; // מדדדד הדדית עם שיעורים ממוספרים
+                }
+                this.updateChips();
+            };
+        });
         wrap.querySelectorAll('[data-test-result]').forEach(btn => {
             btn.onclick = () => {
                 this.selectedTestResult = btn.dataset.testResult;
@@ -22772,12 +22790,40 @@ function _urUpdateChips(idx) {
     if (l.mission === missionName) (l.lessonNums || []).forEach(n => done.add(n));
   });
 
-  // קורס מעשי סיטאדיס → sequential 1-50; אורבוס → sequential 1-7; חניכה → free
   const isFree = (missionId === 'mt1' || missionName === 'חניכה');
   const isOrbus = (missionId === 'orbus' || missionName === 'קורס מעשי אורבוס');
   const isChinuchMission = (isFree || missionName === 'חניכה') && !isOrbus
     && !(missionName === 'קורס מעשי סיטאדיס' || missionName === 'קורס מעשי' || missionName === 'קורס');
   const maxChip = isOrbus ? 7 : 50;
+  const _isSitadis = (missionId === 'course' || missionName === 'קורס מעשי סיטאדיס' || missionName === 'קורס מעשי' || missionName === 'קורס');
+
+  // 2026-08-31, לפי בקשת לביא: תיקון באג — הבלוק הזה היה בסוף הפונקציה, אז
+  // כל "return" מוקדם (למשל חסימת אורבוס לפני טסט 50, למטה) דילג עליו לגמרי
+  // והשאיר בתצוגה את הצ'יפים מהרנדור הקודם (למשל טסט 10/30/50 שנשארו על
+  // המסך גם כשעברו למשימת אורבוס). מועבר לכאן — מוקדם, לפני כל return.
+  // גם: לביא ביקש שהסקציה תוסתר *לגמרי* ממדריך שאינו בוחן, לא רק תנוטרל.
+  const testWrap = document.getElementById(`ur-fb-${idx}-testchips-wrap`);
+  if (testWrap) {
+    const canExamine = _isExaminer(typeof currentUserName !== 'undefined' ? currentUserName : '');
+    if (isChinuchMission || !canExamine) {
+      testWrap.innerHTML = '';
+    } else {
+      const applies = _isSitadis ? 'sitadis' : isOrbus ? 'orbus' : null;
+      const relevant = applies ? TEST_DEFS.filter(d => d.appliesTo === applies) : [];
+      testWrap.innerHTML = !relevant.length ? '' : (
+        '<div style="font-size:11.5px;font-weight:600;color:#8a6d1a;margin-bottom:5px;">🎯 שיעורי טסט (בוחן בלבד):</div>'
+        + '<div style="display:flex;flex-wrap:wrap;gap:6px;">'
+        + relevant.map(d => {
+            return '<button type="button" data-test-key="' + d.key + '" data-fb-idx="' + idx + '" data-selected="false"'
+              + (' onclick="_urToggleTestChip(' + idx + ',\'' + d.key + '\')"')
+              + ' style="padding:5px 12px;border-radius:16px;border:1.5px solid ' + d.color + ';background:white;color:#8a6d1a;font-size:12px;font-weight:bold;cursor:pointer;">'
+              + d.label + '</button>';
+          }).join('')
+        + '</div>'
+        + '<div id="ur-fb-' + idx + '-testresult-wrap" style="display:none;margin-top:8px;"></div>'
+      );
+    }
+  }
 
   // -- מיילסטון חניכה: בדיקה לפני כניסה לחניכה --
   if (isChinuchMission && traineeId && typeof _hasMilestonePassed === 'function') {
@@ -22822,7 +22868,6 @@ function _urUpdateChips(idx) {
   // ── מיילסטון טסט-10 / טסט-30: חסימת chips בסיטאדיס ────────────
   let _urMsBlockAbove = 0;
   let _urMsWarnAbove  = 0;
-  const _isSitadis = (missionId === 'course' || missionName === 'קורס מעשי סיטאדיס' || missionName === 'קורס מעשי' || missionName === 'קורס');
   if (_isSitadis && traineeId && typeof _hasMilestonePassed === 'function') {
     let _maxSitadis2 = 0;
     (trainee?.lessons || []).forEach(l => {
@@ -22841,6 +22886,20 @@ function _urUpdateChips(idx) {
   }
   // ─────────────────────────────────────────────────────────────────
 
+  // 2026-08-31, לפי בקשת לביא: סימון ✓ קטן על משבצת המספר (10/30/50 בסיטאדיס,
+  // 7 באורבוס) כשהטסט המתאים כבר סומן "עבר" ע"י בוחן — אינדיקציה בתוך המספור
+  // הרגיל, בנוסף לתגי אבני הדרך בתיק החניך.
+  const _passedTestChips = {};
+  if (traineeId && typeof _hasMilestonePassed === 'function') {
+    if (_isSitadis) {
+      if (_hasMilestonePassed(traineeId, 'test10', 0)) _passedTestChips[10] = true;
+      if (_hasMilestonePassed(traineeId, 'test30', 0)) _passedTestChips[30] = true;
+      if (_hasMilestonePassed(traineeId, 'test50', 0)) _passedTestChips[50] = true;
+    } else if (isOrbus) {
+      if (_hasMilestonePassed(traineeId, 'testOrbus', 0)) _passedTestChips[7] = true;
+    }
+  }
+
   chipsEl.innerHTML = Array.from({length:maxChip},(_,i)=>i+1).map(n => {
     const isDone      = done.has(n);
     const isMsBlocked = (_urMsBlockAbove > 0 && n >= _urMsBlockAbove);
@@ -22852,8 +22911,10 @@ function _urUpdateChips(idx) {
                 : state==='blocked'  ? 'background:#fdecea;color:#c0392b;border-color:#e74c3c;cursor:not-allowed;'
                 :                      'background:white;color:#333;border-color:#aaa;cursor:pointer;';
     const isMsWarn = (state==='available' && _urMsWarnAbove > 0 && n >= _urMsWarnAbove);
+    const passedTestMark = _passedTestChips[n] ? ' ✓' : '';
     const title = state==='done' ? 'שיעור זה כבר בוצע ותועד — לא ניתן לבחור שוב'
                 : state==='blocked' ? ('חסום — טסט ' + (_urMsBlockAbove-1) + ' טרם עבר')
+                : passedTestMark ? 'הטסט המתאים סומן "עבר"'
                 : '';
     const clickAttr = state==='available'
       ? ' onclick="_urToggleChip(this,' + n + ',' + (isMsWarn?'true':'false') + ',' + (_urMsWarnAbove-1||0) + ')"'
@@ -22862,37 +22923,8 @@ function _urUpdateChips(idx) {
       clickAttr +
       (title ? ' title="' + title + '"' : '') +
       ' style="width:30px;height:30px;border-radius:50%;border:1.5px solid;font-size:11px;font-weight:bold;' + style + 'padding:0;width:auto !important;min-width:28px;">' +
-      n + '</button>';
+      n + passedTestMark + '</button>';
   }).join('');
-
-  // 2026-08-30, לפי בקשת לביא: שיעורי "טסט" — צ'יפ נפרד לגמרי (לא מספר), רק
-  // "בוחן" יכול לבחור. לא רלוונטי לחניכה (isChinuchMission). לסיטאדיס: טסט
-  // 10/30/50. לאורבוס: טסט אורבוס.
-  const testWrap = document.getElementById(`ur-fb-${idx}-testchips-wrap`);
-  if (testWrap) {
-    if (isChinuchMission) {
-      testWrap.innerHTML = '';
-    } else {
-      const applies = _isSitadis ? 'sitadis' : isOrbus ? 'orbus' : null;
-      const relevant = applies ? TEST_DEFS.filter(d => d.appliesTo === applies) : [];
-      const canExamine = _isExaminer(typeof currentUserName !== 'undefined' ? currentUserName : '');
-      testWrap.innerHTML = !relevant.length ? '' : (
-        '<div style="font-size:11.5px;font-weight:600;color:#8a6d1a;margin-bottom:5px;">🎯 שיעורי טסט (בוחן בלבד):</div>'
-        + '<div style="display:flex;flex-wrap:wrap;gap:6px;">'
-        + relevant.map(d => {
-            const disabled = !canExamine;
-            const title = disabled ? 'רק בוחן מוסמך יכול לתעד שיעור זה' : '';
-            return '<button type="button" data-test-key="' + d.key + '" data-fb-idx="' + idx + '" data-selected="false"'
-              + (disabled ? ' disabled' : (' onclick="_urToggleTestChip(' + idx + ',\'' + d.key + '\')"'))
-              + (title ? ' title="' + title + '"' : '')
-              + ' style="padding:5px 12px;border-radius:16px;border:1.5px solid ' + d.color + ';background:white;color:' + (disabled?'#bbb':'#8a6d1a') + ';font-size:12px;font-weight:bold;' + (disabled?'cursor:not-allowed;opacity:0.6;':'cursor:pointer;') + '">'
-              + d.label + '</button>';
-          }).join('')
-        + '</div>'
-        + '<div id="ur-fb-' + idx + '-testresult-wrap" style="display:none;margin-top:8px;"></div>'
-      );
-    }
-  }
 }
 
 // 2026-08-30: בחירת/ביטול צ'יפ טסט — מדדדד הדדית עם הצ'יפים הממוספרים (רק
