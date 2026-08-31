@@ -14,7 +14,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 87</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 89</title>
 
 <style>
 
@@ -1426,7 +1426,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 147;
+  const APP_VERSION = 149;
 
   function initFirebase() {
     try {
@@ -3867,6 +3867,8 @@ window.TraineeSystem = {
     instructors: [],
     currentId: null,
     selectedLessons: [],
+    selectedTestKey: null,
+    selectedTestResult: null,
     isSigned: false,
     canvas: null,
     ctx: null,
@@ -4390,6 +4392,7 @@ window.TraineeSystem = {
 
             <span class="chips-label">סמן שיעורים שבוצעו (שמור על רצף):</span>
             <div id="lesson-chips"></div>
+            <div id="test-chips-wrap" style="margin-top:8px;"></div>
             <div class="fg" id="extra-wrap" style="display:none; margin-top:12px;">
                 <input type="text" id="in-extra" placeholder="פרט נושא השיעור / הכשירות...">
                 <!-- 2026-08-24, לפי בקשת לביא: מספר שעות בפועל למפגש "שעות נוספות/כשירות",
@@ -5289,10 +5292,20 @@ window.TraineeSystem = {
             if (l.mission === 'קורס מעשי אורבוס')
                 (l.lessonNums || []).forEach(n => { if (n > _maxOrbusT) _maxOrbusT = n; });
         });
+        // 2026-08-30, לפי בקשת לביא: היסטוריית ניסיונות טסט (שיעורי טסט נפרדים,
+        // ר' TEST_DEFS) — כמות ניסיונות + תוצאת/תאריך האחרון, לכל אחד מ-4 הטסטים.
+        const _testAttempts = {};
+        (typeof TEST_DEFS !== 'undefined' ? TEST_DEFS : []).forEach(td => {
+            const attempts = (t.lessons || [])
+                .filter(l => l.testKey === td.key)
+                .sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+            _testAttempts[td.key] = attempts;
+        });
         const defs = [
             {key:'test10',     label:`טסט ${_thr10}`,                   threshold:_thr10},
             {key:'test30',     label:`טסט ${_thr30}`,                   threshold:_thr30},
             {key:'test50',     label:`טסט ${_thr50} (אורבוס)`,          threshold:_thr50},
+            {key:'testOrbus',  label:`טסט אורבוס`,                     threshold:_thrOrb, isOrbus:true},
             {key:'chinuch-ms', label:`תנאי חניכה (${maxL}/${_thrSit} סיטאדיס, ${_maxOrbusT}/${_thrOrb} אורבוס)`, threshold:null}
         ];
         const isAdmin = (typeof currentRole !== 'undefined' && (currentRole === 'admin'));
@@ -5302,6 +5315,8 @@ window.TraineeSystem = {
             if (def.key === 'chinuch-ms') {
                 // chinuch-ms: auto-check sitadis >= thrSit AND orbus >= thrOrb
                 autoPassed = maxL >= _thrSit && _maxOrbusT >= _thrOrb;
+            } else if (def.isOrbus) {
+                autoPassed = _maxOrbusT >= def.threshold;
             } else {
                 autoPassed = def.threshold !== null && maxL >= def.threshold;
             }
@@ -5316,6 +5331,15 @@ window.TraineeSystem = {
             const bg           = manualPassed ? '#eafaf1' : tentative ? '#fef9ec' : (mode === 'ignore' ? '#f8f9fa' : mode === 'warn' ? '#fef9ec' : '#fdf2f2');
             const icon         = manualPassed ? '✅' : tentative ? '🟡' : (mode === 'ignore' ? '✅' : mode === 'warn' ? '⚠️' : '🔒');
             const hint         = manualPassed ? ' (ידני)' : autoPassed ? ' (אוטומטי — טרם אושר)' : '';
+            // 2026-08-30: תיעוד ניסיונות (רק לשיעורי טסט אמיתיים — לא chinuch-ms
+            // שאינו שיעור טסט נפרד).
+            const attempts = _testAttempts[def.key];
+            let attemptsHint = '';
+            if (attempts && attempts.length) {
+                const last = attempts[attempts.length - 1];
+                const lastResultTxt = last.testResult === 'pass' ? '✅' : last.testResult === 'fail' ? '❌' : '?';
+                attemptsHint = ` · ${attempts.length} ניסיונות · אחרון: ${_esc(last.date || '')} ${lastResultTxt}`;
+            }
             const adminToggle  = isAdmin
                 ? ` <span data-ms-det-trainee="${t.id}" data-ms-det-key="${def.key}"
                        style="font-size:10px;text-decoration:underline;cursor:pointer;color:${color};margin-right:4px;"
@@ -5324,7 +5348,7 @@ window.TraineeSystem = {
             return `<span style="padding:4px 10px;border-radius:6px;border:1.5px solid ${color};
                          background:${bg};color:${color};font-size:11px;font-weight:bold;display:inline-flex;align-items:center;gap:4px;"
                     title="${def.key === 'chinuch-ms' ? `סיטאדיס: ${maxL}/${_thrSit}  |  אורבוס: ${_maxOrbusT}/${_thrOrb}` : `שיעורים: ${maxL}/${def.threshold}`}">
-                ${icon} ${def.label}${hint}${adminToggle}
+                ${icon} ${def.label}${hint}${attemptsHint}${adminToggle}
             </span>`;
         }).join('');
         // Bind admin toggle clicks
@@ -5810,6 +5834,9 @@ window.TraineeSystem = {
                         else        this.selectedLessons = this.selectedLessons.filter(n => n < i);
                     } else {
                         this.selectedLessons.push(i);
+                        // 2026-08-30: מדדדד הדדית — בחירת שיעור ממוספר מבטלת צ'יפ טסט נבחר.
+                        this.selectedTestKey = null;
+                        this.selectedTestResult = null;
                     }
                     this.updateChips();
                 };
@@ -5830,6 +5857,60 @@ window.TraineeSystem = {
             chips.appendChild(chip);
         }
         this.updateS2Label();
+        this._renderTestChips(mission, isChinuchMission, _isSitadis, isOrbus);
+    },
+
+    // 2026-08-30, לפי בקשת לביא: שיעורי "טסט" בתיק חניך — נפרד לגמרי מהצ'יפים
+    // הממוספרים, רק "בוחן" יכול לתעד. אותה לוגיקה כמו בטופס "סיכום יום"
+    // (_urUpdateChips/_urToggleTestChip), רק מול this.selectedTestKey/Result
+    // במקום data-attributes על ה-DOM.
+    _renderTestChips(mission, isChinuchMission, isSitadis, isOrbus) {
+        const wrap = this.$('test-chips-wrap');
+        if (!wrap) return;
+        if (isChinuchMission) { wrap.innerHTML = ''; return; }
+        const applies = isSitadis ? 'sitadis' : isOrbus ? 'orbus' : null;
+        const relevant = applies ? TEST_DEFS.filter(d => d.appliesTo === applies) : [];
+        if (!relevant.length) { wrap.innerHTML = ''; return; }
+        const examinerName = (typeof currentUserName !== 'undefined') ? currentUserName : '';
+        const canExamine = _isExaminer(examinerName);
+        let h = '<div style="font-size:11.5px;font-weight:600;color:#8a6d1a;margin-bottom:5px;">🎯 שיעורי טסט (בוחן בלבד):</div><div style="display:flex;flex-wrap:wrap;gap:6px;">';
+        relevant.forEach(d => {
+            const selected = this.selectedTestKey === d.key;
+            const disabled = !canExamine;
+            const bg = selected ? d.color : 'white';
+            const fg = disabled ? '#bbb' : selected ? 'white' : '#8a6d1a';
+            h += `<button type="button" data-test-key="${d.key}" ${disabled ? 'disabled' : ''} title="${disabled ? 'רק בוחן מוסמך יכול לתעד שיעור זה' : ''}" style="padding:5px 12px;border-radius:16px;border:1.5px solid ${d.color};background:${bg};color:${fg};font-size:12px;font-weight:bold;${disabled ? 'cursor:not-allowed;opacity:0.6;' : 'cursor:pointer;'}">${d.label}</button>`;
+        });
+        h += '</div>';
+        if (this.selectedTestKey) {
+            h += '<div style="margin-top:8px;"><div style="font-size:11.5px;color:#555;margin-bottom:4px;">תוצאה (חובה):</div><div style="display:flex;gap:8px;">'
+              + `<button type="button" data-test-result="pass" style="padding:6px 16px;border-radius:8px;border:1.5px solid #27ae60;background:${this.selectedTestResult==='pass'?'#27ae60':'white'};color:${this.selectedTestResult==='pass'?'white':'#1e8449'};font-size:12.5px;font-weight:bold;cursor:pointer;">✅ עבר</button>`
+              + `<button type="button" data-test-result="fail" style="padding:6px 16px;border-radius:8px;border:1.5px solid #e74c3c;background:${this.selectedTestResult==='fail'?'#e74c3c':'white'};color:${this.selectedTestResult==='fail'?'white':'#c0392b'};font-size:12.5px;font-weight:bold;cursor:pointer;">❌ לא עבר</button>`
+              + '</div></div>';
+        }
+        wrap.innerHTML = h;
+        if (canExamine) {
+            wrap.querySelectorAll('[data-test-key]').forEach(btn => {
+                btn.onclick = () => {
+                    const key = btn.dataset.testKey;
+                    if (this.selectedTestKey === key) {
+                        this.selectedTestKey = null;
+                        this.selectedTestResult = null;
+                    } else {
+                        this.selectedTestKey = key;
+                        this.selectedTestResult = null;
+                        this.selectedLessons = []; // מדדדד הדדית עם שיעורים ממוספרים
+                    }
+                    this.updateChips();
+                };
+            });
+        }
+        wrap.querySelectorAll('[data-test-result]').forEach(btn => {
+            btn.onclick = () => {
+                this.selectedTestResult = btn.dataset.testResult;
+                this.updateChips();
+            };
+        });
     },
 
     saveLesson() {
@@ -5846,12 +5927,21 @@ window.TraineeSystem = {
         ];
         const scores = skillList.map(sk => parseInt(this.$(sk.id)?.value));
 
+        // 2026-08-30, לפי בקשת לביא: שיעור "טסט" — דירוג מיומנויות אופציונלי,
+        // "לפחות שיעור אחד" לא רלוונטי (testKey הוא הבחירה עצמה), אבל תוצאה
+        // (עבר/לא עבר) חובה במקום זאת.
+        const isTestRow = !!this.selectedTestKey;
+
         if (!ins) errors.push('• חובה לבחור מדריך / חונך מהרשימה');
-        if (mission !== 'שעות נוספות' && !this.selectedLessons.length) errors.push('• חובה לסמן לפחות שיעור אחד');
-        if (mission === 'שעות נוספות' && !this.$('in-extra').value.trim()) errors.push('• חובה לפרט את נושא השעות הנוספות');
-        scores.forEach((s, i) => {
-            if (isNaN(s) || s < 1 || s > 10) errors.push(`• ציון "${skillList[i].name}" חסר או לא תקין (1-10)`);
-        });
+        if (isTestRow) {
+            if (!this.selectedTestResult) errors.push('• חובה לבחור תוצאה (עבר/לא עבר) עבור שיעור הטסט');
+        } else {
+            if (mission !== 'שעות נוספות' && !this.selectedLessons.length) errors.push('• חובה לסמן לפחות שיעור אחד');
+            if (mission === 'שעות נוספות' && !this.$('in-extra').value.trim()) errors.push('• חובה לפרט את נושא השעות הנוספות');
+            scores.forEach((s, i) => {
+                if (isNaN(s) || s < 1 || s > 10) errors.push(`• ציון "${skillList[i].name}" חסר או לא תקין (1-10)`);
+            });
+        }
         if (!this.isSigned) errors.push('• חובה לחתום על הטופס לאישור');
 
         if (errors.length > 0) {
@@ -5867,19 +5957,30 @@ window.TraineeSystem = {
 
         const t = this.trainees.find(x => x.id === this.currentId);
         if (!t.lessons) t.lessons = [];
+        const testDef = isTestRow ? TEST_DEFS.find(d => d.key === this.selectedTestKey) : null;
         const lessonObj = {
             date:       this.$('in-date').value,
-            mission,
-            lessonNums: [...this.selectedLessons],
+            mission:    isTestRow && testDef ? testDef.mission : mission,
+            lessonNums: isTestRow ? [] : [...this.selectedLessons],
             extraDesc:  this.$('in-extra').value,
             extraHours: mission === 'שעות נוספות' ? (parseFloat(this.$('in-extra-hours')?.value) || 0) : 0,
             ins,
             notes: this.$('in-notes').value
         };
-        skillList.forEach((sk, i) => { lessonObj[sk.id] = scores[i]; });
+        if (isTestRow) { lessonObj.testKey = this.selectedTestKey; lessonObj.testResult = this.selectedTestResult; }
+        // דירוג מיומנויות אופציונלי לשיעור טסט — רק מה שבאמת מולא נשמר.
+        skillList.forEach((sk, i) => {
+            if (isTestRow) { if (!isNaN(scores[i])) lessonObj[sk.id] = scores[i]; }
+            else lessonObj[sk.id] = scores[i];
+        });
         t.lessons.push(lessonObj);
         this.persist();
-        if (mission === 'קורס מעשי סיטאדיס') {
+        // 2026-08-30, לפי בקשת לביא: בוחן שתיעד "עבר" — סימון אוטומטי של אבן
+        // הדרך המתאימה, בלי צורך בסימון ידני נפרד אחר כך.
+        if (isTestRow && this.selectedTestResult === 'pass' && typeof _setMilestonePassExplicit === 'function') {
+            try { _setMilestonePassExplicit(t.id, this.selectedTestKey, true); } catch(e) {}
+        }
+        if (mission === 'קורס מעשי סיטאדיס' && !isTestRow) {
             const savedLesson = t.lessons[t.lessons.length - 1];
             const lessonCount = (savedLesson.lessonNums || []).length;
             if (lessonCount > 0) {
@@ -5969,6 +6070,8 @@ window.TraineeSystem = {
         this.$('in-extra').value      = '';
         if (this.$('in-extra-hours')) this.$('in-extra-hours').value = '';
         this.selectedLessons = [];
+        this.selectedTestKey = null;
+        this.selectedTestResult = null;
         // 2026-08-27: דינמי לפי this.settings.skills (לא רק s1-s5) — אחרת מיומנות
         // שישית (או כל מיומנות שנוספה) הייתה נשארת עם ערך תקוע בין דיווחים.
         const skillList = (this.settings?.skills?.length) ? this.settings.skills : [
@@ -7047,8 +7150,7 @@ window.TraineeSystem = {
             showToast(!cur ? `✅ ${key.replace('test','טסט ')} — סומן כ"עבר"` : `↩ ${key.replace('test','טסט ')} — בוטל`, !cur?'success':'info');
     },
 
-    _renderTab_mentors() {
-        // Toggle
+    _renderTab_mentors() {        // Toggle
         const chk = this.$('ts-mentor-see-practical');
         if (chk && this.settings) chk.checked = this.settings.mentorSeePractical !== false;
         // Mentor list
@@ -7987,6 +8089,52 @@ async function doInstrLogin(){
 let _mentorNames=[];
 let _mentorSchedPerms={};
 let _hiddenInstrs=new Set();  // instructor names hidden from scheduling
+window._examinerInstrs=new Set();  // 2026-08-30: instructor names permitted to document test lessons ("בוחן")
+
+// 2026-08-30, לפי בקשת לביא: הגדרת שיעורי "טסט" נוספים (לא חלק ממספור 1-50/1-7
+// הרגיל) — צ'יפ נפרד, רק "בוחן" יכול לתעד, מסמן אבן-דרך אוטומטית ב"עבר".
+// מרוכז כאן במקום אחד כדי שכל שאר הקוד (רינדור צ'יפים, שמירה, תגי אבני דרך,
+// דוחות) ישתמש באותה הגדרה — לא לשכפל ב-4 מקומות עם סיכון לאי-עקביות.
+const TEST_DEFS = [
+  {key:'test10',    mission:'טסט 10',       label:'🎯 טסט 10',       appliesTo:'sitadis', color:'#f0ad4e'},
+  {key:'test30',    mission:'טסט 30',       label:'🎯 טסט 30',       appliesTo:'sitadis', color:'#f0ad4e'},
+  {key:'test50',    mission:'טסט 50',       label:'🎯 טסט 50',       appliesTo:'sitadis', color:'#f0ad4e'},
+  {key:'testOrbus', mission:'טסט אורבוס',   label:'🎯 טסט אורבוס',   appliesTo:'orbus',   color:'#f0ad4e'},
+];
+function _isExaminer(name){ return !!(window._examinerInstrs && name && window._examinerInstrs.has(name)); }
+function _testDefByMission(mission){ return TEST_DEFS.find(d => d.mission === mission) || null; }
+
+// 2026-08-30: קובע (לא הופך) סטטוס מיילסטון — בשונה מ-TraineeSystem._toggleMilestonePass
+// שהופך את הערך הנוכחי. משמש לסימון אוטומטי כשבוחן מתעד "עבר" בשיעור טסט —
+// חייב set מפורש, לא toggle (אחרת סימון חוזר על "עבר" היה מבטל את הקודם).
+// פונקציה גלובלית (לא תלויה ב-this) כי נקראת גם מ-submitUnifiedReport וגם
+// מ-TraineeSystem.saveLesson.
+async function _setMilestonePassExplicit(traineeId, key, value) {
+    if (!window._milestonePassMap) window._milestonePassMap = {};
+    if (!window._milestonePassMap[traineeId]) window._milestonePassMap[traineeId] = {};
+    window._milestonePassMap[traineeId][key] = !!value;
+    if (window._fbDb) {
+        try {
+            const ref = window._fbDb.ref('settings/milestones/' + traineeId + '/' + key);
+            if (value) { await ref.set(true); } else { await ref.remove(); }
+        } catch(e) { console.warn('milestone auto-set Firebase:', e); }
+    }
+    try { localStorage.setItem('v100_milestones', JSON.stringify(window._milestonePassMap)); } catch(e) {}
+    window._traineeSummaryCache = null;
+    try { if (typeof _renderTraineeSummaryPanel === 'function') _renderTraineeSummaryPanel(); } catch(e) {}
+    try { if (typeof TraineeSystem !== 'undefined' && TraineeSystem._renderMilestoneTrainees) TraineeSystem._renderMilestoneTrainees(); } catch(e) {}
+}
+
+async function _setExaminerInstr(name, grant){
+  if(grant) window._examinerInstrs.add(name); else window._examinerInstrs.delete(name);
+  try{localStorage.setItem('v100_examinerInstrs',JSON.stringify([...window._examinerInstrs]));}catch(e){}
+  if(window._fbDb){
+    try{await _fbSet(_fbRef(_db,'settings/examinerInstrs/'+_msgKey(name)),grant?name:null);}catch(e){}
+  }
+  renderSettingsInstrList();
+  showToast(grant?`✅ ${name} מוגדר כעת "בוחן" — יכול לתעד שיעורי טסט`:`הוסרה הרשאת "בוחן" מ-${name}`,'info');
+}
+
 let _hiddenMentors=new Set(); // mentor names hidden from scheduling
 
 function _populateMentorSelect(){
@@ -10493,6 +10641,15 @@ async function loadInstructors(){
           try{localStorage.setItem('v100_hiddenInstrs',JSON.stringify([..._hiddenInstrs]));}catch(e){}
         }catch(e){}
 
+        // 2026-08-30, לפי בקשת לביא: הרשאת "בוחן" (מי רשאי לתעד שיעורי טסט) —
+        // אותה תבנית בדיוק כמו _hiddenInstrs.
+        try{
+          const examSnap=await _fbGet(_fbRef(_db,'settings/examinerInstrs'));
+          window._examinerInstrs=new Set();
+          if(examSnap.exists()){const v=examSnap.val();Object.keys(v).forEach(k=>{if(v[k])window._examinerInstrs.add(typeof v[k]==='string'?v[k]:k);});}
+          try{localStorage.setItem('v100_examinerInstrs',JSON.stringify([...window._examinerInstrs]));}catch(e){}
+        }catch(e){}
+
         populateAllInstrSelects();
 
         return;
@@ -10513,6 +10670,8 @@ async function loadInstructors(){
   }catch(e){_instrNames=[];}
 
   try{const rawH=localStorage.getItem('v100_hiddenInstrs');const hi=rawH?JSON.parse(rawH):[];_hiddenInstrs=new Set(hi);}catch(e){_hiddenInstrs=new Set();}
+
+  try{const rawE=localStorage.getItem('v100_examinerInstrs');const ei=rawE?JSON.parse(rawE):[];window._examinerInstrs=new Set(ei);}catch(e){window._examinerInstrs=new Set();}
 
   populateAllInstrSelects();
 
@@ -13751,6 +13910,7 @@ function renderSettingsInstrList(){
     // Fix (2026-08-24, per Lavi): מיקום נכון יותר לצ'קבוקס "מעקב טפסים" —
     // ליד כל מדריך ברשימה הזו, לא בסקציה נפרדת שקל לפספס.
     const isFormTracker=(typeof _settings!=='undefined'&&Array.isArray(_settings.formTrackingInstructors)&&_settings.formTrackingInstructors.includes(name));
+    const isExaminer=_isExaminer(name);
     const nameDisplay=isHidden?`<span style="text-decoration:line-through;color:#aaa;">${_esc(name)}</span>`:_esc(name);
     return`<div style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid #f0f4f8;${isHidden?'opacity:0.6':''}">
 
@@ -13766,6 +13926,12 @@ function renderSettingsInstrList(){
         <input type="checkbox" data-instr-name="${_esc(name)}" ${isFormTracker?'checked':''} onchange="_setFormTrackingInstr(this.dataset.instrName,this.checked)"
           style="accent-color:#2980b9;width:15px;height:15px;cursor:pointer;">
         <span style="font-size:11px;color:${isFormTracker?'#2980b9':'#888'};white-space:nowrap;">מעקב טפסים</span>
+      </label>
+
+      <label title="הרשאת &quot;בוחן&quot; — יכול לתעד שיעורי טסט (10/30/50/אורבוס)" style="display:flex;align-items:center;gap:4px;cursor:pointer;flex-shrink:0;">
+        <input type="checkbox" data-instr-name="${_esc(name)}" ${isExaminer?'checked':''} onchange="_setExaminerInstr(this.dataset.instrName,this.checked)"
+          style="accent-color:#e67e22;width:15px;height:15px;cursor:pointer;">
+        <span style="font-size:11px;color:${isExaminer?'#e67e22':'#888'};white-space:nowrap;">בוחן</span>
       </label>
 
       <div style="display:flex;gap:6px;align-items:center;">
@@ -19665,7 +19831,9 @@ const GUIDE_SECTIONS = [
       <p><b>⏱️ עיכובים:</b> אפשר לדווח כמה עיכובים באותה משמרת (משך בדקות + סיבה חופשית) — זו שכבת דיווח נוספת, נספרת יחד עם עיכובי הנסיעות (המדווחים דרך יומן הנסיעות) באותם דוחות/דשבורדים, לא במקומם.</p>
       <p><b>שעות נוספות/כשירות:</b> כשבוחרים משימה מסוג "כשירות מעשית/שעות נוספות" נפתח שדה משך בשעות (בנוסף לתיאור החופשי) — כדי שדוחות יוכלו לסכם שעות בפועל, לא רק לספור מפגשים.</p>
       <p><b>חשוב מאוד — מספר שיעור (שנתון):</b> לכל משוב חניך <u>חובה</u> לבחור באיזה שיעור מדובר (הכפתורים הממוספרים). בלי זה, המערכת לא סופרת את השיעור בכלל — לא בממוצע, לא בבר ההתקדמות ("הרכבת"), ולא בסטטוס הכשירות של החניך. שיעור שכבר בוצע מופיע עם קו חוצה ולא ניתן לבחירה חוזרת; לחיצה חוזרת על שיעור שנבחר עכשיו מבטלת את הבחירה.</p>
-      <p><b>עריכה בדיעבד (מנהל בלבד):</b> טופס שכבר הוגש ניתן לפתוח מה"ארכיון" (בדוחות) וללחוץ "✏️ ערוך פרטים" — לתיקון תאריך/שעות/הערות. אם שיעור נשמר בלי מספר, אפשר לשייך לו מספר ישירות מתוך אותה תצוגה.</p>
+      <p><b>עריכה בדיעבד (מנהל בלבד):</b> טופס שכבר הוגש ניתן לפתוח מה"ארכיון" (בדוחות) וללחוץ "✏️ ערוך פרטים" — לתיקון תאריך/שעות/הערות. אם שיעור נשמר בלי מספר, אפשר לשייך לו מספר ישירות מתוך אותה תצוגה. יש גם כפתור "🗑️ מחק דוח" (מנהל בלבד) — מוחק לצמיתות את הדוח וגם את רשומות השיעור שהוזרקו ממנו לתיקי החניכים, כדי לאפשר מילוי מחדש נקי.</p>
+      <p><b>הוספת פרטים לטופס קיים (מדריך):</b> מדריך שפותח "📝 סיכום יום" לתאריך שכבר יש לו דוח מוגש — נכנס אוטומטית ל"מצב הוספה": שעות המשמרת נטענות מהדוח הקיים לעדכון, המשוב שכבר נשמר מוצג למעלה כקריאה-בלבד, ואפשר להוסיף עוד שורות משוב חדשות. השמירה ממזגת לתוך אותו דוח — לא יוצרת דוח שני, ולא דורסת/מכפילה את המשוב הקיים.</p>
+      <p><b>🎯 שיעורי טסט ("בוחן"):</b> ⚙️ הגדרות → צוות הדרכה → צ'קבוקס "בוחן" ליד כל מדריך. בטופס "סיכום יום" ובתיק חניך ("הוסף משוב") מופיע צ'יפ נפרד (לא מספר) לכל אחד מ-4 טסטים (10/30/50/אורבוס) — מנוטרל למי שאינו בוחן. דירוג מיומנויות אופציונלי לשיעור טסט; שדה עבר/לא עבר חובה. "עבר" מסמן את אבן הדרך אוטומטית; "לא עבר" נשמר כניסיון מתועד בלי לשנות סטטוס — ניתן לגשת שוב בתאריך אחר (לא ננעל כמו שיעור ממוספר רגיל). היסטוריית ניסיונות מופיעה בתגי אבני הדרך בתיק החניך, וכל ניסיון נספר כשיעור רגיל ב"פילוח שיעורים" (סינון לפי משימה="טסט 10" וכו').</p>
       <p><b>"הדוחות שלי" (מדריך):</b> טאב נפרד בממשק המדריך — ארכיון קריאה-בלבד של כל הדוחות שהוא עצמו הגיש (שנה אחורה), עם חיפוש לפי תאריך. לא זמין לחונכים.</p>
       <p><b>התרעה למנהל על טופס חסר:</b> אם מדריך היה משובץ לנסיעה אתמול/שלשום ולא הגיש טופס, מופיעה התרעה בולטת (אדומה) בדשבורד. ניתן להעניק גם למדריך ספציפי הרשאת "מעקב טפסים" (בהגדרות ← צוות הדרכה, צ'קבוקס ליד שם המדריך) — אז הוא יראה את אותה התרעה על כל הצוות, לא רק על עצמו.</p>`
   },
@@ -21948,14 +22116,85 @@ function openUnifiedReport(prefillDate) {
   const instrEl = document.getElementById('ur-instructor');
   if (instrEl) instrEl.value = currentUserName || '';
 
-  // Prefill shift times from today's schedule entry
-  const entries = (schedData[today] || []).filter(e => e.name === currentUserName);
-  if (entries.length) {
-    const sh = SHIFT_HOURS[entries[0].shift] || {};
+  // 2026-08-30, לפי בקשת לביא: אם כבר קיים דוח "סיכום יום" לתאריך+מדריך הזה,
+  // נכנסים אוטומטית למצב "הוספת פרטים" — לא חוסמים בשקט רק בזמן שמירה
+  // (מה שקרה עד עכשיו והפתיע רק בסוף). מציגים את המשוב הקיים כקריאה-בלבד,
+  // ומאפשרים להוסיף עוד שורות/לעדכן שעות משמרת על אותו דוח.
+  const _reportKey = `${today}__${currentUserName}__unified`;
+  let _existingReport = (window._taskReportsCache && window._taskReportsCache[_reportKey]) || null;
+  if (!_existingReport) {
+    try {
+      const _ls = JSON.parse(localStorage.getItem('taskReports_' + today) || '{}');
+      _existingReport = _ls[_reportKey] || null;
+    } catch(e) {}
+  }
+  window._urAddMode = _existingReport ? { ..._existingReport, _key: _reportKey } : null;
+
+  const titleEl  = document.getElementById('ur-title');
+  const bannerEl = document.getElementById('ur-addmode-banner');
+  const submitBtn = document.getElementById('ur-submit-btn');
+  const existingFbEl = document.getElementById('ur-existing-feedback-summary');
+
+  if (window._urAddMode) {
+    if (titleEl) titleEl.textContent = '📝 הוספת פרטים לסיכום יום קיים';
+    if (bannerEl) {
+      bannerEl.style.display = 'block';
+      bannerEl.innerHTML = `⚠️ כבר קיים סיכום יום לתאריך זה. אתה יכול לעדכן את שעות המשמרת ולהוסיף עוד משוב חניכים — המשוב שכבר נשמר (למטה, לא ניתן לעריכה) יישאר כפי שהוא.`;
+    }
+    if (submitBtn) submitBtn.textContent = '💾 הוסף לדוח הקיים';
+    // Prefill shift fields FROM the existing report (authoritative — instructor already entered these)
     const startEl = document.getElementById('ur-shift-start');
-    const endEl = document.getElementById('ur-shift-end');
-    if (startEl) startEl.value = entries[0].startTime || sh.s || '';
-    if (endEl) endEl.value = entries[0].endTime || sh.e || '';
+    const endEl   = document.getElementById('ur-shift-end');
+    const sinerioEl = document.getElementById('ur-sinerio-hours');
+    const lightEl   = document.getElementById('ur-light-hours');
+    const notesEl2  = document.getElementById('ur-notes');
+    if (startEl)   startEl.value   = window._urAddMode.shiftStart || '';
+    if (endEl)     endEl.value     = window._urAddMode.shiftEnd || '';
+    if (sinerioEl) sinerioEl.value = window._urAddMode.sinerioHours || '';
+    if (lightEl)   lightEl.value   = window._urAddMode.lightHours || '';
+    if (notesEl2)  notesEl2.value  = window._urAddMode.notes || '';
+    // Read-only summary of existing feedback
+    if (existingFbEl) {
+      const details = window._urAddMode.feedbackDetails || [];
+      const labelMap = {};
+      (window._urAddMode.skillLabels || []).forEach(s => { labelMap[s.id] = s.name; });
+      existingFbEl.innerHTML = !details.length ? '' : (
+        '<div style="font-size:11.5px;color:#888;margin-bottom:6px;">משוב שכבר נשמר בדוח זה (לא ניתן לעריכה כאן):</div>'
+        + details.map(fb => {
+            const scoresHtml = Object.keys(fb.skills || {}).map(id =>
+              `<span style="display:inline-flex;align-items:center;gap:4px;background:#eef3fb;border-radius:6px;padding:2px 8px;font-size:11.5px;margin:2px 2px 2px 0;"><b>${_esc(labelMap[id] || id)}:</b> ${fb.skills[id]}/10</span>`
+            ).join('');
+            const lessonNumsStr = (fb.lessonNums || []).length ? `שיעורים: ${fb.lessonNums.join(', ')}` : '';
+            return `<div style="border:1px solid #eee;border-radius:8px;padding:8px 10px;margin-bottom:6px;background:#fafbfc;opacity:0.85;">
+              <div style="font-weight:bold;font-size:12.5px;">${_esc(fb.name)} <span style="color:#888;font-weight:400;font-size:11.5px;">— ${_esc(fb.mission||'')}</span></div>
+              ${lessonNumsStr ? `<div style="font-size:11.5px;color:#666;">${_esc(lessonNumsStr)}</div>` : ''}
+              ${scoresHtml ? `<div style="margin-top:3px;">${scoresHtml}</div>` : ''}
+            </div>`;
+          }).join('')
+      );
+    }
+  } else {
+    if (titleEl) titleEl.textContent = '📝 סיכום יום מאוחד';
+    if (bannerEl) { bannerEl.style.display = 'none'; bannerEl.innerHTML = ''; }
+    if (submitBtn) submitBtn.textContent = '💾 שמור סיכום יום';
+    if (existingFbEl) existingFbEl.innerHTML = '';
+
+    // Prefill shift times from today's schedule entry (only when NOT in add-mode —
+    // add-mode already prefilled from the existing report above, which is authoritative)
+    const entries = (schedData[today] || []).filter(e => e.name === currentUserName);
+    if (entries.length) {
+      const sh = SHIFT_HOURS[entries[0].shift] || {};
+      const startEl = document.getElementById('ur-shift-start');
+      const endEl = document.getElementById('ur-shift-end');
+      if (startEl) startEl.value = entries[0].startTime || sh.s || '';
+      if (endEl) endEl.value = entries[0].endTime || sh.e || '';
+    }
+    const notesEl = document.getElementById('ur-notes');
+    if (notesEl) notesEl.value = '';
+    ['ur-light-hours'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = '';
+    });
   }
 
   // Auto-calculate sinerio hours from shift start/end
@@ -21979,14 +22218,6 @@ function openUnifiedReport(prefillDate) {
   // Run immediately if times already prefilled
   _calcSinerioHours();
 
-  // Clear numeric fields (sinerio-hours is auto-calculated from shift times, not cleared)
-  ['ur-light-hours'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.value = '';
-  });
-  const notesEl = document.getElementById('ur-notes');
-  if (notesEl) notesEl.value = '';
-
   // Render custom fields
   _urRenderCustomFields();
 
@@ -22009,6 +22240,7 @@ function closeUnifiedReport() {
   if (typeof TraineeSystem !== 'undefined' && TraineeSystem.courses) {
     TraineeSystem.courses = TraineeSystem.courses.filter(c => !c._temp);
   }
+  window._urAddMode = null;
   const overlay = document.getElementById('unifiedReportOverlay');
   if (overlay) overlay.classList.remove('open');
 }
@@ -22222,6 +22454,9 @@ async function _urAddFeedbackBlock() {
            שדוחות יוכלו לסכם שעות בפועל, לא רק לספור מפגשים. -->
       <input id="ur-fb-${idx}-extra-hours" type="number" min="0" max="24" step="0.5" placeholder="משך (שעות)"
         style="display:none;width:140px;padding:7px 10px;border:1.5px solid #ddd;border-radius:7px;font-size:13px;direction:rtl;box-sizing:border-box;margin-top:6px;">
+      <!-- 2026-08-30, לפי בקשת לביא: שיעורי "טסט" — נפרדים לגמרי מהמספור 1-50/1-7,
+           רק "בוחן" יכול לתעד. מתמלא ע"י _urUpdateChips. -->
+      <div id="ur-fb-${idx}-testchips-wrap" style="margin-top:8px;"></div>
     </div>
     <div style="margin-bottom:10px;">
       <label style="font-size:12px;font-weight:600;color:#555;display:block;margin-bottom:6px;">ציוני מיומניות (1–10)</label>
@@ -22629,6 +22864,100 @@ function _urUpdateChips(idx) {
       ' style="width:30px;height:30px;border-radius:50%;border:1.5px solid;font-size:11px;font-weight:bold;' + style + 'padding:0;width:auto !important;min-width:28px;">' +
       n + '</button>';
   }).join('');
+
+  // 2026-08-30, לפי בקשת לביא: שיעורי "טסט" — צ'יפ נפרד לגמרי (לא מספר), רק
+  // "בוחן" יכול לבחור. לא רלוונטי לחניכה (isChinuchMission). לסיטאדיס: טסט
+  // 10/30/50. לאורבוס: טסט אורבוס.
+  const testWrap = document.getElementById(`ur-fb-${idx}-testchips-wrap`);
+  if (testWrap) {
+    if (isChinuchMission) {
+      testWrap.innerHTML = '';
+    } else {
+      const applies = _isSitadis ? 'sitadis' : isOrbus ? 'orbus' : null;
+      const relevant = applies ? TEST_DEFS.filter(d => d.appliesTo === applies) : [];
+      const canExamine = _isExaminer(typeof currentUserName !== 'undefined' ? currentUserName : '');
+      testWrap.innerHTML = !relevant.length ? '' : (
+        '<div style="font-size:11.5px;font-weight:600;color:#8a6d1a;margin-bottom:5px;">🎯 שיעורי טסט (בוחן בלבד):</div>'
+        + '<div style="display:flex;flex-wrap:wrap;gap:6px;">'
+        + relevant.map(d => {
+            const disabled = !canExamine;
+            const title = disabled ? 'רק בוחן מוסמך יכול לתעד שיעור זה' : '';
+            return '<button type="button" data-test-key="' + d.key + '" data-fb-idx="' + idx + '" data-selected="false"'
+              + (disabled ? ' disabled' : (' onclick="_urToggleTestChip(' + idx + ',\'' + d.key + '\')"'))
+              + (title ? ' title="' + title + '"' : '')
+              + ' style="padding:5px 12px;border-radius:16px;border:1.5px solid ' + d.color + ';background:white;color:' + (disabled?'#bbb':'#8a6d1a') + ';font-size:12px;font-weight:bold;' + (disabled?'cursor:not-allowed;opacity:0.6;':'cursor:pointer;') + '">'
+              + d.label + '</button>';
+          }).join('')
+        + '</div>'
+        + '<div id="ur-fb-' + idx + '-testresult-wrap" style="display:none;margin-top:8px;"></div>'
+      );
+    }
+  }
+}
+
+// 2026-08-30: בחירת/ביטול צ'יפ טסט — מדדדד הדדית עם הצ'יפים הממוספרים (רק
+// אחד משני הסוגים יכול להיות נבחר בשורת משוב אחת), ומציג/מסתיר את כפתורי
+// עבר/לא-עבר.
+function _urToggleTestChip(idx, key) {
+  const block = document.querySelector(`.ur-trainee-block[data-fb-idx="${idx}"]`);
+  const btn = document.querySelector(`[data-test-key="${key}"][data-fb-idx="${idx}"]`);
+  if (!block || !btn) return;
+  const testDef = TEST_DEFS.find(d => d.key === key);
+  const wasSelected = btn.dataset.selected === 'true';
+
+  // Deselect all test chips in this row first
+  document.querySelectorAll(`[data-test-key][data-fb-idx="${idx}"]`).forEach(b => {
+    b.dataset.selected = 'false';
+    b.style.background = 'white';
+    b.style.color = '#8a6d1a';
+  });
+
+  const resultWrap = document.getElementById(`ur-fb-${idx}-testresult-wrap`);
+
+  if (wasSelected) {
+    // Toggling off
+    delete block.dataset.testKey;
+    delete block.dataset.testResult;
+    if (resultWrap) { resultWrap.style.display = 'none'; resultWrap.innerHTML = ''; }
+    return;
+  }
+
+  // Selecting this test — deselect any numbered lesson chip in the same row
+  document.querySelectorAll(`[data-chip-n][data-fb-idx="${idx}"]`).forEach(b => {
+    if (b.dataset.state === 'selected') {
+      b.dataset.state = 'available';
+      b.style.background = 'white';
+      b.style.color = '#333';
+      b.style.borderColor = '#aaa';
+    }
+  });
+
+  btn.dataset.selected = 'true';
+  btn.style.background = testDef ? testDef.color : '#f0ad4e';
+  btn.style.color = 'white';
+  block.dataset.testKey = key;
+  delete block.dataset.testResult;
+
+  if (resultWrap) {
+    resultWrap.style.display = 'block';
+    resultWrap.innerHTML =
+      '<div style="font-size:11.5px;color:#555;margin-bottom:4px;">תוצאה (חובה):</div>'
+      + '<div style="display:flex;gap:8px;">'
+      + '<button type="button" data-result-btn="pass" data-fb-idx="' + idx + '" onclick="_urSetTestResult(' + idx + ',\'pass\')" style="padding:6px 16px;border-radius:8px;border:1.5px solid #27ae60;background:white;color:#1e8449;font-size:12.5px;font-weight:bold;cursor:pointer;">✅ עבר</button>'
+      + '<button type="button" data-result-btn="fail" data-fb-idx="' + idx + '" onclick="_urSetTestResult(' + idx + ',\'fail\')" style="padding:6px 16px;border-radius:8px;border:1.5px solid #e74c3c;background:white;color:#c0392b;font-size:12.5px;font-weight:bold;cursor:pointer;">❌ לא עבר</button>'
+      + '</div>';
+  }
+}
+
+function _urSetTestResult(idx, result) {
+  const block = document.querySelector(`.ur-trainee-block[data-fb-idx="${idx}"]`);
+  if (!block) return;
+  block.dataset.testResult = result;
+  document.querySelectorAll(`[data-result-btn][data-fb-idx="${idx}"]`).forEach(b => {
+    const isThis = b.dataset.resultBtn === result;
+    if (b.dataset.resultBtn === 'pass') { b.style.background = isThis ? '#27ae60' : 'white'; b.style.color = isThis ? 'white' : '#1e8449'; }
+    else { b.style.background = isThis ? '#e74c3c' : 'white'; b.style.color = isThis ? 'white' : '#c0392b'; }
+  });
 }
 
 // לחיצה על שנתון פנוי (available) — טוגל אמיתי: בחירה (selected) או ביטול בחירה
@@ -22648,6 +22977,20 @@ function _urToggleChip(btn, n, isMsWarn, msWarnTestNum) {
     btn.style.background = '#2980b9';
     btn.style.color = 'white';
     btn.style.borderColor = '#2980b9';
+    // 2026-08-30: מדדדד הדדית — בחירת שיעור ממוספר מבטלת צ'יפ טסט נבחר באותה שורה.
+    const idx = btn.dataset.fbIdx;
+    const block = document.querySelector(`.ur-trainee-block[data-fb-idx="${idx}"]`);
+    if (block && block.dataset.testKey) {
+      document.querySelectorAll(`[data-test-key][data-fb-idx="${idx}"]`).forEach(b => {
+        b.dataset.selected = 'false';
+        b.style.background = 'white';
+        b.style.color = '#8a6d1a';
+      });
+      delete block.dataset.testKey;
+      delete block.dataset.testResult;
+      const resultWrap = document.getElementById(`ur-fb-${idx}-testresult-wrap`);
+      if (resultWrap) { resultWrap.style.display = 'none'; resultWrap.innerHTML = ''; }
+    }
   }
 }
 
@@ -22659,7 +23002,10 @@ async function submitUnifiedReport() {
   // 2026-08-27, לפי בקשת לביא: חסימת הגשה כפולה — הגשה חוזרת לאותו תאריך+מדריך
   // הייתה דורסת את רשומת הדוח עצמה (מפתח קבוע) אך גם דוחפת רשומות שיעור נוספות
   // (כפולות) לתיקי החניכים, כי addLessonFromExternal תמיד מוסיף ולא מחליף.
-  // לעריכת דוח קיים יש להשתמש ב-"✏️ ערוך פרטים" בארכיון הטפסים.
+  // 2026-08-30, לפי בקשת לביא: אם המשתמש נכנס דרך מצב "הוספה לטופס קיים"
+  // (openUnifiedReport זיהה דוח קיים ופתח את הטופס במפורש במצב הזה — ר'
+  // window._urAddMode) — זו כן הכוונה המפורשת, לא הגשה כפולה בטעות. עוברים
+  // הלאה, וההוספה תמוזג (לא תדרוס) בהמשך הפונקציה.
   {
     const _dupKey = `${date}__${instructor}__unified`;
     let _existing = (window._taskReportsCache && window._taskReportsCache[_dupKey]) || null;
@@ -22669,8 +23015,9 @@ async function submitUnifiedReport() {
         _existing = _ls[_dupKey] || null;
       } catch(e) {}
     }
-    if (_existing) {
-      showToast('⚠️ כבר קיים דוח "סיכום יום" לתאריך זה — לעריכה יש לפתוח את הדוח הקיים בארכיון הטפסים ("✏️ ערוך פרטים"), לא לשלוח טופס חדש', 'warning');
+    const _inAddModeForThis = window._urAddMode && window._urAddMode._key === _dupKey;
+    if (_existing && !_inAddModeForThis) {
+      showToast('⚠️ כבר קיים דוח "סיכום יום" לתאריך זה — הוא ייפתח אוטומטית במצב "הוספת פרטים". אם זה לא קרה, סגור ופתח שוב את הטופס.', 'warning');
       return;
     }
   }
@@ -22746,7 +23093,7 @@ async function submitUnifiedReport() {
     }
     if (!traineeId) return;
     const mSel = document.getElementById(`ur-fb-${idx}-mission`);
-    const missionName = mSel?.options[mSel?.selectedIndex]?.dataset?.name || 'קורס מעשי סיטאדיס';
+    let missionName = mSel?.options[mSel?.selectedIndex]?.dataset?.name || 'קורס מעשי סיטאדיס';
     const missionId   = mSel?.value || 'course';
     // Collect selected chip numbers
     const lessonNums = [];
@@ -22754,6 +23101,17 @@ async function submitUnifiedReport() {
       if (btn.dataset.state === 'selected')
         lessonNums.push(parseInt(btn.dataset.chipN));
     });
+    // 2026-08-30, לפי בקשת לביא: שיעור "טסט" — נפרד לגמרי מהמספור 1-50/1-7.
+    // אם נבחר, ה-mission של השורה הופך ל-mission הטסט עצמו (למשל "טסט 10"),
+    // lessonNums נשאר ריק (לא משפיע על "מספר שיעור נוכחי"), ומתועדים
+    // testKey+testResult לצורך הסימון האוטומטי בהמשך.
+    const testKey = block.dataset.testKey || null;
+    let testResult = null;
+    if (testKey) {
+      const testDef = TEST_DEFS.find(d => d.key === testKey);
+      if (testDef) missionName = testDef.mission;
+      testResult = block.dataset.testResult || null;
+    }
     // Extra text for כשירות
     const extraEl = document.getElementById(`ur-fb-${idx}-extra`);
     const extraDesc = extraEl?.style.display !== 'none' ? (extraEl?.value.trim() || '') : '';
@@ -22762,11 +23120,12 @@ async function submitUnifiedReport() {
     const extraHours = (extraHoursEl?.style.display !== 'none') ? (parseFloat(extraHoursEl?.value) || 0) : 0;
     const lesson = {
       date, instructor, mission: missionName,
-      lessonNums: lessonNums.sort((a,b)=>a-b),
+      lessonNums: testKey ? [] : lessonNums.sort((a,b)=>a-b),
       extraDesc,
       extraHours,
       note: document.getElementById(`ur-fb-${idx}-note`)?.value.trim() || ''
     };
+    if (testKey) { lesson.testKey = testKey; lesson.testResult = testResult; }
     skills.forEach(sk => {
       const val = parseInt(document.getElementById(`ur-fb-${idx}-${sk.id}`)?.value || '', 10);
       if (!isNaN(val) && val >= 1 && val <= 10) lesson[sk.id] = val;
@@ -22778,15 +23137,29 @@ async function submitUnifiedReport() {
     // יותר, חניך שהוזרק בכשל שקט וכו').
     const traineeSel = document.getElementById(`ur-fb-${idx}-trainee`);
     const traineeName = freeName || traineeSel?.options[traineeSel?.selectedIndex]?.textContent || '?';
-    lessonResults.push({ traineeId, freeName, freeCourseId, lesson, idx, traineeName });
+    lessonResults.push({ traineeId, freeName, freeCourseId, lesson, idx, traineeName, testKey, testResult });
   });
+
+  // 2026-08-30, לפי בקשת לביא: אם נבחר צ'יפ טסט, חובה לבחור תוצאה (עבר/לא עבר)
+  // לפני שמירה — בלי קשר לדירוג מיומנויות, שנשאר אופציונלי גם לשיעורי טסט.
+  const _missingTestResult = lessonResults.filter(r => r.testKey && !r.testResult);
+  if (_missingTestResult.length) {
+    const _names = _missingTestResult.map(r => {
+      const sel = document.getElementById(`ur-fb-${r.idx}-trainee`);
+      return sel?.options[sel?.selectedIndex]?.textContent || r.freeName || '?';
+    }).join(', ');
+    showToast(`⚠️ יש לבחור תוצאה (עבר/לא עבר) עבור שיעור הטסט של: ${_names}`, 'warning');
+    return;
+  }
 
   // 2026-08-24, לפי בקשת לביא: "לפחות משוב חניך אחד" נדרש רק אם המדריך היה
   // בפועל משובץ למשימת נסיעה/קורס מעשי **באותו תאריך שנבחר בטופס** (לא
   // בהכרח היום הנוכחי — דוח יכול להיות מוגש בדיעבד לתאריך קודם) — לא לכל יום
   // סתם (יום עיוני/atp/חופש וכו' לא אמור לדרוש משוב חניך).
+  // 2026-08-30: לא רלוונטי במצב "הוספה לטופס קיים" — כבר יש משוב מההגשה
+  // המקורית; הוספה עם 0 שורות חדשות עדיין תקינה (למשל רק עדכון שעת סיום).
   const _wasTripDay = (typeof _wasAssignedToTripTaskOnDate === 'function') && _wasAssignedToTripTaskOnDate(instructor, date);
-  if (_wasTripDay && !lessonResults.length) {
+  if (_wasTripDay && !lessonResults.length && !window._urAddMode) {
     showToast('⚠️ יש להוסיף לפחות משוב חניך אחד לפני שמירת הטופס (היית משובץ לקורס מעשי בתאריך זה)', 'warning');
     const fbSection = document.getElementById('ur-feedback-blocks');
     if (fbSection) fbSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -22797,7 +23170,7 @@ async function submitUnifiedReport() {
   // נבחר (lessonNums ריק), כי לא הייתה ולידציה שמחייבת בחירת שנתון. setTrain()
   // (התקדמות הרכבת) מסתמך אך ורק על lessonNums — כך שמשוב תקין נראה "נעלם"
   // מבחינת ההתקדמות הוויזואלית, גם שהוא כן נשמר ומופיע במונה הדיווחים.
-  const _missingLessonNum = lessonResults.filter(r => !r.lesson.lessonNums.length);
+  const _missingLessonNum = lessonResults.filter(r => !r.testKey && !r.lesson.lessonNums.length);
   if (_missingLessonNum.length) {
     const _names = _missingLessonNum.map(r => {
       const block = document.querySelector(`.ur-trainee-block[data-fb-idx="${r.idx}"]`);
@@ -22809,12 +23182,13 @@ async function submitUnifiedReport() {
   }
 
   // Attach feedback count to report before saving
-  report.feedbackCount = lessonResults.length;
-  // 2026-08-30, לפי בקשת לביא: שומרים את פירוט המשוב המלא *בתוך הדוח עצמו*,
-  // ישירות מהטופס בזמן ההגשה — לא רק ספירה שדורשת שחזור אחורי לא-אמין
-  // מתיקי החניכים בזמן הצפייה (ר' openViewUnifiedReport/viewUnifiedReport).
-  // כולל גם שמות חד-פעמיים (הם ממילא לא נכתבים לשום תיק חניך).
-  report.feedbackDetails = lessonResults.map(r => {
+  // 2026-08-30, לפי בקשת לביא: במצב "הוספה לטופס קיים" (window._urAddMode)
+  // ממזגים את המשוב החדש *לתוך* הרשימה הקיימת מההגשה המקורית — לא דורסים
+  // אותה. השורות הקיימות מוצגות למעלה כקריאה-בלבד (ur-existing-feedback-summary)
+  // ולא חוזרות דרך lessonResults, אז אין סכנת הזרקה כפולה לתיקי החניכים.
+  const _existingDetails = (window._urAddMode && Array.isArray(window._urAddMode.feedbackDetails))
+    ? window._urAddMode.feedbackDetails : [];
+  const _newDetails = lessonResults.map(r => {
     const sk = {};
     skills.forEach(s => { if (r.lesson[s.id] != null) sk[s.id] = r.lesson[s.id]; });
     return {
@@ -22824,8 +23198,11 @@ async function submitUnifiedReport() {
       extraDesc:  r.lesson.extraDesc || '',
       note:       r.lesson.note || '',
       skills:     sk,
+      testResult: r.testResult || null,
     };
   });
+  report.feedbackDetails = _existingDetails.concat(_newDetails);
+  report.feedbackCount = report.feedbackDetails.length;
   // שמות המיומנויות בזמן ההגשה (למקרה שיתעדכנו/יתחלפו בעתיד — הדוח יישאר קריא).
   report.skillLabels = skills.map(s => ({ id: s.id, name: s.name || s.id }));
 
@@ -22878,6 +23255,15 @@ async function submitUnifiedReport() {
         try { TraineeSystem.addLessonFromExternal(traineeId, lesson); } catch(e) { console.warn('addLesson:', e); }
       });
 
+      // 2026-08-30, לפי בקשת לביא: אם בוחן תיעד "עבר" בשיעור טסט — סימון
+      // אוטומטי של אבן הדרך המתאימה (בלי צורך בסימון ידני נפרד אחר כך).
+      // "לא עבר" לא נוגע בסטטוס הקיים — רק נשמר כניסיון מתועד (כבר קרה למעלה
+      // דרך addLessonFromExternal, כל שיעור טסט נשמר בין אם עבר או נכשל).
+      lessonResults.forEach(({ traineeId, testKey, testResult }) => {
+        if (!traineeId || traineeId.startsWith('_free_') || !testKey || testResult !== 'pass') return;
+        try { _setMilestonePassExplicit(traineeId, testKey, true); } catch(e) { console.warn('milestone auto-set:', e); }
+      });
+
       // Now save all courses (including any temp ones that survived) to Firebase + localStorage
       if (TraineeSystem.courses && TraineeSystem.courses.length) {
         // Remove _temp flag — they're now permanent
@@ -22905,12 +23291,10 @@ async function submitUnifiedReport() {
 }
 
 // ── Fix #98: read-only admin view of a submitted unified report ──
-// The report object saved to taskReports/{date}/{safeKey} only carries a feedbackCount
-// number -- the actual per-trainee feedback (skill scores, note) is injected directly into
-// each trainee's own lesson log (TraineeSystem.trainees[].lessons[]) at submit time, tagged
-// with {date, ins}. So to show the full feedback detail here we reconstruct it by scanning
-// the trainee records for lessons matching this date+instructor, rather than reading it off
-// the report itself.
+// 2026-08-30: הערה מעודכנת — מ-DEPLOYED 84 report.feedbackDetails שומר את
+// פרטי המשוב המלאים בתוך הדוח עצמו (לא רק feedbackCount). openViewUnifiedReport
+// עדיין כולל גם את מנגנון השחזור הישן (סריקת תיקי חניכים) כ-fallback לדוחות
+// ישנים שהוגשו לפני התיקון, שלהם עדיין אין feedbackDetails.
 // 2026-08-19: "מנהל שמור" של טפסי סיכום יום — הדרך היחידה הקודמת לגשת לטופס
 // שהוגש הייתה דרך שורת "קיים" בטבלת "סיכום יום" ליום ספציפי אחד. כאן מרוכזים כל
 // הטפסים בטווח התאריכים הנבחר (בורר משותף לדוחות), עם חיפוש, ופתיחה לאותה חלונית
@@ -23146,8 +23530,11 @@ async function openViewUnifiedReport(date, instructorName) {
             return `<span style="display:inline-flex;align-items:center;gap:4px;background:#eef3fb;border-radius:6px;padding:2px 8px;font-size:12px;margin:2px 2px 2px 0;"><b>${_esc(labelMap[id] || id)}:</b> ${fb.skills[id]}/10</span>`;
           }).join('');
           const lessonNumsStr = (fb.lessonNums || []).length ? `שיעורים: ${fb.lessonNums.join(', ')}` : '';
+          const resultBadge = fb.testResult === 'pass' ? '<span style="background:#d5f0e0;color:#1e8449;border-radius:6px;padding:2px 8px;font-size:11.5px;font-weight:bold;margin-right:6px;">✅ עבר</span>'
+                            : fb.testResult === 'fail' ? '<span style="background:#fdecea;color:#c0392b;border-radius:6px;padding:2px 8px;font-size:11.5px;font-weight:bold;margin-right:6px;">❌ לא עבר</span>'
+                            : '';
           return `<div style="border:1px solid #eee;border-radius:8px;padding:10px 12px;margin-bottom:8px;background:#fff;">
-            <div style="font-weight:bold;font-size:13px;margin-bottom:4px;">${_esc(fb.name)} <span style="color:#888;font-weight:400;font-size:12px;">— ${_esc(fb.mission||'')}</span></div>
+            <div style="font-weight:bold;font-size:13px;margin-bottom:4px;">${_esc(fb.name)} <span style="color:#888;font-weight:400;font-size:12px;">— ${_esc(fb.mission||'')}</span> ${resultBadge}</div>
             ${lessonNumsStr ? `<div style="font-size:12px;color:#666;margin-bottom:4px;">${_esc(lessonNumsStr)}</div>` : ''}
             ${scoresHtml ? `<div style="margin-bottom:4px;">${scoresHtml}</div>` : ''}
             ${fb.extraDesc ? `<div style="font-size:12px;color:#555;margin-bottom:4px;">${_esc(fb.extraDesc)}</div>` : ''}
@@ -27363,9 +27750,12 @@ function _resetTraineeSummaryConfig() {
 
     <!-- Header -->
     <div class="unified-report-head">
-      <h3>📝 סיכום יום מאוחד</h3>
+      <h3 id="ur-title">📝 סיכום יום מאוחד</h3>
       <button class="unified-report-close" onclick="closeUnifiedReport()">×</button>
     </div>
+
+    <!-- 2026-08-30, לפי בקשת לביא: מציג הודעה כשנפתח במצב "הוספה לטופס קיים" -->
+    <div id="ur-addmode-banner" style="display:none;margin:0 20px 10px;padding:8px 12px;background:#fff8ee;border:1px solid #f5d9a8;border-radius:8px;font-size:12.5px;color:#8a6d1a;"></div>
 
     <!-- Section A: Day Summary -->
     <div class="unified-report-section">
@@ -27426,6 +27816,7 @@ function _resetTraineeSummaryConfig() {
     <!-- Section B: Trainee Feedback -->
     <div class="unified-report-section">
       <h4>🎓 משוב חניכים</h4>
+      <div id="ur-existing-feedback-summary"></div>
       <div id="ur-feedback-blocks"></div>
       <button class="ur-add-feedback-btn" onclick="_urAddFeedbackBlock()">➕ הוסף משוב חניך נוסף</button>
     </div>
@@ -27433,7 +27824,7 @@ function _resetTraineeSummaryConfig() {
     <!-- Footer -->
     <div class="unified-report-footer">
       <button class="ur-btn-cancel" onclick="closeUnifiedReport()">ביטול</button>
-      <button class="ur-btn-save" onclick="submitUnifiedReport()">💾 שמור סיכום יום</button>
+      <button class="ur-btn-save" id="ur-submit-btn" onclick="submitUnifiedReport()">💾 שמור סיכום יום</button>
     </div>
 
   </div>
