@@ -14,7 +14,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 94</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 95</title>
 
 <style>
 
@@ -1426,7 +1426,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 154;
+  const APP_VERSION = 155;
 
   function initFirebase() {
     try {
@@ -24743,9 +24743,14 @@ function _buildDaySummaryRowsHtml(dateStr,dayTrips,dayStatuses,dayEntries,intera
     }
 
     // סטטוס סיכום יום — בודק טופס unified לכל מדריך, מחליף statusCell
+    // 2026-08-31, לפי בקשת לביא: יום "חופש" (או כל משימה אחרת עם requiresSummary=false,
+    // למשל כשאין e.task תקף — ר' tDef fallback מעלה) לא אמור להיספר "❌ חסר" — לא נדרש
+    // ממנו טופס סיכום יום בכלל. מוצג "— לא נדרש" נייטרלי במקום זאת.
     const _unifiedKey=`${dateStr}__${e.name}__unified`;
     const _unifiedReport=(window._taskReportsCache&&window._taskReportsCache[_unifiedKey])||null;
-    if(_unifiedReport){
+    if(!tDef.requiresSummary){
+      statusCell='<span style="background:#f0f0f0;color:#888;font-size:11px;padding:3px 10px;border-radius:10px;font-weight:bold;">— לא נדרש</span>';
+    } else if(_unifiedReport){
       statusCell='<span style="background:#eaf5e8;color:#27ae60;font-size:11px;padding:3px 10px;border-radius:10px;font-weight:bold;">✅ קיים</span>';
     } else {
       statusCell='<span style="background:#fdecea;color:#e74c3c;font-size:11px;padding:3px 10px;border-radius:10px;font-weight:bold;">❌ חסר</span>';
@@ -24852,7 +24857,11 @@ async function openDailyReportPreview(dateOverride){
   // 2026-08-27: משתמש ב-_tripLessonStats המשותף (כולל override ידני אם קיים).
   const totalLessonHours=dayTrips.reduce((s,t)=>s+_tripLessonStats(t).minutes, 0)/60;
   const activeCount=dayEntries.length;
+  // 2026-08-31, לפי בקשת לביא: אותו תיקון כמו בטבלת הציות (buildRow) — יום "חופש"/
+  // כל משימה עם requiresSummary=false לא נספר כ"חסר" כאן (בדוח היומי המאוחד).
   const missingReports=dayEntries.filter(e=>{
+    const tDef=taskDefs.find(t=>t.id===e.task)||{requiresSummary:false};
+    if(!tDef.requiresSummary)return false;
     const k=`${dateStr}__${e.name}__unified`;
     return !(window._taskReportsCache&&window._taskReportsCache[k]);
   }).length;
