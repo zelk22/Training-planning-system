@@ -14,7 +14,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 91</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 94</title>
 
 <style>
 
@@ -1426,7 +1426,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 151;
+  const APP_VERSION = 154;
 
   function initFirebase() {
     try {
@@ -4124,13 +4124,24 @@ window.TraineeSystem = {
     .ts-btn-save:hover { background:#2980b9; }
     .ts-btn-cancel { background:#f0f4f8;color:#555;border:1px solid #ddd !important; }
     /* Skills tab */
-    .ts-skill-row { display:flex;align-items:center;gap:10px;padding:9px 12px;background:#f8faff;border:1px solid #e0e8f5;border-radius:9px;margin-bottom:6px;cursor:grab; }
+    .ts-skill-row { display:flex;flex-direction:column;gap:6px;padding:9px 12px;background:#f8faff;border:1px solid #e0e8f5;border-radius:9px;margin-bottom:6px;cursor:grab; }
     .ts-skill-row:active { cursor:grabbing;background:#e8f0ff; }
     .ts-skill-row.drag-over { border-color:#3498db;background:#dff0fa; }
+    .ts-skill-row-top { display:flex;align-items:center;gap:10px; }
     .ts-drag-handle { color:#bbb;font-size:16px;cursor:grab;flex-shrink:0; }
     .ts-skill-name-input { flex:1;padding:7px 10px;border:1.5px solid #ddd;border-radius:7px;font-size:13px;font-family:inherit;direction:rtl; }
     .ts-skill-name-input:focus { outline:none;border-color:#3498db; }
     .ts-skill-del { background:none;border:none;color:#e74c3c;cursor:pointer;font-size:16px;padding:2px 6px;width:auto !important; }
+    .ts-skill-desc-input { width:100%;padding:7px 10px;border:1.5px solid #e5eaf0;border-radius:7px;font-size:12px;font-family:inherit;direction:rtl;resize:vertical;box-sizing:border-box;color:#444;background:#fff; }
+    .ts-skill-desc-input:focus { outline:none;border-color:#3498db; }
+    .ts-skill-desc-label { font-size:11px;color:#8a95a5;margin-bottom:-2px; }
+    /* Skill-name tooltip/popover — hover on desktop, tap on mobile (see _bindSkillHelp) */
+    .skill-help-btn { display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border-radius:50%;background:#dbe6f5;color:#3a6ea5;cursor:pointer;margin-inline-start:3px;flex-shrink:0;vertical-align:middle;user-select:none; }
+    .skill-help-btn:hover { background:#c5d9ee; }
+    .stat-label .skill-help-btn { background:rgba(255,255,255,0.85);color:#1a2a3a; }
+    .stat-label .skill-help-btn:hover { background:#fff; }
+    .skill-help-popover { position:fixed;z-index:10050;max-width:280px;background:#1a2a3a;color:#fff;font-size:12px;line-height:1.5;padding:10px 12px;border-radius:9px;box-shadow:0 6px 20px rgba(0,0,0,0.25);direction:rtl;text-align:right; }
+    .skill-help-popover .shp-close { position:absolute;top:4px;left:6px;cursor:pointer;color:#aab;font-size:13px;line-height:1; }
     .ts-add-btn { display:flex;align-items:center;justify-content:center;gap:6px;width:100%;padding:10px;border:2px dashed #3498db;background:#f0f8ff;color:#3498db;border-radius:9px;cursor:pointer;font-size:13px;font-weight:bold;margin-top:8px; }
     .ts-add-btn:hover { background:#e0f2ff; }
     /* Mission types tab */
@@ -5686,7 +5697,7 @@ window.TraineeSystem = {
             const a = avgs[i];
             const c = a === null ? 'var(--neutral)' : a < 65 ? 'var(--danger)' : a < 82 ? 'var(--warning)' : 'var(--success)';
             return `<div class="stat-card" style="background:${c}">
-                        <div class="stat-label">${_esc(sk.name)}</div>
+                        <div class="stat-label">${_esc(sk.name)}${_skillHelpIcon(sk.name, sk.desc)}</div>
                         <div class="stat-val">${a === null ? 'אין נתון' : a.toFixed(0) + '%'}</div>
                     </div>`;
         }).join('');
@@ -6344,6 +6355,27 @@ window.TraineeSystem = {
     // SETTINGS — load / save / open / close / render
     // ══════════════════════════════════════════════════
 
+    // 2026-08-31: הסברי-דירוג ראשוניים למיומנויות, לפי בקשת לביא — מתומצתים,
+    // מבוססים על נושאי 50 שיעורי סיטאדיס (טכני #1-10 / תפעולי #11-30 / מסחרי
+    // #31-50), לא על תוכן "דגשי ביצוע" עצמו. מותאם לשם המיומנות (לא ל-id, כי
+    // הסדר/id יכולים להשתנות) — ממלא רק אם desc ריק, לא דורס עריכה של לביא.
+    _SKILL_DESC_DEFAULTS: {
+        'רכבת': 'תפעול מערכות הרכבת עצמה: ארון חשמל, שולחן עבודה, HMI, AVLS; התמצאות ותנועה בדיפו; האצה/האטה/בלימה; ציות לאיתותים ותמרורי דיפו; עקרונות נהיגה; 8 פעולות חירום; התמודדות עם שינויים בדיפו. (שיעורים 1–10)',
+        'קו': 'מבנה הקרון והקו; הכנת רכבת ותפעול דלתות; מערכת תמרון; אזורי מפלגים/כיס ואזורי פיקוד (דיפו, גבעה, ח"א, הרצל); מהירויות מותרות ותקשורת עם חדר בקרה; נהיגה בקו, תקלות בלמים והחלפת מסילות. (שיעורים 11–30)',
+        'נוסעים': 'נהיגה מתחשבת בנוסעים ולפי לוחות זמנים; כניסה/עצירה מלאה/יציאה מתחנה; כריזה ותקשורת עם נוסעים; טיפול במצבי חירום מול הנוסע — פינוי מבוקר/חירום, נוסע במצוקה, הפרעה ברכבת, צפיפות, פתיחת דלתות בצד שגוי — ותיאום עם חדר בקרה. (שיעורים 31–50)',
+        'בטיחות': 'ריכוז ראשוני (לעריכה) של נושאי בטיחות מכל שלבי ההכשרה: 8 פעולות חירום; נהלי מכשול/שריפה/שימוט/חלון שבור/פגיעה ברכב-הולך רגל/מפגש רכבות/ניתוק בקו; תקלות בלמים; פינוי מבוקר וחירום; נוסע במצוקה; הפעלת ידית חירום; צפיית סכנות בקו.',
+        'מקצוע ונהלים': 'ריכוז ראשוני (לעריכה) של כל נושא שבו מופיע במפורש "נוהל" בתוכנית: מכשול, שריפה, שימוט, כניסה לצומת מונמך, חלון שבור, פגיעה ברכב/הולך רגל, מפגש רכבות, ניתוק בקו, פינוי מבוקר/חירום, נוסע במצוקה, הפרעה ברכבת, הפעלת ידית חירום, צפיפות בתחנה, אי עצירה בתחנה, פתיחת דלתות בצד שגוי, כריזה, נהג במצוקה.',
+        'משמעת': 'התנהלות ומחויבות מקצועית של החניך: דיוק בזמנים, ציות להנחיות המדריך, שמירה על נהלי בטיחות והתנהגות מקצועית, יחס לצוות ולנוסעים, אחריות אישית. טיוטה כללית ראשונית — לא נגזרה מנושאי שיעור ספציפיים.'
+    },
+    _fillDefaultSkillDescs() {
+        if (!this.settings?.skills?.length) return;
+        this.settings.skills.forEach(sk => {
+            if (!sk.desc && this._SKILL_DESC_DEFAULTS[(sk.name||'').trim()]) {
+                sk.desc = this._SKILL_DESC_DEFAULTS[sk.name.trim()];
+            }
+        });
+    },
+
     _defaultSettings() {
         return {
             skills: [
@@ -6425,6 +6457,7 @@ window.TraineeSystem = {
                 if (raw) { this.settings = {...defaults, ...JSON.parse(raw)}; loaded = true; }
             } catch(e) {}
             if (!loaded) this.settings = defaults;
+            this._fillDefaultSkillDescs();
             return;
         }
 
@@ -6454,6 +6487,12 @@ window.TraineeSystem = {
         }
 
         if (!loaded) this.settings = defaults;
+
+        // 2026-08-31, לפי בקשת לביא: מילוי חד-פעמי (בזיכרון בלבד, לא כותב ל-Firebase)
+        // של הסבר-דירוג ראשוני למיומנויות קיימות שאין להן desc עדיין — מבוסס על
+        // נושאי 50 שיעורי סיטאדיס לפי שם המיומנות. לביא יכול לערוך/לשנות בטאב
+        // "מיומנויות" ולשמור; רק אז זה נכתב בפועל ל-settings/skills ב-Firebase.
+        this._fillDefaultSkillDescs();
 
         // 2026-08-19: מיגרציה חד-פעמית — alertThresholds תמיד היה ריק כברירת מחדל,
         // ומעולם לא נכתב אליו כלום עד שהאדמין פותח את הטאב "ספי התרעות" ולוחץ שמור.
@@ -6513,7 +6552,8 @@ window.TraineeSystem = {
         if (skillRows.length) {
             this.settings.skills = Array.from(skillRows).map((row, i) => ({
                 id: 's' + (i + 1),
-                name: row.querySelector('.ts-skill-name-input')?.value.trim() || ('מיומנות ' + (i+1))
+                name: row.querySelector('.ts-skill-name-input')?.value.trim() || ('מיומנות ' + (i+1)),
+                desc: row.querySelector('.ts-skill-desc-input')?.value.trim() || ''
             }));
         }
 
@@ -6879,9 +6919,13 @@ window.TraineeSystem = {
         const skills = this.settings.skills || [];
         list.innerHTML = skills.map((sk, i) => `
             <div class="ts-skill-row" data-ts-skill-idx="${i}" draggable="true">
-                <span class="ts-drag-handle">☰</span>
-                <input class="ts-skill-name-input" type="text" value="${_esc(sk.name)}" placeholder="שם מיומנות">
-                <button class="ts-skill-del" data-ts-del-skill="${i}" title="מחק">🗑</button>
+                <div class="ts-skill-row-top">
+                    <span class="ts-drag-handle">☰</span>
+                    <input class="ts-skill-name-input" type="text" value="${_esc(sk.name)}" placeholder="שם מיומנות">
+                    <button class="ts-skill-del" data-ts-del-skill="${i}" title="מחק">🗑</button>
+                </div>
+                <div class="ts-skill-desc-label">הסבר למדריך — מה נכלל בדירוג המיומנות (מוצג בריחוף/לחיצה על שם המיומנות):</div>
+                <textarea class="ts-skill-desc-input" rows="3" placeholder="לדוגמה: תפעול שולחן עבודה, HMI, AVLS, נהיגה בדיפו...">${_esc(sk.desc||'')}</textarea>
             </div>`).join('');
         this._bindSkillDrag(list);
         list.querySelectorAll('[data-ts-del-skill]').forEach(btn => {
@@ -6910,7 +6954,8 @@ window.TraineeSystem = {
         if (!rows.length) return;
         this.settings.skills = Array.from(rows).map((row, i) => ({
             id: 's' + (i + 1),
-            name: row.querySelector('.ts-skill-name-input')?.value.trim() || ''
+            name: row.querySelector('.ts-skill-name-input')?.value.trim() || '',
+            desc: row.querySelector('.ts-skill-desc-input')?.value.trim() || ''
         }));
     },
 
@@ -7262,7 +7307,7 @@ window.TraineeSystem = {
         ];
         container.innerHTML = skills.map(sk => `
             <div class="skill-box"${sk.id === 's2' ? ' id="s2-box"' : ''}>
-                <label id="skill-label-${sk.id}">${_esc(sk.name)}</label>
+                <label id="skill-label-${sk.id}">${_esc(sk.name)}${_skillHelpIcon(sk.name, sk.desc)}</label>
                 <div class="skill-stepper">
                     <button type="button" data-skill="${sk.id}" data-delta="-1">−</button>
                     <input type="number" id="${sk.id}" min="1" max="10" placeholder="—">
@@ -7283,7 +7328,10 @@ window.TraineeSystem = {
             {id:'s4', name:'נהלים'}, {id:'s5', name:'משמעת'}
         ]);
         th.innerHTML = '<div class="hist-skill-grid">' +
-            list.map(sk => `<div title="${_esc(sk.name)}">${_esc((sk.name||'').trim().charAt(0)||'?')}</div>`).join('') +
+            list.map(sk => sk.desc
+                ? `<div class="skill-help-btn" style="width:auto;height:auto;background:none;border-radius:0;color:inherit;font-size:inherit;font-weight:inherit;text-decoration:underline dotted;cursor:pointer;" data-shp-name="${_esc(sk.name)}" data-shp-desc="${_esc(sk.desc)}" onclick="event.stopPropagation();_skillHelpToggle(this)" onmouseenter="_skillHelpShow(this)" onmouseleave="_skillHelpHideIfNotPinned(this)">${_esc((sk.name||'').trim().charAt(0)||'?')}</div>`
+                : `<div title="${_esc(sk.name)}">${_esc((sk.name||'').trim().charAt(0)||'?')}</div>`
+            ).join('') +
             '</div>';
     },
 
@@ -7881,6 +7929,54 @@ window.TraineeSystem = {
 function _localDateStr(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 function _esc(s){if(s==null)return '';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 function _toMin(v){if(v==null)return 0;if(typeof v==='number')return v;if(v instanceof Date)return v.getHours()*60+v.getMinutes();const s=String(v);if(/^\d{1,2}:\d{2}$/.test(s)){const[h,m]=s.split(':').map(Number);return h*60+m;}return 0;}
+
+// ══════════════════════════════════════════════════
+// 2026-08-31, לפי בקשת לביא: "ⓘ" קטן ליד שם מיומנות (טופס סיכום יום, תיק
+// חניך — תיבות דירוג ורשימת היסטוריה) שמציג את ההסבר שהוגדר לה בהגדרות
+// (settings.skills[].desc). ריחוף פותח/סוגר במחשב; לחיצה נועלת פתוח עד
+// לחיצה חוזרת/לחיצה מחוץ לחלון — כדי שיעבוד גם במסך מגע. לא מוצג כלל אם
+// אין desc למיומנות הזו (כדי לא לבלבל לפני שלביא ימלא הסברים).
+// ══════════════════════════════════════════════════
+function _skillHelpIcon(name, desc) {
+    if (!desc) return '';
+    return `<span class="skill-help-btn" data-shp-name="${_esc(name)}" data-shp-desc="${_esc(desc)}"
+                onclick="event.stopPropagation();_skillHelpToggle(this)"
+                onmouseenter="_skillHelpShow(this)" onmouseleave="_skillHelpHideIfNotPinned(this)"
+                title="מה נכלל בדירוג מיומנות זו"
+                ><svg viewBox="0 0 20 20" width="9" height="9" style="display:block;"><circle cx="10" cy="4.6" r="2.1" fill="currentColor"/><rect x="7.9" y="8.3" width="4.2" height="10.2" rx="1.6" fill="currentColor"/></svg></span>`;
+}
+let _skillHelpPopEl = null, _skillHelpPinnedBtn = null;
+function _skillHelpClosePopover() { if (_skillHelpPopEl) { _skillHelpPopEl.remove(); _skillHelpPopEl = null; } }
+function _skillHelpUnpin() { _skillHelpClosePopover(); _skillHelpPinnedBtn = null; }
+function _skillHelpOpen(btn) {
+    _skillHelpClosePopover();
+    const name = btn.getAttribute('data-shp-name') || '';
+    const desc = btn.getAttribute('data-shp-desc') || '';
+    if (!desc) return;
+    const pop = document.createElement('div');
+    pop.className = 'skill-help-popover';
+    pop.innerHTML = '<span class="shp-close" onclick="event.stopPropagation();_skillHelpUnpin()">✕</span><b>' + name + '</b><br>' + desc;
+    document.body.appendChild(pop);
+    const r = btn.getBoundingClientRect();
+    let left = r.right - pop.offsetWidth;
+    let top = r.bottom + 6;
+    if (left < 8) left = 8;
+    if (left + pop.offsetWidth > window.innerWidth - 8) left = window.innerWidth - pop.offsetWidth - 8;
+    if (top + pop.offsetHeight > window.innerHeight - 8) top = r.top - pop.offsetHeight - 6;
+    pop.style.left = left + 'px'; pop.style.top = top + 'px';
+    _skillHelpPopEl = pop;
+}
+function _skillHelpShow(btn) { if (_skillHelpPinnedBtn && _skillHelpPinnedBtn !== btn) return; _skillHelpOpen(btn); }
+function _skillHelpHideIfNotPinned(btn) { if (_skillHelpPinnedBtn === btn) return; _skillHelpClosePopover(); }
+function _skillHelpToggle(btn) {
+    if (_skillHelpPinnedBtn === btn) { _skillHelpUnpin(); return; }
+    _skillHelpPinnedBtn = btn;
+    _skillHelpOpen(btn);
+}
+document.addEventListener('click', (e) => {
+    if (_skillHelpPinnedBtn && !e.target.closest('.skill-help-popover') && !e.target.closest('.skill-help-btn')) _skillHelpUnpin();
+});
+
 
 
 
@@ -22455,7 +22551,7 @@ async function _urAddFeedbackBlock() {
     skills = [{id:'s1',name:'מיומנות 1'},{id:'s2',name:'מיומנות 2'},{id:'s3',name:'מיומנות 3'},{id:'s4',name:'מיומנות 4'},{id:'s5',name:'מיומנות 5'}];
   const skillsHtml = skills.map(sk => `
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
-      <label style="font-size:12px;color:#555;flex:1;text-align:right;">${_esc(sk.name)}</label>
+      <label style="font-size:12px;color:#555;flex:1;text-align:right;">${_esc(sk.name)}${_skillHelpIcon(sk.name, sk.desc)}</label>
       <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
         <button type="button" onclick="_urSkillStep('ur-fb-${idx}-${sk.id}',-1)"
           style="width:auto !important;height:28px;padding:0 10px;border-radius:6px;border:1.5px solid #bbb;background:#efefef;color:#333;font-size:18px;font-weight:900;cursor:pointer;line-height:1;letter-spacing:-1px;">−</button>
