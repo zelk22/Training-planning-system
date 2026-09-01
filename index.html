@@ -14,7 +14,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 101</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 102</title>
 
 <style>
 
@@ -1426,7 +1426,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 161;
+  const APP_VERSION = 162;
 
   function initFirebase() {
     try {
@@ -15226,10 +15226,15 @@ function _wasAssignedToAnyTaskOnDate(name, dateStr){
   });
 }
 
+// 2026-09-01, לפי בקשת לביא: הורחב מ-2 ימים לשבוע — קבוע יחיד כדי שיהיה קל
+// לכוון בעתיד. התרעה על דוח חסר תישאר מוצגת עד 7 ימים אחורה (היום עצמו
+// לעולם לא נבדק/מוצג, ר' back=1 כתחילת הטווח).
+const MISSING_REPORT_LOOKBACK_DAYS = 7;
+
 function _getMissingDailyReportWarnings(forName){
   const warnings=[];
   const names=forName?[forName]:(typeof _instrNames!=='undefined'?_instrNames:[]);
-  for(let back=1;back<=2;back++){
+  for(let back=1;back<=MISSING_REPORT_LOOKBACK_DAYS;back++){
     const d=new Date(); d.setDate(d.getDate()-back);
     const dateStr=_localDateStr(d);
     names.forEach(name=>{
@@ -15246,7 +15251,7 @@ async function _renderMissingDailyReportWarnings(){
   // Ensure recent task reports are loaded into the cache before checking.
   try{
     if(!window._taskReportsCache)window._taskReportsCache={};
-    for(let back=1;back<=2;back++){
+    for(let back=1;back<=MISSING_REPORT_LOOKBACK_DAYS;back++){
       const d=new Date(); d.setDate(d.getDate()-back);
       const dateStr=_localDateStr(d);
       if(typeof loadTaskReportsForDate==='function')await loadTaskReportsForDate(dateStr);
