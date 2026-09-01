@@ -14,7 +14,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 98</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 101</title>
 
 <style>
 
@@ -1426,7 +1426,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 158;
+  const APP_VERSION = 161;
 
   function initFirebase() {
     try {
@@ -27443,13 +27443,14 @@ function _toggleInfoAlerts() {
 // אזור מתקפל (כברירת מחדל סגור) — בדומה לתבנית "התרעות מידע למנהל".
 function _renderResourceGroupsBlock(isAdmin) {
   var h = [];
-  h.push('<div style="background:white;border:1px solid #e8edf5;border-radius:10px;padding:12px 16px;margin-bottom:12px;direction:rtl;">');
-  h.push('<button onclick="try{_toggleResourceGroups();}catch(e){}" style="width:100%;background:none;border:none;padding:0;cursor:pointer;display:flex;align-items:center;justify-content:space-between;font-family:inherit;">'
-    + '<span style="font-size:13px;font-weight:bold;color:#2c3e50;">🗂️ חלוקת קבוצות תיעדוף (א׳/ב׳/ג׳)'
-    + (isAdmin ? '' : ' <span style="font-weight:400;color:#aaa;font-size:11px;">(צפייה בלבד)</span>') + '</span>'
-    + '<span id="ts-groups-arrow" style="font-size:10px;color:#aaa;">&#9654;</span></button>');
-  h.push('<div id="ts-groups-body" style="display:none;margin-top:10px;"></div>');
-  h.push('</div>');
+  h.push(_tsSectionOpen('🗂️','חלוקת קבוצות תיעדוף (א׳/ב׳/ג׳)'
+    + (isAdmin ? '' : ' <span style="font-weight:400;color:#aaa;font-size:11px;">(צפייה בלבד)</span>'),
+    '#eafaf1','#27ae60','#1e8449',
+    ' onclick="try{_toggleResourceGroups();}catch(e){}"','cursor:pointer;justify-content:space-between;'));
+  h.push('<span id="ts-groups-arrow" style="font-size:10px;color:#1e8449;">&#9654;</span>');
+  h.push(_tsSectionHeadClose());
+  h.push('<div id="ts-groups-body" style="display:none;"></div>');
+  h.push(_tsSectionClose());
   return h.join('');
 }
 
@@ -27527,6 +27528,19 @@ function _renderResourceGroupsBody() {
   body.innerHTML = h.join('');
 }
 
+// 2026-08-31, לפי בקשת לביא: היה כותרת-אזור עם רקע צבעוני מלא (יותר מדי צבע) —
+// הוחלף לכותרת ניטרלית (טקסט כהה רגיל, בלי רקע) + פס אפור דק בצד ימין של הכרטיס
+// כולו, כדי לשמור על הפרדה ברורה בין בלוקים בלי "לצעוק" צבעונית. הצ'יפים עצמם
+// (כמה חניכים בכל שלב/רמה) נשארים צבעוניים כפי שהיו — לא נגעתי בהם.
+// שים לב: bg/border/text עדיין מתקבלים מכל קריאה (לא נשברו קריאות קיימות) אבל
+// לא באים לידי ביטוי בעיצוב יותר — נשמרים ניטרליים בכוונה.
+function _tsSectionOpen(icon, title, bg, border, text, extraAttrs, extraStyle) {
+  return '<div class="ts-section-card"><div class="ts-section-head" style="'+(extraStyle||'')+'"'+(extraAttrs||'')+'>'
+    + '<span style="display:flex;align-items:center;gap:8px;"><span style="font-size:15px;">'+icon+'</span><span class="ts-sh-title" style="color:#2c3e50;">'+title+'</span></span>';
+}
+function _tsSectionHeadClose() { return '</div><div class="ts-section-body">'; }
+function _tsSectionClose() { return '</div></div>'; }
+
 function _renderTraineeSummaryPanel() {
   var panel = document.getElementById('trainee-summary-panel');
   if (!panel) return;
@@ -27568,13 +27582,32 @@ function _renderTraineeSummaryPanel() {
     return'<span style="color:#95a5a6;font-size:13px;">→</span>';
   }
   var h=[];
+  // 2026-08-31 תיקון: #trainee-summary-panel נמצא מחוץ ל-container של TraineeSystem
+  // (מוטמע ישירות בדף הראשי, בתוך <details id="traineeSection">) — אז ה-CSS
+  // classes האלה חייבים להיות מוזרקים כאן, בתוך ה-innerHTML של הפאנל עצמו,
+  // ולא להסתמך על stylesheet חיצוני של .trainee-module שלא בהכרח קיים כשהפאנל
+  // הזה נבנה. זה מה שגרם לכל הבלוקים להופיע מוערמים ("מבולגן") למרות שהכותרות
+  // הצבעוניות (inline style) כן עבדו.
+  h.push('<style>'
+    + '#trainee-summary-panel .ts-section-card{background:white;border:1px solid #e8edf5;border-right:3px solid #c3c9d1;border-radius:10px;margin-bottom:12px;overflow:hidden;}'
+    + '#trainee-summary-panel .ts-section-head{padding:12px 14px 6px;display:flex;align-items:center;gap:8px;}'
+    + '#trainee-summary-panel .ts-section-head span.ts-sh-title{font-size:13px;font-weight:bold;}'
+    + '#trainee-summary-panel .ts-section-body{padding:12px 16px;}'
+    + '#trainee-summary-panel .ts-dist-milestone-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start;}'
+    + '#trainee-summary-panel .ts-dist-col{display:flex;flex-direction:column;}'
+    + '#trainee-summary-panel .ts-milestone-col{height:100%;box-sizing:border-box;}'
+    + '#trainee-summary-panel .ts-milestone-col .ts-section-card{height:100%;box-sizing:border-box;margin-bottom:0;}'
+    + '@media (max-width:700px){#trainee-summary-panel .ts-dist-milestone-row{grid-template-columns:1fr;}#trainee-summary-panel .ts-milestone-col .ts-section-card{height:auto;}}'
+    + '</style>');
+  h.push(_tsSectionOpen('📊','סטטוס כללי','#ebf5fb','#3498db','#2471a3'));
+  h.push(_tsSectionHeadClose());
   var kpis=[
     ['🎓 חניכים',     String(summary.totalTrainees),  '#2c3e50'],
     ['⚡ פעילים',       String(summary.activeTrainees), '#2980b9'],
     ['★ ממוצע כללי',  summary.globalAvgScore!==null?String(summary.globalAvgScore):'N/A','#8e44ad']
   ];
   h.push('<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:10px;direction:rtl;">');
-  kpis.forEach(function(k){h.push('<div style="background:white;border:1px solid #e8edf5;border-radius:10px;padding:12px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,.05);"><div style="font-size:11px;color:#888;margin-bottom:4px;">'+k[0]+'</div><div style="font-size:22px;font-weight:bold;color:'+k[2]+';">'+k[1]+'</div></div>');});
+  kpis.forEach(function(k){h.push('<div style="background:#f8fafc;border-radius:10px;padding:12px;text-align:center;"><div style="font-size:11px;color:#888;margin-bottom:4px;">'+k[0]+'</div><div style="font-size:22px;font-weight:bold;color:'+k[2]+';">'+k[1]+'</div></div>');});
   h.push('</div>');
   // 2026-08-27, לפי בקשת לביא: "מגמת שיפור/ירידה" היו רק מספר בלי אפשרות לדעת
   // במי מדובר — הפכו לכפתורים לחיצים (כמו התפלגות שלבים/רמות) שפותחים רשימת
@@ -27585,60 +27618,83 @@ function _renderTraineeSummaryPanel() {
   ];
   h.push('<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:6px;direction:rtl;">');
   trendKpis.forEach(function(k){
-    h.push('<button onclick="try{_toggleTsBucket(\''+k[0]+'\',\''+k[1]+'\');}catch(e){}" style="width:auto;margin:0;cursor:pointer;font-family:inherit;background:white;border:1px solid #e8edf5;border-radius:10px;padding:12px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,.05);"><div style="font-size:11px;color:#888;margin-bottom:4px;">'+k[2]+' <span style="color:#aaa;">(לחיצה מציגה חניכים)</span></div><div style="font-size:22px;font-weight:bold;color:'+k[4]+';">'+k[3]+'</div></button>');
+    h.push('<button onclick="try{_toggleTsBucket(\''+k[0]+'\',\''+k[1]+'\');}catch(e){}" style="width:auto;margin:0;cursor:pointer;font-family:inherit;background:#f8fafc;border:none;border-radius:10px;padding:12px;text-align:center;"><div style="font-size:11px;color:#888;margin-bottom:4px;">'+k[2]+' <span style="color:#aaa;">(לחיצה מציגה חניכים)</span></div><div style="font-size:22px;font-weight:bold;color:'+k[4]+';">'+k[3]+'</div></button>');
   });
   h.push('</div>');
-  h.push('<div id="ts-trend-detail" style="display:none;margin-bottom:14px;padding:10px 12px;background:white;border:1px solid #e8edf5;border-radius:10px;direction:rtl;"></div>');
+  h.push('<div id="ts-trend-detail" style="display:none;margin-bottom:4px;padding:10px 12px;background:#f8fafc;border-radius:10px;direction:rtl;"></div>');
+  h.push(_tsSectionClose());
   window._tsPerTrainee = summary.perTrainee; // לשימוש handlers של פילי שלב/רמה/מגמה לחיצים
+
+  var distHtml=[];
   var byStage=summary.byStage||{};
   if(Object.keys(byStage).length){
     var sColors={'טרם התחיל':['\#95a5a6','\#f4f6f7'],'שלב טכני':['\#3498db','\#ebf5fb'],'שלב תפעולי':['\#f39c12','\#fef9e7'],'שלב מסחרי':['\#8e44ad','\#f5eef8'],'השתלמות אורבוס':['\#e67e22','\#fdf2e9'],'מוכן לחניכה':['\#27ae60','\#eafaf1'],'בחניכה':['\#16a085','\#e8f8f5']};
     var sOrder=['טרם התחיל','שלב טכני','שלב תפעולי','שלב מסחרי','השתלמות אורבוס','מוכן לחניכה','בחניכה'];
-    h.push('<div style="background:white;border:1px solid #e8edf5;border-radius:10px;padding:12px 16px;margin-bottom:12px;direction:rtl;"><div style="font-size:13px;font-weight:bold;color:#2c3e50;margin-bottom:8px;">📊 התפלגות שלבים <span style="font-weight:400;color:#aaa;font-size:11px;">(לחיצה מציגה חניכים)</span></div><div style="display:flex;flex-wrap:wrap;gap:8px;">');
-    sOrder.forEach(function(s){var n=byStage[s];if(!n)return;var c=sColors[s]||['#7f8c8d','#f9f9f9'];h.push('<button onclick="try{_toggleTsBucket(\'stage\',\''+s+'\');}catch(e){}" style="width:auto;margin:0;cursor:pointer;display:inline-flex;align-items:center;gap:6px;background:'+c[1]+';border:1px solid '+c[0]+';border-radius:20px;padding:4px 12px;font-family:inherit;"><span style="font-size:13px;font-weight:bold;color:'+c[0]+';">'+n+'</span><span style="font-size:12px;color:#555;">'+s+'</span></button>');});
-    h.push('</div><div id="ts-stage-detail" style="display:none;margin-top:10px;padding-top:10px;border-top:1px dashed #dee2e6;"></div></div>');
+    distHtml.push(_tsSectionOpen('📊','התפלגות שלבים <span style="font-weight:400;color:#aaa;font-size:11px;">(לחיצה מציגה חניכים)</span>','#ebf5fb','#3498db','#2471a3'));
+    distHtml.push(_tsSectionHeadClose());
+    distHtml.push('<div style="display:flex;flex-wrap:wrap;gap:8px;">');
+    sOrder.forEach(function(s){var n=byStage[s];if(!n)return;var c=sColors[s]||['#7f8c8d','#f9f9f9'];distHtml.push('<button onclick="try{_toggleTsBucket(\'stage\',\''+s+'\');}catch(e){}" style="width:auto;margin:0;cursor:pointer;display:inline-flex;align-items:center;gap:6px;background:'+c[1]+';border:1px solid '+c[0]+';border-radius:20px;padding:4px 12px;font-family:inherit;"><span style="font-size:13px;font-weight:bold;color:'+c[0]+';">'+n+'</span><span style="font-size:12px;color:#555;">'+s+'</span></button>');});
+    distHtml.push('</div><div id="ts-stage-detail" style="display:none;margin-top:10px;padding-top:10px;border-top:1px dashed #dee2e6;"></div>');
+    distHtml.push(_tsSectionClose());
   }
   var levelDist=summary.levelDistribution||{};
   if(Object.keys(levelDist).length){
     var lColors={'מתקשים':['#e74c3c','#fdecea'],'בינוניים':['#f1c40f','#fef9e7'],'מתקדמים':['#27ae60','#eafaf1']};
     var lOrder=['מתקשים','בינוניים','מתקדמים'];
-    h.push('<div style="background:white;border:1px solid #e8edf5;border-radius:10px;padding:12px 16px;margin-bottom:12px;direction:rtl;"><div style="font-size:13px;font-weight:bold;color:#2c3e50;margin-bottom:8px;">🚦 התפלגות רמות <span style="font-weight:400;color:#aaa;font-size:11px;">(לחיצה מציגה חניכים)</span></div><div style="display:flex;flex-wrap:wrap;gap:8px;">');
-    lOrder.forEach(function(s){var n=levelDist[s];if(!n)return;var c=lColors[s];h.push('<button onclick="try{_toggleTsBucket(\'level\',\''+s+'\');}catch(e){}" style="width:auto;margin:0;cursor:pointer;display:inline-flex;align-items:center;gap:6px;background:'+c[1]+';border:1px solid '+c[0]+';border-radius:20px;padding:4px 12px;font-family:inherit;"><span style="font-size:13px;font-weight:bold;color:'+c[0]+';">'+n+'</span><span style="font-size:12px;color:#555;">'+s+'</span></button>');});
-    h.push('</div><div id="ts-level-detail" style="display:none;margin-top:10px;padding-top:10px;border-top:1px dashed #dee2e6;"></div></div>');
+    distHtml.push(_tsSectionOpen('🚦','התפלגות רמות <span style="font-weight:400;color:#aaa;font-size:11px;">(לחיצה מציגה חניכים)</span>','#fef9e7','#f39c12','#b9770e'));
+    distHtml.push(_tsSectionHeadClose());
+    distHtml.push('<div style="display:flex;flex-wrap:wrap;gap:8px;">');
+    lOrder.forEach(function(s){var n=levelDist[s];if(!n)return;var c=lColors[s];distHtml.push('<button onclick="try{_toggleTsBucket(\'level\',\''+s+'\');}catch(e){}" style="width:auto;margin:0;cursor:pointer;display:inline-flex;align-items:center;gap:6px;background:'+c[1]+';border:1px solid '+c[0]+';border-radius:20px;padding:4px 12px;font-family:inherit;"><span style="font-size:13px;font-weight:bold;color:'+c[0]+';">'+n+'</span><span style="font-size:12px;color:#555;">'+s+'</span></button>');});
+    distHtml.push('</div><div id="ts-level-detail" style="display:none;margin-top:10px;padding-top:10px;border-top:1px dashed #dee2e6;"></div>');
+    distHtml.push(_tsSectionClose());
   }
-  h.push(_renderResourceGroupsBlock(isAdmin));
+  var milestoneHtml=[];
   if(summary.milestoneStats){
     var ms=summary.milestoneStats;var tot=summary.activeTrainees||1;
     var msDefs=[['טסט 10',ms.test10,'#3498db'],['טסט 30',ms.test30,'#f39c12'],['טסט 50',ms.test50,'#8e44ad'],['תנאי חניכה',ms.chinuchMs,'#e67e22']];
-    h.push('<div style="background:white;border:1px solid #e8edf5;border-radius:10px;padding:12px 16px;margin-bottom:12px;direction:rtl;"><div style="font-size:13px;font-weight:bold;color:#2c3e50;margin-bottom:8px;">🏆 אבני דרך</div><div style="display:flex;flex-direction:column;gap:6px;">');
-    msDefs.forEach(function(m){var p=tot>0?Math.round((m[1]/tot)*100):0;h.push('<div style="display:flex;align-items:center;gap:10px;"><div style="width:80px;font-size:12px;color:#555;text-align:right;">'+m[0]+'</div><div style="flex:1;background:#f0f4f8;border-radius:6px;height:12px;overflow:hidden;"><div style="height:100%;border-radius:6px;background:'+m[2]+';width:'+p+'%;"></div></div><div style="width:50px;font-size:12px;color:#555;text-align:center;">'+m[1]+'/'+tot+'</div></div>');});
-    h.push('</div></div>');
+    milestoneHtml.push(_tsSectionOpen('🏆','אבני דרך','#f5eef8','#8e44ad','#6c3483'));
+    milestoneHtml.push(_tsSectionHeadClose());
+    milestoneHtml.push('<div style="display:flex;flex-direction:column;gap:8px;">');
+    msDefs.forEach(function(m){var p=tot>0?Math.round((m[1]/tot)*100):0;milestoneHtml.push('<div style="display:flex;align-items:center;gap:10px;"><div style="width:80px;font-size:12px;color:#555;text-align:right;">'+m[0]+'</div><div style="flex:1;background:#f0f4f8;border-radius:6px;height:12px;overflow:hidden;"><div style="height:100%;border-radius:6px;background:'+m[2]+';width:'+p+'%;"></div></div><div style="width:50px;font-size:12px;color:#555;text-align:center;">'+m[1]+'/'+tot+'</div></div>');});
+    milestoneHtml.push('</div>');
+    milestoneHtml.push(_tsSectionClose());
   }
+  if(milestoneHtml.length){
+    h.push('<div class="ts-dist-milestone-row"><div class="ts-dist-col">'+distHtml.join('')+'</div><div class="ts-milestone-col">'+milestoneHtml.join('')+'</div></div>');
+  } else {
+    h.push(distHtml.join(''));
+  }
+  h.push(_renderResourceGroupsBlock(isAdmin));
   if(summary.atRisk&&summary.atRisk.length){
-    h.push('<div style="background:white;border:1px solid #fad7d0;border-radius:10px;padding:12px 16px;margin-bottom:12px;direction:rtl;"><div style="font-size:13px;font-weight:bold;color:#c0392b;margin-bottom:8px;">⚠️ חניכים מתקשים <span style="font-size:11px;font-weight:400;color:#888;">('+summary.atRisk.length+')</span></div><div style="display:flex;flex-direction:column;gap:8px;">');
+    h.push(_tsSectionOpen('⚠️','חניכים מתקשים <span style="font-size:11px;font-weight:400;color:#888;">('+summary.atRisk.length+')</span>','#fdecea','#e74c3c','#c0392b'));
+    h.push(_tsSectionHeadClose());
+    h.push('<div style="display:flex;flex-direction:column;gap:8px;">');
     summary.atRisk.forEach(function(t){var bc=t.riskLevel==='high'?'#e74c3c':t.riskLevel==='medium'?'#e67e22':'#f39c12';h.push('<div style="border:1px solid '+bc+';border-right:4px solid '+bc+';border-radius:8px;padding:10px 14px;">');h.push('<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;flex-wrap:wrap;gap:6px;">');h.push('<div style="display:flex;align-items:center;gap:8px;">'+riskBadge(t.riskLevel)+trendArrow(t.trend)+'<span style="font-size:14px;font-weight:bold;color:#2c3e50;">'+_esc(t.name)+'</span></div>');h.push('<div style="display:flex;align-items:center;gap:8px;"><span style="font-size:11px;color:#888;">'+t.stage+'</span><button onclick="try{if(typeof TraineeSystem!==\'undefined\')TraineeSystem.openTrainee&&TraineeSystem.openTrainee('+t.id+');}catch(ex){}" style="padding:3px 9px;background:#2980b9;color:white;border:none;border-radius:6px;cursor:pointer;font-size:11px;">פתח תיק ←</button></div></div>');if(t.riskReasons&&t.riskReasons.length){h.push('<ul style="margin:2px 0 0;padding-right:18px;">');t.riskReasons.forEach(function(r){h.push('<li style="font-size:12px;color:#666;margin-bottom:2px;">'+r+'</li>');});h.push('</ul>');}h.push('</div>');});
-    h.push('</div></div>');
+    h.push('</div>');
+    h.push(_tsSectionClose());
   } else {
     h.push('<div style="background:#eafaf1;border:1px solid #a9dfbf;border-radius:10px;padding:10px 16px;margin-bottom:12px;direction:rtl;text-align:center;font-size:13px;color:#27ae60;">✅ אין חניכים מתקשים כרגע</div>');
   }
   // 2026-08-19: התרעת חוסר-פעילות עצמאית — ווידג'ט נפרד, לא קשור לסיווג "מתקשה"
   if(summary.inactive&&summary.inactive.length){
-    h.push('<div style="background:white;border:1px solid #cfe2f3;border-radius:10px;padding:12px 16px;margin-bottom:12px;direction:rtl;"><div style="font-size:13px;font-weight:bold;color:#2c3e50;margin-bottom:8px;">📅 התרעת חוסר פעילות <span style="font-size:11px;font-weight:400;color:#888;">('+summary.inactive.length+')</span></div><div style="display:flex;flex-direction:column;gap:6px;">');
+    h.push(_tsSectionOpen('📅','התרעת חוסר פעילות <span style="font-size:11px;font-weight:400;color:#888;">('+summary.inactive.length+')</span>','#ebf5fb','#3498db','#2471a3'));
+    h.push(_tsSectionHeadClose());
+    h.push('<div style="display:flex;flex-direction:column;gap:6px;">');
     summary.inactive.forEach(function(t){h.push('<div style="display:flex;align-items:center;justify-content:space-between;border:1px solid #cfe2f3;border-right:4px solid #3498db;border-radius:8px;padding:8px 14px;flex-wrap:wrap;gap:6px;">'+
       '<span style="font-size:14px;font-weight:bold;color:#2c3e50;">'+_esc(t.name)+'</span>'+
       '<span style="display:flex;align-items:center;gap:8px;"><span style="font-size:12px;color:#3498db;font-weight:bold;">'+t.daysSinceLast+' ימים ללא שיעור</span>'+
       '<button onclick="try{if(typeof TraineeSystem!==\'undefined\')TraineeSystem.openTrainee&&TraineeSystem.openTrainee('+t.id+');}catch(ex){}" style="padding:3px 9px;background:#2980b9;color:white;border:none;border-radius:6px;cursor:pointer;font-size:11px;">פתח תיק ←</button></span></div>');});
-    h.push('</div></div>');
+    h.push('</div>');
+    h.push(_tsSectionClose());
   }
   // 2026-08-19: התרעות מידע למנהל — שעות נוספות תקועות / מגמת ירידה — לא קובעות
   // "מתקשה" (הוצאו מהסיווג ביוזמת לביא), רק מוצגות למידע. אזור מתקפל (מכווץ כברירת מחדל).
   if(isAdmin && summary.infoAlerts&&summary.infoAlerts.length){
-    h.push('<div style="background:white;border:1px solid #f5e3c3;border-radius:10px;padding:12px 16px;margin-bottom:12px;direction:rtl;">');
-    h.push('<button onclick="try{_toggleInfoAlerts();}catch(e){}" style="width:100%;background:none;border:none;padding:0;cursor:pointer;display:flex;align-items:center;justify-content:space-between;font-family:inherit;">'
-      +'<span style="font-size:13px;font-weight:bold;color:#2c3e50;">💡 התרעות מידע למנהל <span style="font-size:11px;font-weight:400;color:#888;">('+summary.infoAlerts.length+')</span></span>'
-      +'<span id="ts-infoalerts-arrow" style="font-size:10px;color:#aaa;">&#9654;</span></button>');
-    h.push('<div id="ts-infoalerts-body" style="display:none;flex-direction:column;gap:6px;margin-top:10px;"></div>');
-    h.push('</div>');
+    h.push(_tsSectionOpen('💡','התרעות מידע למנהל <span style="font-size:11px;font-weight:400;color:#888;">('+summary.infoAlerts.length+')</span>','#fef9e7','#f39c12','#b9770e',' onclick="try{_toggleInfoAlerts();}catch(e){}"','cursor:pointer;justify-content:space-between;'));
+    h.push('<span id="ts-infoalerts-arrow" style="margin-right:auto;font-size:10px;color:#b9770e;">&#9654;</span>');
+    h.push(_tsSectionHeadClose());
+    h.push('<div id="ts-infoalerts-body" style="display:none;flex-direction:column;gap:6px;"></div>');
+    h.push(_tsSectionClose());
     window._tsInfoAlerts = summary.infoAlerts; // לבנייה עצלה ע"י _toggleInfoAlerts
   }
   var ts=summary.generatedAt?new Date(summary.generatedAt).toLocaleTimeString('he-IL'):'';
