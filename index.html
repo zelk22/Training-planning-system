@@ -14,7 +14,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 96</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 98</title>
 
 <style>
 
@@ -1426,7 +1426,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 156;
+  const APP_VERSION = 158;
 
   function initFirebase() {
     try {
@@ -4557,6 +4557,15 @@ window.TraineeSystem = {
         </label>
       </div>
       <p style="font-size:12px;color:#888;margin:12px 0 0;">כאשר מכובה — שדה החתימה לא יוצג בטופס המשוב.</p>
+      <hr style="border:none;border-top:1px solid #eee;margin:18px 0;">
+      <div class="ts-toggle-row">
+        <span class="ts-toggle-label">הערות ב"יומן שיעורים מלא" גלויות למדריכים</span>
+        <label class="ts-toggle-switch">
+          <input type="checkbox" id="ts-lesson-notes-visible">
+          <span class="ts-toggle-slider"></span>
+        </label>
+      </div>
+      <p style="font-size:12px;color:#888;margin:12px 0 0;">כאשר מכובה (ברירת מחדל) — עמודת "הערות" בטבלת יומן השיעורים בתיק החניך מוסתרת ממדריכים (מוצגת רק למנהל). אינו משפיע על ההערה עצמה שהוגשה בטופס סיכום יום.</p>
     </div>
     <!-- Tab: Courses -->
     <div class="ts-spanel" id="ts-panel-courses">
@@ -6593,6 +6602,11 @@ window.TraineeSystem = {
         const sigChk = this.$('ts-sig-required');
         if (sigChk) this.settings.requireSignature = sigChk.checked;
 
+        // 2026-08-31, לפי בקשת לביא: הצגת/הסתרת עמודת "הערות" ב"יומן שיעורים מלא"
+        // (תיק חניך) עבור מדריכים — ברירת מחדל מוסתר. ר' גם applyLessonNotesVisibility().
+        const _notesChk = this.$('ts-lesson-notes-visible');
+        if (_notesChk) this.settings.showLessonNotesToInstructors = _notesChk.checked;
+
         // Mentor see practical toggle
         const _mspChk = this.$('ts-mentor-see-practical');
         if (_mspChk !== null && _mspChk !== undefined) {
@@ -7122,6 +7136,8 @@ window.TraineeSystem = {
     _renderTab_sig() {
         const chk = this.$('ts-sig-required');
         if (chk && this.settings) chk.checked = this.settings.requireSignature !== false;
+        const notesChk = this.$('ts-lesson-notes-visible');
+        if (notesChk && this.settings) notesChk.checked = this.settings.showLessonNotesToInstructors === true;
     },
 
     _renderTab_milestones() {
@@ -7388,19 +7404,26 @@ window.TraineeSystem = {
             {id:'s4', name:'נהלים'}, {id:'s5', name:'משמעת'}
         ];
         this._renderHistorySkillsHeader(skillList);
+        // 2026-08-31, לפי בקשת לביא: עמודת ההערות מוסתרת ממדריכים/חונכים כברירת מחדל
+        // (settings.showLessonNotesToInstructors, נערך בטאב "חתימה" בהגדרות) — המנהל
+        // תמיד רואה. לא משפיע על ההערה שהמדריך עצמו רואה בטופס סיכום יום שהוא הגיש.
+        const _canSeeLessonNotes = (typeof currentRole === 'undefined' || currentRole === 'admin'
+            || (this.settings && this.settings.showLessonNotesToInstructors === true));
         [...filtered].reverse().forEach((l, revIdx) => {
             const realIdx = lessons.indexOf(l);
             const mIcon = (l.mission === 'קורס מעשי סיטאדיס' || l.mission === 'קורס מעשי אורבוס' || l.mission === 'קורס מעשי' || l.mission === 'קורס') ? '🎓' : l.mission === 'חניכה' ? '🤝' : '⚙️';
             const skillCells = '<div class="hist-skill-grid">' +
                 skillList.map(sk => `<div title="${_esc(sk.name)}">${l[sk.id] != null ? l[sk.id] : '—'}</div>`).join('') +
                 '</div>';
+            const _noteVal=l.notes||l.note||'';
+            const notesCell=_canSeeLessonNotes ? _esc(_noteVal) : '';
             tbody.innerHTML += `<tr>
                 <td>${_esc(l.date)}</td>
                 <td><span style="font-size:11px;">${mIcon} ${_esc(l.mission||'')}</span></td>
                 <td>${l.extraDesc ? _esc(l.extraDesc) : (l.lessonNums||[]).join(',')}</td>
                 <td>${_esc(l.ins||'')}</td>
                 <td>${skillCells}</td>
-                <td style="text-align:right;color:#555;">${_esc(l.notes||l.note||'')}</td>
+                <td style="text-align:right;color:#555;">${notesCell}</td>
                 <td>${(typeof currentRole === 'undefined' || currentRole === 'admin') ? `<button data-delete-lesson="${realIdx}" style="background:none;border:1px solid #e74c3c;color:#e74c3c;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:0.78em;">🗑️</button>` : ''}</td>
             </tr>`;
         });
@@ -10914,9 +10937,12 @@ function changeDate(delta){
 
   currentDate=_localDateStr(d);
 
-  // Reset task-reports cache so stale reports from previous date don't linger in memory
-  window._taskReportsCache={};window._taskReportsCacheDate=null;
-
+  // 2026-08-31 תיקון (#168): היה איפוס גורף של כל window._taskReportsCache כאן —
+  // לא רק את הדוחות של currentDate. מיותר ומזיק: loadTaskReportsForDate() כבר
+  // מנקה בעצמה כל מפתח לא-תקף עבור התאריך שהיא טוענת (ר' validKeys שם). האיפוס
+  // הגורף מחק גם דוחות של תאריכים אחרים שכבר נטענו לזיכרון — כולל "אתמול/שלשול"
+  // האמיתיים שעליהם מסתמכת התרעת "🚨 טפסי סיכום יום חסרים" — ובלי שאף דבר
+  // טוען אותם מחדש אחרי הניווט, ההתרעה למנהל לא התעדכנה יותר אחרי כל שינוי תאריך.
   updateDateLabel();
 
   resubscribeTripsListener();
@@ -10931,6 +10957,9 @@ function changeDate(delta){
   try{
     loadTaskReportsForDate(currentDate).then(()=>renderTodayTasks()).catch(()=>renderTodayTasks());
   }catch(e){}
+  // #168: לוודא שהתרעת "טפסים חסרים" (תלויה בתאריך אמיתי, לא ב-currentDate) מתעדכנת
+  // בכל ניווט בין תאריכים, לא רק כשה-listener של schedule/ מ-Firebase נדלק במקרה.
+  try{_renderMissingDailyReportWarnings();}catch(e){}
 }
 
 
@@ -10938,14 +10967,14 @@ function onDateChange(){
 
   currentDate=document.getElementById('dateSelector').value||currentDate;
 
-  // Reset task-reports cache so stale reports from previous date don't linger in memory
-  window._taskReportsCache={};window._taskReportsCacheDate=null;
-
+  // #168: איפוס גורף של הקאש הוסר — ר' הסבר מפורט ב-changeDate() מעלה.
   updateDateLabel();
 
   resubscribeTripsListener();
 
   hidePlannerPreview();
+
+  try{_renderMissingDailyReportWarnings();}catch(e){}
 
 }
 
