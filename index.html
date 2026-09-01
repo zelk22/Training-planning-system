@@ -14,7 +14,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 95</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 96</title>
 
 <style>
 
@@ -1426,7 +1426,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 155;
+  const APP_VERSION = 156;
 
   function initFirebase() {
     try {
@@ -24743,12 +24743,14 @@ function _buildDaySummaryRowsHtml(dateStr,dayTrips,dayStatuses,dayEntries,intera
     }
 
     // סטטוס סיכום יום — בודק טופס unified לכל מדריך, מחליף statusCell
-    // 2026-08-31, לפי בקשת לביא: יום "חופש" (או כל משימה אחרת עם requiresSummary=false,
-    // למשל כשאין e.task תקף — ר' tDef fallback מעלה) לא אמור להיספר "❌ חסר" — לא נדרש
-    // ממנו טופס סיכום יום בכלל. מוצג "— לא נדרש" נייטרלי במקום זאת.
+    // 2026-08-31→31 תיקון: הניסיון הקודם הסתמך על tDef.requiresSummary, אבל השדה
+    // הזה לא באמת מוגדר true על אף סוג משימה אמיתי (קורס מעשי/קו/וכו') — כתוצאה
+    // מזה הכל הפך "לא נדרש", כולל דיווחים אמיתיים שכן קיימים. הקריטריון הנכון,
+    // כמו בהתרעה "🚨 לא מילא סיכום יום" שכבר עבדה נכון (_wasAssignedToAnyTaskOnDate/
+    // _isVacationShiftKey) — לא נדרש רק כשהמשמרת עצמה מסוג "חופש".
     const _unifiedKey=`${dateStr}__${e.name}__unified`;
     const _unifiedReport=(window._taskReportsCache&&window._taskReportsCache[_unifiedKey])||null;
-    if(!tDef.requiresSummary){
+    if(typeof _isVacationShiftKey==='function' && _isVacationShiftKey(e.shift)){
       statusCell='<span style="background:#f0f0f0;color:#888;font-size:11px;padding:3px 10px;border-radius:10px;font-weight:bold;">— לא נדרש</span>';
     } else if(_unifiedReport){
       statusCell='<span style="background:#eaf5e8;color:#27ae60;font-size:11px;padding:3px 10px;border-radius:10px;font-weight:bold;">✅ קיים</span>';
@@ -24857,11 +24859,10 @@ async function openDailyReportPreview(dateOverride){
   // 2026-08-27: משתמש ב-_tripLessonStats המשותף (כולל override ידני אם קיים).
   const totalLessonHours=dayTrips.reduce((s,t)=>s+_tripLessonStats(t).minutes, 0)/60;
   const activeCount=dayEntries.length;
-  // 2026-08-31, לפי בקשת לביא: אותו תיקון כמו בטבלת הציות (buildRow) — יום "חופש"/
-  // כל משימה עם requiresSummary=false לא נספר כ"חסר" כאן (בדוח היומי המאוחד).
+  // 2026-08-31 תיקון: tDef.requiresSummary לא באמת true על משימות אמיתיות — גרם
+  // לכולם להיספר "לא נדרש". הקריטריון הנכון: רק משמרת "חופש" לא נדרשת (כמו בהתרעה).
   const missingReports=dayEntries.filter(e=>{
-    const tDef=taskDefs.find(t=>t.id===e.task)||{requiresSummary:false};
-    if(!tDef.requiresSummary)return false;
+    if(typeof _isVacationShiftKey==='function' && _isVacationShiftKey(e.shift))return false;
     const k=`${dateStr}__${e.name}__unified`;
     return !(window._taskReportsCache&&window._taskReportsCache[k]);
   }).length;
