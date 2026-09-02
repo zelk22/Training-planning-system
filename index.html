@@ -14,7 +14,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 102</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 104</title>
 
 <style>
 
@@ -1398,6 +1398,16 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 .unified-report-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9950;display:none;align-items:flex-start;justify-content:center;overflow-y:auto;padding:20px 0;}
 .unified-report-overlay.open{display:flex !important;}
 .unified-report-box{background:white;border-radius:18px;width:min(640px,96vw);margin:auto;direction:rtl;overflow:hidden;flex-shrink:0;}
+/* 2026-09-01, לפי בקשת לביא: "ⓘ" הסבר-מיומנות — גלובלי בכוונה (לא בתוך
+   getHTML() של TraineeSystem) כי משתמשים בו גם מטופס "סיכום יום" (global,
+   openUnifiedReport) שעצמאי לגמרי מ-TraineeSystem ועלול להיפתח לפניו באותה
+   session — אם ה-CSS חי רק בתוך TraineeSystem, האייקון נפתח ללא position:fixed
+   בכלל ו"קופץ" למקום אקראי בדף. ר' _skillHelpIcon/_skillHelpOpen.
+   #trainee-summary-panel/renderSkillGrid/history-header משתמשים באותו הסימן. */
+.skill-help-btn { display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border-radius:50%;background:#dbe6f5;color:#3a6ea5;cursor:pointer;margin-inline-start:3px;flex-shrink:0;vertical-align:middle;user-select:none; }
+.skill-help-btn:hover { background:#c5d9ee; }
+.skill-help-popover { position:fixed;z-index:10050;max-width:280px;background:#1a2a3a;color:#fff;font-size:12px;line-height:1.5;padding:10px 12px;border-radius:9px;box-shadow:0 6px 20px rgba(0,0,0,0.25);direction:rtl;text-align:right; }
+.skill-help-popover .shp-close { position:absolute;top:4px;left:6px;cursor:pointer;color:#aab;font-size:13px;line-height:1; }
 .unified-report-head{display:flex;justify-content:space-between;align-items:center;padding:18px 22px;background:linear-gradient(135deg,#1a2a3a,#2c3e50);color:white;}
 .unified-report-head h3{margin:0;font-size:17px;}
 .unified-report-close{background:none;border:none;color:rgba(255,255,255,.7);font-size:24px;cursor:pointer;width:auto !important;padding:0 4px;line-height:1;}
@@ -1426,7 +1436,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 162;
+  const APP_VERSION = 164;
 
   function initFirebase() {
     try {
@@ -4135,13 +4145,15 @@ window.TraineeSystem = {
     .ts-skill-desc-input { width:100%;padding:7px 10px;border:1.5px solid #e5eaf0;border-radius:7px;font-size:12px;font-family:inherit;direction:rtl;resize:vertical;box-sizing:border-box;color:#444;background:#fff; }
     .ts-skill-desc-input:focus { outline:none;border-color:#3498db; }
     .ts-skill-desc-label { font-size:11px;color:#8a95a5;margin-bottom:-2px; }
-    /* Skill-name tooltip/popover — hover on desktop, tap on mobile (see _bindSkillHelp) */
-    .skill-help-btn { display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border-radius:50%;background:#dbe6f5;color:#3a6ea5;cursor:pointer;margin-inline-start:3px;flex-shrink:0;vertical-align:middle;user-select:none; }
-    .skill-help-btn:hover { background:#c5d9ee; }
+    /* 2026-09-01 תיקון: .skill-help-btn/.skill-help-popover הועברו לגמרי ל-CSS
+       הגלובלי (ליד .unified-report-overlay) — כי מיקומן כאן, בתוך getHTML() של
+       TraineeSystem, גרם להן להיות זמינות רק אחרי אתחול המודול הזה. טופס
+       "סיכום יום" (openUnifiedReport) הוא פיצ'ר עצמאי בדף הראשי, לא תלוי ב-
+       TraineeSystem — אם נפתח לפניו, ה-CSS פשוט לא היה קיים עדיין, וה-"ⓘ" נפתח
+       ללא position:fixed בכלל (position:static דורס top/left), ולכן "קפץ" למקום
+       אקראי בדף לפי סדר ה-DOM, לא ליד האייקון בפועל. ר' הגדרה גלובלית למעלה. */
     .stat-label .skill-help-btn { background:rgba(255,255,255,0.85);color:#1a2a3a; }
     .stat-label .skill-help-btn:hover { background:#fff; }
-    .skill-help-popover { position:fixed;z-index:10050;max-width:280px;background:#1a2a3a;color:#fff;font-size:12px;line-height:1.5;padding:10px 12px;border-radius:9px;box-shadow:0 6px 20px rgba(0,0,0,0.25);direction:rtl;text-align:right; }
-    .skill-help-popover .shp-close { position:absolute;top:4px;left:6px;cursor:pointer;color:#aab;font-size:13px;line-height:1; }
     .ts-add-btn { display:flex;align-items:center;justify-content:center;gap:6px;width:100%;padding:10px;border:2px dashed #3498db;background:#f0f8ff;color:#3498db;border-radius:9px;cursor:pointer;font-size:13px;font-weight:bold;margin-top:8px; }
     .ts-add-btn:hover { background:#e0f2ff; }
     /* Mission types tab */
@@ -8464,6 +8476,25 @@ async function _setHiddenInstr(name, hide){
   }
   renderSettingsInstrList();
   try{_populateSiInstrs();}catch(e){}
+}
+
+// 2026-09-01, לפי בקשת לביא: אפשרות ידנית ל"לא נדרש דוח" עבור יום ספציפי של
+// מדריך מסוים (למשל יום שהוחלט מראש שלא ידווח) — כפתור ✕ ליד כל שורה בהתרעת
+// "טפסי סיכום יום חסרים". נשמר תחת settings/missingReportExclusions/<key>
+// (כמו hiddenInstrs — כתיבה לנתיב-ילד ממוקד, לא דורסת שאר settings/). לא ניתן
+// לבטל את ההחרגה מתוך ה-UI כרגע (השורה פשוט נעלמת) — אם לביא ירצה לשחזר
+// התרעה שהחריג בטעות, כרגע צריך להסיר ידנית מ-Firebase; אפשר להוסיף מסך ניהול
+// ייעודי בעתיד אם יתברר שצריך.
+async function _dismissMissingReportWarning(name, dateStr){
+  if(typeof _settings==='undefined'||!_settings)return;
+  if(!_settings.missingReportExclusions||typeof _settings.missingReportExclusions!=='object')_settings.missingReportExclusions={};
+  const key=_msgKey(dateStr+'__'+name);
+  _settings.missingReportExclusions[key]=true;
+  try{localStorage.setItem('v100_settings',JSON.stringify(_settings));}catch(e){}
+  if(window._fbDb){
+    try{await _fbSet(_fbRef(_db,'settings/missingReportExclusions/'+key),true);}catch(e){}
+  }
+  try{_renderMissingDailyReportWarnings();}catch(e){}
 }
 
 // 2026-08-24, לפי בקשת לביא: הרשאת "מעקב טפסים" — צ'קבוקס ליד כל מדריך ברשימת
@@ -13508,6 +13539,9 @@ const DEFAULTS={
   TURN:7,TURN_ORA:10,TURN_HADAS:7,
 
   defaultGap:40,shiftLen:510,minBreak:75,maxPerSeg:0,checkInBuffer:30,formTrackingInstructors:[],
+  // 2026-09-01, לפי בקשת לביא: אפשרות "לא נדרש דוח" ידנית ליום ספציפי של מדריך —
+  // מפתח `${dateStr}__${name}` (מקודד דרך _msgKey כמו hiddenInstrs) → true.
+  missingReportExclusions:{},
 
   d4Start:'06:00',d4End:'19:00'
 
@@ -14290,6 +14324,7 @@ async function saveSettings(){
     // (צ'קבוקס לכל מדריך ברשימת "צוות הדרכה", נשמר מיידית) — לא דרך שדה בטופס
     // הזה. משמרים את הערך הקיים כדי שלא יימחק בטעות בכל שמירת הגדרות כלליות.
     formTrackingInstructors:(_settings&&Array.isArray(_settings.formTrackingInstructors))?_settings.formTrackingInstructors:DEFAULTS.formTrackingInstructors,
+    missingReportExclusions:(_settings&&_settings.missingReportExclusions&&typeof _settings.missingReportExclusions==='object')?_settings.missingReportExclusions:DEFAULTS.missingReportExclusions,
 
     d4Start:getStr('s_d4Start',DEFAULTS.d4Start)||getStr('si_d4Start',DEFAULTS.d4Start),
 
@@ -15234,11 +15269,14 @@ const MISSING_REPORT_LOOKBACK_DAYS = 7;
 function _getMissingDailyReportWarnings(forName){
   const warnings=[];
   const names=forName?[forName]:(typeof _instrNames!=='undefined'?_instrNames:[]);
+  const excl=(typeof _settings!=='undefined'&&_settings&&_settings.missingReportExclusions)||{};
   for(let back=1;back<=MISSING_REPORT_LOOKBACK_DAYS;back++){
     const d=new Date(); d.setDate(d.getDate()-back);
     const dateStr=_localDateStr(d);
     names.forEach(name=>{
       if(!_wasAssignedToAnyTaskOnDate(name,dateStr))return;
+      // 2026-09-01, לפי בקשת לביא: החרגה ידנית ("לא נדרש דוח" ליום הזה) — ר' _dismissMissingReportWarning
+      if(excl[_msgKey(dateStr+'__'+name)])return;
       const reportKey=`${dateStr}__${name}__unified`;
       const hasReport=!!(window._taskReportsCache&&window._taskReportsCache[reportKey]);
       if(!hasReport)warnings.push({name,date:dateStr});
@@ -15258,10 +15296,14 @@ async function _renderMissingDailyReportWarnings(){
     }
   }catch(e){console.warn('_renderMissingDailyReportWarnings load:',e);}
 
-  const fmtRow=(w)=>{
+  // 2026-09-01, לפי בקשת לביא: כפתור ✕ ל"לא נדרש דוח" ליום הזה — admin בלבד
+  // (מדריך עם הרשאת מעקב יכול *לראות* את ההתרעה על כל הצוות, אבל לא להשתיק
+  // אותה עבור אחרים — זו החלטה של המנהל).
+  const fmtRow=(w, allowDismiss)=>{
     const d=new Date(w.date+'T12:00:00');
     const dayLabel=d.toLocaleDateString('he-IL',{weekday:'short',day:'numeric',month:'short'});
-    return `<div style="padding:7px 12px;font-size:12.5px;">🚨 <b>${_esc(w.name)}</b> לא מילא "סיכום יום" עבור ${dayLabel}</div>`;
+    const dismissBtn=allowDismiss?`<button onclick="try{_dismissMissingReportWarning('${_esc(w.name).replace(/'/g,"\\'")}','${w.date}');}catch(e){}" title="לא נדרש דוח ליום הזה" style="width:auto;margin-inline-start:8px;background:none;border:none;color:#c0392b;cursor:pointer;font-size:13px;padding:0 4px;">✕</button>`:'';
+    return `<div style="padding:7px 12px;font-size:12.5px;display:flex;align-items:center;justify-content:space-between;gap:6px;"><span>🚨 <b>${_esc(w.name)}</b> לא מילא "סיכום יום" עבור ${dayLabel}</span>${dismissBtn}</div>`;
   };
 
   const adminEl=document.getElementById('missingDailyReportWarnings');
@@ -15269,7 +15311,7 @@ async function _renderMissingDailyReportWarnings(){
     const warnings=_getMissingDailyReportWarnings();
     adminEl.innerHTML=warnings.length?`<div style="background:#fdecea;border:1.5px solid #f5b7b1;border-radius:8px;margin-bottom:12px;overflow:hidden;">
       <div style="padding:7px 12px;font-weight:bold;color:#c0392b;font-size:12.5px;border-bottom:1px solid #f5b7b1;">🚨 טפסי סיכום יום חסרים (${warnings.length})</div>
-      ${warnings.map(fmtRow).join('<div style="border-top:1px solid #fadbd8;"></div>')}
+      ${warnings.map(w=>fmtRow(w,true)).join('<div style="border-top:1px solid #fadbd8;"></div>')}
     </div>`:'';
   }
 
@@ -15284,7 +15326,7 @@ async function _renderMissingDailyReportWarnings(){
     const warnings=canTrack?_getMissingDailyReportWarnings():[];
     instrEl.innerHTML=warnings.length?`<div style="background:#fdecea;border:1.5px solid #f5b7b1;border-radius:8px;margin-bottom:10px;overflow:hidden;">
       <div style="padding:7px 12px;font-weight:bold;color:#c0392b;font-size:12.5px;border-bottom:1px solid #f5b7b1;">🚨 טפסי סיכום יום חסרים — כל הצוות (${warnings.length})</div>
-      ${warnings.map(fmtRow).join('<div style="border-top:1px solid #fadbd8;"></div>')}
+      ${warnings.map(w=>fmtRow(w,false)).join('<div style="border-top:1px solid #fadbd8;"></div>')}
     </div>`:'';
   }
 }
@@ -22295,6 +22337,35 @@ function openUnifiedReport(prefillDate) {
   const dateEl = document.getElementById('ur-date');
   if (dateEl) dateEl.value = today;
 
+  _urLoadForDate(today);
+
+  overlay.classList.add('open');
+  overlay.scrollTop = 0;
+}
+
+// 2026-09-01, לפי בקשת לביא: שינוי שדה התאריך בתוך הטופס הפתוח לא עשה כלום —
+// אם המדריך פתח "סיכום יום" (שנפתח תמיד עם תאריך היום ונכנס אוטומטית ל"הוספת
+// פרטים" אם כבר יש דוח להיום) ורצה בפועל להגיש/להוסיף לתאריך אחר (למשל אתמול),
+// שינוי התאריך לא בדק אם יש כבר דוח לתאריך *החדש* — הטופס נשאר נעול על מצב
+// "עריכת היום" גם אחרי שהתאריך הוצג כאחר. עכשיו onchange על ur-date קורא לאותה
+// לוגיקת בדיקה/טעינה מחדש (_urLoadForDate) שרצה גם בפתיחה הראשונית.
+function _urOnDateChange() {
+  const dateEl = document.getElementById('ur-date');
+  const d = dateEl && dateEl.value;
+  if (!d) return;
+  const fb = document.getElementById('ur-feedback-blocks');
+  const db = document.getElementById('ur-delay-blocks');
+  const hasUnsaved = (fb && fb.children.length) || (db && db.children.length);
+  if (hasUnsaved && !confirm('שינוי התאריך ינקה את שורות המשוב/העיכובים שהוזנו כאן ויטען מחדש לפי התאריך החדש. להמשיך?')) {
+    dateEl.value = window._urCurrentLoadedDate || dateEl.value;
+    return;
+  }
+  _urLoadForDate(d);
+}
+
+function _urLoadForDate(today) {
+  window._urCurrentLoadedDate = today;
+
   // Prefill instructor (locked)
   const instrEl = document.getElementById('ur-instructor');
   if (instrEl) instrEl.value = currentUserName || '';
@@ -22413,9 +22484,6 @@ function openUnifiedReport(prefillDate) {
   _urDelayCount = 0;
   const db = document.getElementById('ur-delay-blocks');
   if (db) db.innerHTML = '';
-
-  overlay.classList.add('open');
-  overlay.scrollTop = 0;
 }
 
 function closeUnifiedReport() {
@@ -28029,7 +28097,7 @@ function _resetTraineeSummaryConfig() {
       <div class="ur-row-2">
         <div class="ur-field">
           <label>תאריך משמרת</label>
-          <input type="date" id="ur-date">
+          <input type="date" id="ur-date" onchange="try{_urOnDateChange();}catch(e){}">
         </div>
         <div class="ur-field">
           <label>שם מדריך</label>
