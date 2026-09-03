@@ -14,7 +14,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 111</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 112</title>
 
 <style>
 
@@ -1436,7 +1436,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 171;
+  const APP_VERSION = 172;
 
   function initFirebase() {
     try {
@@ -28073,6 +28073,37 @@ function _renderTraineeSummaryPanel() {
     h.push(distHtml.join(''));
   }
   h.push(_renderResourceGroupsBlock(isAdmin));
+  // 2026-09-03, לפי בקשת לביא: כרטיס "התקדמות חניכים" — תצוגה גרפית מרוכזת
+  // (פסי התקדמות ממוין + נקודת צבע לפי ממוצע ציונים) בדשבורד הקבוע, כדי שרואים
+  // מיד מי הכי מתקדם/מפגר בלי ללחוץ על "דוחות". הנתון (maxSitadis) הוא כמות
+  // שיעורים שונים שבוצעו בפועל מתוך 50 — לא כמות דיווחים (ראו התיקון המקביל
+  // בשם עמודה ב-showReports()). עד 10 חניכים פעילים — רשימה אחת מלאה; מעל כך —
+  // 5 המתקדמים + 5 המפגרים בלבד, עם קישור לדוח המלא.
+  var progressList = (summary.perTrainee || []).slice().sort(function(a, b) { return (b.maxSitadis || 0) - (a.maxSitadis || 0); });
+  if (progressList.length) {
+    function _tsProgRow(t) {
+      var pct = Math.round(((t.maxSitadis || 0) / 50) * 100);
+      var dot = (t.avgScore === null || t.avgScore === undefined) ? '#bbb' : (t.avgScore >= 8 ? '#27ae60' : t.avgScore >= 5 ? '#e67e22' : '#e74c3c');
+      return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;">'
+        + '<span style="width:130px;font-size:12px;color:#333;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + _esc(t.name) + '</span>'
+        + '<div style="flex:1;height:11px;background:#eef1f7;border-radius:4px;overflow:hidden;"><div style="height:100%;width:' + pct + '%;background:#4a7fd6;border-radius:4px;"></div></div>'
+        + '<span style="width:36px;font-size:11px;color:#666;text-align:left;">' + (t.maxSitadis || 0) + '/50</span>'
+        + '<span style="width:8px;height:8px;border-radius:50%;background:' + dot + ';flex-shrink:0;"></span>'
+        + '</div>';
+    }
+    h.push(_tsSectionOpen('📈', 'התקדמות חניכים', '#eef4fc', '#4a7fd6', '#2c4f8a'));
+    h.push(_tsSectionHeadClose());
+    if (progressList.length <= 10) {
+      h.push(progressList.map(_tsProgRow).join(''));
+    } else {
+      h.push('<div style="font-size:11px;color:#888;margin:2px 0 8px;">5 המתקדמים ביותר</div>');
+      h.push(progressList.slice(0, 5).map(_tsProgRow).join(''));
+      h.push('<div style="font-size:11px;color:#888;margin:12px 0 8px;">5 המפגרים ביותר</div>');
+      h.push(progressList.slice(-5).reverse().map(_tsProgRow).join(''));
+    }
+    h.push('<button onclick="try{if(typeof TraineeSystem!==\'undefined\')TraineeSystem.showReports();}catch(e){}" style="width:100%;margin-top:8px;padding:7px;background:#f8fafc;border:1px solid #ccc;border-radius:8px;font-size:12px;color:#2471a3;cursor:pointer;">לדוח המלא — כל ' + progressList.length + ' החניכים ↗</button>');
+    h.push(_tsSectionClose());
+  }
   if(summary.atRisk&&summary.atRisk.length){
     h.push(_tsSectionOpen('⚠️','חניכים מתקשים <span style="font-size:11px;font-weight:400;color:#888;">('+summary.atRisk.length+')</span>','#fdecea','#e74c3c','#c0392b'));
     h.push(_tsSectionHeadClose());
