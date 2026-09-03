@@ -14,7 +14,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 116</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 117</title>
 
 <style>
 
@@ -1436,7 +1436,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 176;
+  const APP_VERSION = 177;
 
   function initFirebase() {
     try {
@@ -28082,6 +28082,12 @@ function _renderTraineeSummaryPanel() {
     distHtml.push('<div style="display:flex;flex-wrap:wrap;gap:8px;">');
     lOrder.forEach(function(s){var n=levelDist[s];if(!n)return;var c=lColors[s];distHtml.push('<button onclick="try{_toggleTsBucket(\'level\',\''+s+'\');}catch(e){}" style="width:auto;margin:0;cursor:pointer;display:inline-flex;align-items:center;gap:6px;background:'+c[1]+';border:1px solid '+c[0]+';border-radius:20px;padding:4px 12px;font-family:inherit;"><span style="font-size:13px;font-weight:bold;color:'+c[0]+';">'+n+'</span><span style="font-size:12px;color:#555;">'+s+'</span></button>');});
     distHtml.push('</div><div id="ts-level-detail" style="display:none;margin-top:10px;padding-top:10px;border-top:1px dashed #dee2e6;"></div>');
+    // 2026-09-03, לפי בקשת לביא: "אין חניכים מתקשים" הפך מכרטיס נפרד ברוחב מלא
+    // (שתופס שורה שלמה ותמיד תפוסה) להערה קטנה כאן, בתוך "התפלגות רמות" עצמה —
+    // המקום שבו ממילא מוצג מי כן מתקשה, אז זה גם הקשר טבעי יותר לזה שאין.
+    if (!summary.atRisk || !summary.atRisk.length) {
+      distHtml.push('<div style="margin-top:8px;font-size:12px;color:#27ae60;">✅ אין חניכים מתקשים כרגע</div>');
+    }
     distHtml.push(_tsSectionClose());
   }
   var milestoneHtml=[];
@@ -28143,8 +28149,6 @@ function _renderTraineeSummaryPanel() {
     summary.atRisk.forEach(function(t){var bc=t.riskLevel==='high'?'#e74c3c':t.riskLevel==='medium'?'#e67e22':'#f39c12';h.push('<div style="border:1px solid '+bc+';border-right:4px solid '+bc+';border-radius:8px;padding:10px 14px;">');h.push('<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;flex-wrap:wrap;gap:6px;">');h.push('<div style="display:flex;align-items:center;gap:8px;">'+riskBadge(t.riskLevel)+trendArrow(t.trend)+'<span style="font-size:14px;font-weight:bold;color:#2c3e50;">'+_esc(t.name)+'</span></div>');h.push('<div style="display:flex;align-items:center;gap:8px;"><span style="font-size:11px;color:#888;">'+t.stage+'</span><button onclick="try{if(typeof TraineeSystem!==\'undefined\')TraineeSystem.openTrainee&&TraineeSystem.openTrainee('+t.id+');}catch(ex){}" style="padding:3px 9px;background:#2980b9;color:white;border:none;border-radius:6px;cursor:pointer;font-size:11px;">פתח תיק ←</button></div></div>');if(t.riskReasons&&t.riskReasons.length){h.push('<ul style="margin:2px 0 0;padding-right:18px;">');t.riskReasons.forEach(function(r){h.push('<li style="font-size:12px;color:#666;margin-bottom:2px;">'+r+'</li>');});h.push('</ul>');}h.push('</div>');});
     h.push('</div>');
     h.push(_tsSectionClose());
-  } else {
-    h.push('<div style="background:#eafaf1;border:1px solid #a9dfbf;border-radius:10px;padding:10px 16px;margin-bottom:12px;direction:rtl;text-align:center;font-size:13px;color:#27ae60;">✅ אין חניכים מתקשים כרגע</div>');
   }
   // 2026-08-19: התרעת חוסר-פעילות עצמאית — ווידג'ט נפרד, לא קשור לסיווג "מתקשה"
   if(summary.inactive&&summary.inactive.length){
@@ -28168,8 +28172,7 @@ function _renderTraineeSummaryPanel() {
     h.push(_tsSectionClose());
     window._tsInfoAlerts = summary.infoAlerts; // לבנייה עצלה ע"י _toggleInfoAlerts
   }
-  var ts=summary.generatedAt?new Date(summary.generatedAt).toLocaleTimeString('he-IL'):'';
-  h.push('<div style="text-align:left;direction:rtl;font-size:11px;color:#aaa;padding:4px 2px 0;margin-bottom:10px;">עודכן: '+ts+'</div>');
+
 
   // ── Settings toggle button (admin only; per Lavi 2026-08-23) ──────────────
   if (isAdmin) {
