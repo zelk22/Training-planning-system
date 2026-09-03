@@ -14,7 +14,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 117</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 119</title>
 
 <style>
 
@@ -1436,7 +1436,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 177;
+  const APP_VERSION = 179;
 
   function initFirebase() {
     try {
@@ -6436,6 +6436,7 @@ window.TraineeSystem = {
                 {id:'s4', name:'נהלים'},
                 {id:'s5', name:'משמעת'}
             ],
+            retiredSkillIds: [], // ids של מיומנויות שנמחקו — ראה _getAllKnownSkillIds
             missionTypes: [
                 {id:'course', name:'קורס מעשי סיטאדיס',                 locked:true},
                 {id:'mt1',   name:'חניכה',                           locked:true},
@@ -6602,7 +6603,7 @@ window.TraineeSystem = {
         const skillRows = this.container.querySelectorAll('[data-ts-skill-idx]');
         if (skillRows.length) {
             this.settings.skills = Array.from(skillRows).map((row, i) => ({
-                id: 's' + (i + 1),
+                id: row.dataset.tsSkillId || ('sk_' + Date.now() + Math.random().toString(36).slice(2, 6)),
                 name: row.querySelector('.ts-skill-name-input')?.value.trim() || ('מיומנות ' + (i+1)),
                 desc: row.querySelector('.ts-skill-desc-input')?.value.trim() || ''
             }));
@@ -6974,7 +6975,7 @@ window.TraineeSystem = {
         if (!list || !this.settings) return;
         const skills = this.settings.skills || [];
         list.innerHTML = skills.map((sk, i) => `
-            <div class="ts-skill-row" data-ts-skill-idx="${i}" draggable="true">
+            <div class="ts-skill-row" data-ts-skill-idx="${i}" data-ts-skill-id="${_esc(sk.id)}" draggable="true">
                 <div class="ts-skill-row-top">
                     <span class="ts-drag-handle">☰</span>
                     <input class="ts-skill-name-input" type="text" value="${_esc(sk.name)}" placeholder="שם מיומנות">
@@ -6987,11 +6988,23 @@ window.TraineeSystem = {
         list.querySelectorAll('[data-ts-del-skill]').forEach(btn => {
             btn.addEventListener('click', () => {
                 const idx = parseInt(btn.dataset.tsDelSkill, 10);
-                if (confirm('למחוק מיומנות זו?')) {
+                if (confirm('למחוק מיומנות זו?\n\nהציונים שכבר נצברו עליה ישמרו ויישארו חלק מהממוצע ההיסטורי של החניכים — הם רק לא יוצגו יותר כמיומנות נפרדת, ולא ניתן יהיה לדרג עליה שיעורים חדשים.')) {
                     // Fix #81: sync any not-yet-saved inline name edits from the OTHER rows
                     // before removing this one -- otherwise re-rendering from the stale
                     // in-memory array would silently discard them (same bug as addSkillRow()).
                     this._syncSkillsFromDOM();
+                    // 2026-09-03, לפי בקשת לביא: המיומנות מוסרת מהרשימה הפעילה (לא ניתן
+                    // יותר לדרג עליה), אבל ה-id שלה "יוצא לגמלאות" ולא נמחק — נשמר
+                    // ב-settings.retiredSkillIds, כדי ש-_lessonMeetsScoreThreshold/
+                    // _lessonScoreAvg ימשיכו לזהות ולכלול ציונים היסטוריים שנרשמו
+                    // תחתיו בממוצעים (ראה גם _getAllKnownSkillIds). כך מחיקת מיומנות
+                    // (ואפילו מחיקת כולן ויצירת מיומנות חדשה יחידה) לא "מאפסת" את
+                    // הממוצעים ההיסטוריים של חניכים — היא רק מפסיקה לצבור עליה עוד.
+                    const removedId = this.settings.skills[idx]?.id;
+                    if (removedId) {
+                        if (!Array.isArray(this.settings.retiredSkillIds)) this.settings.retiredSkillIds = [];
+                        if (!this.settings.retiredSkillIds.includes(removedId)) this.settings.retiredSkillIds.push(removedId);
+                    }
                     this.settings.skills.splice(idx, 1);
                     this._renderTab_skills();
                 }
@@ -7004,12 +7017,19 @@ window.TraineeSystem = {
     // exactly how _collectSettingsFromUI() finalizes skills at save time. Call this before
     // ANY action that mutates this.settings.skills and re-renders the list (add/delete/drag
     // reorder) so a re-render never overwrites text the user just typed but hasn't saved yet.
+    // 2026-09-03, לפי בקשת לביא: תוקן באג-שורש חמור — ה-id של מיומנות (המפתח
+    // שתחתיו נשמר כל ציון היסטורי בכל שיעור, l[sk.id]) חושב לפי **מיקום**
+    // ברשימה ('s'+(i+1)). מחיקה/סידור-מחדש של מיומנות שאינה האחרונה גרמה לכל
+    // המיומנויות שאחריה "לזוז" מקום ולקבל id חדש — וכל הציונים ההיסטוריים
+    // שנשמרו תחת ה-id הישן שויכו בשקט למיומנות הלא-נכונה. עכשיו ה-id נשמר
+    // יציב לאורך זמן (נקרא מ-data-ts-skill-id של השורה, בדיוק כמו missionTypes
+    // ב-_collectSettingsFromUI) — מוקצה חדש רק לשורה שבאמת חדשה (עוד אין לה id).
     _syncSkillsFromDOM() {
         if (!this.container) return;
         const rows = this.container.querySelectorAll('[data-ts-skill-idx]');
         if (!rows.length) return;
-        this.settings.skills = Array.from(rows).map((row, i) => ({
-            id: 's' + (i + 1),
+        this.settings.skills = Array.from(rows).map(row => ({
+            id: row.dataset.tsSkillId || ('sk_' + Date.now() + Math.random().toString(36).slice(2, 6)),
             name: row.querySelector('.ts-skill-name-input')?.value.trim() || '',
             desc: row.querySelector('.ts-skill-desc-input')?.value.trim() || ''
         }));
@@ -7018,7 +7038,7 @@ window.TraineeSystem = {
     addSkillRow() {
         if (!this.settings) this.settings = this._defaultSettings();
         this._syncSkillsFromDOM();
-        this.settings.skills.push({id:'s'+(this.settings.skills.length+1), name:''});
+        this.settings.skills.push({id:'sk_'+Date.now()+Math.random().toString(36).slice(2,6), name:''});
         this._renderTab_skills();
         const inputs = this.container.querySelectorAll('.ts-skill-name-input');
         if (inputs.length) inputs[inputs.length-1].focus();
@@ -9388,20 +9408,31 @@ function enterMentorView(name){
   renderCalendar();
 }
 
-function _buildMentorSkillsFields(){
+async function _buildMentorSkillsFields(){
   const container=document.getElementById('mentorSkillsFields');
   if(!container)return;
-  const skills=[
-    {id:'ms1',label:'מערכות רכבת'},
-    {id:'ms2',label:'מבנה קו'},
-    {id:'ms3',label:'תפעול סטיק'},
-    {id:'ms4',label:'נהלים'},
-    {id:'ms5',label:'משמעת'}
-  ];
-  container.innerHTML=skills.map(s=>`
+  // 2026-09-03, לפי בקשת לביא: הוחלף מ-5 מיומנויות קשיחות עם שמות ישנים/בדויים
+  // ("מערכות רכבת"/"מבנה קו"/"תפעול סטיק"/"נהלים"/"משמעת" — לא תואמות בכלל את
+  // המיומנויות האמיתיות של המערכת) לאותה רשימה דינמית בדיוק שמשמשת בטופס סיכום
+  // יום/תיק חניך (TraineeSystem.settings.skills), עם id יציב לכל מיומנות (לא
+  // מחושב לפי מיקום — ראה תיקון ה-id ב-_syncSkillsFromDOM). כך דירוג של חונך
+  // נשמר תחת אותו מפתח בדיוק כמו דירוג מדריך, ומשתתף באותו ממוצע חניך אחד.
+  // אותו דפוס טעינת-הגדרות-לפי-דרישה כמו בטופס סיכום יום — חונך עלול להיכנס
+  // ישירות לטאב הזה בלי ש-TraineeSystem אי-פעם אותחל באותו סשן.
+  if (typeof TraineeSystem !== 'undefined' && !(TraineeSystem.settings?.skills?.length)
+      && !(typeof _isDemoMode === 'function' && _isDemoMode())) {
+    try {
+      if (!TraineeSystem.settingsRef) TraineeSystem.initFirebase();
+      await TraineeSystem.loadSettings();
+    } catch(e) { console.warn('[mentorFeedback] on-demand settings load failed:', e); }
+  }
+  const skillList = (typeof TraineeSystem!=='undefined' && TraineeSystem.settings?.skills?.length)
+    ? TraineeSystem.settings.skills
+    : [{id:'s1',name:'מערכות רכבת'},{id:'s2',name:'מבנה דיפו'},{id:'s3',name:'תפעול סטיק'},{id:'s4',name:'נהלים'},{id:'s5',name:'משמעת'}];
+  container.innerHTML=skillList.map(sk=>`
     <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;">
-      <label style="font-size:12px;color:#555;flex:1;">${s.label}</label>
-      <input type="number" id="${s.id}" min="1" max="10" placeholder="—"
+      <label style="font-size:12px;color:#555;flex:1;">${_esc(sk.name)}</label>
+      <input type="number" data-mentor-skill-id="${_esc(sk.id)}" min="1" max="10" placeholder="—"
         style="width:52px;padding:4px 6px;border:1.5px solid #ddd;border-radius:6px;font-size:13px;text-align:center;">
     </div>`).join('');
 }
@@ -9463,6 +9494,9 @@ function onMentorTraineeSelect(id){
   const t=(window._mentorTrainees||[]).find(x=>String(x.id)===String(id));
   if(!t){if(panel)panel.style.display='none';return;}
   panel.style.display='block';
+  // 2026-09-03: היה dead code — הפאנל תמיד הוצג עם תיבת המיומנויות ריקה. עכשיו
+  // נבנה בפועל בכל בחירת חניך (גם מרענן אם המיומנויות בהגדרות השתנו בינתיים).
+  try{_buildMentorSkillsFields();}catch(e){}
   document.getElementById('mentorTraineeName').textContent=t.name;
   // Calc chinuch progress
   const chinuchDone=new Set();
@@ -9517,11 +9551,13 @@ async function submitMentorFeedback(){
   const date=document.getElementById('mentorDate').value;
   if(!date){errEl.textContent='יש לבחור תאריך';return;}
   if(!lessonNums.length){errEl.textContent='יש להזין לפחות שיעור אחד';return;}
-  // Collect skills
+  // Collect skills — 2026-09-03: לפי בקשת לביא, אותו עקרון id-יציב כמו בשאר
+  // הממשקים. נקרא לפי data-mentor-skill-id (מוזרק דינמית ב-_buildMentorSkillsFields),
+  // לא לפי מיקום — כך שהציון נשמר תחת ה-id האמיתי של המיומנות בפועל.
   const skills={};
-  ['ms1','ms2','ms3','ms4','ms5'].forEach((id,i)=>{
-    const v=parseInt(document.getElementById(id)?.value);
-    if(!isNaN(v)&&v>=1&&v<=10)skills['s'+(i+1)]=v;
+  document.querySelectorAll('#mentorSkillsFields [data-mentor-skill-id]').forEach(inp=>{
+    const v=parseInt(inp.value);
+    if(!isNaN(v)&&v>=1&&v<=10) skills[inp.dataset.mentorSkillId]=v;
   });
   const lesson={
     date,mission,lessonNums,note,
@@ -9544,7 +9580,6 @@ async function submitMentorFeedback(){
     // Reset form
     document.getElementById('mentorLessons').value='';
     document.getElementById('mentorNote').value='';
-    ['ms1','ms2','ms3','ms4','ms5'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
     errEl.textContent='';
     showToast('✅ המשוב נשמר בהצלחה','success');
     _logAction('mentor_feedback',`חונך: ${currentUserName} | חניך: ${t.name} | משימה: ${mission}`);
@@ -27368,8 +27403,20 @@ function _getSkillIds() {
   return ['s1','s2','s3','s4','s5'];
 }
 
+// 2026-09-03, לפי בקשת לביא: איחוד מיומנויות פעילות + "בגמלאות" (נמחקו אך
+// לא נשכחות — ראה retiredSkillIds ב-_renderTab_skills). משמש רק לחישוב
+// ממוצעים/סף-מילוי היסטורי (_lessonMeetsScoreThreshold/_lessonScoreAvg) —
+// לא לתצוגת עמודות/שדות דירוג, שם ממשיכים להשתמש רק ב-_getSkillIds (הרשימה
+// הפעילה בלבד), כדי שמיומנות שנמחקה לא תחזור להיות ניתנת-לדירוג.
+function _getAllKnownSkillIds() {
+  const active = _getSkillIds();
+  const retired = (typeof TraineeSystem !== 'undefined' && Array.isArray(TraineeSystem.settings?.retiredSkillIds))
+    ? TraineeSystem.settings.retiredSkillIds : [];
+  return Array.from(new Set([...active, ...retired]));
+}
+
 function _lessonMeetsScoreThreshold(l) {
-  const skillIds = _getSkillIds();
+  const skillIds = _getAllKnownSkillIds();
   const filledCount = skillIds.filter(id => l[id] != null).length;
   if (filledCount === 0) return false;
 
@@ -27391,7 +27438,7 @@ function _lessonMeetsScoreThreshold(l) {
 
 function _lessonScoreAvg(l) {
   if (!_lessonMeetsScoreThreshold(l)) return null;
-  const skillIds = _getSkillIds();
+  const skillIds = _getAllKnownSkillIds();
   const vals = skillIds.map(id => l[id]).filter(v => v != null);
   return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
 }
