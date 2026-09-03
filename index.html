@@ -14,7 +14,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 109</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 111</title>
 
 <style>
 
@@ -1436,7 +1436,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 169;
+  const APP_VERSION = 171;
 
   function initFirebase() {
     try {
@@ -6118,6 +6118,31 @@ window.TraineeSystem = {
             });
             return cnt ? ((sum / (cnt*10)) * 100).toFixed(0) : 0;
         };
+        // 2026-09-03, לפי בקשת לביא: גרף פסי התקדמות מרוכז (ממוין מהגבוה לנמוך,
+        // נקודת צבע לפי ממוצע) מעל הטבלה המפורטת — כדי לראות ויזואלית מי הכי
+        // מתקדם. גם תוקן שם עמודה מטעה: "שיעורים" הציג בפועל את כמות רשומות
+        // t.lessons (=דיווחים/טופסי סיכום שהוגשו), לא כמות שיעורים שונים —
+        // הוחלף ל"דיווחים"; ההתקדמות האמיתית כבר מוצגת בעמודת "התקדמות" (maxL/50).
+        const withStats = this.trainees.map(t => {
+            const ls=t.lessons||[]; const maxL=Math.max(0,...ls.flatMap(l=>(l.mission==='קורס מעשי סיטאדיס'||l.mission==='קורס מעשי'||l.mission==='קורס')?(l.lessonNums||[]):[]).filter(n=>n));
+            return { t, ls, maxL, avgPct: Number(avg(t)) };
+        });
+        const barsSorted = [...withStats].sort((a,b)=>b.maxL-a.maxL);
+        const bars = barsSorted.map(({t,maxL,avgPct}) => {
+            const pct = Math.round(maxL/50*100);
+            const dotColor = avgPct>=80?'#27ae60':avgPct>=65?'#e67e22':'#e74c3c';
+            return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;">
+                <span style="width:110px;font-size:12px;color:#333;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${_esc(t.name)}">${_esc(t.name)}</span>
+                <div style="flex:1;height:12px;background:#eef1f7;border-radius:4px;overflow:hidden;"><div style="height:100%;width:${pct}%;background:#4a7fd6;border-radius:4px;"></div></div>
+                <span style="width:36px;font-size:11px;color:#666;text-align:left;">${maxL}/50</span>
+                <span style="width:9px;height:9px;border-radius:50%;background:${dotColor};flex-shrink:0;" title="ממוצע ${avgPct}%"></span>
+            </div>`;
+        }).join('');
+        const legend = `<div style="display:flex;gap:14px;margin:8px 0 16px;font-size:11px;color:#666;">
+            <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#27ae60;margin-left:4px;"></span>ממוצע 80%+</span>
+            <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#e67e22;margin-left:4px;"></span>ממוצע 65-79%</span>
+            <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#e74c3c;margin-left:4px;"></span>ממוצע מתחת ל-65%</span>
+        </div>`;
         const rows = [...this.trainees].sort((a,b)=>(b.lessons||[]).length-(a.lessons||[]).length).map(t => {
             const ls=t.lessons||[]; const maxL=Math.max(0,...ls.flatMap(l=>(l.mission==='קורס מעשי סיטאדיס'||l.mission==='קורס מעשי'||l.mission==='קורס')?(l.lessonNums||[]):[]).filter(n=>n));
             return `<tr><td style="padding:8px 10px;border-bottom:1px solid #eee;">${_esc(t.name)}</td><td style="padding:8px 10px;border-bottom:1px solid #eee;text-align:center;">${ls.length}</td><td style="padding:8px 10px;border-bottom:1px solid #eee;text-align:center;">${maxL}/50</td><td style="padding:8px 10px;border-bottom:1px solid #eee;text-align:center;font-weight:bold;color:${avg(t)<65?'#e74c3c':avg(t)<82?'#e67e22':'#27ae60'}">${avg(t)}%</td><td style="padding:8px 10px;border-bottom:1px solid #eee;text-align:center;">${ls.length?ls[ls.length-1].ins:'-'}</td></tr>`;
@@ -6126,7 +6151,7 @@ window.TraineeSystem = {
         overlay.id = 'ts-rep-overlay';
         overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center;';
         overlay.addEventListener('click', e => { if(e.target===overlay) overlay.remove(); });
-        overlay.innerHTML = `<div style="background:white;border-radius:16px;padding:24px;width:min(700px,95vw);max-height:85vh;overflow-y:auto;direction:rtl;"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;"><h3 style="margin:0;">📊 דוח מצב חניכים — ${total} חניכים</h3><button onclick="this.closest('#ts-rep-overlay').remove()" style="background:none;border:none;font-size:20px;cursor:pointer;">✕</button></div><table style="width:100%;border-collapse:collapse;font-size:13px;"><thead><tr style="background:#f0f4ff;"><th style="padding:10px;text-align:right;">שם</th><th style="padding:10px;text-align:center;">שיעורים</th><th style="padding:10px;text-align:center;">התקדמות</th><th style="padding:10px;text-align:center;">ממוצע</th><th style="padding:10px;text-align:center;">מדריך אחרון</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
+        overlay.innerHTML = `<div style="background:white;border-radius:16px;padding:24px;width:min(700px,95vw);max-height:85vh;overflow-y:auto;direction:rtl;"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;"><h3 style="margin:0;">📊 דוח מצב חניכים — ${total} חניכים</h3><button onclick="this.closest('#ts-rep-overlay').remove()" style="background:none;border:none;font-size:20px;cursor:pointer;">✕</button></div><div style="margin-bottom:6px;">${bars}</div>${legend}<table style="width:100%;border-collapse:collapse;font-size:13px;"><thead><tr style="background:#f0f4ff;"><th style="padding:10px;text-align:right;">שם</th><th style="padding:10px;text-align:center;">דיווחים</th><th style="padding:10px;text-align:center;">התקדמות</th><th style="padding:10px;text-align:center;">ממוצע</th><th style="padding:10px;text-align:center;">מדריך אחרון</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
         document.body.appendChild(overlay);
     },
 
@@ -24273,15 +24298,20 @@ function toggleEditUnifiedReport() {
       </div>
       <label>הערות<br><textarea id="vur-edit-notes" rows="2" style="width:100%;padding:6px;border:1.5px solid #ddd;border-radius:6px;">${report.notes||''}</textarea></label>
       <div style="display:flex;gap:8px;">
-        <button onclick="_saveEditedUnifiedReportBasics()" style="width:auto;padding:8px 16px;background:var(--success);color:white;border:none;border-radius:8px;font-size:13px;font-weight:bold;cursor:pointer;">💾 שמור שינויים</button>
+        <button id="vur-save-btn" onclick="_saveEditedUnifiedReportBasics()" style="width:auto;padding:8px 16px;background:var(--success);color:white;border:none;border-radius:8px;font-size:13px;font-weight:bold;cursor:pointer;">💾 שמור שינויים</button>
         <button onclick="openViewUnifiedReport('${cur.date}','${cur.instructorName.replace(/'/g,"\\'")}')" style="width:auto;padding:8px 16px;background:#f5f5f5;color:#666;border:none;border-radius:8px;font-size:13px;cursor:pointer;">ביטול</button>
       </div>
     </div>`;
 }
 
 async function _saveEditedUnifiedReportBasics() {
+  // 2026-09-03, לפי בקשת לביא: "העריכה מתבצעת אבל אין אינדיקציה, נראה לא מגיב" —
+  // ניתנת משוב מיידי בלחיצה (לפני כל await ל-Firebase), כדי שהמשתמש ידע שהלחיצה
+  // נקלטה גם אם השמירה עצמה אורכת זמן. ה-toast הקיים בסוף עדיין מציג הצלחה/שגיאה.
+  const _saveBtn = document.getElementById('vur-save-btn');
+  if (_saveBtn) { _saveBtn.disabled = true; _saveBtn.textContent = '⏳ שומר...'; _saveBtn.style.opacity = '0.7'; _saveBtn.style.cursor = 'default'; }
   const cur = window._vurCurrent;
-  if (!cur) { showToast('שגיאה: אין דוח פתוח לעריכה — נסה לפתוח מחדש', 'warning'); return; }
+  if (!cur) { showToast('שגיאה: אין דוח פתוח לעריכה — נסה לפתוח מחדש', 'warning'); if (_saveBtn) { _saveBtn.disabled = false; _saveBtn.textContent = '💾 שמור שינויים'; _saveBtn.style.opacity = '1'; _saveBtn.style.cursor = 'pointer'; } return; }
   const oldKey = `${cur.date}__${cur.instructorName}__unified`;
   // 2026-09-02, לפי בקשת לביא: "לא מתבצעת שמירה, לא מגיב" — שורש אפשרי: הפונקציה
   // הסתמכה אך ורק על window._taskReportsCache, ואם המטמון התרוקן/התחלף ברקע
@@ -24297,7 +24327,7 @@ async function _saveEditedUnifiedReportBasics() {
       if (report) { if (!window._taskReportsCache) window._taskReportsCache = {}; window._taskReportsCache[oldKey] = report; }
     } catch(e) {}
   }
-  if (!report) { showToast('שגיאה: הדוח לא נמצא בזיכרון — סגור ופתח מחדש את הצפייה בדוח ונסה שוב', 'warning'); return; }
+  if (!report) { showToast('שגיאה: הדוח לא נמצא בזיכרון — סגור ופתח מחדש את הצפייה בדוח ונסה שוב', 'warning'); if (_saveBtn) { _saveBtn.disabled = false; _saveBtn.textContent = '💾 שמור שינויים'; _saveBtn.style.opacity = '1'; _saveBtn.style.cursor = 'pointer'; } return; }
 
   const newDate = document.getElementById('vur-edit-date')?.value || cur.date;
   report.shiftStart = document.getElementById('vur-edit-start')?.value || '';
@@ -24377,7 +24407,7 @@ async function _saveEditedUnifiedReportBasics() {
         try { _renderTraineeSummaryPanel(); } catch(e) {}
       }
     }
-  } catch(e) { console.warn('edit unified report save:', e); showToast('שגיאה בשמירת השינויים', 'warning'); return; }
+  } catch(e) { console.warn('edit unified report save:', e); showToast('שגיאה בשמירת השינויים', 'warning'); if (_saveBtn) { _saveBtn.disabled = false; _saveBtn.textContent = '💾 שמור שינויים'; _saveBtn.style.opacity = '1'; _saveBtn.style.cursor = 'pointer'; } return; }
 
   _logAction('edit_unified_report', `עריכת סיכום יום: ${cur.instructorName} — ${cur.date}${dateChanged ? ' → ' + newDate : ''}${_lessonsFixed ? ` (${_lessonsFixed} רשומות שיעור עודכנו)` : ''}`);
   showToast(_lessonsFixed ? `✅ השינויים נשמרו (כולל ${_lessonsFixed} רשומות שיעור בתיקי חניכים)` : '✅ השינויים נשמרו', 'success');
