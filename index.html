@@ -14,7 +14,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 105</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 109</title>
 
 <style>
 
@@ -1436,7 +1436,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 165;
+  const APP_VERSION = 169;
 
   function initFirebase() {
     try {
@@ -7500,7 +7500,19 @@ window.TraineeSystem = {
     },
 
     // Public: inject a lesson from external form (unified daily report)
-    addLessonFromExternal(traineeId, lessonData) {
+    // 2026-09-02, לפי בקשת לביא: תוקן מרוץ-כתיבה חמור (data race) — הפונקציה
+    // הייתה מוסיפה שיעור לעותק *מקומי* של t.lessons ואז שומרת אותו ל-Firebase
+    // עם .set() שדורס את **כל** רשימת התלמידים/שיעורי הקורס (persist/
+    // _persistCourseTrainees, שניהם כתבו blob שלם). אם שני מדריכים שולחים
+    // דוחות בסמיכות (אפילו לחניכים שונים באותו קורס!) — מי שכתב שני מוחק בשקט
+    // את מה שהראשון כתב, כי הוא כתב לפי העותק המקומי-לו-בלבד, לפני שראה את
+    // התוספת של הראשון. זה בדיוק מה שקרה לעידן: הדוח של אחמד (23-25) והדוח
+    // של איאד (26-28) — האחרון ששמר דרס את הראשון ב-courses_v20, למרות ששני
+    // הדוחות עצמם (taskReports, נתיב נפרד) נשמרו בשלמותם ונראים תקינים בצפייה.
+    // עכשיו: קריאה טרייה מ-Firebase של *רק* השיעורים של החניך הזה ממש לפני
+    // הכתיבה (מצמצם דרמטית את חלון המרוץ), מיזוג, וכתיבה *ממוקדת רק לחניך
+    // הזה* (לא ל-blob השלם) — נזק אפשרי מוגבל לחניך בודד ולא לכל הקורס.
+    async addLessonFromExternal(traineeId, lessonData) {
         let t = this.trainees.find(x => String(x.id) === String(traineeId));
         let _owningCourse = null;
         if (!t) {
@@ -7544,18 +7556,34 @@ window.TraineeSystem = {
             if (lesson[k] === '') delete lesson[k];
             if (Array.isArray(lesson[k]) && lesson[k].length === 0) delete lesson[k];
         });
-        t.lessons.push(lesson);
-        // Skip persist/renderList during batch demo injection — caller handles it
-        if (!lessonData._fromDemoReport) {
-            // Fix: persist() only ever saves this.currentCourseId's trainees. If the
-            // trainee we just updated belongs to a DIFFERENT course, persist() would
-            // silently save nothing for them — save that course's trainees directly.
-            if (_owningCourse && _owningCourse.id !== this.currentCourseId) {
-                this._persistCourseTrainees(_owningCourse);
-            } else {
-                this.persist();
+
+        const isDemo = typeof _isDemoMode === 'function' && _isDemoMode();
+        const courseId = _owningCourse ? _owningCourse.id : this.currentCourseId;
+
+        if (!lessonData._fromDemoReport && !isDemo && this.coursesRef && courseId) {
+            // נתיב ממוקד לחניך הזה בלבד — לא ל-blob של כל התלמידים בקורס.
+            const traineeRef = this.coursesRef.child(courseId).child('trainees').child(this._fbKey(t.id));
+            try {
+                const snap = await traineeRef.child('lessons').once('value');
+                const freshLessons = snap.exists() ? Object.values(snap.val()) : [];
+                t.lessons = [...freshLessons, lesson]; // מיזוג על גבי המצב העדכני ביותר, לא העותק המקומי הישן
+                await traineeRef.set(t); // כתיבה ממוקדת רק לחניך הזה
+            } catch(e) {
+                console.error('addLessonFromExternal targeted write failed, falling back to full-course persist:', e);
+                t.lessons.push(lesson);
+                if (_owningCourse && _owningCourse.id !== this.currentCourseId) this._persistCourseTrainees(_owningCourse);
+                else this.persist();
             }
             this.renderList();
+        } else if (!lessonData._fromDemoReport) {
+            // דמו / אין Firebase — הנתיב הישן (זיכרון/localStorage בלבד, אין סכנת מרוץ אמיתית)
+            t.lessons.push(lesson);
+            if (_owningCourse && _owningCourse.id !== this.currentCourseId) this._persistCourseTrainees(_owningCourse);
+            else this.persist();
+            this.renderList();
+        } else {
+            // Batch demo injection — caller handles persist/render itself
+            t.lessons.push(lesson);
         }
     },
 
@@ -23537,11 +23565,15 @@ async function submitUnifiedReport() {
     });
 
     // Inject lessons for all confirmed trainees
+    // 2026-09-02, לפי בקשת לביא: היה forEach שלא חיכה בכלל ל-addLessonFromExternal
+    // (שהפכה ל-async כדי לתקן מרוץ-כתיבה) — הוחלף ל-for...of עם await, כדי
+    // שכל הזרקה תסיים לקרוא-מזג-לכתוב לפני שהבאה מתחילה (ואם כמה שורות
+    // באותו טופס עצמו נוגעות באותו חניך, גם הן לא ידרסו זו את זו).
     if (typeof TraineeSystem !== 'undefined') {
-      lessonResults.forEach(({ traineeId, lesson }) => {
-        if (!traineeId || traineeId.startsWith('_free_')) return;
-        try { TraineeSystem.addLessonFromExternal(traineeId, lesson); } catch(e) { console.warn('addLesson:', e); }
-      });
+      for (const { traineeId, lesson } of lessonResults) {
+        if (!traineeId || traineeId.startsWith('_free_')) continue;
+        try { await TraineeSystem.addLessonFromExternal(traineeId, lesson); } catch(e) { console.warn('addLesson:', e); }
+      }
 
       // 2026-08-30, לפי בקשת לביא: אם בוחן תיעד "עבר" בשיעור טסט — סימון
       // אוטומטי של אבן הדרך המתאימה (בלי צורך בסימון ידני נפרד אחר כך).
@@ -23559,9 +23591,26 @@ async function submitUnifiedReport() {
         try { localStorage.setItem('trainee_courses', JSON.stringify(TraineeSystem.courses)); } catch(e) {}
         if (window._fbDb) {
           try {
+            // 2026-09-02, לפי בקשת לביא: תוקן מרוץ-כתיבה חמור נוסף (ואף גרוע יותר
+            // מזה שתוקן ב-addLessonFromExternal) — השורה הזו כתבה .set() על **כל
+            // עץ courses_v20** (כל הקורסים, עם כל התלמידים שלהם!) לפי המצב המקומי
+            // בזיכרון של הסשן הזה, בכל שמירת "סיכום יום" — גם כשלא נוצר אף קורס
+            // חדש. שני מדריכים ששולחים דוחות בקירוב זמן (אפילו לחניכים שונים
+            // לגמרי!) גרמו למי ששלח אחרון למחוק בשקט את מה שהראשון כתב. זה
+            // הסבר סביר יותר עוד מה-fix הקודם למקרה של עידן. המטרה האמיתית של
+            // הבלוק הזה — לשמור מטא-דאטה של קורס *חדש* שנוצר בטופס עצמו — לא
+            // דורשת בכלל לגעת בתלמידים (שכבר נשמרים בנפרד, ממוקד, למעלה).
+            // עכשיו נשלחים רק שדות מטא-דאטה של קורס (בלי trainees) — כ-multi-path
+            // update עם מפתחות שטוחים "courseId/field" (לא set() מקונן), כדי
+            // שבאמת ייגע רק בשדות המטא-דאטה עצמם ולא ידרוס/ימחק את trainees.
             const _cData = {};
-            TraineeSystem.courses.forEach(c => { _cData[c.id] = c; });
-            _fbRef(_db, 'courses_v20').set(_cData);
+            TraineeSystem.courses.forEach(c => {
+              Object.keys(c).forEach(k => {
+                if (k === 'trainees') return;
+                _cData[`${c.id}/${k}`] = c[k];
+              });
+            });
+            _fbRef(_db, 'courses_v20').update(_cData);
           } catch(e) { console.warn('save courses final:', e); }
         }
         try { TraineeSystem.persist(); } catch(e) {}
@@ -23587,6 +23636,215 @@ async function submitUnifiedReport() {
 // שהוגש הייתה דרך שורת "קיים" בטבלת "סיכום יום" ליום ספציפי אחד. כאן מרוכזים כל
 // הטפסים בטווח התאריכים הנבחר (בורר משותף לדוחות), עם חיפוש, ופתיחה לאותה חלונית
 // תצוגה קומפקטית (openViewUnifiedReport) בלי לשכפל אותה.
+// 2026-09-02, לפי בקשת לביא: כלי אבחון (סימולציה בלבד — לא כותב שום דבר) לבדיקת
+// שיעורים שדווחו בטופסי "סיכום יום" (taskReports) אך חסרים בתיק החניך
+// (courses_v20/trainees/.../lessons) — התוצאה של מרוץ-הכתיבה שתוקן ב-#178.
+// חשוב: feedbackDetails בדוח שומר רק "name" (טקסט תצוגה), לא traineeId —
+// ההתאמה לחניך נעשית לפי שם מדויק בלבד. שם כפול/שונה מעט = לא ימצא/עלול
+// להתאים לחניך הלא נכון, ולכן כל תוצאה מסומנת עם רמת ודאות ההתאמה.
+async function _runMissingLessonScan(){
+  if (typeof currentRole !== 'undefined' && currentRole !== 'admin') { showToast('רק למנהל','warning'); return; }
+  showToast('⏳ סורק דוחות...', 'info');
+  const {start,end,label}=_resolveReportDates();
+  const allReports = await loadDateRangeTaskReports(start,end);
+  const unified = Object.values(allReports).filter(v=>v&&v.type==='unified_daily'&&Array.isArray(v.feedbackDetails)&&v.feedbackDetails.length);
+
+  // 2026-09-02 תיקון: כל 14 השורות חזרו "לא נמצא" — כי TraineeSystem מעולם לא
+  // אותחל בסשן הזה (למשל אם המנהל פתח "ארכיון טפסי סיכום יום" בלי לעבור דרך
+  // "ניהול חניכים" קודם) — TraineeSystem.db/coursesRef היו null, ו-courses
+  // נשאר [] (ברירת המחדל). אם צריך, מאתחלים במפורש (init יוצר את חיבורי
+  // Firebase; container קיים תמיד ב-DOM גם אם הטאב לא פתוח, אז זה בטוח) ואז
+  // טוענים קורסים מפורשות ומחכים בפועל — לא סומכים על ה-then() הפנימי של init().
+  if (typeof TraineeSystem !== 'undefined') {
+    if (!TraineeSystem.db) { try { TraineeSystem.init('traineeSystemContainer'); } catch(e) { console.warn('_runMissingLessonScan init:', e); } }
+    if (typeof TraineeSystem.loadCourses === 'function') {
+      try { await TraineeSystem.loadCourses(); } catch(e) { console.warn('_runMissingLessonScan loadCourses:', e); }
+    }
+  }
+
+  // בונים אינדקס שם→[{trainee,course}] מכל התלמידים בכל הקורסים, לזיהוי כפילויות שם
+  const byName = {};
+  if (typeof TraineeSystem !== 'undefined' && Array.isArray(TraineeSystem.courses)) {
+    TraineeSystem.courses.forEach(c => (c.trainees||[]).forEach(t => {
+      const key = (t.name||'').trim();
+      if (!key) return;
+      (byName[key] = byName[key] || []).push({ t, courseId: c.id });
+    }));
+  }
+  if (!Object.keys(byName).length) {
+    showToast('⚠️ לא נטענו חניכים בכלל — פתח קודם את "ניהול חניכים" בהגדרות ונסה שוב', 'warning');
+  }
+
+  const results = []; // {reportDate, instructor, traineeName, mission, lessonNums, status, note}
+  unified.forEach(report => {
+    report.feedbackDetails.forEach(fb => {
+      if (!fb.lessonNums || !fb.lessonNums.length) return; // טסטים/כשירות — אין lessonNums, לא רלוונטי לסריקה הזו
+      const matches = byName[(fb.name||'').trim()] || [];
+      let status, note, targetTrainee = null, targetCourseId = null;
+      if (matches.length === 0) {
+        status = 'not_found'; note = 'לא נמצא חניך בשם הזה בתיקים הנוכחיים';
+      } else if (matches.length > 1) {
+        status = 'ambiguous'; note = `${matches.length} חניכים עם השם הזה — לא ניתן להתאים אוטומטית`;
+      } else {
+        targetTrainee = matches[0].t; targetCourseId = matches[0].courseId;
+        const already = (targetTrainee.lessons||[]).some(l =>
+          l._fromUnifiedReport && l.date === report.date && l.ins === report.instructorName && l.mission === fb.mission &&
+          Array.isArray(l.lessonNums) && fb.lessonNums.every(n => l.lessonNums.includes(n))
+        );
+        if (already) { status = 'ok'; note = 'קיים בתיק — תקין'; }
+        else { status = 'missing'; note = 'לא נמצאה רשומה תואמת בתיק — מועמד לשחזור'; }
+      }
+      results.push({
+        reportDate: report.date, instructor: report.instructorName, traineeName: fb.name,
+        mission: fb.mission, lessonNums: fb.lessonNums, status, note,
+        traineeId: targetTrainee ? targetTrainee.id : null, courseId: targetCourseId,
+        fbFull: fb // שדות מלאים (skills/note/extraDesc) — לשימוש שלב 2 (שחזור)
+      });
+    });
+  });
+
+  window._lastMissingLessonScan = results; // בשימוש שלב 2 (_runMissingLessonRepair)
+  _showMissingLessonScanResults(results, label);
+}
+
+function _showMissingLessonScanResults(results, label){
+  document.getElementById('missingLessonScanOverlay')?.remove();
+  const counts = { ok:0, missing:0, ambiguous:0, not_found:0 };
+  results.forEach(r => counts[r.status]++);
+  const styleFor = { ok:'#eafaf1;color:#1e8449;border-color:#a9dfbf', missing:'#fdecea;color:#c0392b;border-color:#f5b7b1',
+    ambiguous:'#fff8ee;color:#b9770e;border-color:#f5d9a8', not_found:'#f4f4f4;color:#777;border-color:#ddd' };
+  const labelFor = { ok:'✅ תקין', missing:'❌ חסר בתיק', ambiguous:'⚠️ שם כפול', not_found:'❓ לא נמצא' };
+  window._missingLessonScanAll = results; // לשימוש הטוגל "הצג הכול" (ר' _toggleMissingLessonScanShowAll)
+
+  const buildRows = (showAll) => {
+    const rows = showAll ? results : results.filter(r => r.status !== 'ok');
+    return rows.length ? rows.map(r => {
+      const st = styleFor[r.status];
+      return `<tr style="border-bottom:1px solid #f0f0f0;">
+        <td style="padding:7px 10px;font-size:12px;color:#888;white-space:nowrap;">${_esc(r.reportDate)}</td>
+        <td style="padding:7px 10px;font-size:12.5px;font-weight:bold;">${_esc(r.traineeName)}</td>
+        <td style="padding:7px 10px;font-size:12px;">${_esc(r.instructor)}</td>
+        <td style="padding:7px 10px;font-size:12px;">${_esc(r.mission)}</td>
+        <td style="padding:7px 10px;font-size:12px;text-align:center;">${(r.lessonNums||[]).join(',')}</td>
+        <td style="padding:7px 10px;"><span style="background:${st};border:1px solid;border-radius:12px;padding:2px 10px;font-size:11px;font-weight:bold;">${labelFor[r.status]}</span></td>
+        <td style="padding:7px 10px;font-size:11px;color:#888;">${_esc(r.note)}</td>
+      </tr>`;
+    }).join('') : `<tr><td colspan="7" style="text-align:center;padding:24px;color:#27ae60;font-weight:bold;">✅ לא נמצאו פערים — כל השיעורים המדווחים קיימים בתיקי החניכים</td></tr>`;
+  };
+
+  const isAdmin = (typeof currentRole === 'undefined' || currentRole === 'admin');
+  const repairBtnHtml = (isAdmin && counts.missing) ? `<button onclick="_runMissingLessonRepair()" style="width:auto !important;padding:6px 14px;background:#27ae60;color:white;border:none;border-radius:8px;cursor:pointer;font-size:12.5px;font-weight:bold;">🔧 שחזר ${counts.missing} רשומות חסרות</button>` : '';
+
+  const overlay=document.createElement('div');
+  overlay.id='missingLessonScanOverlay';
+  overlay.className='log-overlay';
+  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9900;display:flex;align-items:center;justify-content:center;';
+  overlay.innerHTML=`
+    <div style="background:white;border-radius:16px;width:min(920px,96vw);max-height:85vh;overflow:hidden;display:flex;flex-direction:column;direction:rtl;">
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:2px solid #eef2f8;">
+        <h3 style="margin:0;font-size:16px;">🔍 סריקת שיעורים חסרים בתיקי חניכים <span style="font-size:11px;font-weight:400;color:#888;">— ${_esc(label)}</span></h3>
+        <button onclick="this.closest('.log-overlay').remove()" style="width:auto !important;background:none;border:none;font-size:22px;cursor:pointer;color:#888;">×</button>
+      </div>
+      <div style="padding:12px 20px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between;border-bottom:1px solid #eef2f8;">
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          <span style="background:#fdecea;color:#c0392b;border:1px solid #f5b7b1;border-radius:20px;padding:4px 12px;font-size:12px;"><b>${counts.missing}</b> חסרים — מועמדים לשחזור</span>
+          <span style="background:#fff8ee;color:#b9770e;border:1px solid #f5d9a8;border-radius:20px;padding:4px 12px;font-size:12px;"><b>${counts.ambiguous}</b> שם כפול</span>
+          <span style="background:#f4f4f4;color:#777;border:1px solid #ddd;border-radius:20px;padding:4px 12px;font-size:12px;"><b>${counts.not_found}</b> לא נמצא</span>
+          <span style="background:#eafaf1;color:#1e8449;border:1px solid #a9dfbf;border-radius:20px;padding:4px 12px;font-size:12px;"><b>${counts.ok}</b> תקינים</span>
+        </div>
+        ${repairBtnHtml}
+      </div>
+      <div style="padding:8px 20px 0;">
+        <label style="font-size:11.5px;color:#888;display:flex;align-items:center;gap:5px;cursor:pointer;width:fit-content;">
+          <input type="checkbox" id="missingLessonScanShowAll" onchange="_toggleMissingLessonScanShowAll(this.checked)">
+          הצג גם רשומות תקינות (לבדיקת-אמינות של הסריקה עצמה)
+        </label>
+      </div>
+      <div style="overflow-y:auto;flex:1;padding:0 20px 16px;">
+        <table style="width:100%;border-collapse:collapse;">
+          <thead><tr style="background:#f8faff;position:sticky;top:0;">
+            <th style="padding:7px 10px;text-align:right;font-size:11px;color:#888;">תאריך דוח</th>
+            <th style="padding:7px 10px;text-align:right;font-size:11px;color:#888;">חניך</th>
+            <th style="padding:7px 10px;text-align:right;font-size:11px;color:#888;">מדריך</th>
+            <th style="padding:7px 10px;text-align:right;font-size:11px;color:#888;">משימה</th>
+            <th style="padding:7px 10px;text-align:center;font-size:11px;color:#888;">שיעורים</th>
+            <th style="padding:7px 10px;text-align:right;font-size:11px;color:#888;">סטטוס</th>
+            <th style="padding:7px 10px;text-align:right;font-size:11px;color:#888;">הערה</th>
+          </tr></thead>
+          <tbody id="missingLessonScanTbody">${buildRows(false)}</tbody>
+        </table>
+      </div>
+      <div style="padding:10px 20px;font-size:11px;color:#aaa;text-align:center;border-top:1px solid #eef2f8;">שלב 1 (סימולציה) הריץ בלי לכתוב כלום. לחיצה על "שחזר" בשלב 2 היא הפעולה שבאמת כותבת לחניכים המסומנים "חסר" בלבד.</div>
+    </div>`;
+  document.body.appendChild(overlay);
+}
+
+function _toggleMissingLessonScanShowAll(showAll){
+  const tbody = document.getElementById('missingLessonScanTbody');
+  const results = window._missingLessonScanAll || [];
+  if (!tbody) return;
+  const styleFor = { ok:'#eafaf1;color:#1e8449;border-color:#a9dfbf', missing:'#fdecea;color:#c0392b;border-color:#f5b7b1',
+    ambiguous:'#fff8ee;color:#b9770e;border-color:#f5d9a8', not_found:'#f4f4f4;color:#777;border-color:#ddd' };
+  const labelFor = { ok:'✅ תקין', missing:'❌ חסר בתיק', ambiguous:'⚠️ שם כפול', not_found:'❓ לא נמצא' };
+  const rows = showAll ? results : results.filter(r => r.status !== 'ok');
+  tbody.innerHTML = rows.length ? rows.map(r => {
+    const st = styleFor[r.status];
+    return `<tr style="border-bottom:1px solid #f0f0f0;">
+      <td style="padding:7px 10px;font-size:12px;color:#888;white-space:nowrap;">${_esc(r.reportDate)}</td>
+      <td style="padding:7px 10px;font-size:12.5px;font-weight:bold;">${_esc(r.traineeName)}</td>
+      <td style="padding:7px 10px;font-size:12px;">${_esc(r.instructor)}</td>
+      <td style="padding:7px 10px;font-size:12px;">${_esc(r.mission)}</td>
+      <td style="padding:7px 10px;font-size:12px;text-align:center;">${(r.lessonNums||[]).join(',')}</td>
+      <td style="padding:7px 10px;"><span style="background:${st};border:1px solid;border-radius:12px;padding:2px 10px;font-size:11px;font-weight:bold;">${labelFor[r.status]}</span></td>
+      <td style="padding:7px 10px;font-size:11px;color:#888;">${_esc(r.note)}</td>
+    </tr>`;
+  }).join('') : `<tr><td colspan="7" style="text-align:center;padding:24px;color:#27ae60;font-weight:bold;">✅ לא נמצאו פערים — כל השיעורים המדווחים קיימים בתיקי החניכים</td></tr>`;
+}
+
+// 2026-09-02, לפי בקשת לביא: שלב 2 — שחזור בפועל של רשומות "חסר" שנמצאו בשלב 1.
+// כותב רק לחניכים המסומנים "missing" (לא נוגע ב-ok/ambiguous/not_found), דרך
+// addLessonFromExternal המתוקנת (כתיבה ממוקדת+קריאה טרייה, בטוחה ממרוץ-כתיבה).
+// לפני כל הזרקה — בדיקת-ביטחון נוספת שהרשומה עדיין באמת חסרה (מונעת הכפלה אם
+// לוחצים "שחזר" פעמיים, או אם משהו כבר תוקן בינתיים).
+async function _runMissingLessonRepair(){
+  if (typeof currentRole !== 'undefined' && currentRole !== 'admin') { showToast('רק למנהל','warning'); return; }
+  const scan = window._lastMissingLessonScan || [];
+  const toRepair = scan.filter(r => r.status === 'missing');
+  if (!toRepair.length) { showToast('אין מה לשחזר','info'); return; }
+  if (!confirm(`לשחזר ${toRepair.length} רשומות שיעור חסרות בתיקי חניכים?\n\nהפעולה רק מוסיפה רשומות שנקבע שהן חסרות — לא דורסת/מוחקת שום דבר קיים. לא ניתן לבטל אוטומטית אחרי ביצוע (אפשר למחוק ידנית מתיק החניך אם צריך).`)) return;
+
+  showToast('⏳ משחזר...', 'info');
+  let success = 0, skippedAlready = 0, failed = 0;
+  for (const r of toRepair) {
+    try {
+      // בדיקה טרייה — אולי כבר תוקן (למשל שחזור קודם, או דיווח חדש שנכנס)
+      const t = TraineeSystem.trainees.find(x => String(x.id) === String(r.traineeId))
+        || (TraineeSystem.courses || []).flatMap(c => c.trainees || []).find(x => String(x.id) === String(r.traineeId));
+      const already = t && (t.lessons||[]).some(l =>
+        l._fromUnifiedReport && l.date === r.reportDate && l.ins === r.instructor && l.mission === r.mission &&
+        Array.isArray(l.lessonNums) && r.lessonNums.every(n => l.lessonNums.includes(n))
+      );
+      if (already) { skippedAlready++; continue; }
+
+      const fb = r.fbFull || {};
+      await TraineeSystem.addLessonFromExternal(r.traineeId, {
+        date: r.reportDate, instructor: r.instructor, mission: r.mission,
+        lessonNums: r.lessonNums, extraDesc: fb.extraDesc || '', note: fb.note || '',
+        ...(fb.skills || {})
+      });
+      success++;
+    } catch(e) { console.warn('missing lesson repair failed for', r, e); failed++; }
+  }
+
+  const msg = `✅ שוחזרו ${success} רשומות` + (skippedAlready ? ` • ${skippedAlready} כבר היו תקינות` : '') + (failed ? ` • ❌ ${failed} נכשלו` : '');
+  showToast(msg, failed ? 'warning' : 'success');
+  try { _logAction('missing_lesson_repair', `שחזור שיעורים חסרים: ${success} שוחזרו, ${skippedAlready} כבר תקינים, ${failed} נכשלו`); } catch(e) {}
+
+  document.getElementById('missingLessonScanOverlay')?.remove();
+  // מריצים סריקה טרייה כדי להראות את המצב אחרי השחזור
+  _runMissingLessonScan();
+}
+
 async function openUnifiedReportsArchive(){
   document.getElementById('unifiedArchiveOverlay')?.remove(); // מונע חלוניות כפולות אם כבר פתוחה
   const {start,end,label}=_resolveReportDates();
@@ -23621,7 +23879,10 @@ async function openUnifiedReportsArchive(){
     <div style="background:white;border-radius:16px;width:min(820px,96vw);max-height:85vh;overflow:hidden;display:flex;flex-direction:column;direction:rtl;">
       <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:2px solid #eef2f8;">
         <h3 style="margin:0;font-size:16px;">🗂️ ארכיון טפסי סיכום יום <span style="font-size:11px;font-weight:400;color:#888;">— ${_esc(label)}</span></h3>
-        <button onclick="this.closest('.log-overlay').remove()" style="width:auto !important;background:none;border:none;font-size:22px;cursor:pointer;color:#888;">×</button>
+        <div style="display:flex;align-items:center;gap:10px;">
+          ${(typeof currentRole === 'undefined' || currentRole === 'admin') ? `<button onclick="_runMissingLessonScan()" style="width:auto !important;padding:6px 12px;background:#fff3cd;color:#8a6d1a;border:1px solid #f0d78c;border-radius:8px;cursor:pointer;font-size:11.5px;font-weight:bold;">🔍 בדוק שיעורים חסרים בתיקים</button>` : ''}
+          <button onclick="this.closest('.log-overlay').remove()" style="width:auto !important;background:none;border:none;font-size:22px;cursor:pointer;color:#888;">×</button>
+        </div>
       </div>
       <div style="padding:12px 20px 8px;">
         <input type="text" id="uraSearchInput" placeholder="🔍 חיפוש לפי שם מדריך..." oninput="_filterUnifiedArchive(this.value)" style="width:100%;padding:8px 12px;border:1.5px solid #ddd;border-radius:8px;font-size:13px;">
@@ -23937,19 +24198,27 @@ async function deleteUnifiedReport() {
   // 1. Remove injected trainee lessons tied to this exact report (date+instructor+flag)
   try {
     if (typeof TraineeSystem !== 'undefined' && Array.isArray(TraineeSystem.courses)) {
+      // 2026-09-02, לפי בקשת לביא: אותו תיקון מרוץ-כתיבה כמו ב-addLessonFromExternal —
+      // כאן היה .set() על כל עץ courses_v20 (כל הקורסים/התלמידים), למרות שרק
+      // תלמידים בודדים (עם רשומת שיעור מהדוח הזה בדיוק) באמת משתנים. עכשיו
+      // נכתב רק לתלמידים שבאמת הושפעו, נתיב ממוקד לכל אחד.
+      const _affected = [];
       TraineeSystem.courses.forEach(course => {
         (course.trainees || []).forEach(t => {
           if (!Array.isArray(t.lessons)) return;
+          const before = t.lessons.length;
           t.lessons = t.lessons.filter(l => !(l._fromUnifiedReport && l.date === date && l.ins === instructorName));
+          if (t.lessons.length !== before) _affected.push({ courseId: course.id, t });
         });
       });
-      try { TraineeSystem.persist(); } catch(e) {}
+      try { localStorage.setItem('trainee_courses', JSON.stringify(TraineeSystem.courses)); } catch(e) {}
       try {
-        localStorage.setItem('trainee_courses', JSON.stringify(TraineeSystem.courses));
-        if (window._fbDb) {
-          const _cData = {};
-          TraineeSystem.courses.forEach(c => { _cData[c.id] = c; });
-          await _fbSet(_fbRef(_db, 'courses_v20'), _cData);
+        if (window._fbDb && _affected.length) {
+          for (const { courseId, t } of _affected) {
+            try {
+              await TraineeSystem.coursesRef.child(courseId).child('trainees').child(TraineeSystem._fbKey(t.id)).set(t);
+            } catch(e) { console.warn('deleteUnifiedReport targeted write failed for', t.id, e); }
+          }
         }
       } catch(e) { console.warn('deleteUnifiedReport trainee cleanup save:', e); }
     }
