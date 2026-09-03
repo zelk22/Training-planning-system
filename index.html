@@ -14,7 +14,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 115</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 116</title>
 
 <style>
 
@@ -1436,7 +1436,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 175;
+  const APP_VERSION = 176;
 
   function initFirebase() {
     try {
@@ -19350,6 +19350,12 @@ async function reloadApp(){
     if(typeof startSchedSync==='function') startSchedSync();
     if(currentRole==='instructor'&&typeof startInstrSync==='function') startInstrSync();
     renderCalendar();
+    // 2026-09-03, לפי בקשת לביא: "↺" הכללי לא היה מאפס את מטמון פאנל החניכים
+    // (window._traineeSummaryCache), כך שהפאנל יכול היה להישאר עם נתונים ישנים
+    // גם אחרי רענון מלא — מה שחייב כפתור "רענן" נפרד בתוך הפאנל עצמו. עכשיו
+    // "↺" מטפל גם בזה, וכפתור הרענון הנפרד הוסר (ר' _renderTraineeSummaryPanel).
+    window._traineeSummaryCache=null;
+    try{if(typeof _renderTraineeSummaryPanel==='function')_renderTraineeSummaryPanel();}catch(e){}
     showToast('✅ הנתונים עודכנו','success');
   }catch(e){
     showToast('⚠️ שגיאה בריענון: '+e.message,'warning');
@@ -28163,7 +28169,7 @@ function _renderTraineeSummaryPanel() {
     window._tsInfoAlerts = summary.infoAlerts; // לבנייה עצלה ע"י _toggleInfoAlerts
   }
   var ts=summary.generatedAt?new Date(summary.generatedAt).toLocaleTimeString('he-IL'):'';
-  h.push('<div style="display:flex;justify-content:space-between;align-items:center;direction:rtl;font-size:11px;color:#aaa;padding:4px 2px 0;margin-bottom:10px;"><span>עודכן: '+ts+'</span><button onclick="try{window._traineeSummaryCache=null;_renderTraineeSummaryPanel();}catch(e){}" style="padding:3px 10px;background:#f0f4f8;border:1px solid #ccc;border-radius:6px;cursor:pointer;font-size:11px;color:#666;">רענן</button></div>');
+  h.push('<div style="text-align:left;direction:rtl;font-size:11px;color:#aaa;padding:4px 2px 0;margin-bottom:10px;">עודכן: '+ts+'</div>');
 
   // ── Settings toggle button (admin only; per Lavi 2026-08-23) ──────────────
   if (isAdmin) {
