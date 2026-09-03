@@ -14,7 +14,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 112</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 115</title>
 
 <style>
 
@@ -1436,7 +1436,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 172;
+  const APP_VERSION = 175;
 
   function initFirebase() {
     try {
@@ -8546,15 +8546,20 @@ async function _setHiddenInstr(name, hide){
 // התרעה שהחריג בטעות, כרגע צריך להסיר ידנית מ-Firebase; אפשר להוסיף מסך ניהול
 // ייעודי בעתיד אם יתברר שצריך.
 async function _dismissMissingReportWarning(name, dateStr){
-  if(typeof _settings==='undefined'||!_settings)return;
+  // 2026-09-03, לפי בקשת לביא: "הלחיצה לא מגיבה, לא קורה כלום" — אותה תבנית
+  // בדיוק כמו התיקון ב-_saveEditedUnifiedReportBasics: הפונקציה חיכתה (await)
+  // לכתיבת Firebase לפני שרינדרה מחדש את הרשימה, כך שברשת איטית/תקועה השורה
+  // נשארה על המסך בלי שום סימן שהלחיצה נקלטה. עכשיו ה-UI מתעדכן מיידית
+  // (מקומי + localStorage), וכתיבת Firebase ממשיכה ברקע.
+  if(typeof _settings==='undefined'||!_settings){ if(typeof showToast==='function') showToast('שגיאה: ההגדרות לא נטענו — רענן את הדף ונסה שוב', 'warning'); return; }
   if(!_settings.missingReportExclusions||typeof _settings.missingReportExclusions!=='object')_settings.missingReportExclusions={};
   const key=_msgKey(dateStr+'__'+name);
   _settings.missingReportExclusions[key]=true;
   try{localStorage.setItem('v100_settings',JSON.stringify(_settings));}catch(e){}
+  try{_renderMissingDailyReportWarnings();}catch(e){}
   if(window._fbDb){
     try{await _fbSet(_fbRef(_db,'settings/missingReportExclusions/'+key),true);}catch(e){}
   }
-  try{_renderMissingDailyReportWarnings();}catch(e){}
 }
 
 // 2026-08-24, לפי בקשת לביא: הרשאת "מעקב טפסים" — צ'קבוקס ליד כל מדריך ברשימת
@@ -23365,9 +23370,14 @@ async function submitUnifiedReport() {
 
   // 2026-08-23, לפי בקשת לביא: "שעות הדרכה קלה" הפך לשדה חובה — הטופס לא
   // נשלח/נסגר בלעדיו, רק מתריע ומדגיש את השדה החסר.
+  // 2026-09-03, לפי בקשת לביא: הדרישה הייתה חלה על כולם כולל מדריכים ששובצו
+  // למשימות שאינן "קורס מעשי" (למשל "קו") — אצלם אין בכלל הדרכה קלה לדווח
+  // עליה. הוגבל לאותו תנאי בדיוק שכבר משמש לחובת משוב חניך — _wasAssignedToTripTaskOnDate
+  // (משבצת נסיעה/קורס מעשי בפועל, בתאריך שנבחר בטופס).
+  const _wasTripDayForLight = (typeof _wasAssignedToTripTaskOnDate === 'function') && _wasAssignedToTripTaskOnDate(instructor, date);
   const _lightHoursEl = document.getElementById('ur-light-hours');
   const _lightHoursRaw = _lightHoursEl?.value?.trim() || '';
-  if (_lightHoursRaw === '') {
+  if (_wasTripDayForLight && _lightHoursRaw === '') {
     showToast('⚠️ יש להשלים את שדה "שעות הדרכה קלה" לפני שמירת הטופס', 'warning');
     if (_lightHoursEl) {
       _lightHoursEl.style.border = '2px solid #e74c3c';
@@ -27862,6 +27872,18 @@ function _renderResourceGroupsBlock(isAdmin) {
   return h.join('');
 }
 
+// 2026-09-03, לפי בקשת לביא: כרטיס "התקדמות חניכים" מקופל כברירת מחדל, אותה
+// תבנית בדיוק כמו _toggleResourceGroups — התוכן כבר נבנה מראש (זול לחישוב,
+// לא תלוי קורס נבחר כמו קבוצות תיעדוף), רק מוצג/מוסתר בלחיצה.
+function _toggleTraineeProgressCard() {
+  var body  = document.getElementById('ts-progress-body');
+  var arrow = document.getElementById('ts-progress-arrow');
+  if (!body) return;
+  var open = body.style.display === 'block';
+  body.style.display = open ? 'none' : 'block';
+  if (arrow) arrow.innerHTML = open ? '&#9654;' : '&#9660;';
+}
+
 function _toggleResourceGroups() {
   var body  = document.getElementById('ts-groups-body');
   var arrow = document.getElementById('ts-groups-arrow');
@@ -28091,8 +28113,11 @@ function _renderTraineeSummaryPanel() {
         + '<span style="width:8px;height:8px;border-radius:50%;background:' + dot + ';flex-shrink:0;"></span>'
         + '</div>';
     }
-    h.push(_tsSectionOpen('📈', 'התקדמות חניכים', '#eef4fc', '#4a7fd6', '#2c4f8a'));
+    h.push(_tsSectionOpen('📈', 'התקדמות חניכים', '#eef4fc', '#4a7fd6', '#2c4f8a',
+      ' onclick="try{_toggleTraineeProgressCard();}catch(e){}"', 'cursor:pointer;justify-content:space-between;'));
+    h.push('<span id="ts-progress-arrow" style="font-size:10px;color:#2c4f8a;">&#9654;</span>');
     h.push(_tsSectionHeadClose());
+    h.push('<div id="ts-progress-body" style="display:none;">');
     if (progressList.length <= 10) {
       h.push(progressList.map(_tsProgRow).join(''));
     } else {
@@ -28102,6 +28127,7 @@ function _renderTraineeSummaryPanel() {
       h.push(progressList.slice(-5).reverse().map(_tsProgRow).join(''));
     }
     h.push('<button onclick="try{if(typeof TraineeSystem!==\'undefined\')TraineeSystem.showReports();}catch(e){}" style="width:100%;margin-top:8px;padding:7px;background:#f8fafc;border:1px solid #ccc;border-radius:8px;font-size:12px;color:#2471a3;cursor:pointer;">לדוח המלא — כל ' + progressList.length + ' החניכים ↗</button>');
+    h.push('</div>');
     h.push(_tsSectionClose());
   }
   if(summary.atRisk&&summary.atRisk.length){
