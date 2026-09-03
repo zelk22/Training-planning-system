@@ -14,7 +14,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 104</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 105</title>
 
 <style>
 
@@ -1436,7 +1436,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 164;
+  const APP_VERSION = 165;
 
   function initFirebase() {
     try {
@@ -5428,12 +5428,17 @@ window.TraineeSystem = {
         const _levelCfg = (typeof _getTraineeSummaryConfig === 'function')
             ? _getTraineeSummaryConfig() : { lowScoreRed: 5, lowScoreOrange: 8 };
         _visible.forEach(t => {
-            const doneLessons = new Set();
+            // 2026-09-02 תיקון: כאן חושב maxL=doneLessons.size (כמות שיעורים *שונים*
+            // עם דיווח) — בעוד שבתיק החניך עצמו (renderDetail, למטה) maxL הוא
+            // מספר השיעור *הגבוה ביותר* שדווח. שני מדדים שונים לגמרי, שמתפצלים
+            // בכל פער (שיעורים שלא דווחו ברצף) — בדיוק המקרה שלביא דיווח (17 מול
+            // 22). הוחלף לאותה נוסחה בדיוק כמו renderDetail, כדי שהכרטיס והתיק
+            // תמיד יראו את אותו מספר.
+            let maxL = 0;
             (t.lessons || []).forEach(ls => {
                 if (ls.mission === 'קורס מעשי סיטאדיס' || ls.mission === 'קורס מעשי' || ls.mission === 'קורס')
-                    (ls.lessonNums || []).forEach(n => doneLessons.add(n));
+                    (ls.lessonNums || []).forEach(n => { if (n > maxL) maxL = n; });
             });
-            const maxL  = doneLessons.size;
             const pct   = Math.min((maxL / 50) * 100, 100).toFixed(0);
             const phase = maxL < 10 ? 'שלב טכני' : maxL < 30 ? 'שלב תפעולי' : 'שלב מסחרי';
             const safeName = t.name.replace(/'/g, "\\'").replace(/"/g, '&quot;');
@@ -6114,7 +6119,7 @@ window.TraineeSystem = {
             return cnt ? ((sum / (cnt*10)) * 100).toFixed(0) : 0;
         };
         const rows = [...this.trainees].sort((a,b)=>(b.lessons||[]).length-(a.lessons||[]).length).map(t => {
-            const ls=t.lessons||[]; const maxL=new Set(ls.flatMap(l=>(l.mission==='קורס מעשי סיטאדיס'||l.mission==='קורס מעשי'||l.mission==='קורס')?(l.lessonNums||[]):[]).filter(n=>n)).size;
+            const ls=t.lessons||[]; const maxL=Math.max(0,...ls.flatMap(l=>(l.mission==='קורס מעשי סיטאדיס'||l.mission==='קורס מעשי'||l.mission==='קורס')?(l.lessonNums||[]):[]).filter(n=>n));
             return `<tr><td style="padding:8px 10px;border-bottom:1px solid #eee;">${_esc(t.name)}</td><td style="padding:8px 10px;border-bottom:1px solid #eee;text-align:center;">${ls.length}</td><td style="padding:8px 10px;border-bottom:1px solid #eee;text-align:center;">${maxL}/50</td><td style="padding:8px 10px;border-bottom:1px solid #eee;text-align:center;font-weight:bold;color:${avg(t)<65?'#e74c3c':avg(t)<82?'#e67e22':'#27ae60'}">${avg(t)}%</td><td style="padding:8px 10px;border-bottom:1px solid #eee;text-align:center;">${ls.length?ls[ls.length-1].ins:'-'}</td></tr>`;
         }).join('');
         const overlay = document.createElement('div');
@@ -7200,14 +7205,16 @@ window.TraineeSystem = {
                     ${passed?'✓':'○'} ${label}
                 </button>`;
             }).join('');
-            const doneLessons = new Set();
+            // 2026-09-02 תיקון עקביות (כמו ברשימת הכרטיסים למעלה): מספר השיעור
+            // הגבוה ביותר שדווח, לא כמות שיעורים שונים עם דיווח.
+            let _maxLDone = 0;
             (t.lessons||[]).forEach(l => {
                 if (l.mission === 'קורס מעשי סיטאדיס' || l.mission === 'קורס מעשי' || l.mission === 'קורס')
-                    (l.lessonNums||[]).forEach(n => doneLessons.add(n));
+                    (l.lessonNums||[]).forEach(n => { if (n > _maxLDone) _maxLDone = n; });
             });
             return `<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;padding:8px 10px;border-bottom:1px solid #f0f4f8;">
                 <div style="font-size:13px;font-weight:bold;color:#1a2a3a;min-width:120px;">${_esc(t.name)}
-                    <span style="font-size:10px;color:#aaa;font-weight:400;"> ${doneLessons.size}/50</span>
+                    <span style="font-size:10px;color:#aaa;font-weight:400;"> ${_maxLDone}/50</span>
                 </div>
                 <div style="display:flex;gap:6px;flex-wrap:wrap;">${badges}</div>
             </div>`;
@@ -22341,6 +22348,22 @@ function openUnifiedReport(prefillDate) {
 
   overlay.classList.add('open');
   overlay.scrollTop = 0;
+
+  // 2026-09-02, לפי בקשת לביא: שיעורים שכבר דווחו ע"י מדריך אחר (בסשן/מכשיר
+  // נפרד) המשיכו להופיע כ"זמינים" בבוחר השיעורים (chips) — כי TraineeSystem.courses
+  // נטען פעם אחת בלבד (once, לא listener חי) בעת אתחול המודול, ולא מתעדכן
+  // אוטומטית כשמדריך אחר שולח דוח במקביל. לא הופכים את הפתיחה עצמה ל-async
+  // (זה היה מעכב את פתיחת החלון) — במקום זה, ברקע, טוענים מחדש את הקורסים
+  // מ-Firebase ואז מרעננים את ה-chips של כל בלוקי המשוב הפתוחים כרגע, כדי
+  // שבזמן שהמדריך בפועל מגיע לבחירת מספרי שיעור, הנתונים כבר עדכניים.
+  if (typeof TraineeSystem !== 'undefined' && typeof TraineeSystem.loadCourses === 'function') {
+    TraineeSystem.loadCourses().then(() => {
+      document.querySelectorAll('[id^="ur-fb-"][id$="-chips-wrap"]').forEach(wrap => {
+        const m = /^ur-fb-(\d+)-chips-wrap$/.exec(wrap.id);
+        if (m && typeof _urUpdateChips === 'function') { try { _urUpdateChips(m[1]); } catch(e) {} }
+      });
+    }).catch(()=>{});
+  }
 }
 
 // 2026-09-01, לפי בקשת לביא: שינוי שדה התאריך בתוך הטופס הפתוח לא עשה כלום —
@@ -23989,10 +24012,23 @@ function toggleEditUnifiedReport() {
 
 async function _saveEditedUnifiedReportBasics() {
   const cur = window._vurCurrent;
-  if (!cur) return;
+  if (!cur) { showToast('שגיאה: אין דוח פתוח לעריכה — נסה לפתוח מחדש', 'warning'); return; }
   const oldKey = `${cur.date}__${cur.instructorName}__unified`;
-  const report = (window._taskReportsCache && window._taskReportsCache[oldKey]) || null;
-  if (!report) return;
+  // 2026-09-02, לפי בקשת לביא: "לא מתבצעת שמירה, לא מגיב" — שורש אפשרי: הפונקציה
+  // הסתמכה אך ורק על window._taskReportsCache, ואם המטמון התרוקן/התחלף ברקע
+  // (למשל דיווח אחר שהוגש ע"י מדריך אחר תוך כדי שהחלון פתוח) — report היה null
+  // וה-return היה שקט לגמרי, בלי שום הודעה למשתמש. נוסף fallback ל-localStorage
+  // (כמו ב-openUnifiedReport) ותמיד מוצגת הודעת שגיאה אם באמת לא נמצא דוח, כדי
+  // שלא יראה כאילו "כלום לא קרה".
+  let report = (window._taskReportsCache && window._taskReportsCache[oldKey]) || null;
+  if (!report) {
+    try {
+      const _ls = JSON.parse(localStorage.getItem('taskReports_' + cur.date) || '{}');
+      report = _ls[oldKey] || null;
+      if (report) { if (!window._taskReportsCache) window._taskReportsCache = {}; window._taskReportsCache[oldKey] = report; }
+    } catch(e) {}
+  }
+  if (!report) { showToast('שגיאה: הדוח לא נמצא בזיכרון — סגור ופתח מחדש את הצפייה בדוח ונסה שוב', 'warning'); return; }
 
   const newDate = document.getElementById('vur-edit-date')?.value || cur.date;
   report.shiftStart = document.getElementById('vur-edit-start')?.value || '';
