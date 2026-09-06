@@ -14,7 +14,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 120</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 121</title>
 
 <style>
 
@@ -1436,7 +1436,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 180;
+  const APP_VERSION = 181;
 
   function initFirebase() {
     try {
@@ -25073,16 +25073,31 @@ function _doChazarti(idx){
 
 // Retroactive trip confirmation — marks as both departed and returned
 function _confirmTripRetro(tripIdx){
+  // 2026-09-06, לפי בקשת לביא: "מקפץ בין 'אשר נסיעה' לבוצע ובחזרה". שורש הבאג —
+  // setMyStatus() כתב ל-Firebase סטטוס בלי שדה confirmedTrips בכלל; ההוספה של
+  // confirmedTrips הייתה אחרי זה, מקומית-בלבד (לא נשלחה ל-Firebase). ה-listener
+  // החי על statusPath (startInstrSync) מחליף לגמרי את instrStatuses בכל עדכון —
+  // כולל ה"הד" מהכתיבה העצמית של setMyStatus — ומוחק את confirmedTrips המקומי
+  // עוד לפני שהתצוגה הספיקה להתייצב. תוקן: כתיבה אחת מאוחדת (כולל confirmedTrips
+  // מההתחלה) במקום שתי כתיבות נפרדות, כדי שלא יהיה חלון-זמן עם מצב חלקי.
   const myTrips=trips.filter(t=>t.name===currentUserName);
   const trip=myTrips[tripIdx];
   if(!trip){showToast('נסיעה לא נמצאה','warning');return;}
-  setMyStatus('returned',tripIdx);
   const key=currentUserName.replace(/[.#$[\]/]/g,'_');
-  if(!instrStatuses[key])instrStatuses[key]={name:currentUserName,status:'idle',confirmedTrips:{}};
-  instrStatuses[key].status='returned';
-  instrStatuses[key].tripIdx=tripIdx;
-  if(!instrStatuses[key].confirmedTrips)instrStatuses[key].confirmedTrips={};
-  instrStatuses[key].confirmedTrips[tripIdx]=true;
+  const prevConfirmed=(instrStatuses[key]&&instrStatuses[key].confirmedTrips)||{};
+  const statusObj={name:currentUserName,status:'returned',time:toHHMM(new Date().getHours()*60+new Date().getMinutes()),tripIdx,confirmedTrips:{...prevConfirmed,[tripIdx]:true}};
+  if(!instrStatuses)instrStatuses={};
+  instrStatuses[key]=statusObj;
+  if(_isDemoMode()||!window._fbDb){
+    try{
+      const dateKey='instrStatus_'+currentDate;
+      const existing=JSON.parse(localStorage.getItem(dateKey)||'{}');
+      existing[key]=statusObj;
+      localStorage.setItem(dateKey,JSON.stringify(existing));
+    }catch(e){}
+  } else {
+    try{_fbSet(_fbRef(_db,statusPath()+'/'+key),statusObj);}catch(e){console.warn('_confirmTripRetro:',e);}
+  }
   showToast('✅ נסיעה אושרה רטרואקטיבית','success');
   setTimeout(renderInstrTripJournal,200);
 }
@@ -25094,7 +25109,8 @@ async function _mgrConfirmTrip(tripId,instrName){
   const tripIdx=myTrips.findIndex(t=>t.id===tripId);
   if(tripIdx<0){showToast('נסיעה לא נמצאה','warning');return;}
   const key=instrName.replace(/[.#$[\]/]/g,'_');
-  const statusObj={name:instrName,status:'returned',tripIdx,time:toHHMM(new Date().getHours()*60+new Date().getMinutes()),confirmedTrips:{[tripIdx]:true}};
+  const prevConfirmed=(instrStatuses&&instrStatuses[key]&&instrStatuses[key].confirmedTrips)||{};
+  const statusObj={name:instrName,status:'returned',tripIdx,time:toHHMM(new Date().getHours()*60+new Date().getMinutes()),confirmedTrips:{...prevConfirmed,[tripIdx]:true}};
   if(!instrStatuses)instrStatuses={};
   instrStatuses[key]=statusObj;
   if(_isDemoMode()||!window._fbDb){
