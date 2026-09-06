@@ -14,7 +14,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 119</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 120</title>
 
 <style>
 
@@ -1436,7 +1436,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 179;
+  const APP_VERSION = 180;
 
   function initFirebase() {
     try {
@@ -1490,6 +1490,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
       const verRef = window._db.ref('systemVersion/current');
       verRef.once('value').then(snap => {
         const remote = snap.val();
+        window._remoteAppVersion = remote || APP_VERSION;
         if (!remote || remote < APP_VERSION) {
           verRef.set(APP_VERSION).catch(()=>{});
         } else if (remote > APP_VERSION) {
@@ -1499,6 +1500,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
       // מאזין חי — תופס גרסה חדשה שהוכרזה ממכשיר אחר גם אם הטאב הזה נשאר פתוח שעות
       verRef.on('value', snap => {
         const remote = snap.val();
+        if (remote) window._remoteAppVersion = remote;
         if (remote && remote > APP_VERSION) _showVersionBanner();
       });
     } catch(e) { console.warn('_watchAppVersion:', e); }
@@ -1507,6 +1509,41 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
   function _showVersionBanner() {
     const b = document.getElementById('versionUpdateBanner');
     if (b) b.style.display = 'flex';
+  }
+
+  // 2026-09-06, לפי בקשת לביא: הגנה נוספת נגד מרוץ-כתיבה (#178) — טאב ישן
+  // שנשאר פתוח ממשיך להריץ קוד פגיע גם אחרי שהתיקון עלה. שילוב שני שכבות:
+  // (א) בפתיחת טופס "סיכום יום" — אם כבר ידועה גרסה חדשה, חסימה מוחלטת
+  // (מודאל בלי אפשרות המשך) *לפני* שהטופס נפתח למילוי — שום דבר עוד לא הוקלד,
+  // אז אין סיכון נתונים בחסימה גורפת. (ב) בשמירה בפועל (טופס חדש/עריכת דוח/
+  // מחיקת דוח) — רשת ביטחון לתרחיש הנדיר שגרסה חדשה עלתה *באמצע* המילוי:
+  // רק הודעה שחוסמת את הכתיבה, בלי רענון כפוי ובלי טיוטה — מה שהוקלד נשאר
+  // על המסך, המשתמש מחליט בעצמו מתי לרענן ולמלא מחדש.
+  function _isNewerVersionKnown() {
+    return typeof window._remoteAppVersion === 'number' && window._remoteAppVersion > APP_VERSION;
+  }
+
+  function _blockFormOpenIfNewerVersion() {
+    if (!_isNewerVersionKnown()) return false;
+    const overlay = document.createElement('div');
+    overlay.id = 'versionHardBlockOverlay';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:99998;display:flex;align-items:center;justify-content:center;';
+    overlay.innerHTML = `<div style="background:white;border-radius:16px;padding:28px 24px;width:min(380px,90vw);text-align:center;direction:rtl;">
+      <div style="font-size:32px;margin-bottom:10px;">🔄</div>
+      <div style="font-size:15px;font-weight:bold;color:#1a5276;margin-bottom:8px;">יש גרסה חדשה של המערכת</div>
+      <div style="font-size:13px;color:#666;margin-bottom:18px;">יש לרענן לפני שממשיכים, כדי לוודא שהתיקונים האחרונים פעילים.</div>
+      <button onclick="location.replace(location.pathname+'?v='+Date.now());" style="width:100%;padding:10px;background:#3498db;color:white;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:bold;">🔄 רענן עכשיו</button>
+    </div>`;
+    document.body.appendChild(overlay);
+    return true;
+  }
+
+  function _blockSaveIfNewerVersion(errEl) {
+    if (!_isNewerVersionKnown()) return false;
+    const msg = '⚠️ זוהתה גרסה חדשה של המערכת מאז שפתחת את הטופס. יש לרענן ולמלא מחדש לפני השמירה — מה שהקלדת כאן לא נמחק, אבל לא יישמר עד שתרעננו.';
+    if (errEl) { errEl.textContent = msg; }
+    if (typeof showToast === 'function') showToast(msg, 'warning');
+    return true;
   }
 
   window.addEventListener('load', initFirebase);
@@ -22435,6 +22472,7 @@ let _urFeedbackCount = 0;
 let _urDelayCount = 0;
 
 function openUnifiedReport(prefillDate) {
+  if (_blockFormOpenIfNewerVersion()) return;
   const overlay = document.getElementById('unifiedReportOverlay');
   if (!overlay) return;
 
@@ -23382,6 +23420,7 @@ function _urToggleChip(btn, n, isMsWarn, msWarnTestNum) {
 }
 
 async function submitUnifiedReport() {
+  if (_blockSaveIfNewerVersion()) return;
   const date = document.getElementById('ur-date')?.value || currentDate;
   const instructor = currentUserName;
   if (!date || !instructor) { showToast('שגיאה: חסר תאריך או שם מדריך', 'error'); return; }
@@ -24266,6 +24305,7 @@ async function deleteUnifiedReport() {
   const cur = window._vurCurrent;
   if (!cur) return;
   if (typeof currentRole !== 'undefined' && currentRole !== 'admin') return;
+  if (_blockSaveIfNewerVersion()) return;
   if (!confirm(`למחוק לצמיתות את דוח "סיכום יום" של ${cur.instructorName} מתאריך ${cur.date}?\n\nפעולה זו גם תמחק את רשומות השיעור שנוצרו מדוח זה בתיקי החניכים (כדי למנוע כפילויות במילוי מחדש). לא ניתן לשחזר.`)) return;
 
   const { date, instructorName } = cur;
@@ -24356,6 +24396,7 @@ function toggleEditUnifiedReport() {
 }
 
 async function _saveEditedUnifiedReportBasics() {
+  if (_blockSaveIfNewerVersion()) return;
   // 2026-09-03, לפי בקשת לביא: "העריכה מתבצעת אבל אין אינדיקציה, נראה לא מגיב" —
   // ניתנת משוב מיידי בלחיצה (לפני כל await ל-Firebase), כדי שהמשתמש ידע שהלחיצה
   // נקלטה גם אם השמירה עצמה אורכת זמן. ה-toast הקיים בסוף עדיין מציג הצלחה/שגיאה.
