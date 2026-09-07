@@ -14,7 +14,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 132</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 133</title>
 
 <style>
 
@@ -1436,7 +1436,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 192;
+  const APP_VERSION = 193;
 
   // 2026-09-07, לפי בקשת לביא: היה קשה לבדוק באיזו גרסה הדפדפן בפועל טוען
   // (כותרת הטאב נחתכת כשיש הרבה טאבים פתוחים, ואי אפשר תמיד לראות "DEPLOYED
@@ -25441,7 +25441,14 @@ async function _loadDaySummaryDataForDate(dateStr){
     }
   }
 
-  const dayEntries=schedData[dateStr]||[];
+  // #200, לפי בקשת לביא: כאן זו הייתה קריאה גולמית ל-schedData[dateStr] בלי שום
+  // סינון — בניגוד ללוח השיבוצים (renderCalendar) שמסנן status==='rejected' כבר
+  // ולהתרעת "טפסי סיכום יום חסרים" (_wasAssignedToAnyTaskOnDate) שמחמירה עוד
+  // יותר (רק approved/pending). התוצאה: מדריך שהוסר משיבוץ (סטטוס הפך rejected,
+  // למשל בעקבות שינוי/שיבוץ מחדש) נעלם כראוי מהלוח ומההתרעה — אבל המשיך
+  // להופיע כאן בטבלת "סיכום יום" כאילו עדיין משובץ, ולכן גם כ"חסר" בטופס.
+  // תוקן: אותו קריטריון בדיוק כמו _wasAssignedToAnyTaskOnDate, לעקביות מלאה.
+  const dayEntries=(schedData[dateStr]||[]).filter(e=>e.status==='approved'||e.status==='pending');
   return {dayTrips,dayStatuses,dayEntries,error:null};
 }
 
