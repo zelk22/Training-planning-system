@@ -14,7 +14,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 121</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 122</title>
 
 <style>
 
@@ -1436,7 +1436,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 181;
+  const APP_VERSION = 182;
 
   function initFirebase() {
     try {
@@ -15455,16 +15455,29 @@ async function _renderMissingDailyReportWarnings(){
   // Fix (2026-08-24, per Lavi): מדריך שקיבל הרשאת "מעקב מילוי טפסים" (מוגדר
   // ע"י המנהל בהגדרות) רואה את אותה התרעה בדיוק — על כל המדריכים, לא רק על
   // עצמו — למרות שהוא לא admin. הרשאת-צפייה חריגה, מוקצית לפי בחירת המנהל.
+  // 2026-09-06, לפי בקשת לביא: בנוסף — **כל** מדריך (גם בלי הרשאת המעקב) רואה
+  // עכשיו את ההתרעה **על עצמו בלבד** (לא על כל הצוות). _getMissingDailyReportWarnings
+  // כבר תומכת בסינון לפי שם (forName) — לא נדרש שינוי שם בפונקציה עצמה.
   const instrEl=document.getElementById('missingDailyReportWarningsInstr');
   if(instrEl){
     const canTrack=(typeof currentUserName!=='undefined'&&currentRole==='instructor'
       &&typeof _settings!=='undefined'&&Array.isArray(_settings.formTrackingInstructors)
       &&_settings.formTrackingInstructors.includes(currentUserName));
-    const warnings=canTrack?_getMissingDailyReportWarnings():[];
-    instrEl.innerHTML=warnings.length?`<div style="background:#fdecea;border:1.5px solid #f5b7b1;border-radius:8px;margin-bottom:10px;overflow:hidden;">
-      <div style="padding:7px 12px;font-weight:bold;color:#c0392b;font-size:12.5px;border-bottom:1px solid #f5b7b1;">🚨 טפסי סיכום יום חסרים — כל הצוות (${warnings.length})</div>
-      ${warnings.map(w=>fmtRow(w,false)).join('<div style="border-top:1px solid #fadbd8;"></div>')}
-    </div>`:'';
+    if(canTrack){
+      const warnings=_getMissingDailyReportWarnings();
+      instrEl.innerHTML=warnings.length?`<div style="background:#fdecea;border:1.5px solid #f5b7b1;border-radius:8px;margin-bottom:10px;overflow:hidden;">
+        <div style="padding:7px 12px;font-weight:bold;color:#c0392b;font-size:12.5px;border-bottom:1px solid #f5b7b1;">🚨 טפסי סיכום יום חסרים — כל הצוות (${warnings.length})</div>
+        ${warnings.map(w=>fmtRow(w,false)).join('<div style="border-top:1px solid #fadbd8;"></div>')}
+      </div>`:'';
+    } else if(typeof currentUserName!=='undefined'&&currentRole==='instructor'){
+      const warnings=_getMissingDailyReportWarnings(currentUserName);
+      instrEl.innerHTML=warnings.length?`<div style="background:#fdecea;border:1.5px solid #f5b7b1;border-radius:8px;margin-bottom:10px;overflow:hidden;">
+        <div style="padding:7px 12px;font-weight:bold;color:#c0392b;font-size:12.5px;border-bottom:1px solid #f5b7b1;">🚨 יש לך ${warnings.length} טפסי "סיכום יום" חסרים</div>
+        ${warnings.map(w=>fmtRow(w,false)).join('<div style="border-top:1px solid #fadbd8;"></div>')}
+      </div>`:'';
+    } else {
+      instrEl.innerHTML='';
+    }
   }
 }
 
