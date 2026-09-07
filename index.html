@@ -14,7 +14,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 122</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 124</title>
 
 <style>
 
@@ -1436,7 +1436,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 182;
+  const APP_VERSION = 184;
 
   function initFirebase() {
     try {
@@ -15158,6 +15158,7 @@ function setInstrTeamView(isTeam){
 let _weekAnchorDate=null; // date string (YYYY-MM-DD) inside the currently-shown week
 
 let schedData={};
+let _schedSyncQueryRef=null; // 2026-09-07: עוקב אחרי אובייקט ה-query הפעיל, כדי ש-.off() יתנתק מהאובייקט הנכון (לא מ-ref גולמי שונה) — ר' startSchedSync
 
 let schedEditId=null;
 
@@ -15249,6 +15250,24 @@ function lsLoadSched(){
 
 // ─────────────────────────────────────────────────────────
 
+// 2026-09-07, לפי בקשת לביא: תיקון-שורש לתופעת "שיבוץ חלקי מוצג ואז מתקן את
+// עצמו אחרי כמה רענונים" — ה-listener על 'schedule' משך את *כל* ההיסטוריה
+// (מאז ומעולם) בכל טעינת דף/ניווט חודש, ובעץ גדול זה יכול היה להגיע חלקי/
+// באיטיות. מוגבל עכשיו לחלון של 3 חודשים אחורה + 2 קדימה, ממורכז סביב החודש
+// שנצפה כרגע בלוח השנה (schedYear/schedMonth) — רחב בהרבה מהצורך המתועד
+// הרחב ביותר שנמצא באודיט (פאנל אישורי שיבוץ, "-2/+1 חודשים"), כך שלא נדרש
+// שינוי בשום צרכן אחר. \uf8ff בקצה העליון = טווח-לפי-prefix תקני ב-Firebase,
+// כדי לא לחתוך בטעות נתוני legacy שטוחים (schedule/{date}/... ולא
+// schedule/{YYYY-MM}/{date}/...) בסוף החודש העליון בטווח.
+function _schedRangeKeys(centerYear, centerMonth){
+  const y = (typeof centerYear === 'number') ? centerYear : schedYear;
+  const m = (typeof centerMonth === 'number') ? centerMonth : schedMonth;
+  const ymKey = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+  const startKey = ymKey(new Date(y, m-3, 1));
+  const endKey   = ymKey(new Date(y, m+2, 1));
+  return { startKey, endKey };
+}
+
 function startSchedSync(){
   try{startNotesSync();}catch(e){}
   setTimeout(()=>{try{checkCoverageAlerts();}catch(e){}},2000);
@@ -15256,8 +15275,15 @@ function startSchedSync(){
   // In demo mode: always use localStorage schedule data
   if(_isDemoMode()||!window._fbDb){lsLoadSched();return;}
 
+  // 2026-09-07: ניתוק ה-listener הקודם לפני הרשמה מחדש — היה חסר לגמרי, כך
+  // שכל קריאה חוזרת ל-startSchedSync (כל ניווט חודש בלוח השנה!) הוסיפה עוד
+  // listener על אותו נתיב בלי להסיר את הקודם — עומס מצטבר לאורך הסשן.
+  try{ if(_schedSyncQueryRef) _schedSyncQueryRef.off('value'); }catch(e){}
+
   try{
-    _fbRef(_db,'schedule').on('value',snap=>{
+    const {startKey,endKey} = _schedRangeKeys();
+    _schedSyncQueryRef = _fbRef(_db,'schedule').orderByKey().startAt(startKey).endAt(endKey+'\uf8ff');
+    _schedSyncQueryRef.on('value',snap=>{
       try{
         const _newSched={};
         if(snap.exists()){
@@ -15381,6 +15407,35 @@ function _wasAssignedToTripTaskOnDate(name, dateStr){
     const tDef=(typeof taskDefs!=='undefined')?taskDefs.find(t=>t.id===e.task):null;
     return tDef?tDef.isTrip:false;
   });
+}
+
+// 2026-09-07, לפי בקשת לביא: גרסה "טרייה" של הבדיקה למעלה — לשימוש רק בשתי
+// נקודות הוולידציה הקריטיות בטופס סיכום יום (חובת "שעות הדרכה קלה" + חובת
+// "משוב חניך אחד"). התגלה: schedData נטען דרך listener אחד ענק על *כל* עץ
+// ה-schedule (כל ההיסטוריה מאז ומעולם) — בטעינת דף הוא יכול להגיע חלקי/באיטיות,
+// ובאותו חלון זמן הבדיקה המקומית פשוט לא מוצאת את השיבוץ בכלל (לא עניין של
+// "נסיעות" מסומן/לא — השורה של המדריך עדיין חסרה לגמרי ב-schedData). כאן:
+// קריאה ממוקדת וחד-פעמית ישירות מ-Firebase לתאריך הספציפי בלבד (זול — יום
+// אחד, לא כל ההיסטוריה), כדי שהוולידציה לא תסתמך על מצב-ביניים חלקי. נופל
+// חזרה לבדיקה המקומית הרגילה אם אין חיבור Firebase (מצב דמו/אופליין).
+async function _wasAssignedToTripTaskOnDateFresh(name, dateStr){
+  if (typeof window._fbDb === 'undefined' || !window._fbDb || (typeof _isDemoMode === 'function' && _isDemoMode())) {
+    return _wasAssignedToTripTaskOnDate(name, dateStr);
+  }
+  try {
+    const snap = await _fbGet(_fbRef(_db, schedPathForDate(dateStr) + '/' + dateStr));
+    const dayEntries = snap.exists() ? Object.values(snap.val()).filter(e => e && typeof e === 'object') : [];
+    return dayEntries.some(e => {
+      if (e.name !== name) return false;
+      if (e.status !== 'approved' && e.status !== 'pending') return false;
+      if (typeof _isVacationShiftKey === 'function' && _isVacationShiftKey(e.shift)) return false;
+      const tDef = (typeof taskDefs !== 'undefined') ? taskDefs.find(t => t.id === e.task) : null;
+      return tDef ? tDef.isTrip : false;
+    });
+  } catch(e) {
+    console.warn('_wasAssignedToTripTaskOnDateFresh, falling back to local schedData:', e);
+    return _wasAssignedToTripTaskOnDate(name, dateStr);
+  }
 }
 
 // 2026-08-30, לפי בקשת לביא: גרסה רחבה יותר — לצורך התרעת "טופס סיכום יום
@@ -15525,7 +15580,7 @@ async function deleteSchedEntry(date,id){
   if(!window._fbDb){renderCalendar();return;}
 
   // 3. Pause Firebase listener so deleted entry doesn't come back while modal is open
-  try{_fbRef(_db,'schedule').off('value');}catch(e){}
+  try{if(_schedSyncQueryRef)_schedSyncQueryRef.off('value');}catch(e){}
 
   // 4. Delete from Firebase
   try{
@@ -18065,7 +18120,7 @@ async function confirmRangeReset(){
   // `!_isDemoMode()` -- demo mode only ever touches localStorage here.
   if(window._fbDb&&!_isDemoMode()){
 
-    try{_fbRef(_db,'schedule').off('value');}catch(e){}
+    try{if(_schedSyncQueryRef)_schedSyncQueryRef.off('value');}catch(e){}
 
     try{_fbRef(_db,dbPath()).off('value');}catch(e){}
 
@@ -23467,7 +23522,7 @@ async function submitUnifiedReport() {
   // למשימות שאינן "קורס מעשי" (למשל "קו") — אצלם אין בכלל הדרכה קלה לדווח
   // עליה. הוגבל לאותו תנאי בדיוק שכבר משמש לחובת משוב חניך — _wasAssignedToTripTaskOnDate
   // (משבצת נסיעה/קורס מעשי בפועל, בתאריך שנבחר בטופס).
-  const _wasTripDayForLight = (typeof _wasAssignedToTripTaskOnDate === 'function') && _wasAssignedToTripTaskOnDate(instructor, date);
+  const _wasTripDayForLight = (typeof _wasAssignedToTripTaskOnDateFresh === 'function') && await _wasAssignedToTripTaskOnDateFresh(instructor, date);
   const _lightHoursEl = document.getElementById('ur-light-hours');
   const _lightHoursRaw = _lightHoursEl?.value?.trim() || '';
   if (_wasTripDayForLight && _lightHoursRaw === '') {
@@ -23602,7 +23657,7 @@ async function submitUnifiedReport() {
   // סתם (יום עיוני/atp/חופש וכו' לא אמור לדרוש משוב חניך).
   // 2026-08-30: לא רלוונטי במצב "הוספה לטופס קיים" — כבר יש משוב מההגשה
   // המקורית; הוספה עם 0 שורות חדשות עדיין תקינה (למשל רק עדכון שעת סיום).
-  const _wasTripDay = (typeof _wasAssignedToTripTaskOnDate === 'function') && _wasAssignedToTripTaskOnDate(instructor, date);
+  const _wasTripDay = (typeof _wasAssignedToTripTaskOnDateFresh === 'function') && await _wasAssignedToTripTaskOnDateFresh(instructor, date);
   if (_wasTripDay && !lessonResults.length && !window._urAddMode) {
     showToast('⚠️ יש להוסיף לפחות משוב חניך אחד לפני שמירת הטופס (היית משובץ לקורס מעשי בתאריך זה)', 'warning');
     const fbSection = document.getElementById('ur-feedback-blocks');
