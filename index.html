@@ -14,7 +14,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 125</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 128</title>
 
 <style>
 
@@ -1436,7 +1436,19 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 185;
+  const APP_VERSION = 188;
+
+  // 2026-09-07, לפי בקשת לביא: היה קשה לבדוק באיזו גרסה הדפדפן בפועל טוען
+  // (כותרת הטאב נחתכת כשיש הרבה טאבים פתוחים, ואי אפשר תמיד לראות "DEPLOYED
+  // NNN"). מציג את מספר הבנייה גם בתוך האפליקציה עצמה (ליד "v1.0"), עם tooltip
+  // שמסביר מה זה — כדי שבדיקה תהיה מיידית, בלי לרחף מעל טאבים.
+  document.addEventListener('DOMContentLoaded', () => {
+    const chip = document.getElementById('v100VersionChip');
+    if (chip) {
+      chip.textContent = 'v1.0 · build ' + APP_VERSION;
+      chip.title = 'גרסה פנימית (build ' + APP_VERSION + ') — לבדיקת עדכניות מול "DEPLOYED" בכותרת הדף';
+    }
+  });
 
   function initFirebase() {
     try {
@@ -2402,7 +2414,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
         <span class="v100-brand-name">מערכת הדרכה</span>
         <span class="v100-brand-sub">רכבת קלה ירושלים</span>
       </div>
-      <span class="v100-version-chip">v1.0</span>
+      <span class="v100-version-chip" id="v100VersionChip" title="גרסה פנימית">v1.0</span>
     </div>
 
     <div class="v100-topbar-actions" id="userBadge" style="display:none;">
@@ -7785,7 +7797,7 @@ window.TraineeSystem = {
         this._updateCourseSelector();
     },
 
-    _saveCourses() {
+    async _saveCourses() {
         const coursesToSave = this.courses.filter(c => !c._temp);
         if (!(typeof _isDemoMode === 'function' && _isDemoMode())) {
             try { localStorage.setItem('trainee_courses', JSON.stringify(coursesToSave)); } catch(e) {}
@@ -7798,6 +7810,29 @@ window.TraineeSystem = {
         // async .catch()) now surface a red toast, so a failed save is never silent again.
         if (this.coursesRef && !(typeof _isDemoMode === 'function' && _isDemoMode())) {
             try {
+                // 2026-09-07, לפי בקשת לביא: תוקן באג-שורש חוזר ("שיעורים ששוחזרו
+                // נעלמים שוב") — _saveCourses() כתבה .set() על *כל* עץ הקורסים,
+                // כולל lessons[] של כל חניך, לפי מה שהיה בזיכרון המקומי של הטאב.
+                // הפונקציה נקראת מ-9 מקומות שונים — כולל פעולות שגרתיות לגמרי
+                // שלא נראות כמו "עריכת קורס" (למשל שינוי קבוצת תיעדוף א'/ב'/ג'
+                // דרך setTraineeGroup) — ולכל אחת מהן הייתה סיכון לדרוס בשקט
+                // שיעורים שנוספו ע"י מדריך אחר/שחזור, אחרי שהטאב הזה טען את
+                // this.courses (יכול להיות שעות/ימים קודם לכן). עכשיו, *לפני*
+                // הכתיבה, ה-lessons של כל חניך נקרא טרי ישירות מ-Firebase —
+                // במקביל לכל החניכים (לא מוסיף השהיה משמעותית) — במקום להסתמך
+                // על מה שבזיכרון המקומי.
+                const refreshPromises = [];
+                coursesToSave.forEach(c => {
+                    (c.trainees || []).forEach(t => {
+                        refreshPromises.push(
+                            this.coursesRef.child(c.id).child('trainees').child(this._fbKey(t.id)).child('lessons').once('value')
+                                .then(snap => { t.lessons = snap.exists() ? Object.values(snap.val()) : (t.lessons || []); })
+                                .catch(() => {}) // קריאה נכשלה — נשארים עם הזיכרון המקומי, עדיף על כלום
+                        );
+                    });
+                });
+                await Promise.all(refreshPromises);
+
                 const cData = {};
                 coursesToSave.forEach(c => {
                     const tData = {};
@@ -7812,10 +7847,10 @@ window.TraineeSystem = {
             } catch(e) {
                 console.warn('_saveCourses:', e);
                 if (typeof showToast === 'function') showToast('❌ שמירת הקורסים נכשלה (שגיאה מקומית: ' + (e && e.message || e) + ')', 'error');
-                return Promise.resolve(false);
+                return false;
             }
         }
-        return Promise.resolve(true);
+        return true;
     },
 
     // חלוקת קבוצות תיעדוף (א׳/ב׳/ג׳) — שיוך יחיד לחניך, נשמר על הקורס הפעיל.
@@ -24591,6 +24626,12 @@ async function _saveEditedUnifiedReportBasics() {
 
   _logAction('edit_unified_report', `עריכת סיכום יום: ${cur.instructorName} — ${cur.date}${dateChanged ? ' → ' + newDate : ''}${_lessonsFixed ? ` (${_lessonsFixed} רשומות שיעור עודכנו)` : ''}`);
   showToast(_lessonsFixed ? `✅ השינויים נשמרו (כולל ${_lessonsFixed} רשומות שיעור בתיקי חניכים)` : '✅ השינויים נשמרו', 'success');
+  // 2026-09-07, לפי בקשת לביא: "הכפתור נשאר תקוע על 'שומר...' גם אחרי ששמירה
+  // הצליחה בפועל" — עד עכשיו רק נתיבי השגיאה איפסו את מצב הכפתור; בהצלחה
+  // הסתמכנו על openViewUnifiedReport() בסוף שיחליף את כל התוכן (כולל הכפתור)
+  // — אם זה איטי/נכשל בשקט, הכפתור נשאר תקוע. עכשיו מאופס מיד כאן, לא תלוי
+  // בהמשך התהליך.
+  if (_saveBtn) { _saveBtn.disabled = false; _saveBtn.textContent = '💾 שמור שינויים'; _saveBtn.style.opacity = '1'; _saveBtn.style.cursor = 'pointer'; }
   try { renderDaySummary(); } catch(e) {}
   // 2026-08-19: תיקון באג — אם חלונית הארכיון פתוחה ברקע, שורתה הייתה נשארת עם
   // הנתונים הישנים (כולל התאריך הישן), וללחוץ עליה שוב חיפש לפי מפתח שכבר נמחק/
@@ -24601,7 +24642,7 @@ async function _saveEditedUnifiedReportBasics() {
   if (document.getElementById('stuckLessonsOverlay')) {
     try { openStuckLessonsManager(); } catch(e) {}
   }
-  openViewUnifiedReport(newDate, cur.instructorName);
+  try { openViewUnifiedReport(newDate, cur.instructorName); } catch(e) { console.warn('openViewUnifiedReport after edit:', e); }
 }
 
 // ── Custom fields settings (manager) ──
