@@ -14,7 +14,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 128</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 131</title>
 
 <style>
 
@@ -1436,7 +1436,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 188;
+  const APP_VERSION = 191;
 
   // 2026-09-07, לפי בקשת לביא: היה קשה לבדוק באיזו גרסה הדפדפן בפועל טוען
   // (כותרת הטאב נחתכת כשיש הרבה טאבים פתוחים, ואי אפשר תמיד לראות "DEPLOYED
@@ -4990,7 +4990,25 @@ window.TraineeSystem = {
         });
     },
 
-    persist() {
+    // 2026-09-07, לפי בקשת לביא: הליבה המשותפת לתיקון-השורש שנמצא ב-_saveCourses —
+    // כל פונקציה שכותבת .set() על *כל* התלמידים של קורס (בלוק שלם, לא רשומה
+    // בודדת) בנויה מ-this.trainees/course.trainees המקומיים, ובסיכון לדרוס
+    // בשקט lessons[] שמדריך/שחזור אחר הוסיף ל-Firebase אחרי שהטאב הזה טען
+    // נתונים (ר' תיעוד מלא ב-PROJECT_STATUS_7.txt, המקרה של עיסא עאבדין).
+    // רענון ה-lessons של כל חניך ישירות מ-Firebase *לפני* הכתיבה, במקביל לכולם,
+    // סוגר את זה בלי לשנות את שאר ההתנהגות של כל קורא.
+    async _refreshLessonsBeforeWrite(courseId, trainees, protectedIds) {
+        if (!this.coursesRef || !courseId || !Array.isArray(trainees) || !trainees.length) return;
+        const protect = new Set((protectedIds || []).map(String));
+        const proms = trainees.filter(t => !protect.has(String(t.id))).map(t =>
+            this.coursesRef.child(courseId).child('trainees').child(this._fbKey(t.id)).child('lessons').once('value')
+                .then(snap => { t.lessons = snap.exists() ? Object.values(snap.val()) : (t.lessons || []); })
+                .catch(() => {})
+        );
+        await Promise.all(proms);
+    },
+
+    async persist(extraProtectedIds) {
         // DEMO MODE GUARD — memory only, never write to Firebase or localStorage courses
         if (typeof _isDemoMode === 'function' && _isDemoMode()) {
             try { _saveDemoTraineeData(this.trainees, this.instructors); } catch(e) {}
@@ -5015,8 +5033,18 @@ window.TraineeSystem = {
         // .update() on the scoped path only ever touches this course's trainees subtree.
         if (this.coursesRef && this.currentCourseId) {
             try {
+                const traineesToWrite = cur ? (cur.trainees || []) : (this.trainees || []);
+                // 2026-09-07, לפי בקשת לביא: persist() היא הפונקציה הכי נפוצה במערכת
+                // (17 נקודות קריאה) — ואותו סיכון בדיוק כמו _saveCourses(): כותבת
+                // lessons[] של *כל* חניך בקורס הפעיל מהזיכרון המקומי. רענון מ-Firebase
+                // לפני הכתיבה, ר' _refreshLessonsBeforeWrite — למעט this.currentId
+                // (החניך הפתוח כרגע בתיק): ל-persist() אין דרך לדעת אם הקריאה
+                // הנוכחית עצמה נועדה לשמור עריכה ב-lessons[] שלו ממש (מחיקת/עריכת
+                // שיעור וכו') — רענון שלו כאן היה עלול למחוק בשקט את העריכה הזו
+                // עצמה, לפני שהיא בכלל נשמרה.
+                await this._refreshLessonsBeforeWrite(this.currentCourseId, traineesToWrite, [this.currentId, ...(extraProtectedIds||[])]);
                 const tData = {};
-                (cur ? (cur.trainees || []) : (this.trainees || [])).forEach(t => { tData[this._fbKey(t.id)] = t; });
+                traineesToWrite.forEach(t => { tData[this._fbKey(t.id)] = t; });
                 this.coursesRef.child(this.currentCourseId).child('trainees').set(tData).catch(err => {
                     console.error('persist courses failed:', err);
                     if (typeof showToast === 'function') showToast('❌ שמירת החניכים נכשלה — בדוק חיבור אינטרנט', 'error');
@@ -7665,8 +7693,8 @@ window.TraineeSystem = {
             } catch(e) {
                 console.error('addLessonFromExternal targeted write failed, falling back to full-course persist:', e);
                 t.lessons.push(lesson);
-                if (_owningCourse && _owningCourse.id !== this.currentCourseId) this._persistCourseTrainees(_owningCourse);
-                else this.persist();
+                if (_owningCourse && _owningCourse.id !== this.currentCourseId) this._persistCourseTrainees(_owningCourse, [t.id]);
+                else this.persist([t.id]);
             }
             this.renderList();
         } else if (!lessonData._fromDemoReport) {
@@ -7683,11 +7711,12 @@ window.TraineeSystem = {
 
     // Saves a single (non-active) course's trainees — companion to persist(), which
     // only ever touches the currently-active course. See addLessonFromExternal fix above.
-    _persistCourseTrainees(course) {
+    async _persistCourseTrainees(course, protectedIds) {
         if (!course || !course.id) return;
         if (typeof _isDemoMode === 'function' && _isDemoMode()) return;
         if (this.coursesRef) {
             try {
+                await this._refreshLessonsBeforeWrite(course.id, course.trainees || [], protectedIds);
                 const tData = {};
                 (course.trainees || []).forEach(t => { tData[this._fbKey(t.id)] = t; });
                 this.coursesRef.child(course.id).child('trainees').set(tData).catch(err => {
@@ -10679,6 +10708,7 @@ function renderGanttInto(targetId){
 // ═══════════════════════════════════════════════════════════
 
 let trips=[], curRoute=[], editingTripId=null, delayTripId=null;
+window._pendingTripDeletes = window._pendingTripDeletes || new Set(); // ר' saveToStorage — #197
 
 let currentDate=_localDateStr(new Date());
 
@@ -10883,7 +10913,25 @@ async function saveToStorage(){
 
     const obj={};trips.forEach(t=>{obj[t.id]=t;});
 
-    await _fbSet(_fbRef(_db,dbPath()),obj);
+    // 2026-09-07, לפי בקשת לביא: #197 — אותו דפוס-שורש בדיוק כמו הבאג בשיעורי
+    // חניכים (persist()/_saveCourses): .set() כאן כתב את *כל* נסיעות היום מהמערך
+    // המקומי trips — אם מדריך/מנהל אחר הוסיף נסיעה לאותו יום בו-זמנית, היא הייתה
+    // עלולה להימחק בשקט. יש כאן אמנם listener חי שמסנכרן trips ברציפות (חלון
+    // הסיכון צר יותר מזה של החניכים), אבל לא אפס. תוקן: .update() במקום .set()
+    // — ממזג תוספות/עריכות מקומיות בלי לגעת בנסיעות-אחיות שלא נכללות בו; מחיקה
+    // אמיתית (שסומנה במפורש ב-window._pendingTripDeletes בזמן המחיקה עצמה, לא
+    // "נעדרת סתם") מתבצעת בנפרד, ממוקדת לפי id.
+    const _toRemove = Array.from(window._pendingTripDeletes || []);
+    window._pendingTripDeletes = new Set();
+
+    if (Object.keys(obj).length) {
+      await _fbRef(_db,dbPath()).update(obj);
+    }
+    for (const _rid of _toRemove) {
+      try { await _fbRef(_db,dbPath()+'/'+_rid).remove(); } catch(e) {}
+    }
+    // אם כל הנסיעות נמחקו (obj ריק) ולא נותר כלום מקומית — אין מה "לעדכן",
+    // אבל המחיקות הממוקדות למעלה כבר מטפלות בכל רשומה שהוסרה בפועל.
 
     // Archive to permanent history (always save, even if no trips)
     try{
@@ -12044,6 +12092,7 @@ async function delTrip(id){
 
   if(!confirm('למחוק נסיעה זו?'))return;
   const _delName=trips.find(t=>String(t.id)===String(id))?.name||'?';
+  window._pendingTripDeletes.add(String(id));
   trips=trips.filter(t=>String(t.id)!==String(id));
 
   // Save to Firebase synchronously so instructor sync listener gets deletion immediately
@@ -12094,7 +12143,7 @@ async function resetFirebaseHistory(){
   }catch(e){showToast('שגיאה: '+e.message,'warning');}
 }
 
-function confirmClearAll(){trips=[];closeClearModal();saveToStorage();renderLog();renderCalendar();}
+function confirmClearAll(){trips.forEach(t=>window._pendingTripDeletes.add(String(t.id)));trips=[];closeClearModal();saveToStorage();renderLog();renderCalendar();}
 
 // ═══════════════════════════════════════════════════════════
 
@@ -16773,14 +16822,16 @@ async function deleteEntry(date,id){
   // Delete instructor's trips for this date if confirmed
   if(deleteTrips && instrName){
     if(date===currentDate){
+      trips.filter(t=>t.name===instrName).forEach(t=>window._pendingTripDeletes.add(String(t.id)));
       trips=trips.filter(t=>t.name!==instrName);
       await saveToStorage();
       renderLog();
     } else {
       try{
         const allDateTrips=await loadTripsForDate(date);
+        const removedIds=allDateTrips.filter(t=>t.name===instrName).map(t=>String(t.id));
         const remaining=allDateTrips.filter(t=>t.name!==instrName);
-        await saveTripsForDate(date,remaining);
+        await saveTripsForDate(date,remaining,removedIds);
       }catch(e){console.warn('deleteEntry trips:',e);}
     }
     showToast(`🗑️ השיבוץ ו-${instrTrips.length} נסיעות של ${instrName} נמחקו`,'success');
@@ -17897,6 +17948,7 @@ async function autoGenerateTripsForWeek(){
     let dateTrips=await loadTripsForDate(dateISO);
     const isToday=(dateISO===currentDate);
     const nowMin2=new Date().getHours()*60+new Date().getMinutes();
+    const removedIdsThisDate=[]; // 2026-09-07, #197: לצורך saveTripsForDate(...,deletedIds) — ר' הערה שם
 
     // Remove unexecuted trips for instructors no longer assigned a trip-task
     dateTrips=dateTrips.filter(t=>{
@@ -17905,6 +17957,7 @@ async function autoGenerateTripsForWeek(){
         const tripEnd=t.timeline[t.timeline.length-1].endMin;
         if(tripEnd<=nowMin2)return true;
       }
+      removedIdsThisDate.push(String(t.id));
       return false;
     });
 
@@ -17929,6 +17982,7 @@ async function autoGenerateTripsForWeek(){
           const tripEnd=t.timeline[t.timeline.length-1].endMin;
           if(tripEnd<=nowMin2)return true;
         }
+        removedIdsThisDate.push(String(t.id));
         return false;
       });
 
@@ -17962,9 +18016,9 @@ async function autoGenerateTripsForWeek(){
 
     }
 
-    if(dayAdded>0){
+    if(dayAdded>0||removedIdsThisDate.length>0){
 
-      try{await saveTripsForDate(dateISO,dateTrips);}
+      try{await saveTripsForDate(dateISO,dateTrips,removedIdsThisDate);}
 
       catch(e){console.warn('saveTripsForDate error:',e);}
 
@@ -18485,6 +18539,7 @@ async function runAutoGenSelected(){
     const assignedNames=new Set(entries.map(e=>e.name));
     let dateTrips=await loadTripsForDate(date);
     const isToday=(date===currentDate);
+    const removedIdsThisDate=[]; // 2026-09-07, #197: ר' הערה ב-saveTripsForDate
     // Remove unexecuted trips for instructors whose assignment changed or was removed
     // "Unexecuted" = trip end time hasn't passed yet (for today), or any future date
     const tripsToKeep=dateTrips.filter(t=>{
@@ -18494,6 +18549,7 @@ async function runAutoGenSelected(){
         const tripEnd=t.timeline[t.timeline.length-1].endMin;
         if(tripEnd<=nowMin)return true; // already finished — keep
       }
+      removedIdsThisDate.push(String(t.id));
       return false; // not assigned + not done → remove
     });
     const removedCount=dateTrips.length-tripsToKeep.length;
@@ -18502,7 +18558,7 @@ async function runAutoGenSelected(){
     let dayAdded=0;
     if(!entries.length){
       // No trip-task entries — just save cleaned trips if something was removed
-      if(removedCount>0)try{await saveTripsForDate(date,dateTrips);}catch(e){}
+      if(removedCount>0)try{await saveTripsForDate(date,dateTrips,removedIdsThisDate);}catch(e){}
       continue;
     }
     for(const entry of entries){
@@ -18520,6 +18576,7 @@ async function runAutoGenSelected(){
           const tripEnd=t.timeline[t.timeline.length-1].endMin;
           if(tripEnd<=nowMin)return true; // already done — keep
         }
+        removedIdsThisDate.push(String(t.id));
         return false; // not done — remove so we can regenerate
       });
       dateTrips=executedTrips;
@@ -18532,7 +18589,7 @@ async function runAutoGenSelected(){
         dayAdded++;totalAdded++;
       });
     }
-    if(dayAdded>0||removedCount>0){try{await saveTripsForDate(date,dateTrips);}catch(e){console.warn('saveTripsForDate error:',e);}}
+    if(dayAdded>0||removedCount>0){try{await saveTripsForDate(date,dateTrips,removedIdsThisDate);}catch(e){console.warn('saveTripsForDate error:',e);}}
     summaryLines.push(`<b>${date}:</b> ${dayAdded} נסיעות (${entries.map(e=>e.name).join(', ')})`);
   }
   if(selected.includes(currentDate))await loadFromStorage();
@@ -18586,8 +18643,11 @@ async function loadTripsForDate(date){
   }
 }
 
-async function saveTripsForDate(date,tripsArr){
-  if(date===currentDate){trips=tripsArr;await saveToStorage();return;}
+async function saveTripsForDate(date,tripsArr,deletedIds){
+  if(date===currentDate){
+    if(Array.isArray(deletedIds))deletedIds.forEach(id=>window._pendingTripDeletes.add(String(id)));
+    trips=tripsArr;await saveToStorage();return;
+  }
   // Fix #105 (Part A): same demo guard as loadTripsForDate() above -- never write a
   // non-today demo date's trips to the real Firebase trips/{date} node.
   if(_isDemoMode()){
@@ -18595,7 +18655,16 @@ async function saveTripsForDate(date,tripsArr){
     return;
   }
   if(window._fbDb){
-    try{const obj={};tripsArr.forEach(t=>{obj[t.id]=t;});await _fbSet(_fbRef(_db,'trips/'+date),obj);}catch(e){console.warn('saveTripsForDate Firebase error:',e);}
+    // 2026-09-07, לפי בקשת לביא: #197 — אותו תיקון כמו ב-saveToStorage: .update()
+    // במקום .set(), כדי לא לדרוס בשקט נסיעות שנוספו לאותו תאריך במקביל ע"י מישהו
+    // אחר; מחיקות אמיתיות (deletedIds, מועברות במפורש ע"י הקורא) מתבצעות בנפרד.
+    try{
+      const obj={};tripsArr.forEach(t=>{obj[t.id]=t;});
+      if(Object.keys(obj).length) await _fbRef(_db,'trips/'+date).update(obj);
+      if(Array.isArray(deletedIds)){
+        for(const id of deletedIds){ try{ await _fbRef(_db,'trips/'+date+'/'+id).remove(); }catch(e){} }
+      }
+    }catch(e){console.warn('saveTripsForDate Firebase error:',e);}
   }else{
     try{localStorage.setItem('trips_'+date,JSON.stringify(tripsArr));}catch(e){}
   }
@@ -18808,6 +18877,7 @@ async function _saveStuckLessonNum(i){
         // וחניך "תקוע" עשוי להיות בקורס אחר לגמרי מזה שפעיל כרגע במסך. שמירה
         // ישירה לקורס הנכון מונעת אובדן שקט של השיוך בטעינה הבאה.
         const course = TraineeSystem.courses.find(c => c.id === s.courseId);
+        await TraineeSystem._refreshLessonsBeforeWrite(s.courseId, course?.trainees || [], [s.traineeId]);
         const tData = {};
         (course?.trainees || []).forEach(t => { tData[TraineeSystem._fbKey(t.id)] = t; });
         await TraineeSystem.coursesRef.child(s.courseId).child('trainees').set(tData);
@@ -19481,6 +19551,7 @@ function deleteTripFromEdit(){
   const trip=trips.find(t=>String(t.id)===String(_editState.tripId));
   if(!trip)return;
   if(!confirm(`למחוק את הנסיעה של ${trip.name}?`))return;
+  window._pendingTripDeletes.add(String(_editState.tripId));
   trips=trips.filter(t=>String(t.id)!==String(_editState.tripId));
   saveToStorage();
   renderLog();
@@ -24586,6 +24657,7 @@ async function _saveEditedUnifiedReportBasics() {
     let _lessonsFixed = 0;
     if (dateChanged && typeof TraineeSystem !== 'undefined') {
       const affectedCourseIds = new Set();
+      const affectedTraineeIdsByCourse = {}; // courseId(or 'null') -> Set of trainee ids whose lessons[] were mutated
       const courseGroups = (Array.isArray(TraineeSystem.courses) && TraineeSystem.courses.length)
         ? TraineeSystem.courses.map(c => ({courseId: c.id, trainees: c.trainees||[]}))
         : [{courseId: null, trainees: TraineeSystem.trainees||[]}];
@@ -24596,21 +24668,30 @@ async function _saveEditedUnifiedReportBasics() {
               les.date = newDate;
               _lessonsFixed++;
               affectedCourseIds.add(courseId);
+              const key = String(courseId);
+              if (!affectedTraineeIdsByCourse[key]) affectedTraineeIdsByCourse[key] = new Set();
+              affectedTraineeIdsByCourse[key].add(t.id);
             }
           });
         });
       });
       for (const courseId of affectedCourseIds) {
         try {
+          const protectedIds = Array.from(affectedTraineeIdsByCourse[String(courseId)] || []);
           if (typeof _isDemoMode === 'function' && _isDemoMode()) {
             _saveDemoTraineeData(TraineeSystem.trainees, TraineeSystem.instructors);
           } else if (courseId && TraineeSystem.coursesRef) {
             const course = TraineeSystem.courses.find(c => c.id === courseId);
+            // 2026-09-07, לפי בקשת לביא: אותו תיקון-שורש כמו persist()/_saveCourses —
+            // אבל כאן *בדיוק* הטריגר עצמו הוא עריכה בתוך lessons[] (les.date), אז
+            // חובה להגן על התלמידים שזה עתה נערכו (protectedIds) — אחרת הרענון
+            // ימחק בשקט את תיקון התאריך שרק עשינו, לפני שהוא נשמר בכלל.
+            await TraineeSystem._refreshLessonsBeforeWrite(courseId, course?.trainees || [], protectedIds);
             const tData = {};
             (course?.trainees || []).forEach(tt => { tData[TraineeSystem._fbKey(tt.id)] = tt; });
             await TraineeSystem.coursesRef.child(courseId).child('trainees').set(tData);
           } else {
-            TraineeSystem.persist();
+            TraineeSystem.persist(protectedIds);
           }
         } catch(e) { console.warn('cascade date update persist:', e); }
       }
@@ -26924,7 +27005,17 @@ function _loadNotes(yr,mo){
   }
   try{return Object.values(notesData[_notesMonthKey(_yr,_mo)]||{});}catch(e){return[];}
 }
+// #198 — אותו דפוס-שורש כמו #197 (נסיעות) ו-#188/189 (שיעורי חניכים): מחיקת
+// פתק בודד סומנה כאן במפורש (לא "נעדרת סתם" ממערך מקומי) — נצרך/מתאפס ב-_saveNotes.
+window._pendingNoteDeletes = window._pendingNoteDeletes || new Set(); // 'yr-mo/id'
 function _saveNotes(notes,yr,mo){
+  // הקריאה הישנה כתבה .set() על *כל* עץ notes/{yr-mo} מהמערך המקומי notes —
+  // אם משתמש אחר הוסיף/עדכן פתק לאותו חודש בו-זמנית, הכתיבה הזו הייתה דורסת
+  // אותו בשקט (בלי שום סימן שגיאה). תוקן: כתיבה עם .update() — ממזג רק את
+  // הפתקים שבאמת נמצאים ב-notes המקומי, בלי לגעת בפתקים-אחים שלא נכללים בו;
+  // מחיקה אמיתית של פתק (מסומנת מראש ב-window._pendingNoteDeletes בזמן
+  // הפעולה עצמה — ראה deleteMyNote/deleteNote/saveNote) מתבצעת בנפרד, ממוקדת
+  // ל-id הספציפי.
   const d=_monthlyDashDate||new Date();
   const _yr=yr!=null?yr:d.getFullYear();
   const _mo=mo!=null?mo:d.getMonth();
@@ -26936,7 +27027,14 @@ function _saveNotes(notes,yr,mo){
   const obj={};
   notes.forEach(n=>{obj[n.id]=n;});
   notesData[key]=obj; // optimistic local update — the Firebase listener will confirm it right after
-  try{_fbSet(_fbRef(_db,'notes/'+key),obj);}catch(e){console.warn('saveNotes:',e);}
+  try{
+    const prefix=key+'/';
+    const toRemove=[];
+    window._pendingNoteDeletes.forEach(tag=>{if(tag.indexOf(prefix)===0)toRemove.push(tag.slice(prefix.length));});
+    toRemove.forEach(tag=>window._pendingNoteDeletes.delete(prefix+tag));
+    if(Object.keys(obj).length)_fbUpdate(_fbRef(_db,'notes/'+key),obj);
+    toRemove.forEach(id=>{try{_fbRef(_db,'notes/'+key+'/'+id).remove();}catch(e){}});
+  }catch(e){console.warn('saveNotes:',e);}
 }
 function _getNotesForCell(date,isInstructor){
   if(!date)return[];
@@ -27061,8 +27159,10 @@ function _renderMyDayNotes(date){
 }
 function deleteMyNote(id){
   const d=new Date((document.getElementById('noteDate').value||currentDate)+'T12:00:00');
-  const notes=_loadNotes(d.getFullYear(),d.getMonth()).filter(n=>!(n.id===id&&n.authorName===currentUserName));
-  _saveNotes(notes,d.getFullYear(),d.getMonth());
+  const yr=d.getFullYear(), mo=d.getMonth();
+  window._pendingNoteDeletes.add(_notesMonthKey(yr,mo)+'/'+id); // #198
+  const notes=_loadNotes(yr,mo).filter(n=>!(n.id===id&&n.authorName===currentUserName));
+  _saveNotes(notes,yr,mo);
   _renderMyDayNotes(document.getElementById('noteDate').value);
   renderCalendar();
 }
@@ -27138,6 +27238,7 @@ function saveNote(){
       _saveNotes(origNotes,origYr,origMo);
     } else {
       // Date was moved to a different month — remove from the old month bucket, add to the new one
+      window._pendingNoteDeletes.add(_notesMonthKey(origYr,origMo)+'/'+_editingNoteId); // #198
       origNotes.splice(idx,1);
       _saveNotes(origNotes,origYr,origMo);
       const targetNotes=_loadNotes(targetYr,targetMo);
@@ -27181,6 +27282,7 @@ function deleteNote(id){
     const vl=Array.isArray(target.visibility)?target.visibility:[target.visibility||'all'];
     if(vl.includes('self'))return; // personal notes are off-limits to the admin panel entirely
   }
+  window._pendingNoteDeletes.add(_notesMonthKey(d.getFullYear(),d.getMonth())+'/'+id); // #198
   const notes=all.filter(n=>n.id!==id);
   _saveNotes(notes,d.getFullYear(),d.getMonth());
   _renderNotesList();
