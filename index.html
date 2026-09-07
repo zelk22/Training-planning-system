@@ -14,7 +14,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 131</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 132</title>
 
 <style>
 
@@ -1436,7 +1436,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 191;
+  const APP_VERSION = 192;
 
   // 2026-09-07, לפי בקשת לביא: היה קשה לבדוק באיזו גרסה הדפדפן בפועל טוען
   // (כותרת הטאב נחתכת כשיש הרבה טאבים פתוחים, ואי אפשר תמיד לראות "DEPLOYED
@@ -7660,6 +7660,15 @@ window.TraineeSystem = {
             note:       lessonData.note        || '',
             _fromUnifiedReport: true
         };
+        // #199, לפי בקשת לביא: שיעור-טסט הוא "תחנת אבן-דרך", לא שיעור ממאגר ה-50 —
+        // אבל הרשומה הנשמרת בפועל בתיק החניך (t.lessons) איבדה את testKey/testResult
+        // לגמרי (לא הועתקו מ-lessonData). התוצאה: כל מקום שקורא את הרשומה בהמשך
+        // (תצוגת דוח, כלים אחרים) ראה שיעור סתמי בלי lessonNums — ולא ידע שזה טסט,
+        // ולכן התייחס אליו כ"שיעור שלא שויך למספר" במקום כטסט עם תוצאה.
+        if (lessonData.testKey) {
+            lesson.testKey = lessonData.testKey;
+            lesson.testResult = lessonData.testResult || null;
+        }
         // 2026-08-30, לפי בקשת לביא: הוחלף מ-5 שדות קשיחים (s1-s5) למספר/סדר
         // מיומנויות דינמי לגמרי לפי this.settings.skills — בדיוק כמו בכל שאר
         // המערכת (renderDetail/saveLesson/וכו'). קודם, מיומנות שישית (או כל
@@ -23868,10 +23877,15 @@ async function submitUnifiedReport() {
       // אוטומטי של אבן הדרך המתאימה (בלי צורך בסימון ידני נפרד אחר כך).
       // "לא עבר" לא נוגע בסטטוס הקיים — רק נשמר כניסיון מתועד (כבר קרה למעלה
       // דרך addLessonFromExternal, כל שיעור טסט נשמר בין אם עבר או נכשל).
-      lessonResults.forEach(({ traineeId, testKey, testResult }) => {
-        if (!traineeId || traineeId.startsWith('_free_') || !testKey || testResult !== 'pass') return;
-        try { _setMilestonePassExplicit(traineeId, testKey, true); } catch(e) { console.warn('milestone auto-set:', e); }
-      });
+      // #199, לפי בקשת לביא: forEach כאן קרא ל-_setMilestonePassExplicit (async,
+      // כותב ל-Firebase) בלי await — בדיוק אותה משפחת-באג שתוקנה כבר ב-#178
+      // ל-addLessonFromExternal. אם המשתמש סוגר/מנווט מהר (בוחן שממלא כמה
+      // חניכים ברצף, בדיוק המקרה שדווח), הכתיבה יכולה להיקטע לפני שהושלמה.
+      // הוחלף ל-for...of עם await, כדי שהשמירה בפועל תסתיים לפני שהטופס נחשב הושלם.
+      for (const { traineeId, testKey, testResult } of lessonResults) {
+        if (!traineeId || traineeId.startsWith('_free_') || !testKey || testResult !== 'pass') continue;
+        try { await _setMilestonePassExplicit(traineeId, testKey, true); } catch(e) { console.warn('milestone auto-set:', e); }
+      }
 
       // Now save all courses (including any temp ones that survived) to Firebase + localStorage
       if (TraineeSystem.courses && TraineeSystem.courses.length) {
@@ -24393,9 +24407,17 @@ async function openViewUnifiedReport(date, instructorName) {
         }).join('');
         const hasNums = (lesson.lessonNums || []).length > 0;
         const lessonNumsStr = hasNums ? `שיעורים: ${lesson.lessonNums.join(', ')}` : '';
+        // #199, לפי בקשת לביא: טסט (10/30/50/אורבוס) הוא תחנת אבן-דרך, לא שיעור
+        // ממאגר ה-50 — אין לו lessonNums מעצם הטבע, ולא נכון להציג לו את אזהרת
+        // "אין מספר שיעור" + כפתור שיוך (שמיועדים לשיעור רגיל שבאמת חסר לו מספר).
+        // במקום זאת מוצג תג התוצאה (✅ עבר / ❌ לא עבר), כמו בתצוגת feedbackDetails.
+        const isTestLesson = !!lesson.testKey;
+        const resultBadge = lesson.testResult === 'pass' ? '<span style="background:#d5f0e0;color:#1e8449;border-radius:6px;padding:2px 8px;font-size:11.5px;font-weight:bold;margin-right:6px;">✅ עבר</span>'
+                          : lesson.testResult === 'fail' ? '<span style="background:#fdecea;color:#c0392b;border-radius:6px;padding:2px 8px;font-size:11.5px;font-weight:bold;margin-right:6px;">❌ לא עבר</span>'
+                          : '';
         // 2026-08-19: אם אין מספר שיעור משויך — שדה שיוך ישיר כאן, במקום להפנות
         // לכלי נפרד. שיוך מיידי מחשב מחדש את בר ההתקדמות וחוסם את השיעור בטופס.
-        const assignHtml = !hasNums
+        const assignHtml = (!hasNums && !isTestLesson)
           ? `<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;background:#fff8ee;border:1px solid #f5d9a8;border-radius:8px;padding:6px 10px;">
               <span style="font-size:11px;color:#8a5a1a;">⚠️ אין מספר שיעור — לא נכלל בהתקדמות</span>
               <input type="text" id="vur-assign-input-${idx}" placeholder="למשל: 23" style="width:80px;padding:3px 6px;border:1.5px solid #ddd;border-radius:6px;font-size:12px;">
@@ -24403,7 +24425,7 @@ async function openViewUnifiedReport(date, instructorName) {
             </div>`
           : '';
         return `<div id="vur-match-row-${idx}" style="border:1px solid #eee;border-radius:8px;padding:10px 12px;margin-bottom:8px;background:#fff;">
-          <div style="font-weight:bold;font-size:13px;margin-bottom:4px;">${_esc(trainee.name)} <span style="color:#888;font-weight:400;font-size:12px;">— ${_esc(lesson.mission||'')}</span></div>
+          <div style="font-weight:bold;font-size:13px;margin-bottom:4px;">${_esc(trainee.name)} <span style="color:#888;font-weight:400;font-size:12px;">— ${_esc(lesson.mission||'')}</span> ${resultBadge}</div>
           ${lessonNumsStr ? `<div style="font-size:12px;color:#666;margin-bottom:4px;">${_esc(lessonNumsStr)}</div>` : ''}
           ${assignHtml}
           ${scoresHtml ? `<div style="margin-bottom:4px;">${scoresHtml}</div>` : ''}
