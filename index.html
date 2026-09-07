@@ -14,7 +14,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 124</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 125</title>
 
 <style>
 
@@ -1436,7 +1436,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 184;
+  const APP_VERSION = 185;
 
   function initFirebase() {
     try {
@@ -24461,6 +24461,26 @@ function toggleEditUnifiedReport() {
         <button onclick="openViewUnifiedReport('${cur.date}','${cur.instructorName.replace(/'/g,"\\'")}')" style="width:auto;padding:8px 16px;background:#f5f5f5;color:#666;border:none;border-radius:8px;font-size:13px;cursor:pointer;">ביטול</button>
       </div>
     </div>`;
+
+  // 2026-09-07, לפי בקשת לביא: אותו חישוב אוטומטי בדיוק כמו בטופס המילוי
+  // המקורי (_calcSinerioHours ב-openUnifiedReport) — היה קיים רק שם; בטופס
+  // עריכת דוח קיים, שינוי שעת התחלה/סיום לא עדכן את "שעות סינריון" בכלל.
+  const _calcSinerioHoursEdit = () => {
+    const s = document.getElementById('vur-edit-start')?.value;
+    const e = document.getElementById('vur-edit-end')?.value;
+    if (!s || !e) return;
+    const [sh, sm] = s.split(':').map(Number);
+    const [eh, em] = e.split(':').map(Number);
+    let mins = (eh * 60 + em) - (sh * 60 + sm);
+    if (mins <= 0) mins += 24 * 60; // חצות
+    const hours = Math.round(mins / 60 * 2) / 2; // עיגול ל-0.5
+    const sinerioEl = document.getElementById('vur-edit-sinerio');
+    if (sinerioEl) sinerioEl.value = hours > 0 ? hours : '';
+  };
+  const startElEdit = document.getElementById('vur-edit-start');
+  const endElEdit   = document.getElementById('vur-edit-end');
+  if (startElEdit) startElEdit.addEventListener('change', _calcSinerioHoursEdit);
+  if (endElEdit)   endElEdit.addEventListener('change', _calcSinerioHoursEdit);
 }
 
 async function _saveEditedUnifiedReportBasics() {
