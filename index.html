@@ -14,7 +14,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 133</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 134</title>
 
 <style>
 
@@ -1436,7 +1436,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 193;
+  const APP_VERSION = 194;
 
   // 2026-09-07, לפי בקשת לביא: היה קשה לבדוק באיזו גרסה הדפדפן בפועל טוען
   // (כותרת הטאב נחתכת כשיש הרבה טאבים פתוחים, ואי אפשר תמיד לראות "DEPLOYED
@@ -1485,6 +1485,20 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
         
         console.log('✅ Firebase initialized successfully');
         _watchAppVersion();
+
+        // 2026-09-08 (#201), לפי בקשת לביא: Firebase Security Rules עברו מ-פתוח
+        // (".read"/".write": true) ל-"auth != null", בעקבות אזהרת Firebase
+        // "insecure rules — any user can read/write the entire database".
+        // עד כה האפליקציה לא השתמשה ב-Firebase Auth כלל — מסך ה-login היה UI
+        // בלבד, לא אימות מול השרת. בלי signInAnonymously() כאן, כל קריאה/כתיבה
+        // ל-DB הייתה נכשלת בשקט אחרי שינוי ה-Rules. מחכים לסיום ההתחברות
+        // האנונימית לפני dispatch של firebaseReady, כדי שטעינת הנתונים
+        // הראשונית (שמאזינה לאירוע הזה) לא תרוץ לפני שיש הרשאה בפועל.
+        firebase.auth().signInAnonymously()
+          .then(() => console.log('✅ Anonymous auth OK (main app)'))
+          .catch(e => console.error('Anonymous auth failed (main app):', e))
+          .finally(() => window.dispatchEvent(new Event('firebaseReady')));
+        return;
       }
     } catch(e) {
       console.error('Firebase init error:', e);
@@ -4830,6 +4844,13 @@ window.TraineeSystem = {
         this.instructorsRef = this.db.ref('instructors_v20');
         this.settingsRef    = this.db.ref('settings_v20');
         this.coursesRef     = this.db.ref('courses_v20');
+
+        // 2026-09-08 (#201): app נפרד ('trainee') = auth נפרד מה-app הראשי —
+        // צריך signInAnonymously גם כאן אחרי מעבר ה-Rules של dynamic-feedback-system
+        // ל-"auth != null". לא await חוסם: initFirebase() נקרא סינכרונית מ-8 מקומות
+        // שממשיכים מיד לקרוא/לכתוב ל-refs; ה-SDK מסדר את הודעת ה-auth על גבי אותו
+        // חיבור לפני בקשות ה-DB הבאות, כמקובל בדפוס הזה.
+        _tApp.auth().signInAnonymously().catch(e => console.error('Anonymous auth failed (trainee app):', e));
     },
 
     bindEvents() {
