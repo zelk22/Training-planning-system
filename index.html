@@ -14,7 +14,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 134</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 135</title>
 
 <style>
 
@@ -1437,7 +1437,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 194;
+  const APP_VERSION = 195;
 
   // 2026-09-07, לפי בקשת לביא: היה קשה לבדוק באיזו גרסה הדפדפן בפועל טוען
   // (כותרת הטאב נחתכת כשיש הרבה טאבים פתוחים, ואי אפשר תמיד לראות "DEPLOYED
@@ -8399,8 +8399,8 @@ function backRoles(){
 
 // ── SESSION PERSISTENCE ─────────────────────────────────────
 const _SESSION_KEY='v100_session';
-function _saveSession(role,name){
-  try{localStorage.setItem(_SESSION_KEY,JSON.stringify({role,name,ts:Date.now()}));}catch(e){}
+function _saveSession(role,name,passHash){
+  try{localStorage.setItem(_SESSION_KEY,JSON.stringify({role,name,ts:Date.now(),passHash:passHash||null}));}catch(e){}
 }
 function _clearSession(){
   try{localStorage.removeItem(_SESSION_KEY);}catch(e){}
@@ -8411,7 +8411,29 @@ async function _tryAutoLogin(){
     if(!raw)return;
     const s=JSON.parse(raw);
     if(!s||!s.role||!s.name)return;
-    // Re-validate instructor password still exists in Firebase (admin always trusted)
+    // 2026-09-08 (#202): admin session קודם היה "always trusted" — זיוף
+    // localStorage (למשל דרך קונסולת דפדפן) נתן כניסת admin מלאה בלי סיסמה.
+    // עכשיו מאמתים מחדש בדיוק כמו instructor: משווים את ה-hash שנשמר בסשן
+    // מול הערך החי ב-Firebase (לא רק בדיקת קיום) — אם אין hash בסשן (סשן ישן
+    // מלפני התיקון), אם הערכים לא תואמים, או אם הסיסמה שונתה — נדרשת כניסה
+    // מחדש. גם מגן מפני שינוי סיסמה שלא מבטל סשנים פתוחים בדפדפנים אחרים.
+    if(s.role==='admin'){
+      if(!s.passHash){_clearSession();return;} // סשן ישן בלי hash — כניסה מחדש
+      if(!window._fbDb)return; // Firebase עדיין לא מוכן — ננסה שוב בהמשך
+      try{
+        const live=await Promise.race([
+          _fbGet(_fbRef(_db,'auth/admin/password')),
+          new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')),3000))
+        ]);
+        const liveHash=(live&&live.exists())?live.val():(window._adminPasswordHash||ADMIN_PASSWORD_HASH);
+        if(liveHash!==s.passHash){_clearSession();return;} // סיסמה שונתה — כניסה מחדש
+      }catch(e){
+        // Firebase לא זמין — נופלים בחזרה להשוואה מול הקאש המקומי בלבד
+        const localHash=window._adminPasswordHash||ADMIN_PASSWORD_HASH;
+        if(localHash!==s.passHash){_clearSession();return;}
+      }
+    }
+    // Re-validate instructor password still exists in Firebase
     if(s.role==='instructor'){
       if(!window._fbDb)return; // Firebase not ready — skip, will be retried
       const snap=await _fbGet(_fbRef(_db,'auth/instructors/'+btoa(unescape(encodeURIComponent(s.name)))+'/password'));
@@ -8446,7 +8468,7 @@ async function doAdminLogin(){
 
   if(enteredHash===storedHash){
 
-    _saveSession('admin',MANAGER_NAME);
+    _saveSession('admin',MANAGER_NAME,storedHash);
     enterApp('admin',MANAGER_NAME);
 
   } else {
