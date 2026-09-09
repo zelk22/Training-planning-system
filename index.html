@@ -14,7 +14,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 145</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 146</title>
 
 <style>
 
@@ -1437,7 +1437,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 205;
+  const APP_VERSION = 206;
 
   // 2026-09-07, לפי בקשת לביא: היה קשה לבדוק באיזו גרסה הדפדפן בפועל טוען
   // (כותרת הטאב נחתכת כשיש הרבה טאבים פתוחים, ואי אפשר תמיד לראות "DEPLOYED
@@ -3696,7 +3696,11 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
           </div>
           <div>
             <label style="font-size:11px;color:#888;display:block;margin-bottom:3px;">משימה</label>
-            <select id="lb-mission" onchange="_renderLessonBreakdownTable()" style="width:100%;padding:7px;border:1.5px solid #ddd;border-radius:7px;font-size:13px;"><option value="">הכל</option></select>
+            <select id="lb-mission" onchange="_lbOnMissionChange()" style="width:100%;padding:7px;border:1.5px solid #ddd;border-radius:7px;font-size:13px;"><option value="">הכל</option></select>
+          </div>
+          <div id="lb-test-subtype-wrap" style="display:none;">
+            <label style="font-size:11px;color:#888;display:block;margin-bottom:3px;">סוג טסט</label>
+            <select id="lb-test-subtype" onchange="_renderLessonBreakdownTable()" style="width:100%;padding:7px;border:1.5px solid #ddd;border-radius:7px;font-size:13px;"><option value="">הכל</option></select>
           </div>
           <div>
             <label style="font-size:11px;color:#888;display:block;margin-bottom:3px;">מספר שיעור</label>
@@ -3714,7 +3718,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
         <div id="lb-summary" style="background:#eaf4fd;border-radius:9px;padding:10px 14px;margin-bottom:12px;font-size:13px;color:#2c3e50;font-weight:bold;"></div>
         <div style="overflow-x:auto;max-height:440px;overflow-y:auto;">
           <table class="mgmt-table" style="width:100%;min-width:700px;">
-            <thead><tr>
+            <thead id="lb-thead"><tr>
               <th>תאריך</th><th>מדריך</th><th>חניך</th><th>משימה</th><th>מספרי שיעור</th><th>ציון ממוצע</th><th>הערה</th>
             </tr></thead>
             <tbody id="lb-tbody"></tbody>
@@ -21523,6 +21527,19 @@ async function exportScheduleReport(){
 // הקורס הפעיל. ברירת מחדל בפילטר הקורס = הקורס הנוכחי/פעיל.
 let _lbAllLessonRows = []; // cache: {date, ins, traineeName, mission, lessonNums, avgScore, note}
 
+// 2026-09-09, לפי בקשת לביא: 4 סוגי הטסט מקובצים תחת ערך "טסט" יחיד בבורר
+// המשימה הראשי — כשנבחר, נחשף תת-בורר לסוג הטסט הספציפי (או "הכל").
+function _lbOnMissionChange() {
+  const mission = document.getElementById('lb-mission')?.value || '';
+  const wrap = document.getElementById('lb-test-subtype-wrap');
+  if (wrap) wrap.style.display = (mission === '__test__') ? '' : 'none';
+  if (mission !== '__test__') {
+    const subSel = document.getElementById('lb-test-subtype');
+    if (subSel) subSel.value = '';
+  }
+  _renderLessonBreakdownTable();
+}
+
 function _lbCollectAllLessons() {
   const rows = [];
   if (typeof TraineeSystem === 'undefined') return rows;
@@ -21546,7 +21563,8 @@ function _lbCollectAllLessons() {
           lessonNums: (l.lessonNums || []).join(', '),
           avgScore: avg,
           note: l.note || '',
-          extraHours: l.extraHours || 0
+          extraHours: l.extraHours || 0,
+          testResult: l.testResult || null
         });
       });
     });
@@ -21585,10 +21603,27 @@ function openLessonBreakdownReport() {
   }
 
   // Populate mission filter — e.g. to isolate "כשירות מעשית/ שעות נוספות" specifically.
+  // 2026-09-09, לפי בקשת לביא: תוקן באג — הרשימה נבנתה עד כה רק ממה שכבר דווח
+  // בפועל (_lbAllLessonRows), כך שמשימה מוגדרת שעוד לא נרשם לה שיעור לא הופיעה
+  // כלל. כעת נבנית מרשימת המשימות הקנונית (הגדרות), לא מהיסטוריית הדיווחים.
+  // 4 סוגי הטסט מקובצים לערך יחיד "טסט" (עם תת-בורר לסוג, ר' _lbOnMissionChange).
   const missionSel = document.getElementById('lb-mission');
   if (missionSel) {
-    const missions = [...new Set(_lbAllLessonRows.map(r => r.mission).filter(Boolean))].sort();
-    missionSel.innerHTML = '<option value="">הכל</option>' + missions.map(m => `<option value="${_esc(m)}">${_esc(m)}</option>`).join('');
+    const _baseMissions = ['קורס מעשי סיטאדיס', 'קורס מעשי אורבוס', 'חניכה', 'כשירות מעשית/ שעות נוספות'];
+    const _customMissions = (typeof TraineeSystem !== 'undefined' ? (TraineeSystem.settings?.missionTypes || []) : [])
+      .filter(m => !['course', 'mt1', 'mt2'].includes(m.id) && m.name)
+      .map(m => m.name)
+      .sort();
+    const _allMissions = [...new Set([..._baseMissions, ..._customMissions])];
+    missionSel.innerHTML = '<option value="">הכל</option>'
+      + '<option value="__test__">🎯 טסט (10/30/50/אורבוס)</option>'
+      + _allMissions.map(m => `<option value="${_esc(m)}">${_esc(m)}</option>`).join('');
+  }
+  // תת-בורר סוג טסט
+  const subSel = document.getElementById('lb-test-subtype');
+  if (subSel) {
+    const _testMissions = (typeof TEST_DEFS !== 'undefined' ? TEST_DEFS.map(d => d.mission) : ['טסט 10', 'טסט 30', 'טסט 50', 'טסט אורבוס']);
+    subSel.innerHTML = '<option value="">הכל</option>' + _testMissions.map(m => `<option value="${_esc(m)}">${_esc(m)}</option>`).join('');
   }
 
   // Populate lesson-number filter (1-50, generic across mission types)
@@ -21601,6 +21636,9 @@ function openLessonBreakdownReport() {
 
   document.getElementById('lb-from').value = '';
   document.getElementById('lb-to').value = '';
+  const _subWrap = document.getElementById('lb-test-subtype-wrap');
+  if (_subWrap) _subWrap.style.display = 'none';
+  if (subSel) subSel.value = '';
 
   document.getElementById('lessonBreakdownOverlay').classList.add('open');
   _renderLessonBreakdownTable();
@@ -21625,15 +21663,22 @@ function _lbFilteredRows() {
   const ins = document.getElementById('lb-instructor')?.value || '';
   const trainee = document.getElementById('lb-trainee')?.value || '';
   const mission = document.getElementById('lb-mission')?.value || '';
+  const testSubtype = document.getElementById('lb-test-subtype')?.value || '';
   const lessonNum = document.getElementById('lb-lessonnum')?.value || '';
   const from = document.getElementById('lb-from')?.value || '';
   const to = document.getElementById('lb-to')?.value || '';
+  // 2026-09-09, לפי בקשת לביא: "טסט" בבורר המשימה הוא ערך מקובץ ל-4 סוגי
+  // הטסט (10/30/50/אורבוס) — לא שם משימה אמיתי. תת-הבורר מצמצם לסוג ספציפי.
+  const _testMissions = (typeof TEST_DEFS !== 'undefined' ? TEST_DEFS.map(d => d.mission) : ['טסט 10', 'טסט 30', 'טסט 50', 'טסט אורבוס']);
 
   return _lbAllLessonRows.filter(r => {
     if (courseId && r.courseId !== courseId) return false;
     if (ins && r.ins !== ins) return false;
     if (trainee && r.traineeName !== trainee) return false;
-    if (mission && r.mission !== mission) return false;
+    if (mission === '__test__') {
+      if (!_testMissions.includes(r.mission)) return false;
+      if (testSubtype && r.mission !== testSubtype) return false;
+    } else if (mission && r.mission !== mission) return false;
     if (lessonNum && !r.lessonNums.split(',').map(s => s.trim()).includes(lessonNum)) return false;
     if (from && r.date && r.date < from) return false;
     if (to && r.date && r.date > to) return false;
@@ -21645,21 +21690,39 @@ function _lbFilteredRows() {
 function _renderLessonBreakdownTable() {
   const rows = _lbFilteredRows();
   const tbody = document.getElementById('lb-tbody');
+  const thead = document.getElementById('lb-thead');
   const summaryEl = document.getElementById('lb-summary');
   if (!tbody) return;
 
+  // 2026-09-09, לפי בקשת לביא: עמודת "תוצאה" (עבר/לא עבר) מוצגת רק במצב
+  // סינון "טסט" — לא רלוונטית לשיעורים רגילים.
+  const isTestMode = (document.getElementById('lb-mission')?.value === '__test__');
+  if (thead) {
+    thead.innerHTML = '<tr>'
+      + '<th>תאריך</th><th>מדריך</th><th>חניך</th><th>משימה</th><th>מספרי שיעור</th>'
+      + (isTestMode ? '<th>תוצאה</th>' : '')
+      + '<th>ציון ממוצע</th><th>הערה</th></tr>';
+  }
+  const colCount = isTestMode ? 8 : 7;
+
   if (!rows.length) {
-    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#aaa;padding:20px;">אין רשומות תואמות לסינון</td></tr>';
+    tbody.innerHTML = `<tr><td colspan="${colCount}" style="text-align:center;color:#aaa;padding:20px;">אין רשומות תואמות לסינון</td></tr>`;
     if (summaryEl) summaryEl.textContent = '0 שיעורים';
     return;
   }
 
+  const _resultCell = r => {
+    if (r.testResult === 'pass') return '<td style="text-align:center;">✅ עבר</td>';
+    if (r.testResult === 'fail') return '<td style="text-align:center;">❌ לא עבר</td>';
+    return '<td style="text-align:center;color:#aaa;">—</td>';
+  };
   tbody.innerHTML = rows.map(r => `<tr>
       <td>${_esc(r.date)}</td>
       <td><b>${_esc(r.ins)}</b></td>
       <td>${_esc(r.traineeName)}</td>
       <td>${_esc(r.mission)}</td>
       <td>${r.extraHours ? `⏱️ ${r.extraHours} ש'` : _esc(r.lessonNums)}</td>
+      ${isTestMode ? _resultCell(r) : ''}
       <td style="text-align:center;">${r.avgScore != null ? r.avgScore.toFixed(1) : '—'}</td>
       <td style="font-size:11px;color:#555;">${_esc(r.note)}</td>
     </tr>`).join('');
@@ -21671,6 +21734,11 @@ function _renderLessonBreakdownTable() {
   const avgAll = scored.length ? (scored.reduce((s, r) => s + r.avgScore, 0) / scored.length).toFixed(1) : '—';
   if (summaryEl) {
     summaryEl.innerHTML = `${rows.length} שיעורים · ${uniqueInstructors} מדריכים · ${uniqueTrainees} חניכים · ציון ממוצע ${avgAll}`;
+    if (isTestMode) {
+      const passed = rows.filter(r => r.testResult === 'pass').length;
+      const failed = rows.filter(r => r.testResult === 'fail').length;
+      summaryEl.innerHTML += ` · ✅ ${passed} עברו · ❌ ${failed} לא עברו`;
+    }
     // 2026-08-24, לפי בקשת לביא: כשמסננים לפי "משימה" ספציפית (למשל "כשירות
     // מעשית/ שעות נוספות"), מוסיפים פירוט "כמה לכל מדריך" — ללא זה יש רק
     // ספירה כוללת, לא ברור מי לקח כמה. הערה: זו ספירת מפגשים, לא שעות בפועל —
@@ -21689,15 +21757,21 @@ function _renderLessonBreakdownTable() {
         .map(([name, v]) => hasHours ? `${_esc(name)}: ${v.hours} ש'` : `${_esc(name)}: ${v.count}`)
         .join(' · ');
       const label = hasHours ? 'שעות בפועל' : 'מספר מפגשים (אין נתוני שעות ישנים לרשומות אלה)';
-      summaryEl.innerHTML += `<div style="font-weight:normal;font-size:12px;color:#555;margin-top:6px;">פירוט "${_esc(missionFilter)}" לפי מדריך (${label}): ${breakdown}</div>`;
+      // 2026-09-09: תיקון — הצגת תווית קריאה ("טסט" / סוג ספציפי) במקום הערך
+      // הפנימי "__test__" כשמסננים לפי טסט.
+      const _missionLabel = missionFilter === '__test__'
+        ? (document.getElementById('lb-test-subtype')?.value || 'טסט (כל הסוגים)')
+        : missionFilter;
+      summaryEl.innerHTML += `<div style="font-weight:normal;font-size:12px;color:#555;margin-top:6px;">פירוט "${_esc(_missionLabel)}" לפי מדריך (${label}): ${breakdown}</div>`;
     }
   }
 }
 
 function exportLessonBreakdownCSV() {
   const rows = _lbFilteredRows();
-  const csvRows = [['תאריך', 'מדריך', 'חניך', 'משימה', 'מספרי שיעור', 'שעות נוספות', 'ציון ממוצע', 'הערה']];
-  rows.forEach(r => csvRows.push([r.date, r.ins, r.traineeName, r.mission, r.lessonNums, r.extraHours || '', r.avgScore != null ? r.avgScore.toFixed(1) : '', r.note]));
+  const csvRows = [['תאריך', 'מדריך', 'חניך', 'משימה', 'מספרי שיעור', 'שעות נוספות', 'תוצאה', 'ציון ממוצע', 'הערה']];
+  const _resultTxt = r => r.testResult === 'pass' ? 'עבר' : r.testResult === 'fail' ? 'לא עבר' : '';
+  rows.forEach(r => csvRows.push([r.date, r.ins, r.traineeName, r.mission, r.lessonNums, r.extraHours || '', _resultTxt(r), r.avgScore != null ? r.avgScore.toFixed(1) : '', r.note]));
   const csv = csvRows.map(row => row.map(c => `"${String(c ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
   const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
