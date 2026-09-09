@@ -14,7 +14,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 140</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 141</title>
 
 <style>
 
@@ -1437,7 +1437,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 200;
+  const APP_VERSION = 201;
 
   // 2026-09-07, לפי בקשת לביא: היה קשה לבדוק באיזו גרסה הדפדפן בפועל טוען
   // (כותרת הטאב נחתכת כשיש הרבה טאבים פתוחים, ואי אפשר תמיד לראות "DEPLOYED
@@ -22826,6 +22826,11 @@ function openUnifiedReport(prefillDate) {
   // מ-Firebase ואז מרעננים את ה-chips של כל בלוקי המשוב הפתוחים כרגע, כדי
   // שבזמן שהמדריך בפועל מגיע לבחירת מספרי שיעור, הנתונים כבר עדכניים.
   if (typeof TraineeSystem !== 'undefined' && typeof TraineeSystem.loadCourses === 'function') {
+    // #210: if TraineeSystem was never initialized this session, coursesRef is null and
+    // loadCourses() silently reads a stale per-device localStorage snapshot instead of
+    // Firebase (see #180 precedent) — the #208 "refresh" would then be a no-op. Force
+    // real init first so the refresh actually reaches live data.
+    if (!TraineeSystem.db) { try { TraineeSystem.init('traineeSystemContainer'); } catch(e) { console.warn('openUnifiedReport TraineeSystem init:', e); } }
     Promise.all([
       TraineeSystem.loadCourses(),
       (typeof loadSettings === 'function') ? loadSettings() : Promise.resolve(),
