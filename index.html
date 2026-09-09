@@ -14,7 +14,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 136</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 137</title>
 
 <style>
 
@@ -1437,7 +1437,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 196;
+  const APP_VERSION = 197;
 
   // 2026-09-07, לפי בקשת לביא: היה קשה לבדוק באיזו גרסה הדפדפן בפועל טוען
   // (כותרת הטאב נחתכת כשיש הרבה טאבים פתוחים, ואי אפשר תמיד לראות "DEPLOYED
@@ -15412,6 +15412,34 @@ function _schedRangeKeys(centerYear, centerMonth){
   return { startKey, endKey };
 }
 
+// #206: a legacy flat schedule/{date} node can still coexist with the current nested
+// schedule/{YYYY-MM}/{date} node for the same date (old data pre-migration, or a stale
+// cached tab that saved via the old flat path) — the merge above would then show the
+// same real assignment twice. Collapse by id first; if two entries share no id but are
+// otherwise identical (same name/shift/task/times — the visible symptom), keep one,
+// preferring an 'approved' copy over a 'pending' one.
+function _dedupeSchedData(sched){
+  Object.keys(sched).forEach(date=>{
+    const arr=sched[date];
+    if(!Array.isArray(arr)||arr.length<2)return;
+    const byId=new Map();
+    arr.forEach(e=>{ if(e&&e.id!=null) byId.set(e.id,e); else if(e) byId.set(Symbol(),e); });
+    const seen=new Map();
+    const out=[];
+    byId.forEach(e=>{
+      const key=[e.name,e.shift,e.task,e.startTime||'',e.endTime||''].join('|');
+      const prev=seen.get(key);
+      if(!prev){ seen.set(key,e); out.push(e); return; }
+      if(prev.status!=='approved'&&e.status==='approved'){
+        const idx=out.indexOf(prev); if(idx>=0) out[idx]=e;
+        seen.set(key,e);
+      }
+    });
+    sched[date]=out;
+  });
+  return sched;
+}
+
 function startSchedSync(){
   try{startNotesSync();}catch(e){}
   setTimeout(()=>{try{checkCoverageAlerts();}catch(e){}},2000);
@@ -15446,7 +15474,7 @@ function startSchedSync(){
             }
           });
         }
-        schedData=_newSched; // atomic swap — calendar never sees half-written state
+        schedData=_dedupeSchedData(_newSched); // atomic swap — calendar never sees half-written state
         renderCalendar();
         try{if(currentRole==='instructor')setTimeout(renderTodayTasks,100);}catch(e){}
         try{if(typeof _daySummaryOpen!=='undefined'&&_daySummaryOpen)renderDaySummary();}catch(e2){}
@@ -23159,7 +23187,7 @@ async function _urAddFeedbackBlock() {
       ${skillsHtml}
     </div>
     <div>
-      <label style="font-size:12px;font-weight:600;color:#555;display:block;margin-bottom:4px;">הערות נוספות</label>
+      <label style="font-size:12px;font-weight:600;color:#555;display:block;margin-bottom:4px;">הערכה מילולית</label>
       <textarea id="ur-fb-${idx}-note" rows="2" placeholder="הערות מקצועיות, דגשים לשיפור או נקודות לשימור..." style="width:100%;padding:7px;border:1.5px solid #ddd;border-radius:7px;font-size:13px;direction:rtl;font-family:inherit;resize:vertical;box-sizing:border-box;"></textarea>
     </div>`;
   container.appendChild(block);
