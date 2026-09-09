@@ -14,7 +14,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 141</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 143</title>
 
 <style>
 
@@ -1437,7 +1437,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 201;
+  const APP_VERSION = 203;
 
   // 2026-09-07, לפי בקשת לביא: היה קשה לבדוק באיזו גרסה הדפדפן בפועל טוען
   // (כותרת הטאב נחתכת כשיש הרבה טאבים פתוחים, ואי אפשר תמיד לראות "DEPLOYED
@@ -4944,6 +4944,10 @@ window.TraineeSystem = {
             if (delLesson) {
                 this.deleteLesson(parseInt(delLesson.dataset.deleteLesson, 10));
             }
+            const editLessonBtn = e.target.closest('[data-edit-lesson]');
+            if (editLessonBtn) {
+                this.editLesson(editLessonBtn.dataset.editLesson);
+            }
             const removeIns = e.target.closest('[data-remove-ins]');
             if (removeIns) {
                 this.removeInstructor(removeIns.dataset.removeIns);
@@ -6192,6 +6196,211 @@ window.TraineeSystem = {
             this.persist();
             this.renderDetail();
         });
+    },
+
+    // #212: backfills a stable, permanent id on any lesson record that doesn't have
+    // one yet (older records, from before this feature). Needed because lesson rows
+    // were only ever identified by array position — unsafe as an edit target once a
+    // background refresh (see #208-210) can replace the whole lessons array mid-edit.
+    // Same precedent as the skill-id fix in #190. Called lazily on render; persists
+    // once, only if it actually added anything.
+    _ensureLessonIds(t) {
+        if (!t || !Array.isArray(t.lessons)) return false;
+        let added = false;
+        t.lessons.forEach(l => {
+            if (l && !l.id) { l.id = 'ls_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7); added = true; }
+        });
+        return added;
+    },
+
+    // #212: opens a small, self-contained edit modal for one lesson record. Deliberately
+    // NOT reusing the main "add feedback" chip grid — that grid's availability logic
+    // assumes strictly-sequential forward progress (see design note in project status),
+    // which breaks for editing an arbitrary past lesson. This modal is appended to
+    // document.body (not this.container) so it survives untouched even if a background
+    // refresh re-renders the trainee detail view while it's open.
+    editLesson(lessonId) {
+        if (typeof currentRole !== 'undefined' && currentRole !== 'admin') return;
+        const t = this.trainees.find(x => x.id === this.currentId);
+        if (!t) return;
+        const l = (t.lessons || []).find(x => x.id === lessonId);
+        if (!l) { if (typeof showToast === 'function') showToast('שגיאה: השיעור לא נמצא — ייתכן שכבר נמחק. רענן ונסה שוב', 'warning'); return; }
+        // Test-row lessons (testKey/testResult) carry milestone side-effects on save —
+        // out of scope for this safe/limited edit tool. Delete+re-add via "בוחן" instead.
+        if (l.testKey) { if (typeof showToast === 'function') showToast('שיעורי טסט לא ניתנים לעריכה כאן — יש למחוק ולתעד מחדש דרך הרשאת "בוחן"', 'warning'); return; }
+
+        const existing = document.getElementById('_lessonEditModal');
+        if (existing) existing.remove();
+
+        const skillList = (this.settings?.skills?.length) ? this.settings.skills : [
+            {id:'s1', name:'מערכות רכבת'}, {id:'s2', name:'מבנה קו'}, {id:'s3', name:'תפעול סטיק'},
+            {id:'s4', name:'נהלים'}, {id:'s5', name:'משמעת'}
+        ];
+        const LOCKED_MISSIONS = ['קורס מעשי סיטאדיס', 'קורס מעשי אורבוס', 'חניכה', 'כשירות מעשית/ שעות נוספות'];
+        const customMissions = (this.settings?.missionTypes || [])
+            .filter(m => !m.locked && !LOCKED_MISSIONS.includes(m.name))
+            .map(m => m.name);
+        const allMissions = [...LOCKED_MISSIONS, ...customMissions];
+        // Preserve the trainee's actual current mission value even if it's some legacy
+        // alias not in the current list (e.g. "קורס מעשי"/"קורס") — never silently drop it.
+        if (l.mission && !allMissions.includes(l.mission)) allMissions.unshift(l.mission);
+
+        const isNoChipsMission = m => (m === 'כשירות מעשית/ שעות נוספות' || m === 'שעות נוספות' || (m || '').includes('כשירות'));
+        const isOrbusMission = m => (m === 'קורס מעשי אורבוס');
+        const maxChip = isOrbusMission(l.mission) ? 7 : 50;
+        const usedByOthers = new Set();
+        (t.lessons || []).forEach(other => {
+            if (other.id === l.id) return;
+            if (other.mission === l.mission) (other.lessonNums || []).forEach(n => usedByOthers.add(n));
+        });
+
+        const modal = document.createElement('div');
+        modal.id = '_lessonEditModal';
+        modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9500;display:flex;align-items:center;justify-content:center;padding:16px;';
+        modal.innerHTML = `
+          <div style="background:white;border-radius:16px;padding:20px;width:min(520px,95vw);max-height:90vh;overflow-y:auto;direction:rtl;box-shadow:0 8px 40px rgba(0,0,0,.25);">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+              <h3 style="margin:0;font-size:16px;color:#1a2a3a;">✏️ עריכת שיעור — ${_esc(t.name)}</h3>
+              <button onclick="document.getElementById('_lessonEditModal').remove()" style="background:none;border:2px solid #ccc;border-radius:50%;width:32px;height:32px;cursor:pointer;font-size:16px;color:#666;padding:0;">×</button>
+            </div>
+            <div style="font-size:11px;color:#8a6d1a;background:#fff8ee;border:1px solid #f0d78c;border-radius:8px;padding:6px 10px;margin-bottom:12px;">⚠️ עריכה זו משנה את תיק החניך בלבד (התקדמות/ציונים אמיתיים). דוחות "סיכום יום" ארכיוניים אינם מושפעים ונשארים כפי שהיו.</div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px;">
+              <label style="flex:1;min-width:130px;font-size:12px;font-weight:600;color:#555;">תאריך<br>
+                <input type="date" id="le-date" value="${_esc(l.date || '')}" style="width:100%;padding:7px;border:1.5px solid #ddd;border-radius:7px;margin-top:4px;box-sizing:border-box;">
+              </label>
+              <label style="flex:1;min-width:150px;font-size:12px;font-weight:600;color:#555;">משימה<br>
+                <select id="le-mission" style="width:100%;padding:7px;border:1.5px solid #ddd;border-radius:7px;margin-top:4px;box-sizing:border-box;" onchange="TraineeSystem._renderLessonEditFields()">
+                  ${allMissions.map(m => `<option value="${_esc(m)}" ${m === l.mission ? 'selected' : ''}>${_esc(m)}</option>`).join('')}
+                </select>
+              </label>
+            </div>
+            <label style="display:block;font-size:12px;font-weight:600;color:#555;margin-bottom:10px;">מדריך/חונך<br>
+              <input type="text" id="le-ins" value="${_esc(l.ins || '')}" style="width:100%;padding:7px;border:1.5px solid #ddd;border-radius:7px;margin-top:4px;box-sizing:border-box;">
+            </label>
+            <div id="le-fields-wrap"></div>
+            <div style="margin-bottom:10px;">
+              <label style="font-size:12px;font-weight:600;color:#555;display:block;margin-bottom:6px;">ציוני מיומנויות (1–10, ריק = לא דורג)</label>
+              <div id="le-skills-wrap" style="display:flex;flex-wrap:wrap;gap:8px;">
+                ${skillList.map(sk => `
+                  <label style="font-size:11.5px;color:#666;min-width:70px;">${_esc(sk.name)}<br>
+                    <input type="number" min="1" max="10" id="le-skill-${_esc(sk.id)}" data-skill-id="${_esc(sk.id)}" value="${l[sk.id] != null ? l[sk.id] : ''}" style="width:100%;padding:6px;border:1.5px solid #ddd;border-radius:6px;margin-top:2px;box-sizing:border-box;">
+                  </label>`).join('')}
+              </div>
+            </div>
+            <label style="display:block;font-size:12px;font-weight:600;color:#555;margin-bottom:4px;">הערכה מילולית</label>
+            <textarea id="le-notes" rows="2" style="width:100%;padding:7px;border:1.5px solid #ddd;border-radius:7px;font-size:13px;box-sizing:border-box;resize:vertical;">${_esc(l.notes || l.note || '')}</textarea>
+            <div style="display:flex;gap:8px;margin-top:16px;">
+              <button onclick="TraineeSystem._saveEditedLesson('${l.id}')" style="width:auto;padding:9px 18px;background:#27ae60;color:white;border:none;border-radius:9px;font-size:13px;font-weight:bold;cursor:pointer;">💾 שמור שינויים</button>
+              <button onclick="document.getElementById('_lessonEditModal').remove()" style="width:auto;padding:9px 18px;background:#f5f5f5;color:#666;border:none;border-radius:9px;font-size:13px;cursor:pointer;">ביטול</button>
+            </div>
+          </div>`;
+        document.body.appendChild(modal);
+        // Stash context the field-renderer needs, scoped to this modal instance only.
+        this._leCtx = { lessonId: l.id, currentNums: [...(l.lessonNums || [])], usedByOthers, maxChip: maxChip, isNoChipsMission, isOrbusMission, extraDesc: l.extraDesc || '', extraHours: l.extraHours || 0 };
+        this._renderLessonEditFields();
+    },
+
+    // #212: renders the mission-dependent part of the edit modal (numbers grid, or the
+    // free-text "extra hours" fields) — separate from the main modal HTML so switching
+    // the mission dropdown can refresh just this part without losing other field values.
+    _renderLessonEditFields() {
+        const wrap = document.getElementById('le-fields-wrap');
+        const ctx = this._leCtx;
+        if (!wrap || !ctx) return;
+        const missionSel = document.getElementById('le-mission');
+        const mission = missionSel ? missionSel.value : '';
+        if (ctx.isNoChipsMission(mission)) {
+            wrap.innerHTML = `
+              <label style="display:block;font-size:12px;font-weight:600;color:#555;margin-bottom:4px;">פירוט<br>
+                <textarea id="le-extra-desc" rows="2" style="width:100%;padding:7px;border:1.5px solid #ddd;border-radius:7px;font-size:13px;margin-top:4px;box-sizing:border-box;resize:vertical;">${_esc(ctx.extraDesc)}</textarea>
+              </label>
+              <label style="display:block;font-size:12px;font-weight:600;color:#555;margin:8px 0 4px;">שעות<br>
+                <input type="number" step="0.5" min="0" id="le-extra-hours" value="${ctx.extraHours || ''}" style="width:140px;padding:7px;border:1.5px solid #ddd;border-radius:7px;margin-top:4px;box-sizing:border-box;">
+              </label>`;
+            return;
+        }
+        const maxChip = ctx.isOrbusMission(mission) ? 7 : 50;
+        // Clamp to the current mission's valid range (a mission switch can otherwise
+        // leave stale numbers from the previous mission silently selected).
+        ctx.currentNums = ctx.currentNums.filter(n => n >= 1 && n <= maxChip);
+        const t = this.trainees.find(x => x.id === this.currentId);
+        const usedByOthers = new Set();
+        (t?.lessons || []).forEach(other => {
+            if (other.id === ctx.lessonId) return;
+            if (other.mission === mission) (other.lessonNums || []).forEach(n => usedByOthers.add(n));
+        });
+        let html = '<label style="display:block;font-size:12px;font-weight:600;color:#555;margin-bottom:6px;">שיעורים (לחיצה מסמנת/מבטלת — ללא הגבלת רצף, לתיקון חופשי)</label>'
+          + '<div id="le-chips" style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px;">';
+        for (let i = 1; i <= maxChip; i++) {
+            const isSel = ctx.currentNums.includes(i);
+            const isUsedElsewhere = usedByOthers.has(i) && !isSel;
+            const bg = isSel ? '#27ae60' : (isUsedElsewhere ? '#fdf2f2' : 'white');
+            const color = isSel ? 'white' : (isUsedElsewhere ? '#c0392b' : '#333');
+            const border = isSel ? '#27ae60' : (isUsedElsewhere ? '#e74c3c' : '#ccc');
+            const title = isUsedElsewhere ? 'title="שיעור זה כבר מתועד גם ברשומה אחרת של אותה משימה"' : '';
+            html += `<button type="button" data-le-chip="${i}" onclick="TraineeSystem._toggleLessonEditChip(${i})" ${title} style="min-width:30px;height:30px;padding:0 4px;border-radius:8px;border:1.5px solid ${border};background:${bg};color:${color};font-size:12px;font-weight:bold;cursor:pointer;">${i}</button>`;
+        }
+        html += '</div>';
+        wrap.innerHTML = html;
+    },
+
+    _toggleLessonEditChip(n) {
+        const ctx = this._leCtx;
+        if (!ctx) return;
+        if (ctx.currentNums.includes(n)) ctx.currentNums = ctx.currentNums.filter(x => x !== n);
+        else ctx.currentNums.push(n);
+        this._renderLessonEditFields();
+    },
+
+    _saveEditedLesson(lessonId) {
+        if (typeof currentRole !== 'undefined' && currentRole !== 'admin') return;
+        const ctx = this._leCtx;
+        if (!ctx || ctx.lessonId !== lessonId) { if (typeof showToast === 'function') showToast('שגיאה: החלונית לא תואמת את השיעור — סגור ופתח מחדש', 'warning'); return; }
+        const t = this.trainees.find(x => x.id === this.currentId);
+        if (!t) return;
+        const idx = (t.lessons || []).findIndex(x => x.id === lessonId);
+        if (idx < 0) { if (typeof showToast === 'function') showToast('שגיאה: השיעור כבר לא קיים בתיק — ייתכן שנמחק בינתיים', 'warning'); document.getElementById('_lessonEditModal')?.remove(); return; }
+
+        const date = document.getElementById('le-date')?.value || t.lessons[idx].date;
+        const mission = document.getElementById('le-mission')?.value || t.lessons[idx].mission;
+        const ins = document.getElementById('le-ins')?.value.trim() || '';
+        const notes = document.getElementById('le-notes')?.value.trim() || '';
+        if (!ins) { if (typeof showToast === 'function') showToast('חובה למלא שם מדריך/חונך', 'warning'); return; }
+
+        const skillList = (this.settings?.skills?.length) ? this.settings.skills : [
+            {id:'s1'}, {id:'s2'}, {id:'s3'}, {id:'s4'}, {id:'s5'}
+        ];
+        const updated = { ...t.lessons[idx], date, mission, ins, notes };
+        // Clean out the old note/notes split so we don't leave a stale duplicate field.
+        delete updated.note;
+
+        if (ctx.isNoChipsMission(mission)) {
+            const extraDesc = document.getElementById('le-extra-desc')?.value.trim() || '';
+            if (!extraDesc) { if (typeof showToast === 'function') showToast('חובה לפרט את נושא השעות הנוספות/כשירות', 'warning'); return; }
+            updated.extraDesc = extraDesc;
+            updated.extraHours = parseFloat(document.getElementById('le-extra-hours')?.value) || 0;
+            updated.lessonNums = [];
+        } else {
+            if (!ctx.currentNums.length) { if (typeof showToast === 'function') showToast('חובה לסמן לפחות שיעור אחד', 'warning'); return; }
+            updated.lessonNums = [...ctx.currentNums].sort((a, b) => a - b);
+            delete updated.extraDesc;
+            updated.extraHours = 0;
+            // Validate & apply skill scores (optional — only what's actually filled).
+            for (const sk of skillList) {
+                const raw = document.getElementById('le-skill-' + sk.id)?.value;
+                if (raw === '' || raw == null) { delete updated[sk.id]; continue; }
+                const v = parseInt(raw, 10);
+                if (isNaN(v) || v < 1 || v > 10) { if (typeof showToast === 'function') showToast(`ציון "${sk.name || sk.id}" לא תקין (1-10 או ריק)`, 'warning'); return; }
+                updated[sk.id] = v;
+            }
+        }
+
+        t.lessons[idx] = updated;
+        this.persist();
+        this._leCtx = null;
+        document.getElementById('_lessonEditModal')?.remove();
+        this.renderDetail();
+        if (typeof showToast === 'function') showToast('✅ השיעור עודכן בתיק החניך', 'success');
     },
 
     _fireOverloadAlert(trainee, actual, max, level, date) {
@@ -7568,6 +7777,8 @@ window.TraineeSystem = {
         if (!t) return;
         const tbody = this.$('history-tbody');
         if (!tbody) return;
+        // #212: backfill stable ids lazily (no-op after the first time per trainee).
+        if (this._ensureLessonIds(t)) { try { this.persist(); } catch(e) {} }
         const lessons = t.lessons || [];
         const filtered = missionFilter === 'all' ? lessons
             : lessons.filter(l => l.mission === missionFilter || (missionFilter === 'כשירות מעשית/ שעות נוספות' && l.mission && l.mission.includes('כשירות')) || (missionFilter === 'קורס מעשי סיטאדיס' && (l.mission === 'קורס מעשי' || l.mission === 'קורס')));
@@ -7590,6 +7801,10 @@ window.TraineeSystem = {
                 '</div>';
             const _noteVal=l.notes||l.note||'';
             const notesCell=_canSeeLessonNotes ? _esc(_noteVal) : '';
+            // #212: edit button (admin-only, test-row lessons excluded — see editLesson()).
+            const _isAdminRow = (typeof currentRole === 'undefined' || currentRole === 'admin');
+            const _editBtn = (_isAdminRow && !l.testKey && l.id)
+                ? `<button data-edit-lesson="${_esc(l.id)}" style="background:none;border:1px solid #2980b9;color:#2980b9;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:0.78em;margin-left:4px;">✏️</button>` : '';
             tbody.innerHTML += `<tr>
                 <td>${_esc(l.date)}</td>
                 <td><span style="font-size:11px;">${mIcon} ${_esc(l.mission||'')}</span></td>
@@ -7597,7 +7812,7 @@ window.TraineeSystem = {
                 <td>${_esc(l.ins||'')}</td>
                 <td>${skillCells}</td>
                 <td style="text-align:right;color:#555;">${notesCell}</td>
-                <td>${(typeof currentRole === 'undefined' || currentRole === 'admin') ? `<button data-delete-lesson="${realIdx}" style="background:none;border:1px solid #e74c3c;color:#e74c3c;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:0.78em;">🗑️</button>` : ''}</td>
+                <td>${_editBtn}${_isAdminRow ? `<button data-delete-lesson="${realIdx}" style="background:none;border:1px solid #e74c3c;color:#e74c3c;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:0.78em;">🗑️</button>` : ''}</td>
             </tr>`;
         });
     },
@@ -22809,7 +23024,32 @@ function openUnifiedReport(prefillDate) {
   if (!overlay) return;
 
   // Prefill date
-  const today = prefillDate || currentDate || _localDateStr(new Date());
+  let today = prefillDate || currentDate || _localDateStr(new Date());
+
+  // #211: a shift that starts in the evening and runs past midnight (e.g. Motzash) can
+  // get an instructor filling the form after 00:00, when the app's own "today" has
+  // already rolled to the next calendar day — the report then gets silently filed under
+  // the wrong day, and (per #157's "add to existing report" merge) can even overwrite
+  // that next day's real hours if the instructor later re-opens the form for it. Only
+  // fires for the automatic "today" default (not an explicit date, e.g. from the
+  // archive), and only asks — never silently switches the date on its own.
+  if (!prefillDate && (currentRole === 'instructor' || currentRole === 'mentor')) {
+    const _now = new Date();
+    if (_now.getHours() < 5) {
+      const _yestStr = _localDateStr(new Date(_now.getTime() - 24*60*60*1000));
+      const _yestEntry = (schedData[_yestStr] || []).find(e => e.name === currentUserName && (e.shift === 'evening' || e.shift === 'night' || e.shift === 'custom'));
+      const _yestKey = `${_yestStr}__${currentUserName}__unified`;
+      const _yestAlreadyReported = window._taskReportsCache && window._taskReportsCache[_yestKey];
+      if (_yestEntry && !_yestAlreadyReported) {
+        const _d = new Date(_yestStr + 'T12:00:00');
+        const _label = _d.toLocaleDateString('he-IL', {weekday:'long', day:'numeric', month:'numeric'});
+        if (confirm(`נראה שסיימת עכשיו משמרת שהתחילה אתמול (${_label}) — ועדיין לא הוגש עליה דוח.\n\nהאם הדוח הזה מיועד לאתמול?`)) {
+          today = _yestStr;
+        }
+      }
+    }
+  }
+
   const dateEl = document.getElementById('ur-date');
   if (dateEl) dateEl.value = today;
 
