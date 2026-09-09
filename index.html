@@ -14,7 +14,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 135</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 136</title>
 
 <style>
 
@@ -1437,7 +1437,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 195;
+  const APP_VERSION = 196;
 
   // 2026-09-07, לפי בקשת לביא: היה קשה לבדוק באיזו גרסה הדפדפן בפועל טוען
   // (כותרת הטאב נחתכת כשיש הרבה טאבים פתוחים, ואי אפשר תמיד לראות "DEPLOYED
@@ -2699,7 +2699,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 
         <!-- Weekly button centered -->
         <div style="display:flex;justify-content:center;gap:8px;flex-wrap:wrap;">
-          <button onclick="openInstrWeeklyModal()" style="padding:9px 28px;background:#27ae60;color:white;border:none;border-radius:9px;cursor:pointer;font-size:13px;font-weight:bold;white-space:nowrap;">📅 שיבוץ שבועי</button>
+          <button onclick="openInstrWeeklyModal()" style="padding:9px 28px;background:#27ae60;color:white;border:none;border-radius:9px;cursor:pointer;font-size:13px;font-weight:bold;white-space:nowrap;">📅 בקשות שיבוץ</button>
           <button onclick="openNotesModal()" style="padding:9px 20px;background:#fef08a;border:1px solid #eab308;color:#713f12;border-radius:9px;cursor:pointer;font-size:13px;font-weight:bold;white-space:nowrap;">📌 הפתקים שלי</button>
         </div>
 
@@ -10023,6 +10023,12 @@ function enterApp(role,name){
 
   // Then start sync — re-renders calendar again once data arrives
   startSchedSync();
+  // #204: was missing here — trips only had a live listener after the user manually
+  // navigated dates (changeDate/onDateChange). On login, trips came from a single
+  // one-time loadFromStorage() fetch with no re-render hook; if that fetch resolved
+  // after the "תכנון יומי" tab's first paint, the dashboard/day-summary stayed empty
+  // until some unrelated action (like changing date) happened to attach the listener.
+  try{if(typeof resubscribeTripsListener==='function')resubscribeTripsListener();}catch(e){}
 
   // Eager load Trainee Summary Analytics Cache 30s after login (background, non-blocking)
   setTimeout(() => {
@@ -11309,6 +11315,7 @@ function resubscribeTripsListener(){
         // שהדשבורד תמיד הציג את הנתונים הישנים (מהתאריך הקודם) עד לפעולה
         // אחרת שמזדמן שתרענן אותו.
         try{renderDashboard();}catch(e2){}
+        try{if(typeof _daySummaryOpen!=='undefined'&&_daySummaryOpen)renderDaySummary();}catch(e3){}
       }catch(e){console.warn('tripsListener handler:',e);}
     });
   }catch(e){showToast('שגיאה בחיבור לנסיעות — נסה לרענן','warning');console.error('resubscribeTripsListener:',e);}
@@ -15442,6 +15449,7 @@ function startSchedSync(){
         schedData=_newSched; // atomic swap — calendar never sees half-written state
         renderCalendar();
         try{if(currentRole==='instructor')setTimeout(renderTodayTasks,100);}catch(e){}
+        try{if(typeof _daySummaryOpen!=='undefined'&&_daySummaryOpen)renderDaySummary();}catch(e2){}
       }catch(e){console.warn('schedSync handler:',e);}
     });
   }catch(e){showToast('שגיאת סנכרון לוח שיבוצים — נסה לרענן','warning');console.error('startSchedSync:',e);}
@@ -19981,12 +19989,19 @@ async function copySchedToNextWeek(){
 // ═══════════════════════════════════════════════════════════
 
 function openInstrWeeklyModal(baseDateStr){
+  // #203b: fresh open (button click) starts a clean draft; internal week-nav below
+  // must NOT reset it, or every "‹"/"›" click silently threw away unsaved selections.
+  window._iwmDraft={};
   openInstrWeeklyModalFromDate(baseDateStr||new Date().toISOString().slice(0,10),0);
 }
 
 function openInstrWeeklyModalFromDate(baseDateStr,deltaDays){
+  // #203b: capture whatever is currently on-screen into the draft BEFORE tearing down
+  // the DOM for a different week — this is the fix for selections disappearing on nav.
+  _iwmCaptureVisibleToDraft();
   const existing=document.getElementById('_instrWeekModal');
   if(existing)existing.remove();
+  if(!window._iwmDraft)window._iwmDraft={};
 
   // Calculate monday of week from baseDateStr + deltaDays
   const base=new Date((baseDateStr||new Date().toISOString().slice(0,10))+'T12:00:00');
@@ -20019,15 +20034,15 @@ function openInstrWeeklyModalFromDate(baseDateStr,deltaDays){
     return`<tr>
       <td style="font-size:13px;font-weight:bold;white-space:nowrap;padding:8px 6px;">${dayLabel}</td>
       <td style="padding:6px;">
-        <select id="_iwm_shift_${i}" data-date="${dateStr}" style="width:100%;padding:7px;border:1.5px solid #ddd;border-radius:7px;font-size:16px;" onchange="_iwmToggleCustom(${i})">
+        <select id="_iwm_shift_${i}" data-date="${dateStr}" style="width:100%;padding:7px;border:1.5px solid #ddd;border-radius:7px;font-size:16px;" onchange="_iwmToggleCustom(${i});_iwmCaptureRow(${i},'${dateStr}')">
           <option value="none">—</option>
           ${shiftOpts}
         </select>
       </td>
       <td id="_iwm_custom_${i}" style="padding:6px;display:none;">
-        <input type="time" id="_iwm_start_${i}" value="07:00" style="width:74px;padding:5px;border:1.5px solid #ddd;border-radius:6px;font-size:16px;">
+        <input type="time" id="_iwm_start_${i}" value="07:00" onchange="_iwmCaptureRow(${i},'${dateStr}')" style="width:74px;padding:5px;border:1.5px solid #ddd;border-radius:6px;font-size:16px;">
         <span style="color:#888;font-size:11px;margin:0 2px;">–</span>
-        <input type="time" id="_iwm_end_${i}" value="15:30" style="width:74px;padding:5px;border:1.5px solid #ddd;border-radius:6px;font-size:16px;">
+        <input type="time" id="_iwm_end_${i}" value="15:30" onchange="_iwmCaptureRow(${i},'${dateStr}')" style="width:74px;padding:5px;border:1.5px solid #ddd;border-radius:6px;font-size:16px;">
       </td>
       ${existing?`<td style="font-size:11px;color:var(--success);padding:6px;white-space:nowrap;">✓ קיים</td>`:'<td></td>'}
     </tr>`;
@@ -20039,8 +20054,8 @@ function openInstrWeeklyModalFromDate(baseDateStr,deltaDays){
   modal.innerHTML=`
     <div style="background:white;border-radius:16px;padding:20px;width:min(580px,95vw);max-height:90vh;overflow-y:auto;direction:rtl;box-shadow:0 8px 40px rgba(0,0,0,.25);">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-        <h3 style="margin:0;font-size:16px;color:var(--primary);">📅 שיבוץ שבועי</h3>
-        <button onclick="document.getElementById('_instrWeekModal').remove()" style="background:none;border:2px solid #ccc;border-radius:50%;width:34px;height:34px;cursor:pointer;font-size:18px;color:#666;padding:0;">×</button>
+        <h3 style="margin:0;font-size:16px;color:var(--primary);">📅 בקשות שיבוץ</h3>
+        <button onclick="_iwmClose()" style="background:none;border:2px solid #ccc;border-radius:50%;width:34px;height:34px;cursor:pointer;font-size:18px;color:#666;padding:0;">×</button>
       </div>
       <!-- Week navigation -->
       <div style="display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:12px;background:#f0f8ff;border-radius:9px;padding:10px;">
@@ -20061,24 +20076,28 @@ function openInstrWeeklyModalFromDate(baseDateStr,deltaDays){
       <div style="margin-top:16px;display:flex;gap:8px;flex-direction:column;">
         <button onclick="_submitInstrWeekly()" style="width:100%;padding:12px;background:#27ae60;color:white;border:none;border-radius:10px;font-size:15px;font-weight:bold;cursor:pointer;">📨 שלח בקשות לאישור</button>
         <button onclick="_submitInstrWeeklyAndCopyNext()" style="width:100%;padding:11px;background:#eaf4fd;color:var(--secondary);border:1.5px solid var(--secondary);border-radius:10px;font-size:13px;font-weight:bold;cursor:pointer;">📋 שלח + העתק לשבוע הבא</button>
-        <button onclick="document.getElementById('_instrWeekModal').remove()" style="width:100%;padding:10px;background:#f5f5f5;color:#666;border:none;border-radius:10px;font-size:13px;cursor:pointer;">ביטול</button>
+        <button onclick="_iwmClose()" style="width:100%;padding:10px;background:#f5f5f5;color:#666;border:none;border-radius:10px;font-size:13px;cursor:pointer;">ביטול</button>
       </div>
     </div>`;
   document.body.appendChild(modal);
 
-  // Pre-fill existing values
+  // Pre-fill: an unsaved draft value (carried over from another week the user already
+  // touched this session) wins over the already-saved schedData entry, so nothing is
+  // ever silently lost or silently overwritten by old saved data while navigating.
   days.forEach((d,i)=>{
     const dateStr=d.toISOString().slice(0,10);
+    const draft=window._iwmDraft&&window._iwmDraft[dateStr];
     const ex=(schedData[dateStr]||[]).find(e=>e.name===currentUserName);
-    if(ex){
+    const src=draft||(ex?{shift:ex.shift,startTime:ex.startTime,endTime:ex.endTime}:null);
+    if(src){
       const sel=document.getElementById(`_iwm_shift_${i}`);
-      if(sel)sel.value=ex.shift||'none';
+      if(sel)sel.value=src.shift||'none';
       _iwmToggleCustom(i);
-      if(ex.shift==='custom'){
+      if(src.shift==='custom'){
         const s=document.getElementById(`_iwm_start_${i}`);
         const e=document.getElementById(`_iwm_end_${i}`);
-        if(s)s.value=ex.startTime||'07:00';
-        if(e)e.value=ex.endTime||'15:30';
+        if(s)s.value=src.startTime||'07:00';
+        if(e)e.value=src.endTime||'15:30';
       }
     }
   });
@@ -20091,29 +20110,67 @@ function _iwmToggleCustom(i){
   if(sel&&custom) custom.style.display=sel.value==='custom'?'table-cell':'none';
 }
 
-async function _submitInstrWeekly(copyNext=false){
+// #203b: writes one row's current on-screen value into the cross-week draft store.
+// Called on every select/time onchange, so nothing depends on the row still being
+// visible (i.e. the current week) at the moment the user finally hits "send".
+function _iwmCaptureRow(i,dateStr){
+  if(!window._iwmDraft)window._iwmDraft={};
+  const sel=document.getElementById(`_iwm_shift_${i}`);
+  const shift=sel?sel.value:'none';
+  if(!shift||shift==='none'){delete window._iwmDraft[dateStr];return;}
+  const entry={shift};
+  if(shift==='custom'){
+    entry.startTime=document.getElementById(`_iwm_start_${i}`)?.value||'07:00';
+    entry.endTime=document.getElementById(`_iwm_end_${i}`)?.value||'15:30';
+  }
+  window._iwmDraft[dateStr]=entry;
+}
+
+// #203b: safety net — captures the 7 rows currently on screen into the draft, used
+// right before tearing down the DOM for week nav and right before submit, in case a
+// browser didn't fire onchange yet (e.g. value set but no blur).
+function _iwmCaptureVisibleToDraft(){
   const modal=document.getElementById('_instrWeekModal');
-  const rows=modal?modal.querySelectorAll('[data-date]'):[];
+  if(!modal)return;
+  modal.querySelectorAll('select[data-date]').forEach(sel=>{
+    const idx=sel.id.replace('_iwm_shift_','');
+    _iwmCaptureRow(idx,sel.getAttribute('data-date'));
+  });
+}
+
+function _iwmClose(){
+  window._iwmDraft={};
+  const m=document.getElementById('_instrWeekModal');
+  if(m)m.remove();
+}
+
+async function _submitInstrWeekly(copyNext=false){
+  // #203b: submit now sends EVERY date the user touched across ALL navigated weeks
+  // (the draft), not just the 7 rows currently visible on screen.
+  _iwmCaptureVisibleToDraft();
+  const modal=document.getElementById('_instrWeekModal');
+  const draft=window._iwmDraft||{};
+  const dates=Object.keys(draft);
   let saved=0;
   const baseTs=Date.now();
 
-  for(let i=0;i<rows.length;i++){
-    const dateStr=rows[i].getAttribute('data-date');
-    const shift=rows[i].value;
-    if(!shift||shift==='none')continue;
+  for(let i=0;i<dates.length;i++){
+    const dateStr=dates[i];
+    const d=draft[dateStr];
+    if(!d||!d.shift||d.shift==='none')continue;
 
     const entry={
       id:`e_${baseTs}_iw${i}`,
       name:currentUserName,
-      shift,
+      shift:d.shift,
       task:'training',
       status:'pending',
       note:'',
       createdAt:baseTs
     };
-    if(shift==='custom'){
-      entry.startTime=document.getElementById(`_iwm_start_${i}`)?.value||'07:00';
-      entry.endTime=document.getElementById(`_iwm_end_${i}`)?.value||'15:30';
+    if(d.shift==='custom'){
+      entry.startTime=d.startTime||'07:00';
+      entry.endTime=d.endTime||'15:30';
     }
 
     try{await saveSchedEntry(dateStr,entry); saved++;}catch(e){}
@@ -20129,6 +20186,7 @@ async function _submitInstrWeekly(copyNext=false){
     await new Promise(r=>setTimeout(r,40));
   }
 
+  window._iwmDraft={}; // cleared only after a successful submit — cross-week selections were sent together
   modal?.remove();
   renderCalendar();
   showToast(`✅ נשלחו ${saved} בקשות שיבוץ לאישור`,'success');
