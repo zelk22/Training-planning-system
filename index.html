@@ -14,7 +14,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 137</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 138</title>
 
 <style>
 
@@ -1437,7 +1437,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 197;
+  const APP_VERSION = 198;
 
   // 2026-09-07, לפי בקשת לביא: היה קשה לבדוק באיזו גרסה הדפדפן בפועל טוען
   // (כותרת הטאב נחתכת כשיש הרבה טאבים פתוחים, ואי אפשר תמיד לראות "DEPLOYED
@@ -20186,6 +20186,15 @@ async function _submitInstrWeekly(copyNext=false){
     const dateStr=dates[i];
     const d=draft[dateStr];
     if(!d||!d.shift||d.shift==='none')continue;
+
+    // #207: the modal pre-fills a day that's already assigned (so the instructor can see
+    // it), but re-sending the whole batch used to re-submit that unchanged day too —
+    // creating a brand-new duplicate 'pending' request alongside the real (often already
+    // 'approved') entry. Skip days where nothing actually changed from what's saved.
+    const existing=(schedData[dateStr]||[]).find(e=>e.name===currentUserName);
+    if(existing&&existing.shift===d.shift&&(d.shift!=='custom'||(existing.startTime===d.startTime&&existing.endTime===d.endTime))){
+      continue;
+    }
 
     const entry={
       id:`e_${baseTs}_iw${i}`,
