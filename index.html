@@ -14,7 +14,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 143</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 145</title>
 
 <style>
 
@@ -1437,7 +1437,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 203;
+  const APP_VERSION = 205;
 
   // 2026-09-07, לפי בקשת לביא: היה קשה לבדוק באיזו גרסה הדפדפן בפועל טוען
   // (כותרת הטאב נחתכת כשיש הרבה טאבים פתוחים, ואי אפשר תמיד לראות "DEPLOYED
@@ -4709,7 +4709,6 @@ window.TraineeSystem = {
               <label style="font-size:11px;color:#888;white-space:nowrap;">סף שיעורים:</label>
               <input type="number" id="ts-m-test10-val" min="1" max="200" value="10" style="width:58px;padding:5px 8px;border:1.5px solid #ddd;border-radius:7px;font-size:13px;text-align:center;">
               <select id="ts-m-test10" style="padding:7px 12px;border:1.5px solid #ddd;border-radius:7px;font-size:13px;direction:rtl;min-width:130px;">
-                <option value="block">🔒 חסום — מונע מעבר</option>
                 <option value="warn">⚠️ אזהרה בלבד</option>
                 <option value="ignore">✅ התעלם</option>
               </select>
@@ -4727,7 +4726,6 @@ window.TraineeSystem = {
               <label style="font-size:11px;color:#888;white-space:nowrap;">סף שיעורים:</label>
               <input type="number" id="ts-m-test30-val" min="1" max="200" value="30" style="width:58px;padding:5px 8px;border:1.5px solid #ddd;border-radius:7px;font-size:13px;text-align:center;">
               <select id="ts-m-test30" style="padding:7px 12px;border:1.5px solid #ddd;border-radius:7px;font-size:13px;direction:rtl;min-width:130px;">
-                <option value="block">🔒 חסום — מונע מעבר</option>
                 <option value="warn">⚠️ אזהרה בלבד</option>
                 <option value="ignore">✅ התעלם</option>
               </select>
@@ -4745,7 +4743,6 @@ window.TraineeSystem = {
               <label style="font-size:11px;color:#888;white-space:nowrap;">סף שיעורים:</label>
               <input type="number" id="ts-m-test50-val" min="1" max="200" value="50" style="width:58px;padding:5px 8px;border:1.5px solid #ddd;border-radius:7px;font-size:13px;text-align:center;">
               <select id="ts-m-test50" style="padding:7px 12px;border:1.5px solid #ddd;border-radius:7px;font-size:13px;direction:rtl;min-width:130px;">
-                <option value="block">🔒 חסום — מונע מעבר</option>
                 <option value="warn">⚠️ אזהרה בלבד</option>
                 <option value="ignore">✅ התעלם</option>
               </select>
@@ -4756,16 +4753,13 @@ window.TraineeSystem = {
         <div style="background:#f0fff4;border:1.5px solid #27ae60;border-radius:10px;padding:14px 16px;">
           <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
             <div>
-              <div style="font-size:14px;font-weight:bold;color:#1a2a3a;">🤝 תנאי לחניכה — סיטאדיס + אורבוס מלאים</div>
-              <div style="font-size:11px;color:#888;margin-top:2px;" id="ts-chinuch-desc">50 שיעורי סיטאדיס ו-7 שיעורי אורבוס חובה לפני כניסה לחניכה</div>
+              <div style="font-size:14px;font-weight:bold;color:#1a2a3a;">🏁 טסט אורבוס — תנאי לחניכה</div>
+              <div style="font-size:11px;color:#888;margin-top:2px;" id="ts-chinuch-desc">נדרש לפני כניסה לחניכה (7 שיעורי קורס מעשי אורבוס)</div>
             </div>
             <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-              <label style="font-size:11px;color:#888;white-space:nowrap;">סיטאדיס:</label>
-              <input type="number" id="ts-m-chinuch-sitadis-val" min="1" max="300" value="50" style="width:58px;padding:5px 8px;border:1.5px solid #27ae60;border-radius:7px;font-size:13px;text-align:center;">
-              <label style="font-size:11px;color:#888;white-space:nowrap;">אורבוס:</label>
+              <label style="font-size:11px;color:#888;white-space:nowrap;">סף שיעורי אורבוס:</label>
               <input type="number" id="ts-m-chinuch-orbus-val" min="1" max="100" value="7" style="width:52px;padding:5px 8px;border:1.5px solid #27ae60;border-radius:7px;font-size:13px;text-align:center;">
-              <select id="ts-m-chinuch-ms" style="padding:7px 12px;border:1.5px solid #ddd;border-radius:7px;font-size:13px;direction:rtl;min-width:130px;">
-                <option value="block">🔒 חסום — מונע מעבר</option>
+              <select id="ts-m-testOrbus" style="padding:7px 12px;border:1.5px solid #ddd;border-radius:7px;font-size:13px;direction:rtl;min-width:130px;">
                 <option value="warn">⚠️ אזהרה בלבד</option>
                 <option value="ignore">✅ התעלם</option>
               </select>
@@ -5430,9 +5424,8 @@ window.TraineeSystem = {
         const _thr10  = _getMilestoneThreshold('test10', 10);
         const _thr30  = _getMilestoneThreshold('test30', 30);
         const _thr50  = _getMilestoneThreshold('test50', 50);
-        const _thrSit = _getMilestoneThreshold('chinuch-sitadis', 50);
         const _thrOrb = _getMilestoneThreshold('chinuch-orbus', 7);
-        // Compute orbus progress for chinuch-ms badge
+        // Compute orbus progress for testOrbus badge
         let _maxOrbusT = 0;
         (t.lessons || []).forEach(l => {
             if (l.mission === 'קורס מעשי אורבוס')
@@ -5447,21 +5440,21 @@ window.TraineeSystem = {
                 .sort((a, b) => (a.date || '').localeCompare(b.date || ''));
             _testAttempts[td.key] = attempts;
         });
+        // 2026-09-09, לפי בקשת לביא: הוסרה "תנאי חניכה" (chinuch-ms) כאבן דרך
+        // עצמאית — הייתה כפולה לוגית ל-testOrbus (אי אפשר להגיע לשיעור אורבוס 7
+        // בלי כבר לעמוד ב-50 סיטאדיס, כך שמעבר testOrbus כבר מוכיח את שני
+        // התנאים). testOrbus הוא כעת המקור היחיד לאמת גם לכניסה לחניכה.
         const defs = [
             {key:'test10',     label:`טסט ${_thr10}`,                   threshold:_thr10},
             {key:'test30',     label:`טסט ${_thr30}`,                   threshold:_thr30},
             {key:'test50',     label:`טסט ${_thr50} (אורבוס)`,          threshold:_thr50},
-            {key:'testOrbus',  label:`טסט אורבוס`,                     threshold:_thrOrb, isOrbus:true},
-            {key:'chinuch-ms', label:`תנאי חניכה (${maxL}/${_thrSit} סיטאדיס, ${_maxOrbusT}/${_thrOrb} אורבוס)`, threshold:null}
+            {key:'testOrbus',  label:`טסט אורבוס — תנאי לחניכה`,        threshold:_thrOrb, isOrbus:true}
         ];
         const isAdmin = (typeof currentRole !== 'undefined' && (currentRole === 'admin'));
         container.innerHTML = defs.map(def => {
             const manualPassed = tms[def.key] === true;
             let autoPassed;
-            if (def.key === 'chinuch-ms') {
-                // chinuch-ms: auto-check sitadis >= thrSit AND orbus >= thrOrb
-                autoPassed = maxL >= _thrSit && _maxOrbusT >= _thrOrb;
-            } else if (def.isOrbus) {
+            if (def.isOrbus) {
                 autoPassed = _maxOrbusT >= def.threshold;
             } else {
                 autoPassed = def.threshold !== null && maxL >= def.threshold;
@@ -5477,8 +5470,6 @@ window.TraineeSystem = {
             const bg           = manualPassed ? '#eafaf1' : tentative ? '#fef9ec' : (mode === 'ignore' ? '#f8f9fa' : mode === 'warn' ? '#fef9ec' : '#fdf2f2');
             const icon         = manualPassed ? '✅' : tentative ? '🟡' : (mode === 'ignore' ? '✅' : mode === 'warn' ? '⚠️' : '🔒');
             const hint         = manualPassed ? ' (ידני)' : autoPassed ? ' (אוטומטי — טרם אושר)' : '';
-            // 2026-08-30: תיעוד ניסיונות (רק לשיעורי טסט אמיתיים — לא chinuch-ms
-            // שאינו שיעור טסט נפרד).
             const attempts = _testAttempts[def.key];
             let attemptsHint = '';
             if (attempts && attempts.length) {
@@ -5491,9 +5482,13 @@ window.TraineeSystem = {
                        style="font-size:10px;text-decoration:underline;cursor:pointer;color:${color};margin-right:4px;"
                        title="${manualPassed?'בטל סימון ידני':'סמן כעבר ידנית'}">${manualPassed?'[בטל]':'[סמן]'}</span>`
                 : '';
+            // 2026-09-09, לפי בקשת לביא: תיקון באג — הטולטיפ הציג תמיד את מונה
+            // שיעורי הסיטאדיס (maxL) גם עבור testOrbus, שאמור להיספר לפי שיעורי
+            // אורבוס (_maxOrbusT). כעת מוצג המונה הנכון לפי סוג הטסט.
+            const _tipCount = def.isOrbus ? _maxOrbusT : maxL;
             return `<span style="padding:4px 10px;border-radius:6px;border:1.5px solid ${color};
                          background:${bg};color:${color};font-size:11px;font-weight:bold;display:inline-flex;align-items:center;gap:4px;"
-                    title="${def.key === 'chinuch-ms' ? `סיטאדיס: ${maxL}/${_thrSit}  |  אורבוס: ${_maxOrbusT}/${_thrOrb}` : `שיעורים: ${maxL}/${def.threshold}`}">
+                    title="שיעורים: ${_tipCount}/${def.threshold}">
                 ${icon} ${def.label}${hint}${attemptsHint}${adminToggle}
             </span>`;
         }).join('');
@@ -5878,22 +5873,20 @@ window.TraineeSystem = {
         // גם כשעברו למשימת אורבוס). מועבר לכאן — מוקדם, לפני כל return.
         this._renderTestChips(mission, isChinuchMission, _isSitadis, isOrbus);
 
-        // -- מיילסטון חניכה: בדיקה לפני כניסה לחניכה --
+        // -- שער חניכה: בדיקה לפני כניסה לחניכה --
+        // 2026-09-09, לפי בקשת לביא: chinuch-ms הוסר כאבן דרך עצמאית (הייתה
+        // כפילות לוגית ל-testOrbus). השער נבדק כעת ישירות מול testOrbus.
         if (isChinuchMission && this.currentId && typeof _hasMilestonePassed === 'function') {
-            const _chinuchPassed = _hasMilestonePassed(this.currentId, 'chinuch-ms', 0, t);
-            const _chinuchMode   = (typeof _getMilestoneMode === 'function') ? _getMilestoneMode('chinuch-ms') : 'block';
-            if (!_chinuchPassed) {
-                if (_chinuchMode === 'block') {
-                    chips.style.display = 'flex';
-                    chips.innerHTML = '<div style="padding:12px 16px;background:#f0fff4;border:1.5px solid #27ae60;border-radius:9px;color:#1e6e3a;font-size:13px;font-weight:bold;width:100%;">'
-                        + 'לא ניתן להתחיל חניכה — יש להשלים תחילה את כל שיעורי הקורס המעשי.<br>'
-                        + '<span style="font-weight:400;font-size:12px;">נדרש: 50 שיעורי קורס מעשי סיטאדיס + 7 שיעורי קורס מעשי אורבוס.</span>'
-                        + '</div>';
-                    return;
-                } else if (_chinuchMode === 'warn') {
-                    if (typeof showToast === 'function')
-                        showToast('שים לב: חניך זה טרם השלים את כל שיעורי הקורס המעשי', 'warning');
-                }
+            let _maxOrbusGate = 0;
+            (t?.lessons || []).forEach(l => {
+                if (l.mission === 'קורס מעשי אורבוס')
+                    (l.lessonNums || []).forEach(n => { if (n > _maxOrbusGate) _maxOrbusGate = n; });
+            });
+            const _chinuchPassed = _hasMilestonePassed(this.currentId, 'testOrbus', _maxOrbusGate, t);
+            const _chinuchMode   = (typeof _getMilestoneMode === 'function') ? _getMilestoneMode('testOrbus') : 'warn';
+            if (!_chinuchPassed && _chinuchMode === 'warn') {
+                if (typeof showToast === 'function')
+                    showToast('שים לב: חניך זה טרם עבר טסט אורבוס — תנאי לכניסה לחניכה', 'warning');
             }
         }
         // -------------------------------------------------
@@ -6768,11 +6761,14 @@ window.TraineeSystem = {
                 {level:4, name:'טוב',      minAvg:82, maxLessonsPerDay:5}
             ],
             requireSignature: true,
+            // 2026-09-09, לפי בקשת לביא: הוסר מצב 'block' לחלוטין (אחידות בין
+            // פאנל השיעור הידני לטופס סיכום יום — ר' תיעוד ב-_getMilestoneMode).
+            // chinuch-ms הוסר (כפילות ל-testOrbus) — testOrbus מתווסף כמפתח עצמאי.
             milestones: {
-                test10: 'block',
-                test30: 'block',
-                test50: 'block',
-                'chinuch-ms': 'block'
+                test10: 'warn',
+                test30: 'warn',
+                test50: 'warn',
+                testOrbus: 'warn'
             },
             mentorSeePractical: true
         };
@@ -6843,6 +6839,12 @@ window.TraineeSystem = {
                     if (snap.val().alertThresholds) this.settings.alertThresholds = snap.val().alertThresholds;
                     if (snap.val().loadLimits)      this.settings.loadLimits = snap.val().loadLimits;
                     if (snap.val().milestones)      this.settings.milestones = {...(defaults.milestones||{}), ...snap.val().milestones};
+                    // 2026-09-09, לפי בקשת לביא: מיגרציה חד-פעמית — הוסר מצב 'block'.
+                    // ערכים ישנים שנשמרו כ-'block' (למשל מהגדרות קודמות) מומרים ל-'warn'
+                    // בטעינה, כדי שהתצוגה בבורר תתאים למה שבאמת קורה במערכת.
+                    Object.keys(this.settings.milestones || {}).forEach(k => {
+                        if (this.settings.milestones[k] === 'block') this.settings.milestones[k] = 'warn';
+                    });
                     loaded = true;
                 }
             } catch(e) { console.warn('TraineeSettings Firebase load:', e); }
@@ -6976,7 +6978,7 @@ window.TraineeSystem = {
 
         // Milestones mode
         const _ms = this.settings.milestones || {};
-        ['test10','test30','test50','chinuch-ms'].forEach(k => {
+        ['test10','test30','test50','testOrbus'].forEach(k => {
             const sel = this.$('ts-m-' + k);
             if (sel) _ms[k] = sel.value;
         });
@@ -6988,7 +6990,6 @@ window.TraineeSystem = {
         _mth.test10            = _getNum('ts-m-test10-val',           10);
         _mth.test30            = _getNum('ts-m-test30-val',           30);
         _mth.test50            = _getNum('ts-m-test50-val',           50);
-        _mth['chinuch-sitadis'] = _getNum('ts-m-chinuch-sitadis-val', 50);
         _mth['chinuch-orbus']   = _getNum('ts-m-chinuch-orbus-val',    7);
         this.settings.milestoneThresholds = _mth;
     },
@@ -7522,11 +7523,11 @@ window.TraineeSystem = {
 
     _renderTab_milestones() {
         if (!this.settings) return;
-        const ms  = this.settings.milestones  || {test10:'block', test30:'block', test50:'block', 'chinuch-ms':'block'};
+        const ms  = this.settings.milestones  || {test10:'warn', test30:'warn', test50:'warn', testOrbus:'warn'};
         const mth = this.settings.milestoneThresholds || {};
-        ['test10','test30','test50','chinuch-ms'].forEach(k => {
+        ['test10','test30','test50','testOrbus'].forEach(k => {
             const sel = this.$('ts-m-' + k);
-            if (sel) sel.value = ms[k] || 'block';
+            if (sel) sel.value = ms[k] || 'warn';
         });
         // Populate threshold number inputs
         const _setVal = (id, def) => { const el = this.$(id); if (el) el.value = mth[id.replace('ts-m-','').replace('-val','')] ?? def; };
@@ -7534,14 +7535,12 @@ window.TraineeSystem = {
         _setVal('ts-m-test10-val',           10);
         _setVal('ts-m-test30-val',           30);
         _setVal('ts-m-test50-val',           50);
-        _setValKey('ts-m-chinuch-sitadis-val', 'chinuch-sitadis', 50);
         _setValKey('ts-m-chinuch-orbus-val',   'chinuch-orbus',   7);
         // Update description dynamically
         const descEl = this.$('ts-chinuch-desc');
         if (descEl) {
-            const s = mth['chinuch-sitadis'] ?? 50;
-            const o = mth['chinuch-orbus']   ?? 7;
-            descEl.textContent = `${s} שיעורי סיטאדיס ו-${o} שיעורי אורבוס חובה לפני כניסה לחניכה`;
+            const o = mth['chinuch-orbus'] ?? 7;
+            descEl.textContent = `נדרש לפני כניסה לחניכה (${o} שיעורי קורס מעשי אורבוס)`;
         }
         // Render per-trainee milestone status
         this._renderMilestoneTrainees();
@@ -7557,9 +7556,9 @@ window.TraineeSystem = {
         const _ms = window._milestonePassMap || {};
         container.innerHTML = this.trainees.map(t => {
             const tms = _ms[String(t.id)] || {};
-            const badges = ['test10','test30','test50','chinuch-ms'].map(k => {
+            const badges = ['test10','test30','test50','testOrbus'].map(k => {
                 const passed = tms[k] === true;
-                const label  = {test10:'טסט 10', test30:'טסט 30', test50:'טסט 50', 'chinuch-ms':'תנאי חניכה'}[k];
+                const label  = {test10:'טסט 10', test30:'טסט 30', test50:'טסט 50', testOrbus:'טסט אורבוס'}[k];
                 return `<button data-ms-trainee="${t.id}" data-ms-key="${k}"
                     style="padding:3px 8px;border-radius:5px;border:1.5px solid ${passed?'#27ae60':'#ddd'};
                            background:${passed?'#eafaf1':'white'};color:${passed?'#1a7a42':'#888'};
@@ -9635,7 +9634,11 @@ async function _loadMilestonePassMap() {
                 Object.keys(val).forEach(tid => {
                     window._milestonePassMap[tid] = {};
                     if (typeof val[tid] === 'object') {
-                        ['test10','test30','test50','chinuch-ms'].forEach(k => {
+                        // 2026-09-09, לפי בקשת לביא: chinuch-ms הוסר. גם תוקן פה תוך כדי —
+                        // testOrbus מעולם לא נטען בחזרה למפה הזו (רק test10/30/50/chinuch-ms
+                        // היו ברשימה), למרות שסימון ידני ע"י בוחן כן נשמר ל-Firebase תחת
+                        // המפתח הזה — כך שהסימון "אבד" בפועל בכל טעינת עמוד מחדש.
+                        ['test10','test30','test50','testOrbus'].forEach(k => {
                             if (val[tid][k] === true) window._milestonePassMap[tid][k] = true;
                         });
                     }
@@ -9657,9 +9660,14 @@ async function _loadMilestonePassMap() {
 }
 
 // Get milestone mode for a key (from TraineeSystem settings)
+// 2026-09-09, לפי בקשת לביא: מצב 'block' הוסר לחלוטין מהמערכת (היה מיושם
+// רק בפאנל השיעור הידני ולא בטופס סיכום יום — חוסר-אחידות מסוכן, ר' דיון
+// עם לביא). כל ערך 'block' ישן (שנשאר ב-Firebase לפני המיגרציה בטעינה)
+// מטופל כאן כ-'warn' באופן מגונן, כדי שאף קריאה במערכת לא תחסום בפועל.
 function _getMilestoneMode(key) {
     const ms = (typeof TraineeSystem !== 'undefined' && TraineeSystem.settings?.milestones) || {};
-    return ms[key] || 'block';
+    const mode = ms[key] || 'warn';
+    return mode === 'block' ? 'warn' : mode;
 }
 
 // Check if trainee has passed a milestone (manual override OR lesson count)
@@ -9675,33 +9683,60 @@ function _getMilestoneThreshold(key, fallback) {
 function _hasMilestonePassed(traineeId, key, lessonCount, traineeObj) {
     // Manual override
     if (window._milestonePassMap && window._milestonePassMap[String(traineeId)]?.[key] === true) return true;
-    // chinuch-ms: requires configurable sitadis + orbus counts
-    if (key === 'chinuch-ms') {
-        if (!traineeObj && typeof TraineeSystem !== 'undefined' && TraineeSystem.courses) {
+    // Auto: based on configurable lesson count threshold
+    // 2026-09-09, לפי בקשת לביא: chinuch-ms הוסר (היה כפול ל-testOrbus —
+    // ר' תיעוד ב-#213/#214). testOrbus נספר לפי שיעורי אורבוס (chinuch-orbus,
+    // ברירת מחדל 7), לא לפי סף נפרד.
+    const thresholds = {
+        test10:    _getMilestoneThreshold('test10', 10),
+        test30:    _getMilestoneThreshold('test30', 30),
+        test50:    _getMilestoneThreshold('test50', 50),
+        testOrbus: _getMilestoneThreshold('chinuch-orbus', 7)
+    };
+    return lessonCount >= (thresholds[key] || 99);
+}
+
+// 2026-09-09, לפי בקשת לביא: אחידות בין הפאנל הידני (updateChips) לטופס
+// "סיכום יום" — עד כה הבדיקה הייתה קיימת רק בפאנל הידני, וטופס סיכום יום
+// (הנתיב שרוב הדיווחים עוברים בו בפועל) לא הציג שום אזהרה. מצב 'block'
+// הוסר לחלוטין מהמערכת (ר' _getMilestoneMode) — כאן, כמו שם, זו רק
+// אזהרה (טוסט) שלא עוצרת שמירה. נקראת פעם אחת per טרייני אחרי ההזרקה,
+// לא per lesson — כדי לא להציף בטוסטים כשיש כמה שורות לאותו חניך בטופס.
+function _checkMilestoneWarnings(traineeId) {
+    if (typeof showToast !== 'function') return;
+    let traineeObj = null;
+    if (typeof TraineeSystem !== 'undefined') {
+        traineeObj = (TraineeSystem.trainees || []).find(x => String(x.id) === String(traineeId));
+        if (!traineeObj && TraineeSystem.courses) {
             for (const c of TraineeSystem.courses) {
-                const t = (c.trainees || []).find(t => String(t.id) === String(traineeId));
+                const t = (c.trainees || []).find(x => String(x.id) === String(traineeId));
                 if (t) { traineeObj = t; break; }
             }
         }
-        if (!traineeObj) return false;
-        let maxSitadis = 0, maxOrbus = 0;
-        (traineeObj.lessons || []).forEach(l => {
-            if (l.mission === 'קורס מעשי סיטאדיס' || l.mission === 'קורס מעשי' || l.mission === 'קורס')
-                (l.lessonNums || []).forEach(n => { if (n > maxSitadis) maxSitadis = n; });
-            if (l.mission === 'קורס מעשי אורבוס')
-                (l.lessonNums || []).forEach(n => { if (n > maxOrbus) maxOrbus = n; });
-        });
-        const thrSit = _getMilestoneThreshold('chinuch-sitadis', 50);
-        const thrOrb = _getMilestoneThreshold('chinuch-orbus',   7);
-        return maxSitadis >= thrSit && maxOrbus >= thrOrb;
     }
-    // Auto: based on configurable lesson count threshold
-    const thresholds = {
-        test10: _getMilestoneThreshold('test10', 10),
-        test30: _getMilestoneThreshold('test30', 30),
-        test50: _getMilestoneThreshold('test50', 50)
-    };
-    return lessonCount >= (thresholds[key] || 99);
+    if (!traineeObj) return;
+    let maxSitadis = 0, maxOrbus = 0;
+    (traineeObj.lessons || []).forEach(l => {
+        if (l.mission === 'קורס מעשי סיטאדיס' || l.mission === 'קורס מעשי' || l.mission === 'קורס')
+            (l.lessonNums || []).forEach(n => { if (n > maxSitadis) maxSitadis = n; });
+        if (l.mission === 'קורס מעשי אורבוס')
+            (l.lessonNums || []).forEach(n => { if (n > maxOrbus) maxOrbus = n; });
+    });
+    const pending = [];
+    // 2026-09-09, לפי בקשת לביא: chinuch-ms -> testOrbus. חשוב: testOrbus נספר
+    // לפי שיעורי אורבוס (maxOrbus), לא סיטאדיס — אותו דפוס-שורש כמו הבאג
+    // שתוקן בטולטיפ (_renderDetailMilestoneBadges).
+    ['test10', 'test30', 'test50', 'testOrbus'].forEach(key => {
+        const mode = _getMilestoneMode(key);
+        if (mode === 'ignore') return;
+        const count = key === 'testOrbus' ? maxOrbus : maxSitadis;
+        if (_hasMilestonePassed(traineeId, key, count, traineeObj)) return;
+        const label = { test10: 'טסט 10', test30: 'טסט 30', test50: 'טסט 50', testOrbus: 'טסט אורבוס' }[key];
+        pending.push(label);
+    });
+    if (pending.length) {
+        showToast(`⚠️ ${_esc(traineeObj.name || '')}: טרם עבר — ${pending.join(', ')}`, 'warning');
+    }
 }
 
 async function doMentorLogin(){
@@ -23802,21 +23837,20 @@ function _urUpdateChips(idx) {
     }
   }
 
-  // -- מיילסטון חניכה: בדיקה לפני כניסה לחניכה --
+  // -- שער חניכה: בדיקה לפני כניסה לחניכה --
+  // 2026-09-09, לפי בקשת לביא: chinuch-ms הוסר כאבן דרך עצמאית (כפילות
+  // לוגית ל-testOrbus). השער נבדק כעת ישירות מול testOrbus.
   if (isChinuchMission && traineeId && typeof _hasMilestonePassed === 'function') {
-    const _chinuchPassed = _hasMilestonePassed(traineeId, 'chinuch-ms', 0, trainee);
-    const _chinuchMode   = (typeof _getMilestoneMode === 'function') ? _getMilestoneMode('chinuch-ms') : 'block';
-    if (!_chinuchPassed) {
-      if (_chinuchMode === 'block') {
-        chipsEl.innerHTML = '<div style="padding:10px 14px;background:#f0fff4;border:1.5px solid #27ae60;border-radius:9px;color:#1e6e3a;font-size:13px;font-weight:bold;width:100%;">'
-          + 'לא ניתן להתחיל חניכה — יש להשלים תחילה את כל שיעורי הקורס המעשי.<br>'
-          + '<span style="font-weight:400;font-size:12px;">נדרש: 50 שיעורי קורס מעשי סיטאדיס + 7 שיעורי קורס מעשי אורבוס.</span>'
-          + '</div>';
-        return;
-      } else if (_chinuchMode === 'warn') {
-        if (typeof showToast === 'function')
-          showToast('שים לב: חניך זה טרם השלים את כל שיעורי הקורס המעשי', 'warning');
-      }
+    let _maxOrbusGate = 0;
+    (trainee?.lessons || []).forEach(l => {
+      if (l.mission === 'קורס מעשי אורבוס')
+        (l.lessonNums || []).forEach(n => { if (n > _maxOrbusGate) _maxOrbusGate = n; });
+    });
+    const _chinuchPassed = _hasMilestonePassed(traineeId, 'testOrbus', _maxOrbusGate, trainee);
+    const _chinuchMode   = (typeof _getMilestoneMode === 'function') ? _getMilestoneMode('testOrbus') : 'warn';
+    if (!_chinuchPassed && _chinuchMode === 'warn') {
+      if (typeof showToast === 'function')
+        showToast('שים לב: חניך זה טרם עבר טסט אורבוס — תנאי לכניסה לחניכה', 'warning');
     }
   }
   // -------------------------------------------------
@@ -24286,6 +24320,17 @@ async function submitUnifiedReport() {
       for (const { traineeId, testKey, testResult } of lessonResults) {
         if (!traineeId || traineeId.startsWith('_free_') || !testKey || testResult !== 'pass') continue;
         try { await _setMilestonePassExplicit(traineeId, testKey, true); } catch(e) { console.warn('milestone auto-set:', e); }
+      }
+
+      // 2026-09-09, לפי בקשת לביא: אזהרת מיילסטון (לא חסימה) — אחידות מול הפאנל
+      // הידני בכרטיס חניך. פעם אחת per חניך ייחודי בטופס, לא per שורה.
+      if (typeof _checkMilestoneWarnings === 'function') {
+        const _warnedTrainees = new Set();
+        for (const { traineeId } of lessonResults) {
+          if (!traineeId || traineeId.startsWith('_free_') || _warnedTrainees.has(traineeId)) continue;
+          _warnedTrainees.add(traineeId);
+          try { _checkMilestoneWarnings(traineeId); } catch(e) { console.warn('milestone warn check:', e); }
+        }
       }
 
       // Now save all courses (including any temp ones that survived) to Firebase + localStorage
@@ -28290,7 +28335,10 @@ function _traineeStageIsChinuch(t) {
       .flatMap(l => l.lessonNums || []);
     const maxOrbus = orbusLessons.length ? Math.max(...orbusLessons) : 0;
     const msEntry = passMap[String(t.id)] || {};
-    const chinuchMs = !!(msEntry['chinuch-ms'] || (maxSitadis >= 50 && maxOrbus >= 7));
+    // 2026-09-09, לפי בקשת לביא: chinuch-ms הוסר (כפילות ל-testOrbus). מקור
+    // האמת היחיד לזכאות-לחניכה הוא כעת testOrbus (ידני או אוטומטי לפי סף אורבוס).
+    const _thrOrbGate = (typeof _getMilestoneThreshold === 'function') ? _getMilestoneThreshold('chinuch-orbus', 7) : 7;
+    const chinuchMs = !!(msEntry['testOrbus'] || maxOrbus >= _thrOrbGate);
     const maxChinuch = lessons.reduce((acc, l) => {
       if (l.mission === 'חניכה') acc += (l.lessonNums || []).length;
       return acc;
@@ -28373,11 +28421,13 @@ function _generateTraineeSummary() {
 
     // Milestones
     const msEntry  = passMap[String(t.id)] || {};
+    // 2026-09-09, לפי בקשת לביא: chinuch-ms הוסר (כפילות ל-testOrbus).
+    const _thrOrbGateSum = (typeof _getMilestoneThreshold === 'function') ? _getMilestoneThreshold('chinuch-orbus', 7) : 7;
     const msStatus = {
       test10:    !!(msEntry.test10    || maxSitadis >= 10),
       test30:    !!(msEntry.test30    || maxSitadis >= 30),
       test50:    !!(msEntry.test50    || maxSitadis >= 50),
-      chinuchMs: !!(msEntry['chinuch-ms'] || (maxSitadis >= 50 && maxOrbus >= 7)),
+      chinuchMs: !!(msEntry['testOrbus'] || maxOrbus >= _thrOrbGateSum),
     };
 
     // Stage
@@ -28403,7 +28453,7 @@ function _generateTraineeSummary() {
     if      (stage === 'שלב תפעולי')                       pendingTest = maxSitadis >= 10 && !msEntry.test10;
     else if (stage === 'שלב מסחרי')                         pendingTest = maxSitadis >= 30 && !msEntry.test30;
     else if (stage === 'השתלמות אורבוס')                    pendingTest = maxSitadis >= 50 && !msEntry.test50;
-    else if (stage === 'מוכן לחניכה' || stage === 'בחניכה')  pendingTest = (maxSitadis >= 50 && maxOrbus >= 7) && !msEntry['chinuch-ms'];
+    else if (stage === 'מוכן לחניכה' || stage === 'בחניכה')  pendingTest = (maxOrbus >= _thrOrbGateSum) && !msEntry['testOrbus'];
 
     // Risk Score
     // 2026-08-19: הסיווג "מתקשה" מבוסס אך ורק על ציונים — לביא ביקש להוציא שעות
@@ -28858,7 +28908,7 @@ function _renderTraineeSummaryPanel() {
   var milestoneHtml=[];
   if(summary.milestoneStats){
     var ms=summary.milestoneStats;var tot=summary.activeTrainees||1;
-    var msDefs=[['טסט 10',ms.test10,'#3498db'],['טסט 30',ms.test30,'#f39c12'],['טסט 50',ms.test50,'#8e44ad'],['תנאי חניכה',ms.chinuchMs,'#e67e22']];
+    var msDefs=[['טסט 10',ms.test10,'#3498db'],['טסט 30',ms.test30,'#f39c12'],['טסט 50',ms.test50,'#8e44ad'],['מוכן לחניכה',ms.chinuchMs,'#e67e22']];
     milestoneHtml.push(_tsSectionOpen('🏆','אבני דרך','#f5eef8','#8e44ad','#6c3483'));
     milestoneHtml.push(_tsSectionHeadClose());
     milestoneHtml.push('<div style="display:flex;flex-direction:column;gap:8px;">');
