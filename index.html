@@ -14,7 +14,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 138</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 139</title>
 
 <style>
 
@@ -1437,7 +1437,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 198;
+  const APP_VERSION = 199;
 
   // 2026-09-07, לפי בקשת לביא: היה קשה לבדוק באיזו גרסה הדפדפן בפועל טוען
   // (כותרת הטאב נחתכת כשיש הרבה טאבים פתוחים, ואי אפשר תמיד לראות "DEPLOYED
@@ -22816,12 +22816,18 @@ function openUnifiedReport(prefillDate) {
   // מ-Firebase ואז מרעננים את ה-chips של כל בלוקי המשוב הפתוחים כרגע, כדי
   // שבזמן שהמדריך בפועל מגיע לבחירת מספרי שיעור, הנתונים כבר עדכניים.
   if (typeof TraineeSystem !== 'undefined' && typeof TraineeSystem.loadCourses === 'function') {
-    TraineeSystem.loadCourses().then(() => {
+    Promise.all([
+      TraineeSystem.loadCourses(),
+      (typeof loadSettings === 'function') ? loadSettings() : Promise.resolve(),
+      (typeof _loadMilestonePassMap === 'function') ? _loadMilestonePassMap() : Promise.resolve()
+    ]).then(() => {
       document.querySelectorAll('[id^="ur-fb-"][id$="-chips-wrap"]').forEach(wrap => {
         const m = /^ur-fb-(\d+)-chips-wrap$/.exec(wrap.id);
         if (m && typeof _urUpdateChips === 'function') { try { _urUpdateChips(m[1]); } catch(e) {} }
       });
-    }).catch(()=>{});
+    }).catch(()=>{
+      try{ showToast('⚠️ לא הצלחנו לרענן נתוני התקדמות — ייתכן שהתצוגה אינה עדכנית. בדוק חיבור ונסה שוב', 'warning'); }catch(e){}
+    });
   }
 }
 
