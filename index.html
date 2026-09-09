@@ -14,7 +14,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 139</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 140</title>
 
 <style>
 
@@ -1437,7 +1437,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 199;
+  const APP_VERSION = 200;
 
   // 2026-09-07, לפי בקשת לביא: היה קשה לבדוק באיזו גרסה הדפדפן בפועל טוען
   // (כותרת הטאב נחתכת כשיש הרבה טאבים פתוחים, ואי אפשר תמיד לראות "DEPLOYED
@@ -5717,6 +5717,16 @@ window.TraineeSystem = {
         setTimeout(() => this.initCanvas(), 200);
         this.resetForm();
         this.renderDetail();
+        // #209: same staleness bug class as #208 (there: "סיכום יום" chips), here: the
+        // trainee file itself. renderDetail() above draws from whatever is already in
+        // memory — on a long-lived/mobile session that can be hours old. Refresh the
+        // same three sources in the background and redraw once they land, without
+        // blocking the file from opening immediately with whatever we already have.
+        Promise.all([
+            this.loadCourses(),
+            (typeof loadSettings === 'function') ? loadSettings() : Promise.resolve(),
+            (typeof _loadMilestonePassMap === 'function') ? _loadMilestonePassMap() : Promise.resolve()
+        ]).then(() => { if (this.currentId === id) this.renderDetail(); }).catch(() => {});
         // 2026-08-19: גלילה לתיק החניך — בלי זה התצוגה מתחלפת אך המשתמש
         // נשאר גלול איפה שהיה ולא שם לב שהתיק נפתח.
         requestAnimationFrame(() => {
@@ -22819,7 +22829,8 @@ function openUnifiedReport(prefillDate) {
     Promise.all([
       TraineeSystem.loadCourses(),
       (typeof loadSettings === 'function') ? loadSettings() : Promise.resolve(),
-      (typeof _loadMilestonePassMap === 'function') ? _loadMilestonePassMap() : Promise.resolve()
+      (typeof _loadMilestonePassMap === 'function') ? _loadMilestonePassMap() : Promise.resolve(),
+      (typeof loadInstructors === 'function') ? loadInstructors() : Promise.resolve()
     ]).then(() => {
       document.querySelectorAll('[id^="ur-fb-"][id$="-chips-wrap"]').forEach(wrap => {
         const m = /^ur-fb-(\d+)-chips-wrap$/.exec(wrap.id);
