@@ -14,7 +14,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 146</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 148</title>
 
 <style>
 
@@ -1437,7 +1437,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 206;
+  const APP_VERSION = 208;
 
   // 2026-09-07, לפי בקשת לביא: היה קשה לבדוק באיזו גרסה הדפדפן בפועל טוען
   // (כותרת הטאב נחתכת כשיש הרבה טאבים פתוחים, ואי אפשר תמיד לראות "DEPLOYED
@@ -21615,9 +21615,11 @@ function openLessonBreakdownReport() {
       .map(m => m.name)
       .sort();
     const _allMissions = [...new Set([..._baseMissions, ..._customMissions])];
+    // 2026-09-10, לפי בקשת לביא: שם קצר ("טסטים" בלי פירוט — הפירוט מיד בתת-
+    // הבורר), וממוקם אחרון ברשימה (לא סוג משימה נפוץ לבדוק, לא צריך להיות ראשון).
     missionSel.innerHTML = '<option value="">הכל</option>'
-      + '<option value="__test__">🎯 טסט (10/30/50/אורבוס)</option>'
-      + _allMissions.map(m => `<option value="${_esc(m)}">${_esc(m)}</option>`).join('');
+      + _allMissions.map(m => `<option value="${_esc(m)}">${_esc(m)}</option>`).join('')
+      + '<option value="__test__">🎯 טסטים</option>';
   }
   // תת-בורר סוג טסט
   const subSel = document.getElementById('lb-test-subtype');
@@ -21760,7 +21762,7 @@ function _renderLessonBreakdownTable() {
       // 2026-09-09: תיקון — הצגת תווית קריאה ("טסט" / סוג ספציפי) במקום הערך
       // הפנימי "__test__" כשמסננים לפי טסט.
       const _missionLabel = missionFilter === '__test__'
-        ? (document.getElementById('lb-test-subtype')?.value || 'טסט (כל הסוגים)')
+        ? (document.getElementById('lb-test-subtype')?.value || 'טסטים (כל הסוגים)')
         : missionFilter;
       summaryEl.innerHTML += `<div style="font-weight:normal;font-size:12px;color:#555;margin-top:6px;">פירוט "${_esc(_missionLabel)}" לפי מדריך (${label}): ${breakdown}</div>`;
     }
@@ -24897,7 +24899,7 @@ async function openViewUnifiedReport(date, instructorName) {
       if (report.feedbackDetails && report.feedbackDetails.length) {
         const labelMap = {};
         (report.skillLabels || []).forEach(s => { labelMap[s.id] = s.name; });
-        feedbackEl.innerHTML = report.feedbackDetails.map(fb => {
+        feedbackEl.innerHTML = report.feedbackDetails.map((fb, fbIdx) => {
           const scoresHtml = Object.keys(fb.skills || {}).map(id => {
             return `<span style="display:inline-flex;align-items:center;gap:4px;background:#eef3fb;border-radius:6px;padding:2px 8px;font-size:12px;margin:2px 2px 2px 0;"><b>${_esc(labelMap[id] || id)}:</b> ${fb.skills[id]}/10</span>`;
           }).join('');
@@ -24905,7 +24907,13 @@ async function openViewUnifiedReport(date, instructorName) {
           const resultBadge = fb.testResult === 'pass' ? '<span style="background:#d5f0e0;color:#1e8449;border-radius:6px;padding:2px 8px;font-size:11.5px;font-weight:bold;margin-right:6px;">✅ עבר</span>'
                             : fb.testResult === 'fail' ? '<span style="background:#fdecea;color:#c0392b;border-radius:6px;padding:2px 8px;font-size:11.5px;font-weight:bold;margin-right:6px;">❌ לא עבר</span>'
                             : '';
+          // 2026-09-10, לפי בקשת לביא: הסרת משוב שגוי של חניך בודד, בלי למחוק
+          // את כל הדוח (ר' _deleteReportFeedbackEntry) — מנהל בלבד.
+          const _delBtn = (typeof currentRole === 'undefined' || currentRole === 'admin')
+            ? `<button onclick="_deleteReportFeedbackEntry('fb', ${fbIdx})" title="הסר משוב זה מהדוח" style="background:none;border:1px solid #e74c3c;color:#e74c3c;border-radius:6px;padding:2px 8px;cursor:pointer;font-size:11px;float:left;">🗑️ הסר</button>`
+            : '';
           return `<div style="border:1px solid #eee;border-radius:8px;padding:10px 12px;margin-bottom:8px;background:#fff;">
+            ${_delBtn}
             <div style="font-weight:bold;font-size:13px;margin-bottom:4px;">${_esc(fb.name)} <span style="color:#888;font-weight:400;font-size:12px;">— ${_esc(fb.mission||'')}</span> ${resultBadge}</div>
             ${lessonNumsStr ? `<div style="font-size:12px;color:#666;margin-bottom:4px;">${_esc(lessonNumsStr)}</div>` : ''}
             ${scoresHtml ? `<div style="margin-bottom:4px;">${scoresHtml}</div>` : ''}
@@ -24935,6 +24943,12 @@ async function openViewUnifiedReport(date, instructorName) {
         const resultBadge = lesson.testResult === 'pass' ? '<span style="background:#d5f0e0;color:#1e8449;border-radius:6px;padding:2px 8px;font-size:11.5px;font-weight:bold;margin-right:6px;">✅ עבר</span>'
                           : lesson.testResult === 'fail' ? '<span style="background:#fdecea;color:#c0392b;border-radius:6px;padding:2px 8px;font-size:11.5px;font-weight:bold;margin-right:6px;">❌ לא עבר</span>'
                           : '';
+        // 2026-09-10, לפי בקשת לביא: הסרת משוב שגוי של חניך בודד. כאן כבר יש
+        // הפניה ישירה ל-trainee+lesson (לא רק ל-feedbackDetails), אז המחיקה גם
+        // מנקה את יומן השיעורים של החניך, לא רק את הדוח.
+        const _delBtnM = (typeof currentRole === 'undefined' || currentRole === 'admin')
+          ? `<button onclick="_deleteReportFeedbackEntry('match', ${idx})" title="הסר משוב זה מהדוח ומיומן השיעורים" style="background:none;border:1px solid #e74c3c;color:#e74c3c;border-radius:6px;padding:2px 8px;cursor:pointer;font-size:11px;float:left;">🗑️ הסר</button>`
+          : '';
         // 2026-08-19: אם אין מספר שיעור משויך — שדה שיוך ישיר כאן, במקום להפנות
         // לכלי נפרד. שיוך מיידי מחשב מחדש את בר ההתקדמות וחוסם את השיעור בטופס.
         const assignHtml = (!hasNums && !isTestLesson)
@@ -24945,6 +24959,7 @@ async function openViewUnifiedReport(date, instructorName) {
             </div>`
           : '';
         return `<div id="vur-match-row-${idx}" style="border:1px solid #eee;border-radius:8px;padding:10px 12px;margin-bottom:8px;background:#fff;">
+          ${_delBtnM}
           <div style="font-weight:bold;font-size:13px;margin-bottom:4px;">${_esc(trainee.name)} <span style="color:#888;font-weight:400;font-size:12px;">— ${_esc(lesson.mission||'')}</span> ${resultBadge}</div>
           ${lessonNumsStr ? `<div style="font-size:12px;color:#666;margin-bottom:4px;">${_esc(lessonNumsStr)}</div>` : ''}
           ${assignHtml}
@@ -25009,6 +25024,113 @@ async function _assignInlineLessonNum(idx) {
 function closeViewUnifiedReport() {
   const overlay = document.getElementById('viewUnifiedReportOverlay');
   if (overlay) overlay.classList.remove('open');
+}
+
+// 2026-09-10, לפי בקשת לביא: הסרת משוב שגוי של **חניך בודד** מתוך דוח, בלי
+// למחוק את כל הדוח (בניגוד ל-deleteUnifiedReport שמוחקת הכול). שני מקורות
+// אחסון נפרדים (ר' #211) — feedbackDetails בתוך הדוח, ורשומת שיעור נפרדת
+// בתיק החניך — שניהם מנוקים כשאפשר לזהות התאמה בטוחה:
+// kind='match': מגיע משורה שכבר יש לה הפניה ישירה ל-trainee+lesson (נבנתה
+//   מ-t.lessons, ר' window._vurMatches) — הסרה וודאית משני המקומות.
+// kind='fb': מגיע משורה שהוצגה ישירות מ-feedbackDetails (כי ההתאמה הכללית
+//   לא הייתה שלמה) — מבצעת חיפוש-התאמה ממוקד (שם+משימה+מספרי שיעור) רק
+//   עבור הפריט הזה; אם לא נמצאה התאמה חד-משמעית, מוסר רק מהדוח (ומוצגת
+//   הודעה מפורשת על כך, לא שקט).
+async function _deleteReportFeedbackEntry(kind, idx) {
+  const cur = window._vurCurrent;
+  if (!cur) return;
+  if (typeof currentRole !== 'undefined' && currentRole !== 'admin') return;
+  if (typeof _blockSaveIfNewerVersion === 'function' && _blockSaveIfNewerVersion()) return;
+
+  const { date, instructorName } = cur;
+  const reportKey = `${date}__${instructorName}__unified`;
+  const report = (window._taskReportsCache && window._taskReportsCache[reportKey]) || null;
+  if (!report || !Array.isArray(report.feedbackDetails)) {
+    showToast('שגיאה: הדוח לא נמצא בזיכרון — סגור ופתח מחדש את הצפייה ונסה שוב', 'warning');
+    return;
+  }
+
+  let traineeObj = null, lessonObj = null, fbArrIdx = -1, fbEntry = null;
+  const _sortedNums = arr => JSON.stringify((arr || []).slice().sort((a, b) => a - b));
+
+  if (kind === 'match') {
+    const m = (window._vurMatches || [])[idx];
+    if (!m) { showToast('שגיאה: השורה לא נמצאה — רענן ונסה שוב', 'warning'); return; }
+    traineeObj = m.trainee; lessonObj = m.lesson;
+    fbArrIdx = report.feedbackDetails.findIndex(fb =>
+      fb.name === traineeObj.name && fb.mission === lessonObj.mission && _sortedNums(fb.lessonNums) === _sortedNums(lessonObj.lessonNums));
+    if (fbArrIdx >= 0) fbEntry = report.feedbackDetails[fbArrIdx];
+  } else {
+    fbEntry = report.feedbackDetails[idx];
+    if (!fbEntry) { showToast('שגיאה: הפריט לא נמצא — רענן ונסה שוב', 'warning'); return; }
+    fbArrIdx = idx;
+    let allTrainees = [];
+    if (typeof TraineeSystem !== 'undefined') {
+      if (Array.isArray(TraineeSystem.courses) && TraineeSystem.courses.length)
+        TraineeSystem.courses.forEach(c => { if (Array.isArray(c.trainees)) allTrainees.push(...c.trainees); });
+      else if (Array.isArray(TraineeSystem.trainees)) allTrainees = TraineeSystem.trainees;
+    }
+    const candidate = allTrainees.find(t => t.name === fbEntry.name);
+    if (candidate) {
+      const lessonMatch = (candidate.lessons || []).find(l =>
+        l.date === date && l.ins === instructorName && l.mission === fbEntry.mission && _sortedNums(l.lessonNums) === _sortedNums(fbEntry.lessonNums));
+      if (lessonMatch) { traineeObj = candidate; lessonObj = lessonMatch; }
+    }
+  }
+
+  const label = (fbEntry && fbEntry.name) || (traineeObj && traineeObj.name) || 'חניך';
+  const confirmMsg = `להסיר את המשוב של <b>${_esc(label)}</b> מהדוח?`
+    + (traineeObj && lessonObj
+        ? '<br><small>נמצאה גם רשומת שיעור תואמת בתיק החניך — גם היא תוסר.</small>'
+        : '<br><small style="color:#e67e22;">⚠️ לא אותרה רשומת שיעור תואמת בתיק החניך באופן חד-משמעי — יוסר רק המשוב מהדוח. אם קיימת רשומה בתיק החניך, יש למחוק אותה משם בנפרד.</small>')
+    + '<br><br>⚠️ פעולה זו אינה הפיכה.';
+
+  const _doDelete = async () => {
+    // 1. הסרה מ-feedbackDetails ושמירת הדוח (נתיב ממוקד, לא .set() על כל העץ)
+    report.feedbackDetails.splice(fbArrIdx, 1);
+    report.feedbackCount = report.feedbackDetails.length;
+    try {
+      const lsKey = 'taskReports_' + date;
+      const existing = JSON.parse(localStorage.getItem(lsKey) || '{}');
+      existing[reportKey] = report;
+      localStorage.setItem(lsKey, JSON.stringify(existing));
+      if (window._taskReportsCache) window._taskReportsCache[reportKey] = report;
+      if (window._fbDb) {
+        const safeKey = instructorName.replace(/[.#$[\]/]/g, '_') + '__unified';
+        await _fbSet(_fbRef(_db, `taskReports/${date}/${safeKey}`), report);
+      }
+    } catch(e) { console.warn('_deleteReportFeedbackEntry report save:', e); showToast('שגיאה בשמירת הדוח', 'warning'); return; }
+
+    // 2. הסרת רשומת השיעור התואמת מתיק החניך, אם אותרה (כתיבה ממוקדת לחניך
+    //    הזה בלבד — אותו דפוס בדיוק כמו addLessonFromExternal/deleteUnifiedReport).
+    if (traineeObj && lessonObj) {
+      try {
+        const lIdx = traineeObj.lessons.indexOf(lessonObj);
+        if (lIdx >= 0) traineeObj.lessons.splice(lIdx, 1);
+        if (typeof TraineeSystem !== 'undefined' && window._fbDb) {
+          let ownCourse = null;
+          TraineeSystem.courses.forEach(c => { if ((c.trainees || []).includes(traineeObj)) ownCourse = c; });
+          if (ownCourse) await TraineeSystem.coursesRef.child(ownCourse.id).child('trainees').child(TraineeSystem._fbKey(traineeObj.id)).set(traineeObj);
+        }
+        try { localStorage.setItem('trainee_courses', JSON.stringify(TraineeSystem.courses)); } catch(e) {}
+      } catch(e) { console.warn('_deleteReportFeedbackEntry lesson cleanup:', e); }
+    }
+
+    window._traineeSummaryCache = null;
+    try { TraineeSystem.renderList(); } catch(e) {}
+    try { if (TraineeSystem.currentId) TraineeSystem.renderDetail(); } catch(e) {}
+    try { _renderTraineeSummaryPanel(); } catch(e) {}
+
+    _logAction('delete_report_feedback_entry', `הוסר משוב יחיד (${label}) מדוח ${instructorName} — ${date}${traineeObj && lessonObj ? ' (כולל רשומת שיעור בתיק)' : ' (רק מהדוח)'}`);
+    showToast(traineeObj && lessonObj ? '🗑️ המשוב הוסר מהדוח ומתיק החניך' : '🗑️ המשוב הוסר מהדוח', 'success');
+    openViewUnifiedReport(date, instructorName);
+  };
+
+  if (typeof TraineeSystem !== 'undefined' && typeof TraineeSystem.showConfirm === 'function') {
+    TraineeSystem.showConfirm(confirmMsg, _doDelete);
+  } else if (confirm(confirmMsg.replace(/<[^>]+>/g, ''))) {
+    _doDelete();
+  }
 }
 
 // 2026-08-30, לפי בקשת לביא: מחיקת דוח "סיכום יום" קיים (מנהל בלבד) — כדי
