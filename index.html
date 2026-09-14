@@ -1437,7 +1437,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 214;
+  const APP_VERSION = 216;
 
   // 2026-09-07, לפי בקשת לביא: היה קשה לבדוק באיזו גרסה הדפדפן בפועל טוען
   // (כותרת הטאב נחתכת כשיש הרבה טאבים פתוחים, ואי אפשר תמיד לראות "DEPLOYED
@@ -24551,6 +24551,12 @@ async function _runMissingLessonScan(){
     }
   }
 
+  // 2026-09-14, לפי בקשת לביא: לביא מצא ברשימת "חסר" רשומה שהוא עצמו מחק
+  // בכוונה מתיק חניך (הוזנה בטעות מלכתחילה) — הסריקה חזרה והציעה "לשחזר" אותה
+  // בכל הרצה מחדש, בלי דרך לסמן "לא, זה בכוונה, לא לשחזר". טוענים כאן רשימת
+  // החרגות שמורה מ-Firebase (settings/missingLessonIgnoreList) לפני הסיווג.
+  const _ignoreList = await _loadMissingLessonIgnoreList();
+
   // בונים אינדקס שם→[{trainee,course}] מכל התלמידים בכל הקורסים, לזיהוי כפילויות שם
   const byName = {};
   if (typeof TraineeSystem !== 'undefined' && Array.isArray(TraineeSystem.courses)) {
@@ -24583,12 +24589,22 @@ async function _runMissingLessonScan(){
         if (already) { status = 'ok'; note = 'קיים בתיק — תקין'; }
         else { status = 'missing'; note = 'לא נמצאה רשומה תואמת בתיק — מועמד לשחזור'; }
       }
-      results.push({
+      const rowObj = {
         reportDate: report.date, instructor: report.instructorName, traineeName: fb.name,
         mission: fb.mission, lessonNums: fb.lessonNums, status, note,
         traineeId: targetTrainee ? targetTrainee.id : null, courseId: targetCourseId,
-        fbFull: fb // שדות מלאים (skills/note/extraDesc) — לשימוש שלב 2 (שחזור)
-      });
+        fbFull: fb, // שדות מלאים (skills/note/extraDesc) — לשימוש שלב 2 (שחזור)
+        _idx: results.length
+      };
+      // רשומה שסומנה בעבר כ"החרגה" — מוצגת ככזו במקום "חסר", ולא נכנסת למניין השחזור.
+      if (rowObj.status === 'missing') {
+        const ig = _ignoreList[_missingLessonIgnoreKey(rowObj)];
+        if (ig) {
+          rowObj.status = 'ignored';
+          rowObj.note = 'הוחרג ע"י ' + (ig.ignoredBy || '?') + (ig.reason ? (' — ' + ig.reason) : '');
+        }
+      }
+      results.push(rowObj);
     });
   });
 
@@ -24596,29 +24612,119 @@ async function _runMissingLessonScan(){
   _showMissingLessonScanResults(results, label);
 }
 
+// 2026-09-14, לפי בקשת לביא: מפתח יציב לרשומה בודדת ברשימת "שיעורים חסרים" —
+// תאריך+מדריך+חניך+משימה+מספרי שיעור — כדי שהחרגה שנשמרה תזוהה שוב בסריקות
+// עתידיות, גם אם סדר הרשומות משתנה. עובר דרך _msgKey לתקינות כמפתח Firebase.
+function _missingLessonIgnoreKey(r) {
+  const raw = [r.reportDate, r.instructor, r.traineeName, r.mission, (r.lessonNums||[]).slice().sort((a,b)=>a-b).join('-')].join('__');
+  return _msgKey(raw);
+}
+
+async function _loadMissingLessonIgnoreList() {
+  try {
+    if (typeof _db === 'undefined' || !_db) return {};
+    const snap = await _fbGet(_fbRef(_db, 'settings/missingLessonIgnoreList'));
+    return snap.exists() ? (snap.val() || {}) : {};
+  } catch(e) { console.warn('_loadMissingLessonIgnoreList:', e); return {}; }
+}
+
+// מסמן רשומה בודדת (שכבר סווגה "חסר") כ"הוחרג" — לא צריך לשחזר, זו הייתה טעות
+// מקורית שנמחקה ביודעין. נשמר קבוע ב-Firebase כדי שסריקות עתידיות יזהו את זה
+// אוטומטית, ומוציא אותה מהמניין/מכפתור "שחזר X" באותה הרצה.
+async function _markMissingLessonIgnored(idx) {
+  if (typeof currentRole !== 'undefined' && currentRole !== 'admin') { showToast('רק למנהל','warning'); return; }
+  const results = window._missingLessonScanAll || [];
+  const r = results[idx];
+  if (!r || r.status !== 'missing') return;
+  const reason = (prompt('סיבה (אופציונלי) — למשל "הוזן בטעות, נמחק ביודעין":', '') || '').trim();
+  const key = _missingLessonIgnoreKey(r);
+  try {
+    if (typeof _db !== 'undefined' && _db) {
+      await _fbSet(_fbRef(_db, `settings/missingLessonIgnoreList/${key}`), {
+        reportDate: r.reportDate, instructor: r.instructor, traineeName: r.traineeName,
+        mission: r.mission, lessonNums: r.lessonNums || [],
+        reason, ignoredBy: (typeof currentUserName !== 'undefined' && currentUserName) || '', ignoredAt: Date.now()
+      });
+    }
+  } catch(e) { console.warn('_markMissingLessonIgnored:', e); showToast('שגיאה בשמירת ההחרגה', 'error'); return; }
+  r.status = 'ignored';
+  r.note = 'הוחרג ע"י ' + ((typeof currentUserName !== 'undefined' && currentUserName) || '') + (reason ? (' — ' + reason) : '');
+  showToast('✅ סומן כלא-רלוונטי — לא ייחשב "חסר" יותר, גם בסריקות עתידיות', 'success');
+  _refreshMissingLessonScanView();
+}
+
+// ביטול החרגה קודמת — חוזר להיחשב "חסר" (למשל אם סומן בטעות).
+async function _unmarkMissingLessonIgnored(idx) {
+  if (typeof currentRole !== 'undefined' && currentRole !== 'admin') { showToast('רק למנהל','warning'); return; }
+  const results = window._missingLessonScanAll || [];
+  const r = results[idx];
+  if (!r || r.status !== 'ignored') return;
+  const key = _missingLessonIgnoreKey(r);
+  try {
+    if (typeof _db !== 'undefined' && _db) await _fbSet(_fbRef(_db, `settings/missingLessonIgnoreList/${key}`), null);
+  } catch(e) { console.warn('_unmarkMissingLessonIgnored:', e); showToast('שגיאה בביטול ההחרגה', 'error'); return; }
+  r.status = 'missing';
+  r.note = 'לא נמצאה רשומה תואמת בתיק — מועמד לשחזור';
+  showToast('בוטלה ההחרגה — חוזר להיחשב "חסר"', 'info');
+  _refreshMissingLessonScanView();
+}
+
+// רענון תצוגת הטבלה+התגיות+כפתור השחזור אחרי שינוי סטטוס של רשומה בודדת —
+// בלי להריץ מחדש את כל הסריקה האסינכרונית.
+function _refreshMissingLessonScanView() {
+  const showAll = document.getElementById('missingLessonScanShowAll')?.checked || false;
+  _toggleMissingLessonScanShowAll(showAll);
+  const results = window._missingLessonScanAll || [];
+  const counts = { ok:0, missing:0, ambiguous:0, not_found:0, ignored:0 };
+  results.forEach(r => counts[r.status]++);
+  const badges = document.getElementById('missingLessonScanBadges');
+  if (badges) badges.innerHTML = _missingLessonScanBadgesHtml(counts);
+  const repairWrap = document.getElementById('missingLessonScanRepairBtnWrap');
+  if (repairWrap) repairWrap.innerHTML = (counts.missing) ? `<button onclick="_runMissingLessonRepair()" style="width:auto !important;padding:6px 14px;background:#27ae60;color:white;border:none;border-radius:8px;cursor:pointer;font-size:12.5px;font-weight:bold;">🔧 שחזר ${counts.missing} רשומות חסרות</button>` : '';
+}
+
+function _missingLessonScanBadgesHtml(counts) {
+  return `<span style="background:#fdecea;color:#c0392b;border:1px solid #f5b7b1;border-radius:20px;padding:4px 12px;font-size:12px;"><b>${counts.missing}</b> חסרים — מועמדים לשחזור</span>
+    <span style="background:#fff8ee;color:#b9770e;border:1px solid #f5d9a8;border-radius:20px;padding:4px 12px;font-size:12px;"><b>${counts.ambiguous}</b> שם כפול</span>
+    <span style="background:#f4f4f4;color:#777;border:1px solid #ddd;border-radius:20px;padding:4px 12px;font-size:12px;"><b>${counts.not_found}</b> לא נמצא</span>
+    <span style="background:#eafaf1;color:#1e8449;border:1px solid #a9dfbf;border-radius:20px;padding:4px 12px;font-size:12px;"><b>${counts.ok}</b> תקינים</span>
+    <span style="background:#eef2f7;color:#5d6d7e;border:1px solid #cfd8e3;border-radius:20px;padding:4px 12px;font-size:12px;"><b>${counts.ignored}</b> 🚫 הוחרגו (לא לשחזר)</span>`;
+}
+
+// שורת טבלה יחידה — פונקציה משותפת ל-_showMissingLessonScanResults וגם
+// ל-_toggleMissingLessonScanShowAll, כדי שעמודת ה"פעולה" לא תיכתב פעמיים בנפרד
+// (ותסתכן באי-התאמה בין השניים).
+function _missingLessonScanRowHtml(r) {
+  const styleFor = { ok:'#eafaf1;color:#1e8449;border-color:#a9dfbf', missing:'#fdecea;color:#c0392b;border-color:#f5b7b1',
+    ambiguous:'#fff8ee;color:#b9770e;border-color:#f5d9a8', not_found:'#f4f4f4;color:#777;border-color:#ddd',
+    ignored:'#eef2f7;color:#5d6d7e;border-color:#cfd8e3' };
+  const labelFor = { ok:'✅ תקין', missing:'❌ חסר בתיק', ambiguous:'⚠️ שם כפול', not_found:'❓ לא נמצא', ignored:'🚫 הוחרג' };
+  const st = styleFor[r.status];
+  let actionHtml = '';
+  if (r.status === 'missing') actionHtml = `<button onclick="_markMissingLessonIgnored(${r._idx})" style="width:auto !important;padding:3px 9px;background:white;color:#777;border:1px solid #ccc;border-radius:6px;cursor:pointer;font-size:10.5px;">🚫 לא לשחזר</button>`;
+  else if (r.status === 'ignored') actionHtml = `<button onclick="_unmarkMissingLessonIgnored(${r._idx})" style="width:auto !important;padding:3px 9px;background:white;color:#2980b9;border:1px solid #aac7e0;border-radius:6px;cursor:pointer;font-size:10.5px;">↩️ בטל החרגה</button>`;
+  return `<tr style="border-bottom:1px solid #f0f0f0;">
+    <td style="padding:7px 10px;font-size:12px;color:#888;white-space:nowrap;">${_esc(r.reportDate)}</td>
+    <td style="padding:7px 10px;font-size:12.5px;font-weight:bold;">${_esc(r.traineeName)}</td>
+    <td style="padding:7px 10px;font-size:12px;">${_esc(r.instructor)}</td>
+    <td style="padding:7px 10px;font-size:12px;">${_esc(r.mission)}</td>
+    <td style="padding:7px 10px;font-size:12px;text-align:center;">${(r.lessonNums||[]).join(',')}</td>
+    <td style="padding:7px 10px;"><span style="background:${st};border:1px solid;border-radius:12px;padding:2px 10px;font-size:11px;font-weight:bold;">${labelFor[r.status]}</span></td>
+    <td style="padding:7px 10px;font-size:11px;color:#888;">${_esc(r.note)}</td>
+    <td style="padding:7px 10px;text-align:center;">${actionHtml}</td>
+  </tr>`;
+}
+
 function _showMissingLessonScanResults(results, label){
   document.getElementById('missingLessonScanOverlay')?.remove();
-  const counts = { ok:0, missing:0, ambiguous:0, not_found:0 };
+  const counts = { ok:0, missing:0, ambiguous:0, not_found:0, ignored:0 };
   results.forEach(r => counts[r.status]++);
-  const styleFor = { ok:'#eafaf1;color:#1e8449;border-color:#a9dfbf', missing:'#fdecea;color:#c0392b;border-color:#f5b7b1',
-    ambiguous:'#fff8ee;color:#b9770e;border-color:#f5d9a8', not_found:'#f4f4f4;color:#777;border-color:#ddd' };
-  const labelFor = { ok:'✅ תקין', missing:'❌ חסר בתיק', ambiguous:'⚠️ שם כפול', not_found:'❓ לא נמצא' };
   window._missingLessonScanAll = results; // לשימוש הטוגל "הצג הכול" (ר' _toggleMissingLessonScanShowAll)
 
   const buildRows = (showAll) => {
-    const rows = showAll ? results : results.filter(r => r.status !== 'ok');
-    return rows.length ? rows.map(r => {
-      const st = styleFor[r.status];
-      return `<tr style="border-bottom:1px solid #f0f0f0;">
-        <td style="padding:7px 10px;font-size:12px;color:#888;white-space:nowrap;">${_esc(r.reportDate)}</td>
-        <td style="padding:7px 10px;font-size:12.5px;font-weight:bold;">${_esc(r.traineeName)}</td>
-        <td style="padding:7px 10px;font-size:12px;">${_esc(r.instructor)}</td>
-        <td style="padding:7px 10px;font-size:12px;">${_esc(r.mission)}</td>
-        <td style="padding:7px 10px;font-size:12px;text-align:center;">${(r.lessonNums||[]).join(',')}</td>
-        <td style="padding:7px 10px;"><span style="background:${st};border:1px solid;border-radius:12px;padding:2px 10px;font-size:11px;font-weight:bold;">${labelFor[r.status]}</span></td>
-        <td style="padding:7px 10px;font-size:11px;color:#888;">${_esc(r.note)}</td>
-      </tr>`;
-    }).join('') : `<tr><td colspan="7" style="text-align:center;padding:24px;color:#27ae60;font-weight:bold;">✅ לא נמצאו פערים — כל השיעורים המדווחים קיימים בתיקי החניכים</td></tr>`;
+    const rows = showAll ? results : results.filter(r => r.status !== 'ok' && r.status !== 'ignored');
+    return rows.length ? rows.map(_missingLessonScanRowHtml).join('')
+      : `<tr><td colspan="8" style="text-align:center;padding:24px;color:#27ae60;font-weight:bold;">✅ לא נמצאו פערים — כל השיעורים המדווחים קיימים בתיקי החניכים</td></tr>`;
   };
 
   const isAdmin = (typeof currentRole === 'undefined' || currentRole === 'admin');
@@ -24629,24 +24735,19 @@ function _showMissingLessonScanResults(results, label){
   overlay.className='log-overlay';
   overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9900;display:flex;align-items:center;justify-content:center;';
   overlay.innerHTML=`
-    <div style="background:white;border-radius:16px;width:min(920px,96vw);max-height:85vh;overflow:hidden;display:flex;flex-direction:column;direction:rtl;">
+    <div style="background:white;border-radius:16px;width:min(960px,96vw);max-height:85vh;overflow:hidden;display:flex;flex-direction:column;direction:rtl;">
       <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:2px solid #eef2f8;">
         <h3 style="margin:0;font-size:16px;">🔍 סריקת שיעורים חסרים בתיקי חניכים <span style="font-size:11px;font-weight:400;color:#888;">— ${_esc(label)}</span></h3>
         <button onclick="this.closest('.log-overlay').remove()" style="width:auto !important;background:none;border:none;font-size:22px;cursor:pointer;color:#888;">×</button>
       </div>
       <div style="padding:12px 20px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between;border-bottom:1px solid #eef2f8;">
-        <div style="display:flex;gap:10px;flex-wrap:wrap;">
-          <span style="background:#fdecea;color:#c0392b;border:1px solid #f5b7b1;border-radius:20px;padding:4px 12px;font-size:12px;"><b>${counts.missing}</b> חסרים — מועמדים לשחזור</span>
-          <span style="background:#fff8ee;color:#b9770e;border:1px solid #f5d9a8;border-radius:20px;padding:4px 12px;font-size:12px;"><b>${counts.ambiguous}</b> שם כפול</span>
-          <span style="background:#f4f4f4;color:#777;border:1px solid #ddd;border-radius:20px;padding:4px 12px;font-size:12px;"><b>${counts.not_found}</b> לא נמצא</span>
-          <span style="background:#eafaf1;color:#1e8449;border:1px solid #a9dfbf;border-radius:20px;padding:4px 12px;font-size:12px;"><b>${counts.ok}</b> תקינים</span>
-        </div>
-        ${repairBtnHtml}
+        <div id="missingLessonScanBadges" style="display:flex;gap:10px;flex-wrap:wrap;">${_missingLessonScanBadgesHtml(counts)}</div>
+        <div id="missingLessonScanRepairBtnWrap">${repairBtnHtml}</div>
       </div>
       <div style="padding:8px 20px 0;">
         <label style="font-size:11.5px;color:#888;display:flex;align-items:center;gap:5px;cursor:pointer;width:fit-content;">
           <input type="checkbox" id="missingLessonScanShowAll" onchange="_toggleMissingLessonScanShowAll(this.checked)">
-          הצג גם רשומות תקינות (לבדיקת-אמינות של הסריקה עצמה)
+          הצג גם רשומות תקינות/הוחרגו (לבדיקת-אמינות של הסריקה עצמה)
         </label>
       </div>
       <div style="overflow-y:auto;flex:1;padding:0 20px 16px;">
@@ -24659,11 +24760,12 @@ function _showMissingLessonScanResults(results, label){
             <th style="padding:7px 10px;text-align:center;font-size:11px;color:#888;">שיעורים</th>
             <th style="padding:7px 10px;text-align:right;font-size:11px;color:#888;">סטטוס</th>
             <th style="padding:7px 10px;text-align:right;font-size:11px;color:#888;">הערה</th>
+            <th style="padding:7px 10px;text-align:center;font-size:11px;color:#888;">פעולה</th>
           </tr></thead>
           <tbody id="missingLessonScanTbody">${buildRows(false)}</tbody>
         </table>
       </div>
-      <div style="padding:10px 20px;font-size:11px;color:#aaa;text-align:center;border-top:1px solid #eef2f8;">שלב 1 (סימולציה) הריץ בלי לכתוב כלום. לחיצה על "שחזר" בשלב 2 היא הפעולה שבאמת כותבת לחניכים המסומנים "חסר" בלבד.</div>
+      <div style="padding:10px 20px;font-size:11px;color:#aaa;text-align:center;border-top:1px solid #eef2f8;">שלב 1 (סימולציה) הריץ בלי לכתוב כלום. לחיצה על "שחזר" בשלב 2 היא הפעולה שבאמת כותבת לחניכים המסומנים "חסר" בלבד. "🚫 לא לשחזר" נשמר קבוע ולא יוצע שוב בסריקות עתידיות.</div>
     </div>`;
   document.body.appendChild(overlay);
 }
@@ -24672,22 +24774,9 @@ function _toggleMissingLessonScanShowAll(showAll){
   const tbody = document.getElementById('missingLessonScanTbody');
   const results = window._missingLessonScanAll || [];
   if (!tbody) return;
-  const styleFor = { ok:'#eafaf1;color:#1e8449;border-color:#a9dfbf', missing:'#fdecea;color:#c0392b;border-color:#f5b7b1',
-    ambiguous:'#fff8ee;color:#b9770e;border-color:#f5d9a8', not_found:'#f4f4f4;color:#777;border-color:#ddd' };
-  const labelFor = { ok:'✅ תקין', missing:'❌ חסר בתיק', ambiguous:'⚠️ שם כפול', not_found:'❓ לא נמצא' };
-  const rows = showAll ? results : results.filter(r => r.status !== 'ok');
-  tbody.innerHTML = rows.length ? rows.map(r => {
-    const st = styleFor[r.status];
-    return `<tr style="border-bottom:1px solid #f0f0f0;">
-      <td style="padding:7px 10px;font-size:12px;color:#888;white-space:nowrap;">${_esc(r.reportDate)}</td>
-      <td style="padding:7px 10px;font-size:12.5px;font-weight:bold;">${_esc(r.traineeName)}</td>
-      <td style="padding:7px 10px;font-size:12px;">${_esc(r.instructor)}</td>
-      <td style="padding:7px 10px;font-size:12px;">${_esc(r.mission)}</td>
-      <td style="padding:7px 10px;font-size:12px;text-align:center;">${(r.lessonNums||[]).join(',')}</td>
-      <td style="padding:7px 10px;"><span style="background:${st};border:1px solid;border-radius:12px;padding:2px 10px;font-size:11px;font-weight:bold;">${labelFor[r.status]}</span></td>
-      <td style="padding:7px 10px;font-size:11px;color:#888;">${_esc(r.note)}</td>
-    </tr>`;
-  }).join('') : `<tr><td colspan="7" style="text-align:center;padding:24px;color:#27ae60;font-weight:bold;">✅ לא נמצאו פערים — כל השיעורים המדווחים קיימים בתיקי החניכים</td></tr>`;
+  const rows = showAll ? results : results.filter(r => r.status !== 'ok' && r.status !== 'ignored');
+  tbody.innerHTML = rows.length ? rows.map(_missingLessonScanRowHtml).join('')
+    : `<tr><td colspan="8" style="text-align:center;padding:24px;color:#27ae60;font-weight:bold;">✅ לא נמצאו פערים — כל השיעורים המדווחים קיימים בתיקי החניכים</td></tr>`;
 }
 
 // 2026-09-02, לפי בקשת לביא: שלב 2 — שחזור בפועל של רשומות "חסר" שנמצאו בשלב 1.
