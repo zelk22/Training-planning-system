@@ -14,7 +14,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 150</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 152</title>
 
 <style>
 
@@ -1437,7 +1437,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 210;
+  const APP_VERSION = 212;
 
   // 2026-09-07, לפי בקשת לביא: היה קשה לבדוק באיזו גרסה הדפדפן בפועל טוען
   // (כותרת הטאב נחתכת כשיש הרבה טאבים פתוחים, ואי אפשר תמיד לראות "DEPLOYED
@@ -3138,8 +3138,12 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
       <span id="traineeAlertBadge" style="display:none;background:#e74c3c;color:white;font-size:11px;font-weight:bold;padding:2px 8px;border-radius:12px;margin-right:8px;"></span>
       <span style="font-size:12px;font-weight:400;color:#888;margin-right:6px;">(לחץ להרחבה)</span>
     </summary>
+    <div id="trainee-subtab-bar" style="display:none;gap:8px;padding:12px 0 0;">
+      <button type="button" id="trainee-subtab-dash" onclick="_setTraineeSubView('dash')" style="flex:1;max-width:220px;padding:8px 14px;border:1px solid #ccc;border-radius:8px;cursor:pointer;font-size:13px;font-weight:bold;background:#2980b9;color:white;">📊 דשבורד</button>
+      <button type="button" id="trainee-subtab-files" onclick="_setTraineeSubView('files')" style="flex:1;max-width:220px;padding:8px 14px;border:1px solid #ccc;border-radius:8px;cursor:pointer;font-size:13px;font-weight:bold;background:#f4f4f4;color:#555;">📁 תיקים</button>
+    </div>
     <div id="trainee-summary-panel" data-open="false" style="display:none;"></div>
-    <div class="manual-inner" style="padding:12px 0 0 0;">
+    <div id="trainee-files-wrap" class="manual-inner" style="padding:12px 0 0 0;">
       <div id="traineeSystemContainer"><div style="padding:30px;text-align:center;color:#888;font-size:14px;">⏳ לחץ כאן לטעינת מערכת החניכים...</div></div>
     </div>
   </details>
@@ -12763,7 +12767,7 @@ async function renameInstructorEverywhere(oldName,newName,oldKey){
   }catch(e){console.warn('renameInstructor notes scan failed:',e);}
 
   // 6. Trainee lesson history — separate 'trainee' Firebase app:
-  //    courses_v20/{courseId}/trainees/{traineeId}/lessons[].instructor
+  //    courses_v20/{courseId}/trainees/{traineeId}/lessons[].ins
   try{
     if(typeof TraineeSystem!=='undefined'){
       if(!TraineeSystem.coursesRef)TraineeSystem.initFirebase();
@@ -12776,7 +12780,18 @@ async function renameInstructorEverywhere(oldName,newName,oldKey){
             if(!lessonsRaw)return;
             const entries=Array.isArray(lessonsRaw)?lessonsRaw.map((l,i)=>[i,l]):Object.entries(lessonsRaw);
             entries.forEach(([idx,lesson])=>{
-              if(lesson&&lesson.instructor===oldName){
+              if(!lesson)return;
+              // 2026-09-14, לפי בקשת לביא: השדה שבאמת נשמר על כל שיעור הוא
+              // .ins (ר' addLessonFromExternal/saveLesson) — הבדיקה כאן בדקה
+              // שם שדה שגוי (.instructor) מאז ומעולם, ולכן שינוי שם מדריך
+              // מעולם לא התעדכן בפועל בתיקי חניכים (קוד מת, לא רגרסיה).
+              // .instructor נשאר כגיבוי — הגנתי בלבד, למקרה של רשומת legacy
+              // חריגה שכן משתמשת בשם הישן (ר' גם הגיבוי הזהה ב-_lbCollectAllLessons).
+              if(lesson.ins===oldName){
+                updates[`courses_v20/${cid}/trainees/${tid}/lessons/${idx}/ins`]=newName;
+                counts.lessons++;
+              }
+              if(lesson.instructor===oldName){
                 updates[`courses_v20/${cid}/trainees/${tid}/lessons/${idx}/instructor`]=newName;
                 counts.lessons++;
               }
@@ -28364,10 +28379,55 @@ function _clearTraineeOverloadAlerts(){_traineeOverloadAlerts=[];try{localStorag
 
 window._traineeInitialized = false;
 
+// 2026-09-14, לפי בקשת לביא: טוגל פנימי דשבורד/תיקים בתוך טאב "חניכים
+// ומשובים" (היה ארוך פי-2 משאר הטאבים) — לא פיצול לטאב-בר אמיתי בכוונה:
+// #traineeSection מוזז כיחידה אחת בין תצוגות מנהל/מדריך/חונך
+// (moveManualSectionToInstr/_placeTraineeSectionInManager), ופיצול אמיתי היה
+// מצריך לשכפל את כל לוגיקת ההזזה/הרשאות הזו. _applyTraineeSubViewVisibility()
+// היא מקור-האמת היחיד לתצוגה הנוכחית — נקראת גם מסוף _renderTraineeSummaryPanel()
+// (שמופעלת מ-15+ מקומות ברחבי הקוד) כדי שרינדור-רקע לא "יקפוץ" ויעקוף בחירת-
+// תצוגה נוכחית של המשתמש.
+function _applyTraineeSubViewVisibility() {
+  var panel     = document.getElementById('trainee-summary-panel');
+  var filesWrap = document.getElementById('trainee-files-wrap');
+  var bar       = document.getElementById('trainee-subtab-bar');
+  if (!panel || !filesWrap) return;
+  var isStaff = (typeof currentRole !== 'undefined') && (currentRole === 'admin' || currentRole === 'instructor');
+  if (!isStaff) {
+    // חונך: אין לו תוכן דשבורד בכלל (ר' isStaff ב-_renderTraineeSummaryPanel) —
+    // בלי סרגל טוגל מיותר, ישר לתיקים.
+    if (bar) bar.style.display = 'none';
+    panel.style.display = 'none';
+    filesWrap.style.display = '';
+    return;
+  }
+  if (bar) bar.style.display = 'flex';
+  var which = window._traineeActiveSubView || 'dash';
+  panel.style.display     = (which === 'dash') ? 'block' : 'none';
+  filesWrap.style.display = (which === 'dash') ? 'none'  : '';
+  var btnDash  = document.getElementById('trainee-subtab-dash');
+  var btnFiles = document.getElementById('trainee-subtab-files');
+  if (btnDash && btnFiles) {
+    btnDash.style.background  = (which === 'dash') ? '#2980b9' : '#f4f4f4';
+    btnDash.style.color       = (which === 'dash') ? 'white'   : '#555';
+    btnFiles.style.background = (which === 'dash') ? '#f4f4f4' : '#2980b9';
+    btnFiles.style.color      = (which === 'dash') ? '#555'    : 'white';
+  }
+}
+
+function _setTraineeSubView(which) {
+  window._traineeActiveSubView = (which === 'files') ? 'files' : 'dash';
+  _applyTraineeSubViewVisibility();
+}
+
 function _updateTraineeBtnVisibility() {
   const _isInstr = typeof currentRole !== 'undefined' && currentRole === 'instructor';
   const _isAdmin = typeof currentRole !== 'undefined' && currentRole === 'admin';
   _updateTraineeAlertBadge(); // sync badge with current role every time
+  // 2026-09-14, לפי בקשת לביא: ברירת מחדל לטוגל דשבורד/תיקים נקבעת מחדש לפי
+  // תפקיד בכל פתיחה/סגירה של הסעיף (לא preference נשמר בין ביקורים) — מנהל
+  // רואה קודם את הדשבורד, מדריך/חונך רואים קודם את תיקי החניכים.
+  window._traineeActiveSubView = _isAdmin ? 'dash' : 'files';
   // Trainee status dashboard (KPI cards, milestones, risk alerts) — admin + instructor
   // (mentor excluded). Must match isStaff logic inside _renderTraineeSummaryPanel itself —
   // this gate was still admin-only and silently re-hid the panel for instructors on every
@@ -28375,7 +28435,10 @@ function _updateTraineeBtnVisibility() {
   const summaryPanel = document.getElementById('trainee-summary-panel');
   if (summaryPanel) {
     if (_isAdmin || _isInstr) { try { _renderTraineeSummaryPanel(); } catch(e) {} }
-    else { summaryPanel.style.display = 'none'; }
+    // 2026-09-14: חונך — _applyTraineeSubViewVisibility() מטפלת גם בהסתרת
+    // סרגל הטוגל וגם בהצגת תיקי החניכים (במקום סתם panel.style.display='none'
+    // בלבד, שהיה משאיר את הסרגל/תיקים במצב-תצוגה שאריתי ממקדימה-קודמת כמנהל/מדריך).
+    else { try { _applyTraineeSubViewVisibility(); } catch(e) { summaryPanel.style.display = 'none'; } }
   }
   const cont = document.getElementById('traineeSystemContainer');
   if (!cont) return;
@@ -28989,6 +29052,47 @@ function _toggleInfoAlerts() {
   if (arrow) arrow.innerHTML = '&#9660;';
 }
 
+// 2026-09-14, לפי בקשת לביא: אזור "חניכים מתקשים" מתקפל — מכווץ כברירת מחדל,
+// בנייה עצלה בפתיחה. אותו דפוס בדיוק כמו _toggleInfoAlerts (מעליה).
+function _toggleAtRisk() {
+  var body  = document.getElementById('ts-atrisk-body');
+  var arrow = document.getElementById('ts-atrisk-arrow');
+  if (!body) return;
+  var open = body.style.display === 'flex';
+  if (open) {
+    body.style.display = 'none';
+    if (arrow) arrow.innerHTML = '&#9654;';
+    return;
+  }
+  var list = window._tsAtRisk || [];
+  function riskBadge(lvl) {
+    var m={high:['#e74c3c','#fdf0ef','גבוה'],medium:['#e67e22','#fef9f0','בינוני'],low:['#f39c12','#fefdf0','נמוך']};
+    var c=m[lvl];if(!c)return'';
+    return'<span style="background:'+c[1]+';color:'+c[0]+';border:1px solid '+c[0]+';padding:2px 8px;border-radius:10px;font-size:11px;font-weight:bold;">'+c[2]+'</span>';
+  }
+  function trendArrow(t){
+    if(t==='improving')return'<span style="color:#27ae60;font-size:13px;">↑</span>';
+    if(t==='declining')return'<span style="color:#e74c3c;font-size:13px;">↓</span>';
+    return'<span style="color:#95a5a6;font-size:13px;">→</span>';
+  }
+  body.innerHTML = list.map(function(t){
+    var bc=t.riskLevel==='high'?'#e74c3c':t.riskLevel==='medium'?'#e67e22':'#f39c12';
+    var row='<div style="border:1px solid '+bc+';border-right:4px solid '+bc+';border-radius:8px;padding:10px 14px;">'
+      + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;flex-wrap:wrap;gap:6px;">'
+      + '<div style="display:flex;align-items:center;gap:8px;">'+riskBadge(t.riskLevel)+trendArrow(t.trend)+'<span style="font-size:14px;font-weight:bold;color:#2c3e50;">'+_esc(t.name)+'</span></div>'
+      + '<div style="display:flex;align-items:center;gap:8px;"><span style="font-size:11px;color:#888;">'+t.stage+'</span><button onclick="try{if(typeof TraineeSystem!==\'undefined\')TraineeSystem.openTrainee&&TraineeSystem.openTrainee('+t.id+');}catch(ex){}" style="padding:3px 9px;background:#2980b9;color:white;border:none;border-radius:6px;cursor:pointer;font-size:11px;">פתח תיק ←</button></div></div>';
+    if (t.riskReasons && t.riskReasons.length) {
+      row += '<ul style="margin:2px 0 0;padding-right:18px;">'
+        + t.riskReasons.map(function(r){ return '<li style="font-size:12px;color:#666;margin-bottom:2px;">'+r+'</li>'; }).join('')
+        + '</ul>';
+    }
+    row += '</div>';
+    return row;
+  }).join('');
+  body.style.display = 'flex';
+  if (arrow) arrow.innerHTML = '&#9660;';
+}
+
 // חלוקת קבוצות תיעדוף (א׳/ב׳/ג׳) — לפי קורס נבחר. מנהל: עריכה מלאה (select).
 // מדריך: אותה תצוגה, ללא select (צפייה בלבד). חונך לא מגיע לכאן כלל — הפאנל
 // כולו מוסתר לחונכים ב-_renderTraineeSummaryPanel (isStaff).
@@ -29119,6 +29223,10 @@ function _renderTraineeSummaryPanel() {
   var isStaff = isAdmin || (typeof currentRole !== 'undefined' && currentRole === 'instructor');
   if (!isStaff) {
     panel.style.display = 'none';
+    // 2026-09-14, לפי בקשת לביא: פיצול-פנימי לטוגל דשבורד/תיקים — לחונך (mentor)
+    // אין תוכן דשבורד בכלל (isStaff=false), אז סרגל הטוגל מיותר עבורו; מציגים
+    // ישירות את תיקי החניכים בלי סרגל.
+    try { _applyTraineeSubViewVisibility(); } catch(e) {}
     return;
   }
   panel.style.display = 'block';
@@ -29133,6 +29241,7 @@ function _renderTraineeSummaryPanel() {
       +'<button onclick="try{window._traineeSummaryCache=null;_renderTraineeSummaryPanel();}catch(e){}"'
       +' style="padding:6px 14px;background:#2980b9;color:white;border:none;'
       +'border-radius:8px;cursor:pointer;font-size:13px;font-weight:bold;">רענן</button></div>';
+    try { _applyTraineeSubViewVisibility(); } catch(e) {}
     return;
   }
   function riskBadge(lvl) {
@@ -29271,12 +29380,16 @@ function _renderTraineeSummaryPanel() {
     h.push(_tsSectionClose());
   }
   if(summary.atRisk&&summary.atRisk.length){
-    h.push(_tsSectionOpen('⚠️','חניכים מתקשים <span style="font-size:11px;font-weight:400;color:#888;">('+summary.atRisk.length+')</span>','#fdecea','#e74c3c','#c0392b'));
+    // 2026-09-14, לפי בקשת לביא: מתקפל כברירת מחדל (אותו דפוס בדיוק כמו "💡
+    // התרעות מידע למנהל" — חץ ▶/▼, בנייה עצלה בפתיחה ע"י _toggleAtRisk). המספר
+    // הפך מסוגריים אפורים עמומים לתגית אדומה בולטת, כדי שגם מקופל יהיה ברור
+    // מייד שיש בעיה לטפל בה.
+    h.push(_tsSectionOpen('⚠️','חניכים מתקשים <span style="font-size:12px;font-weight:800;color:#c0392b;background:#fdecea;border:1px solid #f1a9a0;border-radius:10px;padding:1px 9px;margin-right:4px;">'+summary.atRisk.length+'</span>','#fdecea','#e74c3c','#c0392b',' onclick="try{_toggleAtRisk();}catch(e){}"','cursor:pointer;justify-content:space-between;'));
+    h.push('<span id="ts-atrisk-arrow" style="margin-right:auto;font-size:10px;color:#c0392b;">&#9654;</span>');
     h.push(_tsSectionHeadClose());
-    h.push('<div style="display:flex;flex-direction:column;gap:8px;">');
-    summary.atRisk.forEach(function(t){var bc=t.riskLevel==='high'?'#e74c3c':t.riskLevel==='medium'?'#e67e22':'#f39c12';h.push('<div style="border:1px solid '+bc+';border-right:4px solid '+bc+';border-radius:8px;padding:10px 14px;">');h.push('<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;flex-wrap:wrap;gap:6px;">');h.push('<div style="display:flex;align-items:center;gap:8px;">'+riskBadge(t.riskLevel)+trendArrow(t.trend)+'<span style="font-size:14px;font-weight:bold;color:#2c3e50;">'+_esc(t.name)+'</span></div>');h.push('<div style="display:flex;align-items:center;gap:8px;"><span style="font-size:11px;color:#888;">'+t.stage+'</span><button onclick="try{if(typeof TraineeSystem!==\'undefined\')TraineeSystem.openTrainee&&TraineeSystem.openTrainee('+t.id+');}catch(ex){}" style="padding:3px 9px;background:#2980b9;color:white;border:none;border-radius:6px;cursor:pointer;font-size:11px;">פתח תיק ←</button></div></div>');if(t.riskReasons&&t.riskReasons.length){h.push('<ul style="margin:2px 0 0;padding-right:18px;">');t.riskReasons.forEach(function(r){h.push('<li style="font-size:12px;color:#666;margin-bottom:2px;">'+r+'</li>');});h.push('</ul>');}h.push('</div>');});
-    h.push('</div>');
+    h.push('<div id="ts-atrisk-body" style="display:none;flex-direction:column;gap:8px;"></div>');
     h.push(_tsSectionClose());
+    window._tsAtRisk = summary.atRisk; // לבנייה עצלה ע"י _toggleAtRisk
   }
   // 2026-08-19: התרעת חוסר-פעילות עצמאית — ווידג'ט נפרד, לא קשור לסיווג "מתקשה"
   if(summary.inactive&&summary.inactive.length){
@@ -29383,6 +29496,11 @@ function _renderTraineeSummaryPanel() {
 
   // Populate config form with current values after render
   try { _populateTraineeSummaryConfigForm(); } catch(e) {}
+
+  // 2026-09-14, לפי בקשת לביא: מחיל את בחירת הטוגל דשבורד/תיקים בסוף — לאחר
+  // כל build-מחדש (הפונקציה הזו נקראת מ-15+ מקומות ברחבי הקוד), כדי שרינדור
+  // חוזר של הדשבורד לא "יקפוץ" ויעקוף בחירת-תצוגה נוכחית של המשתמש.
+  try { _applyTraineeSubViewVisibility(); } catch(e) {}
 }
 
 function _toggleTraineeSummarySettings() {
