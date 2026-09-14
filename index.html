@@ -1437,7 +1437,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 212;
+  const APP_VERSION = 214;
 
   // 2026-09-07, לפי בקשת לביא: היה קשה לבדוק באיזו גרסה הדפדפן בפועל טוען
   // (כותרת הטאב נחתכת כשיש הרבה טאבים פתוחים, ואי אפשר תמיד לראות "DEPLOYED
@@ -20796,7 +20796,7 @@ const GUIDE_SECTIONS = [
     id: 'daysummary', icon: '📝', title: 'טופס "סיכום יום"', roles: ['admin','instructor','mentor'],
     body: `
       <p>מוגש בסוף משמרת: שעות סינריון, שעות הדרכה קלה, הערות חופשיות, עיכובים, ומשוב לכל חניך שהודרך באותו יום.</p>
-      <p><b>שדות חובה:</b> "שעות הדרכה קלה" — הטופס לא נשמר בלעדיו. וגם: אם המדריך היה משובץ באותו תאריך למשימת נסיעה/קורס מעשי — <u>לפחות משוב חניך אחד</u> הופך לחובה גם הוא (יום עיוני/atp/חופש לא דורש משוב). בשני המקרים תופיע התרעה והשדה החסר יודגש, בלי לשמור עד שמשלימים.</p>
+      <p><b>שדות חובה:</b> "שעות הדרכה קלה" — הטופס לא נשמר בלעדיו. וגם: אם המדריך היה משובץ באותו תאריך למשימת נסיעה/קורס מעשי — <u>לפחות משוב חניך אחד</u> הופך לחובה גם הוא (יום עיוני/atp/חופש לא דורש משוב). בשני המקרים תופיע התרעה והשדה החסר יודגש, בלי לשמור עד שמשלימים. <b>החרגה:</b> אם בוצעה פעילות חלופית במקום הדרכה קלה בפועל (למשל שיעור כיתה/חזרה על חומר) — תיבת הסימון ליד השדה פותחת תיאור חופשי חובה, ומבטלת גם את חובת ההדרכה הקלה וגם את חובת המשוב עבור אותו יום.</p>
       <p><b>⏱️ עיכובים:</b> אפשר לדווח כמה עיכובים באותה משמרת (משך בדקות + סיבה חופשית) — זו שכבת דיווח נוספת, נספרת יחד עם עיכובי הנסיעות (המדווחים דרך יומן הנסיעות) באותם דוחות/דשבורדים, לא במקומם.</p>
       <p><b>שעות נוספות/כשירות:</b> כשבוחרים משימה מסוג "כשירות מעשית/שעות נוספות" נפתח שדה משך בשעות (בנוסף לתיאור החופשי) — כדי שדוחות יוכלו לסכם שעות בפועל, לא רק לספור מפגשים.</p>
       <p><b>חשוב מאוד — מספר שיעור (שנתון):</b> לכל משוב חניך <u>חובה</u> לבחור באיזה שיעור מדובר (הכפתורים הממוספרים). בלי זה, המערכת לא סופרת את השיעור בכלל — לא בממוצע, לא בבר ההתקדמות ("הרכבת"), ולא בסטטוס הכשירות של החניך. שיעור שכבר בוצע מופיע עם קו חוצה ולא ניתן לבחירה חוזרת; לחיצה חוזרת על שיעור שנבחר עכשיו מבטלת את הבחירה.</p>
@@ -23277,6 +23277,14 @@ function _urLoadForDate(today) {
     if (sinerioEl) sinerioEl.value = window._urAddMode.sinerioHours || '';
     if (lightEl)   lightEl.value   = window._urAddMode.lightHours || '';
     if (notesEl2)  notesEl2.value  = window._urAddMode.notes || '';
+    // 2026-09-14, לפי בקשת לביא: משחזרים את מצב החרגת "שעות הדרכה קלה" (אם
+    // סומנה בהגשה המקורית) — אחרת חוזר לדרוש מחדש שדה שכבר תועד כמוחרג.
+    if (window._urAddMode.lightHoursExempt) {
+      const exemptCb = document.getElementById('ur-light-hours-exempt');
+      const exemptReasonEl = document.getElementById('ur-light-hours-exempt-reason');
+      if (exemptCb) { exemptCb.checked = true; try { _toggleLightHoursExempt(exemptCb); } catch(e) {} }
+      if (exemptReasonEl) exemptReasonEl.value = window._urAddMode.lightHoursExemptReason || '';
+    }
     // Read-only summary of existing feedback
     if (existingFbEl) {
       const details = window._urAddMode.feedbackDetails || [];
@@ -24128,6 +24136,26 @@ function _urToggleChip(btn, n, isMsWarn, msWarnTestNum) {
   }
 }
 
+// 2026-09-14, לפי בקשת לביא: החרגה ל"שעות הדרכה קלה" — מקרה שבו המדריך היה
+// משובץ לקורס מעשי אבל לא ביצע בפועל שעות הדרכה קלה (למשל שיעור כיתה/חזרה על
+// חומר במקום נסיעה). נועלת את השדה המספרי ל-0 ופותחת שדה תיאור חובה, כדי
+// שדוחות עתידיים יבחינו בין "0 מתועד בכוונה" לבין פער-נתונים אמיתי. גם חובת
+// "משוב חניך אחד לפחות" מתרפה באותו מקרה (ר' submitUnifiedReport).
+function _toggleLightHoursExempt(cb) {
+  const lightEl  = document.getElementById('ur-light-hours');
+  const reasonEl = document.getElementById('ur-light-hours-exempt-reason');
+  const starEl   = document.getElementById('ur-light-hours-star');
+  if (cb.checked) {
+    if (lightEl) { lightEl.value = '0'; lightEl.disabled = true; lightEl.required = false; lightEl.style.border = ''; }
+    if (starEl) starEl.style.display = 'none';
+    if (reasonEl) { reasonEl.style.display = 'block'; reasonEl.focus(); }
+  } else {
+    if (lightEl) { lightEl.disabled = false; lightEl.required = true; lightEl.value = ''; }
+    if (starEl) starEl.style.display = '';
+    if (reasonEl) { reasonEl.style.display = 'none'; reasonEl.value = ''; reasonEl.style.border = ''; }
+  }
+}
+
 async function submitUnifiedReport() {
   if (_blockSaveIfNewerVersion()) return;
   const date = document.getElementById('ur-date')?.value || currentDate;
@@ -24166,7 +24194,20 @@ async function submitUnifiedReport() {
   const _wasTripDayForLight = (typeof _wasAssignedToTripTaskOnDateFresh === 'function') && await _wasAssignedToTripTaskOnDateFresh(instructor, date);
   const _lightHoursEl = document.getElementById('ur-light-hours');
   const _lightHoursRaw = _lightHoursEl?.value?.trim() || '';
-  if (_wasTripDayForLight && _lightHoursRaw === '') {
+  // 2026-09-14, לפי בקשת לביא: החרגה — המדריך היה משובץ לקורס מעשי אבל לא
+  // ביצע בפועל שעות הדרכה קלה (למשל שיעור כיתה/חזרה על חומר במקום נסיעה).
+  // כשמסומן — "שעות הדרכה קלה" מדלגת על החובה (השדה ננעל ל-0 מ-_toggleLightHoursExempt),
+  // אבל שדה התיאור החלופי הופך הוא עצמו לחובה, כדי שלא "ייעלם" מה שבאמת קרה.
+  const _lightExemptCb = document.getElementById('ur-light-hours-exempt');
+  const _lightExempt = !!_lightExemptCb?.checked;
+  const _lightExemptReasonEl = document.getElementById('ur-light-hours-exempt-reason');
+  const _lightExemptReason = _lightExemptReasonEl?.value?.trim() || '';
+  if (_lightExempt && !_lightExemptReason) {
+    showToast('⚠️ סומן "לא בוצעה הדרכה קלה" — יש לפרט מה בוצע במקום', 'warning');
+    if (_lightExemptReasonEl) { _lightExemptReasonEl.style.border = '2px solid #e74c3c'; _lightExemptReasonEl.focus(); _lightExemptReasonEl.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+    return;
+  }
+  if (_wasTripDayForLight && !_lightExempt && _lightHoursRaw === '') {
     showToast('⚠️ יש להשלים את שדה "שעות הדרכה קלה" לפני שמירת הטופס', 'warning');
     if (_lightHoursEl) {
       _lightHoursEl.style.border = '2px solid #e74c3c';
@@ -24191,12 +24232,17 @@ async function submitUnifiedReport() {
     sinerioHours: parseFloat(document.getElementById('ur-sinerio-hours')?.value || '0') || 0,
     notes: document.getElementById('ur-notes')?.value.trim() || ''
   };
+  if (_lightExempt) {
+    report.lightHoursExempt = true;
+    report.lightHoursExemptReason = _lightExemptReason;
+  }
   // Custom fields
   _getUrCustomFields().forEach(f => {
     const el = document.getElementById('ur-custom-' + f.id);
     if (!el) return;
     report['custom_' + f.id] = f.type === 'checkbox' ? el.checked : (f.type === 'number' ? (parseFloat(el.value)||0) : el.value.trim());
   });
+
 
   // ── Section A2: Delays reported by the instructor (2026-08-24, per Lavi) ──
   const delayBlocks = document.querySelectorAll('#ur-delay-blocks .ur-delay-block');
@@ -24299,7 +24345,10 @@ async function submitUnifiedReport() {
   // 2026-08-30: לא רלוונטי במצב "הוספה לטופס קיים" — כבר יש משוב מההגשה
   // המקורית; הוספה עם 0 שורות חדשות עדיין תקינה (למשל רק עדכון שעת סיום).
   const _wasTripDay = (typeof _wasAssignedToTripTaskOnDateFresh === 'function') && await _wasAssignedToTripTaskOnDateFresh(instructor, date);
-  if (_wasTripDay && !lessonResults.length && !window._urAddMode) {
+  // 2026-09-14, לפי בקשת לביא: באותה החרגה (ר' _lightExempt למעלה) — חובת
+  // משוב חניך גם היא מתרפה, כי פעילות כיתתית כללית לא בהכרח נקשרת למשוב אישי
+  // עם מספרי שיעור.
+  if (_wasTripDay && !_lightExempt && !lessonResults.length && !window._urAddMode) {
     showToast('⚠️ יש להוסיף לפחות משוב חניך אחד לפני שמירת הטופס (היית משובץ לקורס מעשי בתאריך זה)', 'warning');
     const fbSection = document.getElementById('ur-feedback-blocks');
     if (fbSection) fbSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -24943,7 +24992,7 @@ async function openViewUnifiedReport(date, instructorName) {
   const basicRows = [
     `<div><b>🕒 משמרת:</b> ${report.shiftStart&&report.shiftEnd?`${report.shiftStart}–${report.shiftEnd}`:'—'}</div>`,
     `<div><b>שעות סינריון:</b> ${report.sinerioHours || 0}</div>`,
-    `<div><b>שעות הדרכה קלה:</b> ${report.lightHours || 0}</div>`
+    `<div><b>שעות הדרכה קלה:</b> ${report.lightHours || 0}${report.lightHoursExempt ? ' <span style="color:#b9770e;font-weight:bold;">(הוחרג — ' + _esc(report.lightHoursExemptReason || '') + ')</span>' : ''}</div>`
   ];
   // 2026-08-24, לפי בקשת לביא: הצגת עיכובים שדווחו בטופס (שכבה נוספת לצד
   // עיכובי הנסיעות שכבר מוצגים בטבלת הנסיעות של אותו יום).
@@ -29330,7 +29379,7 @@ function _renderTraineeSummaryPanel() {
   var milestoneHtml=[];
   if(summary.milestoneStats){
     var ms=summary.milestoneStats;var tot=summary.activeTrainees||1;
-    var msDefs=[['טסט 10',ms.test10,'#3498db'],['טסט 30',ms.test30,'#f39c12'],['טסט 50',ms.test50,'#8e44ad'],['מוכן לחניכה',ms.chinuchMs,'#e67e22']];
+    var msDefs=[['טסט 10',ms.test10,'#3498db'],['טסט 30',ms.test30,'#f39c12'],['טסט 50',ms.test50,'#8e44ad'],['טסט אורבוס',ms.chinuchMs,'#e67e22']];
     milestoneHtml.push(_tsSectionOpen('🏆','אבני דרך','#f5eef8','#8e44ad','#6c3483'));
     milestoneHtml.push(_tsSectionHeadClose());
     milestoneHtml.push('<div style="display:flex;flex-direction:column;gap:8px;">');
@@ -29764,7 +29813,7 @@ function _resetTraineeSummaryConfig() {
       <div class="ur-row-2">
         <div class="ur-field">
           <div class="ur-num-field">
-            <label>שעות הדרכה קלה <span style="color:#e74c3c;">*</span></label>
+            <label>שעות הדרכה קלה <span id="ur-light-hours-star" style="color:#e74c3c;">*</span></label>
             <input type="number" id="ur-light-hours" min="0" max="16" step="1" placeholder="0" required>
           </div>
         </div>
@@ -29774,6 +29823,13 @@ function _resetTraineeSummaryConfig() {
             <input type="number" id="ur-sinerio-hours" min="0" max="16" step="0.5" placeholder="0">
           </div>
         </div>
+      </div>
+      <div class="ur-field" id="ur-light-hours-exempt-field">
+        <label style="display:flex;align-items:center;gap:6px;font-weight:400;cursor:pointer;">
+          <input type="checkbox" id="ur-light-hours-exempt" onchange="_toggleLightHoursExempt(this)">
+          לא בוצעה הדרכה קלה — פעילות חלופית (למשל: שיעור כיתה/חזרה על חומר)
+        </label>
+        <textarea id="ur-light-hours-exempt-reason" rows="2" placeholder="פרטי הפעילות החלופית..." style="display:none;width:100%;padding:7px;border:1.5px solid #ddd;border-radius:7px;font-size:13px;margin-top:6px;box-sizing:border-box;resize:vertical;"></textarea>
       </div>
       <div class="ur-field">
         <label>הערות — סיכום כללי, משימות נוספות, תקלות, בעיות</label>
