@@ -14,7 +14,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 163</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 167</title>
 
 <style>
 
@@ -1437,7 +1437,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 227;
+  const APP_VERSION = 231;
 
   // 2026-09-07, לפי בקשת לביא: היה קשה לבדוק באיזו גרסה הדפדפן בפועל טוען
   // (כותרת הטאב נחתכת כשיש הרבה טאבים פתוחים, ואי אפשר תמיד לראות "DEPLOYED
@@ -21338,13 +21338,14 @@ async function loadMonthlyDash(){
   for(const [date,dayTrips] of Object.entries(monthData)){
     for(const t of dayTrips){
       if(!t.name)continue;
-      if(!stats[t.name])stats[t.name]={trips:0,lessons:0,minutes:0,delays:0,delayMinTotal:0,delayNotes:[],reportOnly:0,activeDays:new Set(),gapDays:new Set()};
+      if(!stats[t.name])stats[t.name]={trips:0,lessons:0,lessonsFromTrips:0,lessonsFromReports:0,minutes:0,delays:0,delayMinTotal:0,delayNotes:[],reportOnly:0,activeDays:new Set(),gapDays:new Set()};
       const s=stats[t.name];
       s.trips++;
       // 2026-08-27: משתמש ב-_tripLessonStats המשותף (כולל override ידני אם קיים).
       const _ls=_tripLessonStats(t);
       s.minutes+=_ls.minutes;
       s.lessons+=_ls.lessons;
+      s.lessonsFromTrips+=_ls.lessons; // 2026-09-15, #238: לפירוט ב-tooltip
       s.activeDays.add(date); // נסיעה בפועל = יום פעיל למכנה הממוצע
       if(t.delayMin>0){
         s.delays++;s.delayMinTotal=(s.delayMinTotal||0)+t.delayMin;
@@ -21373,12 +21374,19 @@ async function loadMonthlyDash(){
     );
     _unifiedNoTrip.forEach(v => {
       const name = v.instructorName;
-      if (!stats[name]) stats[name] = {trips:0,lessons:0,minutes:0,delays:0,delayMinTotal:0,delayNotes:[],reportOnly:0,activeDays:new Set(),gapDays:new Set()};
+      if (!stats[name]) stats[name] = {trips:0,lessons:0,lessonsFromTrips:0,lessonsFromReports:0,minutes:0,delays:0,delayMinTotal:0,delayNotes:[],reportOnly:0,activeDays:new Set(),gapDays:new Set()};
       const s = stats[name];
       // Fix (2026-08-24, per Lavi — אופציה 2): להשתמש ב"שעות הדרכה קלה" שדווחו
-      // בפועל (lightHours), לא במשך המשמרת המלאה — משמרת שלמה/45 נתן הערכה
-      // מנופחת (עד 11+ "שיעורים" ליום), כי לא כל שעות המשמרת הן נהיגה בפועל.
-      const dur = (v.lightHours || 0) * 60;
+      // בפועל (lightHours), לא במשך המשמרת המלאה.
+      // 2026-09-15, לפי הבהרת לביא (#238): "שעות הדרכה קלה" שמדריך מזין הן כבר
+      // *ספירת שיעורים* (45 דק' לשיעור אחד, התקן בכל המערכת — ר' _tripLessonStats)
+      // — לא שעות-שעון של 60 דקות. ההמרה הקודמת (ערך×60 דקות, ואז ÷45 לשיעורים)
+      // הניחה בטעות שהערך הוא שעות אמיתיות — כל "2" שהוזן הפך ל-2.67 "שיעורים",
+      // ניפוח שיטתי של פי 60/45=1.333 על כל דוח "סיכום יום בלבד" (ללא נסיעה
+      // פורמלית) בכל המקומות שמשתמשים בחישוב הזה (טבלת דשבורד, גיליון נוכחות
+      // וכו' — כולם ניזונים מ-s.lessons/s.minutes כאן, אין צורך לתקן בכל אחד).
+      const _lessonsReported = v.lightHours || 0; // הערך עצמו = מספר השיעורים
+      const dur = _lessonsReported * 45; // דקות בפועל (45 דק' לשיעור, לא 60)
       s.trips += 1;
       s.reportOnly = (s.reportOnly||0) + 1;
       s.minutes += dur;
@@ -21388,7 +21396,7 @@ async function loadMonthlyDash(){
       // ב-schedData שעלול להיות חלקי/לא טעון לתאריכים היסטוריים, וגרם לממוצע
       // מנופח (מכנה קטן מדי). עכשיו: יום עם דיווח בפועל (dur>0) = תמיד יום פעיל,
       // ללא תלות בבדיקת השיבוץ. בדיקת השיבוץ נשארת ורק ל"ימי פער" (⚠️ למטה).
-      if (dur > 0) { s.lessons += dur/45; s.activeDays.add(v.date); }
+      if (dur > 0) { s.lessons += _lessonsReported; s.lessonsFromReports += _lessonsReported; s.activeDays.add(v.date); }
       activeDaySet.add(v.date);
       // "יום פער": משובץ בפועל לקורס מעשי, 0 שעות דווחו, ולא מוחרג — לא נכנס
       // למכנה (ממילא dur=0 לא היה נכנס), רק מוצג כתגית ⚠️ נפרדת.
@@ -21405,7 +21413,7 @@ async function loadMonthlyDash(){
     Object.values(_allReports || {}).forEach(v => {
       if (!v || v.type !== 'unified_daily' || !v.instructorName || !Array.isArray(v.delays) || !v.delays.length) return;
       const name = v.instructorName;
-      if (!stats[name]) stats[name] = {trips:0,lessons:0,minutes:0,delays:0,delayMinTotal:0,delayNotes:[],reportOnly:0,activeDays:new Set(),gapDays:new Set()};
+      if (!stats[name]) stats[name] = {trips:0,lessons:0,lessonsFromTrips:0,lessonsFromReports:0,minutes:0,delays:0,delayMinTotal:0,delayNotes:[],reportOnly:0,activeDays:new Set(),gapDays:new Set()};
       const s = stats[name];
       s.delays += v.delays.length;
       v.delays.forEach(d => {
@@ -21481,10 +21489,18 @@ async function loadMonthlyDash(){
       const avgPerDay=_activeN?(s.lessons/_activeN):null;
       const gapN=s.gapDays?s.gapDays.size:0;
       const gapBadge=gapN?` <span title="${[...s.gapDays].join(', ')} — משובץ לקורס מעשי, 0 שעות הדרכה קלה, ללא החרגה" style="font-size:11px;color:#e74c3c;cursor:help;">⚠️×${gapN}</span>`:'';
+      // 2026-09-15, לפי בקשת לביא (#238): tooltip על "שיעורים" עם פירוט המקורות
+      // (נסיעות בפועל מול דיווח "סיכום יום" — 45 דק' לשיעור, ר' הבהרת לביא),
+      // כדי שאפשר יהיה לבדוק בעין בלי לסכם ידנית מהארכיון.
+      const _lft=Math.round(s.lessonsFromTrips||0), _lfr=Math.round(s.lessonsFromReports||0);
+      const _lessonsTitle=[
+        _lft?`${_lft} מנסיעות בפועל`:'',
+        _lfr?`${_lfr} מדיווח "סיכום יום" (${_lfr}×45 דק')`:''
+      ].filter(Boolean).join(' + ')||'אין נתונים';
       return`<tr>
         <td><b>${_esc(name)}</b>${s.reportOnly ? ` <span title="${s.reportOnly} מתוך ${s.trips} מבוססים על סיכום יום בלבד (ללא תכנון נסיעה)" style="font-size:11px;color:#e67e22;">📝×${s.reportOnly}</span>` : ''}${gapBadge}</td>
         <td style="text-align:center;">${s.trips}</td>
-        <td style="text-align:center;font-weight:bold;color:var(--secondary);">${s.lessons.toFixed(1)}</td>
+        <td style="text-align:center;font-weight:bold;color:var(--secondary);cursor:help;" title="${_lessonsTitle}">${Math.round(s.lessons)}</td>
         <td style="text-align:center;">${Math.round(s.minutes/60*10)/10} שע'</td>
         <td style="text-align:center;color:${s.delays>0?'#e74c3c':'#27ae60'};">${s.delays}</td>
         <td style="text-align:center;">${avgDelay?_fmtDelayMinutes(avgDelay):'—'}</td>
@@ -21615,7 +21631,7 @@ async function exportMonthlyReport(){
     for(const t of dayTrips){
       const routeStr=_routeLabel(t);
       // 2026-08-27: משתמש ב-_tripLessonStats המשותף (כולל override ידני אם קיים).
-      const lessons=_tripLessonStats(t).lessons.toFixed(1);
+      const lessons=Math.round(_tripLessonStats(t).lessons);
       const endMin=t.timeline?.length?t.timeline[t.timeline.length-1].endMin:0;
       rows.push([
         t.name||'',date,routeStr,t.startStr||'',
@@ -22096,7 +22112,7 @@ async function renderTimesheet(){
       // וגם דיפו — כאן בעבר לא טופל דיפו כלל).
       const _tripStats=dayTrips.reduce((a,t)=>{const ls=_tripLessonStats(t);return{min:a.min+ls.minutes,lessons:a.lessons+ls.lessons};},{min:0,lessons:0});
       const tripMin=_tripStats.min;
-      const lessons=_tripStats.lessons.toFixed(1);
+      const lessons=Math.round(_tripStats.lessons);
       const delays=dayTrips.filter(t=>t.delayMin>0).length;
       const taskDef=taskDefs.find(t=>t.id===entry.task)||{label:entry.task||'?',icon:'📋'};
 
@@ -22275,15 +22291,19 @@ async function renderComparison(){
   const tableRows=allNames.map(name=>{
     const a=statsA[name]||{trips:0,lessons:0,delays:0};
     const b=statsB[name]||{trips:0,lessons:0,delays:0};
-    const lessDiff=b.lessons-a.lessons;
+    // 2026-09-15, לפי בקשת לביא (#237): "שיעורים שבוצעו" הם תמיד מספר שלם —
+    // מעוגל כאן לפני החישוב וההצגה, כדי שגם ההפרש (diffStr) יהיה עקבי (שלם
+    // פחות שלם = שלם), לא רק התאים הבודדים.
+    const aLessons=Math.round(a.lessons), bLessons=Math.round(b.lessons);
+    const lessDiff=bLessons-aLessons;
     const diffCol=lessDiff>0?'#27ae60':lessDiff<0?'#e74c3c':'#888';
-    const diffStr=lessDiff===0?'—':(lessDiff>0?'+':'')+lessDiff.toFixed(1);
+    const diffStr=lessDiff===0?'—':(lessDiff>0?'+':'')+lessDiff;
     return`<tr>
       <td><b>${name}</b></td>
       <td style="text-align:center;">${a.trips}</td>
-      <td style="text-align:center;font-weight:bold;color:#2980b9;">${a.lessons.toFixed(1)}</td>
+      <td style="text-align:center;font-weight:bold;color:#2980b9;">${aLessons}</td>
       <td style="text-align:center;">${b.trips}</td>
-      <td style="text-align:center;font-weight:bold;color:#8e44ad;">${b.lessons.toFixed(1)}</td>
+      <td style="text-align:center;font-weight:bold;color:#8e44ad;">${bLessons}</td>
       <td style="text-align:center;font-weight:bold;color:${diffCol};">${diffStr}</td>
     </tr>`;
   }).join('');
@@ -22843,9 +22863,14 @@ async function exportPDFReport(){
 
   // Build a printable HTML document
   const statsPerInstr={};
-  for(const dayTrips of Object.values(rangeData)){
+  // 2026-09-15, לפי בקשת לביא (#239): לתעד גם ימי-כיסוי (לצורך המניעת כפל-ספירה
+  // עם "סיכום יום" למטה) — רוב המדריכים עדיין לא משתמשים בכלי תכנון הנסיעות,
+  // אז רוב/כל הביצוע שלהם מתועד רק דרך "סיכום יום", לא כאן.
+  const _tripCoverage=new Set();
+  for(const [date,dayTrips] of Object.entries(rangeData)){
     for(const t of dayTrips){
       if(!t.name)continue;
+      _tripCoverage.add(date+'|'+t.name);
       if(!statsPerInstr[t.name])statsPerInstr[t.name]={trips:0,lessons:0,minutes:0,delays:0};
       const s=statsPerInstr[t.name];
       s.trips++;
@@ -22859,21 +22884,39 @@ async function exportPDFReport(){
 
   // 2026-08-24, לפי בקשת לביא: עיכובים שדווחו בטופס "סיכום יום" — שכבה נוספת
   // שנספרת יחד עם עיכובי הנסיעות, לא במקומם.
+  // 2026-09-15, לפי בקשת לביא (#239): באותה הזדמנות — גם שיעורי "סיכום יום" (ללא
+  // נסיעה פורמלית תואמת) נספרים כאן, לא רק עיכובים. עד עכשיו הדו"ח הזה כלל לא
+  // כלל אותם בכלל, בעוד שהדשבורד הראשי כן — פער משמעותי דווקא למדריכים שרוב
+  // הדיווח שלהם דרך "סיכום יום" בלבד. אותה נוסחה מתוקנת בדיוק כמו ב-loadMonthlyDash
+  // (#238): lightHours עצמו = מספר השיעורים, ×45 דק' לשיעור — לא ×60/45.
   try {
     const _rangeReports = await loadDateRangeTaskReports(start,end);
+    const _unifiedNoTripPdf = Object.values(_rangeReports || {}).filter(v =>
+      v && v.type === 'unified_daily' && v.instructorName &&
+      !_tripCoverage.has(v.date + '|' + v.instructorName)
+    );
+    _unifiedNoTripPdf.forEach(v => {
+      const name = v.instructorName;
+      if (!statsPerInstr[name]) statsPerInstr[name] = {trips:0,lessons:0,minutes:0,delays:0};
+      const s = statsPerInstr[name];
+      const _lessonsReported = v.lightHours || 0;
+      const dur = _lessonsReported * 45;
+      s.minutes += dur;
+      if (dur > 0) s.lessons += _lessonsReported;
+    });
     Object.values(_rangeReports || {}).forEach(v => {
       if (!v || v.type !== 'unified_daily' || !v.instructorName || !Array.isArray(v.delays) || !v.delays.length) return;
       const name = v.instructorName;
       if (!statsPerInstr[name]) statsPerInstr[name] = {trips:0,lessons:0,minutes:0,delays:0};
       statsPerInstr[name].delays += v.delays.length;
     });
-  } catch(e) { console.warn('exportPDFReport unified delays fallback:', e); }
+  } catch(e) { console.warn('exportPDFReport unified fallback:', e); }
 
   const instrRows=Object.entries(statsPerInstr).sort((a,b)=>b[1].lessons-a[1].lessons)
     .map(([name,s])=>`<tr>
       <td>${_esc(name)}</td>
       <td style="text-align:center;">${s.trips}</td>
-      <td style="text-align:center;font-weight:bold;">${s.lessons.toFixed(1)}</td>
+      <td style="text-align:center;font-weight:bold;">${Math.round(s.lessons)}</td>
       <td style="text-align:center;">${(s.minutes/60).toFixed(1)}</td>
       <td style="text-align:center;color:${s.delays>0?'#c0392b':'#27ae60'};">${s.delays}</td>
     </tr>`).join('');
@@ -22920,7 +22963,7 @@ async function exportPDFReport(){
     <tfoot><tr style="background:#eaf4fd;font-weight:bold;">
       <td>סה"כ</td>
       <td style="text-align:center;">${totalTrips}</td>
-      <td style="text-align:center;">${totalLessons.toFixed(1)}</td>
+      <td style="text-align:center;">${Math.round(totalLessons)}</td>
       <td style="text-align:center;">${(Object.values(statsPerInstr).reduce((a,v)=>a+v.minutes,0)/60).toFixed(1)}</td>
       <td style="text-align:center;">${totalDelays}</td>
     </tfoot>
@@ -28052,16 +28095,20 @@ async function exportDashboardXLSX(){
     // 2026-08-19: תומך בטווח תאריכים מותאם. כשלא נבחר טווח — מתנהג כמו קודם
     // (חודש הדשבורד, כולל שימוש במטמון אם כבר נטען). בטווח מותאם לא נוגעים
     // במטמון החודשי, כדי לא לבלבל את תצוגת הדשבורד עם נתוני טווח אחר.
+    // 2026-09-15, תיקון (#240, לפי בקשת לביא): ה-branch הזה התעלם מ-{start,end}
+    // שכבר נפתרו למעלה, וקרא ישירות ל-_monthlyDashDate — כך שמצב "טווח מותאם"
+    // של הדשבורד הראשי (#227) לא כובד אם לא הוגדר גם _reportsDateRange בנפרד.
+    // עכשיו שני ה-branches משתמשים ב-start/end אחידים.
     let monthData,taskRpts;
     if(_reportsDateRange){
       monthData=await loadDateRangeHistory(start,end);
       taskRpts=await loadDateRangeTaskReports(start,end);
     } else {
       if(!Object.keys(_monthHistoryCache).length){
-        _monthHistoryCache=await loadMonthHistory(_monthlyDashDate.getFullYear(),_monthlyDashDate.getMonth());
+        _monthHistoryCache=await loadDateRangeHistory(start,end);
       }
       monthData=_monthHistoryCache||{};
-      taskRpts=await loadMonthTaskReports(_monthlyDashDate.getFullYear(),_monthlyDashDate.getMonth());
+      taskRpts=await loadDateRangeTaskReports(start,end);
     }
     if(!Object.keys(monthData).length){
       showToast('אין נתוני נסיעות לטווח זה','warning');return;
@@ -28077,8 +28124,27 @@ async function exportDashboardXLSX(){
       if(t.delayMin>0)v.delays++;
       if(t.routeVariant>0)v.routeChanges++;
     }));
+    // 2026-09-15, לפי בקשת לביא (#239): אותה תוספת כמו ב-exportPDFReport — גיליון
+    // "סיכום מדריכים" היה כולל רק נסיעות פורמליות, בעוד שרוב המדריכים מדווחים
+    // רק דרך "סיכום יום" (עדיין לא משתמשים בכלי תכנון הנסיעות). נוסחה מתוקנת
+    // בדיוק כמו ב-loadMonthlyDash/#238: lightHours עצמו = מספר השיעורים, ×45
+    // דק' לשיעור — לא ×60/45.
+    try {
+      const _tripCoverageXl=new Set();
+      Object.entries(monthData).forEach(([date,day])=>(day||[]).forEach(t=>{if(t.name)_tripCoverageXl.add(date+'|'+t.name);}));
+      Object.values(taskRpts||{}).forEach(v=>{
+        if(!v||v.type!=='unified_daily'||!v.instructorName)return;
+        if(_tripCoverageXl.has(v.date+'|'+v.instructorName))return;
+        if(!byInstr[v.instructorName])byInstr[v.instructorName]={trips:0,lessons:0,minutes:0,delays:0,routeChanges:0};
+        const vv=byInstr[v.instructorName];
+        const _lessonsReported=v.lightHours||0;
+        vv.minutes+=_lessonsReported*45;
+        if(_lessonsReported>0)vv.lessons+=_lessonsReported;
+        if(Array.isArray(v.delays))vv.delays+=v.delays.length;
+      });
+    } catch(e) { console.warn('exportDashboardXLSX unified fallback:', e); }
     const instrRows=[['מדריך','נסיעות','שיעורים','שעות','עיכובים','שינויי מסלול']];
-    Object.entries(byInstr).sort().forEach(([name,v])=>instrRows.push([name,v.trips,+v.lessons.toFixed(1),+(v.minutes/60).toFixed(1),v.delays,v.routeChanges]));
+    Object.entries(byInstr).sort().forEach(([name,v])=>instrRows.push([name,v.trips,Math.round(v.lessons),+(v.minutes/60).toFixed(1),v.delays,v.routeChanges]));
 
     // Sheet 2: route efficiency
     const routeStats={};
@@ -28095,14 +28161,29 @@ async function exportDashboardXLSX(){
       routeRows.push([r,v.count,+(v.lessons/v.count).toFixed(1),Math.round(v.min/v.count),v.delays]));
 
     // Sheet 3: task reports
+    // 2026-09-15, לפי בקשת לביא (#239, אותו תיקון כמו #231): לסנן דוחות "סיכום
+    // יום" (unified_daily, אין להם taskId אמיתי) — בלעדיו מופיעה שורת "undefined".
     const taskRows=[['מדריך','משימה','כמות','משך (דק)','הערות','נהגים שנבקרו']];
-    Object.values(taskRpts).forEach(r=>taskRows.push([r.instructorName,r.taskLabel||r.taskId,r.quantity||0,r.duration||0,r.notes||'',r.inspectedDrivers||'']));
+    Object.values(taskRpts).forEach(r=>{
+      if(!r||!r.taskId||r.type==='unified_daily')return;
+      taskRows.push([r.instructorName,r.taskLabel||r.taskId,r.quantity||0,r.duration||0,r.notes||'',r.inspectedDrivers||'']);
+    });
 
     // Sheet 4: delays
-    const delayRows=[['מדריך','תאריך','מסלול','עיכוב (דק)','סיבה']];
+    // 2026-09-15, לפי בקשת לביא (#240): נוספה גם שכבת עיכובי "סיכום יום" (כמו
+    // בטאב "⏱️ עיכובים", #232) — עד עכשיו הגיליון כלל רק עיכובי נסיעות פורמליות.
+    // עמודת "מקור" חדשה מבחינה בין השניים; "מסלול" ריק לעיכובי סיכום-יום (אין
+    // מסלול לרשומה כזו).
+    const delayRows=[['מדריך','תאריך','מקור','מסלול','עיכוב (דק)','סיבה']];
     Object.entries(monthData).forEach(([date,day])=>(day||[]).forEach(t=>{
-      if(t.delayMin>0)delayRows.push([t.name,date,_routeLabel(t),t.delayMin,t.delayNote||'']);
+      if(t.delayMin>0)delayRows.push([t.name,date,'נסיעה',_routeLabel(t),t.delayMin,t.delayNote||'']);
     }));
+    Object.values(taskRpts||{}).forEach(v=>{
+      if(!v||v.type!=='unified_daily'||!v.instructorName||!Array.isArray(v.delays))return;
+      v.delays.forEach(d=>{
+        if((d.minutes||0)>0||d.reason)delayRows.push([v.instructorName,v.date,'סיכום יום','',d.minutes||0,d.reason||'']);
+      });
+    });
 
     // Sheet 5: route changes
     const rcRows=[['מדריך','תאריך','מסלול שבוצע','סיבה']];
