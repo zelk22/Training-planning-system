@@ -14,7 +14,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 160</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 161</title>
 
 <style>
 
@@ -1437,7 +1437,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 224;
+  const APP_VERSION = 225;
 
   // 2026-09-07, לפי בקשת לביא: היה קשה לבדוק באיזו גרסה הדפדפן בפועל טוען
   // (כותרת הטאב נחתכת כשיש הרבה טאבים פתוחים, ואי אפשר תמיד לראות "DEPLOYED
@@ -26300,55 +26300,98 @@ async function enhanceMonthlyDashWithTasks(){
 
   // Cache and render tasks tab
   _monthTaskStatsCache=instrTaskStats;
-  _renderTasksTabFromStats(instrTaskStats); // renders inline in main view
+
+  // 2026-09-15, דיון #234 (תוקן לפי לביא — הטאב הפך ריק לגמרי כשאין דוחות
+  // מוגשים, למרות ששיבוצים בלוח הזמנים בהחלט קיימים): הטאב חייב לשקף גם
+  // שיבוץ, לא רק דיווח בפועל — בדיוק כמו שהפונקציה הישנה renderTasksTab()
+  // עשתה (הושבתה ב-#228 בטעות — חשבנו שהיא מיושנת/מיותרת, אבל היא דווקא
+  // הכילה את שילוב שיבוץ+דיווח החסר כאן). כאן — אותה לוגיקה, טווח-מותאם.
+  const schedByTask={};
+  try{
+    const allSched=JSON.parse(localStorage.getItem('v100_sched_all')||'{}');
+    Object.entries(allSched).forEach(([date,entries])=>{
+      if(date<_period.start||date>_period.end)return;
+      (entries||[]).forEach(e=>{
+        if(!e.task||!e.name)return;
+        const tDef=taskDefs.find(t=>t.id===e.task);
+        if(tDef&&tDef.isTrip)return;
+        if(!schedByTask[e.task])schedByTask[e.task]={};
+        if(!schedByTask[e.task][e.name])schedByTask[e.task][e.name]={days:0,minutes:0};
+        schedByTask[e.task][e.name].days++;
+        try{
+          const sh=e.startTime||'',en=e.endTime||'';
+          if(sh&&en)schedByTask[e.task][e.name].minutes+=Math.max(0,timeToMin(en)-timeToMin(sh));
+        }catch(ex){}
+      });
+    });
+  }catch(e){}
+
+  _renderTasksTabFromStats(instrTaskStats,schedByTask); // renders inline in main view
 }
 
-function _renderTasksTabFromStats(instrTaskStats){
+function _renderTasksTabFromStats(instrTaskStats,schedByTask){
   let taskTab=document.getElementById('dashTabTasks');
   if(!taskTab)return;
+  schedByTask=schedByTask||{};
 
-  const allNames=Object.keys(instrTaskStats).sort();
-  // Get ALL task IDs from taskDefs (not just ones with data)
+  // 2026-09-15, דיון #234: איחוד שמות מדריכים משני המקורות — שיבוץ בלוח
+  // הזמנים (schedByTask) ודיווח בפועל (instrTaskStats). משימה מוצגת אם יש לה
+  // שיבוץ ו/או דיווח בתקופה — לא רק דיווח, כמו קודם.
   const allTaskIds=taskDefs.filter(t=>!t.isTrip&&t.requiresSummary).map(t=>t.id);
-  const allTaskIdsWithData=[...new Set([...allTaskIds,...Object.values(instrTaskStats).flatMap(ts=>Object.keys(ts))])];
+  const allTaskIdsWithData=[...new Set([
+    ...allTaskIds,
+    ...Object.keys(schedByTask),
+    ...Object.values(instrTaskStats).flatMap(ts=>Object.keys(ts))
+  ])];
 
-  if(!allNames.length){
-    taskTab.innerHTML='<div style="color:#aaa;text-align:center;padding:20px;font-size:13px;">אין נתוני משימות לחודש זה — לחץ "טען נתונים"</div>';
+  const hasAnyData=Object.keys(schedByTask).length>0||Object.keys(instrTaskStats).length>0;
+  if(!hasAnyData){
+    taskTab.innerHTML='<div style="color:#aaa;text-align:center;padding:20px;font-size:13px;">אין שיבוצים או דוחות למשימות (מלבד קורס מעשי) בתקופה זו</div>';
     return;
   }
 
   // Build a section per task type
   const sections=allTaskIdsWithData.map(taskId=>{
     const tDef=taskDefs.find(t=>t.id===taskId)||{id:taskId,label:taskId,icon:'📋',driverFields:false};
-    
-    // Collect all reports for this task across all instructors
-    let totalQty=0,totalDur=0,totalCount=0;
-    const allNotes=[];
-    const instrRows=[];
-    
-    allNames.forEach(name=>{
-      const t=(instrTaskStats[name]||{})[taskId];
-      if(!t)return;
-      totalQty+=t.quantity||0;
-      totalDur+=t.duration||0;
-      totalCount+=t.count||0;
-      if(t.notes&&t.notes.length)t.notes.forEach(n=>{if(n.trim())allNotes.push({instr:name,note:n});});
+    const sd=schedByTask[taskId]||{};
 
-      // Per-instructor row
-      const driversList=t.drivers&&t.drivers.length
+    // מדריך נכלל אם הוא משובץ למשימה הזו ו/או דיווח עליה בתקופה
+    const instrNames=[...new Set([
+      ...Object.keys(sd),
+      ...Object.entries(instrTaskStats).filter(([,ts])=>ts[taskId]).map(([name])=>name)
+    ])].sort();
+    if(!instrNames.length)return'';
+
+    let totalQty=0,totalDur=0,totDays=0,totMins=0;
+    const allNotes=[];
+
+    const instrRows=instrNames.map(name=>{
+      const t=(instrTaskStats[name]||{})[taskId]||null;
+      const sv=sd[name]||{days:0,minutes:0};
+      totDays+=sv.days;totMins+=sv.minutes;
+      if(t){
+        totalQty+=t.quantity||0;totalDur+=t.duration||0;
+        if(t.notes&&t.notes.length)t.notes.forEach(n=>{if(n.trim())allNotes.push({instr:name,note:n});});
+      }
+
+      const driversList=t&&t.drivers&&t.drivers.length
         ?'<div style="font-size:10px;color:#8e44ad;margin-top:2px;">👤 '+t.drivers.map(_esc).join(', ')+'</div>':'';
-      const noteBadge=t.notes&&t.notes.length
+      const noteBadge=t&&t.notes&&t.notes.length
         ?'<span title="'+_esc(t.notes.join(' | '))+'" style="font-size:10px;color:#e67e22;cursor:help;margin-right:4px;">💬'+t.notes.length+'</span>':'';
       // 2026-09-15, דיון #227: ממוצע = כמות ÷ ימים עם כמות>0 בדיווח (t.activeDays).
-      const _tActiveN=t.activeDays?t.activeDays.size:0;
+      const _tActiveN=t&&t.activeDays?t.activeDays.size:0;
       const tAvg=_tActiveN?(t.quantity/_tActiveN):null;
-      instrRows.push(`<tr style="border-bottom:1px solid #f5f5f5;">
+      const reportCell=t
+        ?`<b style="color:var(--primary);">${t.quantity||'—'}</b>${t.duration?' / '+(Math.round(t.duration/60*10)/10)+"ש'":''}`
+        :'<span style="color:#ccc;">טרם דווח</span>';
+      return`<tr style="border-bottom:1px solid #f5f5f5;">
         <td style="padding:7px 10px;font-weight:bold;font-size:13px;">${_esc(name)}</td>
-        <td style="padding:7px 10px;text-align:center;font-weight:bold;color:var(--primary);">${t.quantity||'—'}</td>
-        <td style="padding:7px 10px;text-align:center;color:#888;">${t.duration?Math.round(t.duration)+' דק\'':'—'}</td>
-        <td style="padding:7px 10px;text-align:center;color:${tAvg===null?'#aaa':'#3B6D11'};font-weight:bold;" title="${_tActiveN} ימים">${tAvg===null?'—':tAvg.toFixed(1)}</td>
+        <td style="padding:7px 10px;text-align:center;color:#555;">${sv.days||'—'}</td>
+        <td style="padding:7px 10px;text-align:center;color:#888;">${sv.minutes?(sv.minutes/60).toFixed(1)+" שע'":'—'}</td>
+        <td style="padding:7px 10px;text-align:center;font-size:12px;">${reportCell}</td>
+        <td style="padding:7px 10px;text-align:center;color:${tAvg===null?'#aaa':'#3B6D11'};font-weight:bold;" title="${_tActiveN} ימי דיווח בפועל">${tAvg===null?'—':tAvg.toFixed(1)}</td>
         <td style="padding:7px 10px;font-size:11px;">${noteBadge}${driversList}</td>
-      </tr>`);
+      </tr>`;
     });
 
     if(!instrRows.length)return'';
@@ -26356,7 +26399,7 @@ function _renderTasksTabFromStats(instrTaskStats){
     const hrs=(totalDur/60).toFixed(1);
     const notesHtml=allNotes.length
       ?`<div style="margin-top:10px;border-top:1px solid #eee;padding-top:10px;">
-          <div style="font-size:11px;font-weight:bold;color:#888;margin-bottom:6px;">💬 הערות החודש</div>
+          <div style="font-size:11px;font-weight:bold;color:#888;margin-bottom:6px;">💬 הערות בתקופה</div>
           ${allNotes.map(n=>`<div style="background:#fff8f0;border-radius:6px;padding:6px 10px;margin-bottom:4px;font-size:12px;border-right:3px solid #f39c12;">
             <b>${_esc(n.instr)}:</b> ${_esc(n.note)}
           </div>`).join('')}
@@ -26370,16 +26413,17 @@ function _renderTasksTabFromStats(instrTaskStats){
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:6px;">
         <div style="font-size:15px;font-weight:bold;color:var(--primary);">${_esc(tDef.icon||'📋')} ${_esc(tDef.label)}</div>
         <div style="display:flex;gap:10px;flex-wrap:wrap;">
-          <span style="background:#eaf4fb;color:var(--primary);border-radius:20px;padding:3px 12px;font-size:12px;font-weight:bold;">${totalQty} ${qtyLabel}</span>
-          <span style="background:#f0f0f0;color:#555;border-radius:20px;padding:3px 12px;font-size:12px;">${hrs} שעות</span>
+          <span style="background:#f0f0f0;color:#555;border-radius:20px;padding:3px 12px;font-size:12px;">${totDays} ימים משובצים</span>
+          <span style="background:#eaf4fb;color:var(--primary);border-radius:20px;padding:3px 12px;font-size:12px;font-weight:bold;">${totalQty} ${qtyLabel} דווחו</span>
           ${allNotes.length?`<span style="background:#fff3e0;color:#e67e22;border-radius:20px;padding:3px 12px;font-size:12px;">💬 ${allNotes.length} הערות</span>`:''}
         </div>
       </div>
       <table style="width:100%;border-collapse:collapse;background:white;border-radius:10px;overflow:hidden;box-shadow:0 1px 6px rgba(0,0,0,.06);">
         <thead><tr style="background:#f0f4f8;">
           <th style="padding:7px 10px;font-size:11px;text-align:right;color:#555;border-bottom:2px solid #dde;">מדריך</th>
-          <th style="padding:7px 10px;font-size:11px;text-align:center;color:#555;border-bottom:2px solid #dde;">${qtyLabel}</th>
-          <th style="padding:7px 10px;font-size:11px;text-align:center;color:#555;border-bottom:2px solid #dde;">${durLabel}</th>
+          <th style="padding:7px 10px;font-size:11px;text-align:center;color:#555;border-bottom:2px solid #dde;">ימים משובצים</th>
+          <th style="padding:7px 10px;font-size:11px;text-align:center;color:#555;border-bottom:2px solid #dde;">שעות משובצות</th>
+          <th style="padding:7px 10px;font-size:11px;text-align:center;color:#555;border-bottom:2px solid #dde;">דיווח (${qtyLabel}${durLabel?'/'+durLabel:''})</th>
           <th style="padding:7px 10px;font-size:11px;text-align:center;color:#555;border-bottom:2px solid #dde;" title="${qtyLabel} ÷ ימים עם דיווח בפועל">ממוצע/יום</th>
           ${driversHeader}
         </tr></thead>
@@ -26389,7 +26433,7 @@ function _renderTasksTabFromStats(instrTaskStats){
     </div>`;
   }).filter(Boolean).join('');
 
-  taskTab.innerHTML=sections||'<div style="color:#aaa;text-align:center;padding:20px;">אין נתוני משימות</div>';
+  taskTab.innerHTML=sections||'<div style="color:#aaa;text-align:center;padding:20px;">אין נתונים להצגה</div>';
 }
 
 // Register tasks tab in switchDashTab
