@@ -14,7 +14,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 155</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 157</title>
 
 <style>
 
@@ -1437,7 +1437,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 219;
+  const APP_VERSION = 221;
 
   // 2026-09-07, לפי בקשת לביא: היה קשה לבדוק באיזו גרסה הדפדפן בפועל טוען
   // (כותרת הטאב נחתכת כשיש הרבה טאבים פתוחים, ואי אפשר תמיד לראות "DEPLOYED
@@ -21354,18 +21354,20 @@ async function loadMonthlyDash(){
       s.trips += 1;
       s.reportOnly = (s.reportOnly||0) + 1;
       s.minutes += dur;
-      if (dur > 0) s.lessons += dur/45;
+      // 2026-09-15, תיקון בעקבות דיווח לביא (#229): המכנה חייב להיות תואם בדיוק
+      // למונה. בגרסה הקודמת המונה (lessons) נספר לכל יום עם dur>0, אבל המכנה
+      // (activeDays) נספר רק אם _wasAssignedToTripTaskOnDate החזיר אמת — תלוי
+      // ב-schedData שעלול להיות חלקי/לא טעון לתאריכים היסטוריים, וגרם לממוצע
+      // מנופח (מכנה קטן מדי). עכשיו: יום עם דיווח בפועל (dur>0) = תמיד יום פעיל,
+      // ללא תלות בבדיקת השיבוץ. בדיקת השיבוץ נשארת ורק ל"ימי פער" (⚠️ למטה).
+      if (dur > 0) { s.lessons += dur/45; s.activeDays.add(v.date); }
       activeDaySet.add(v.date);
-      // 2026-09-15, לפי דיון #227: מכנה "ממוצע שיעורים/יום" סופר רק ימים עם
-      // תפוקה בפועל, ורק כשהמדריך היה משובץ בפועל לקורס מעשי אותו יום (לא כל
-      // דוח "סיכום יום" — גם ימי עיוני/ATP מגישים כזה). יום משובץ עם 0 שעות
-      // ולא מוחרג (lightHoursExempt) נספר כ"פער" — מוצג, לא נכנס למכנה.
-      if (!s.activeDays) s.activeDays = new Set();
+      // "יום פער": משובץ בפועל לקורס מעשי, 0 שעות דווחו, ולא מוחרג — לא נכנס
+      // למכנה (ממילא dur=0 לא היה נכנס), רק מוצג כתגית ⚠️ נפרדת.
       if (!s.gapDays) s.gapDays = new Set();
-      const _wasTripDay = (typeof _wasAssignedToTripTaskOnDate === 'function') && _wasAssignedToTripTaskOnDate(name, v.date);
-      if (_wasTripDay) {
-        if (dur > 0) s.activeDays.add(v.date);
-        else if (!v.lightHoursExempt) s.gapDays.add(v.date);
+      if (dur === 0 && !v.lightHoursExempt && !v.fullShiftDelay) {
+        const _wasTripDay = (typeof _wasAssignedToTripTaskOnDate === 'function') && _wasAssignedToTripTaskOnDate(name, v.date);
+        if (_wasTripDay) s.gapDays.add(v.date);
       }
     });
 
@@ -24284,6 +24286,27 @@ async function submitUnifiedReport() {
     }
   }
 
+  // 2026-09-15, לפי בקשת לביא (#230): נקרא כאן — לפני הוולידציה — כדי לבדוק אם
+  // עיכוב מדווח מכסה את כל המשמרת. עיכוב כזה הוא סיבה מספקת ל-0 שיעורים/0
+  // משוב, באותה קטגוריה כמו "לא בוצעה הדרכה קלה" (תקלה תפעולית שמנעה הדרכה
+  // לגמרי — לא "פעילות חלופית מתוכננת", ולכן לא דורש לסמן את התיבה ההיא).
+  const _delayBlocksEarly = document.querySelectorAll('#ur-delay-blocks .ur-delay-block');
+  const _delaysList = [];
+  _delayBlocksEarly.forEach(block => {
+    const idx = block.id.replace('ur-delay-block-', '');
+    const minEl = document.getElementById('ur-delay-' + idx + '-min');
+    const reasonEl = document.getElementById('ur-delay-' + idx + '-reason');
+    const minutes = parseFloat(minEl?.value || '0') || 0;
+    const reason = reasonEl?.value.trim() || '';
+    if (minutes > 0 || reason) _delaysList.push({ minutes, reason });
+  });
+  const _totalDelayMin = _delaysList.reduce((a,d)=>a+(d.minutes||0),0);
+  const _shiftStartVal = document.getElementById('ur-shift-start')?.value || '';
+  const _shiftEndVal = document.getElementById('ur-shift-end')?.value || '';
+  const _shiftDurMin = (_shiftStartVal && _shiftEndVal && typeof timeToMin === 'function')
+    ? Math.max(0, timeToMin(_shiftEndVal) - timeToMin(_shiftStartVal)) : 0;
+  const _delayCoversFullShift = _shiftDurMin > 0 && _totalDelayMin >= _shiftDurMin;
+
   // 2026-08-23, לפי בקשת לביא: "שעות הדרכה קלה" הפך לשדה חובה — הטופס לא
   // נשלח/נסגר בלעדיו, רק מתריע ומדגיש את השדה החסר.
   // 2026-09-03, לפי בקשת לביא: הדרישה הייתה חלה על כולם כולל מדריכים ששובצו
@@ -24306,7 +24329,7 @@ async function submitUnifiedReport() {
     if (_lightExemptReasonEl) { _lightExemptReasonEl.style.border = '2px solid #e74c3c'; _lightExemptReasonEl.focus(); _lightExemptReasonEl.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
     return;
   }
-  if (_wasTripDayForLight && !_lightExempt && _lightHoursRaw === '') {
+  if (_wasTripDayForLight && !_lightExempt && !_delayCoversFullShift && _lightHoursRaw === '') {
     showToast('⚠️ יש להשלים את שדה "שעות הדרכה קלה" לפני שמירת הטופס', 'warning');
     if (_lightHoursEl) {
       _lightHoursEl.style.border = '2px solid #e74c3c';
@@ -24335,6 +24358,11 @@ async function submitUnifiedReport() {
     report.lightHoursExempt = true;
     report.lightHoursExemptReason = _lightExemptReason;
   }
+  // 2026-09-15, לפי בקשת לביא (#230): מסומן במפורש (לא רק נגזר מסכום העיכובים
+  // בזמן קריאה) — כדי שדשבורדים/סריקות עתידיים יזהו את המקרה הזה באופן יציב.
+  if (_delayCoversFullShift) {
+    report.fullShiftDelay = true;
+  }
   // Custom fields
   _getUrCustomFields().forEach(f => {
     const el = document.getElementById('ur-custom-' + f.id);
@@ -24344,16 +24372,9 @@ async function submitUnifiedReport() {
 
 
   // ── Section A2: Delays reported by the instructor (2026-08-24, per Lavi) ──
-  const delayBlocks = document.querySelectorAll('#ur-delay-blocks .ur-delay-block');
-  report.delays = [];
-  delayBlocks.forEach(block => {
-    const idx = block.id.replace('ur-delay-block-', '');
-    const minEl = document.getElementById('ur-delay-' + idx + '-min');
-    const reasonEl = document.getElementById('ur-delay-' + idx + '-reason');
-    const minutes = parseFloat(minEl?.value || '0') || 0;
-    const reason = reasonEl?.value.trim() || '';
-    if (minutes > 0 || reason) report.delays.push({ minutes, reason });
-  });
+  // 2026-09-15: הקריאה מה-DOM עברה למעלה (_delaysList) כדי שתהיה זמינה גם
+  // לוולידציה (_delayCoversFullShift); כאן רק שימוש בתוצאה, בלי קריאה כפולה.
+  report.delays = _delaysList;
 
   // ── Section B: Trainee feedback ──
   const feedbackBlocks = document.querySelectorAll('#ur-feedback-blocks .ur-trainee-block');
@@ -24447,7 +24468,10 @@ async function submitUnifiedReport() {
   // 2026-09-14, לפי בקשת לביא: באותה החרגה (ר' _lightExempt למעלה) — חובת
   // משוב חניך גם היא מתרפה, כי פעילות כיתתית כללית לא בהכרח נקשרת למשוב אישי
   // עם מספרי שיעור.
-  if (_wasTripDay && !_lightExempt && !lessonResults.length && !window._urAddMode) {
+  // 2026-09-15, לפי בקשת לביא (#230): גם עיכוב שמכסה את כל המשמרת (_delayCoversFullShift,
+  // מחושב למעלה) מתרפה מאותה חובה — תקלה תפעולית שמנעה הדרכה לגמרי היא סיבה
+  // מספקת ל-0 משוב, בלי לסמן זאת כ"פעילות חלופית".
+  if (_wasTripDay && !_lightExempt && !_delayCoversFullShift && !lessonResults.length && !window._urAddMode) {
     showToast('⚠️ יש להוסיף לפחות משוב חניך אחד לפני שמירת הטופס (היית משובץ לקורס מעשי בתאריך זה)', 'warning');
     const fbSection = document.getElementById('ur-feedback-blocks');
     if (fbSection) fbSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -25180,7 +25204,7 @@ async function openViewUnifiedReport(date, instructorName) {
   const basicRows = [
     `<div><b>🕒 משמרת:</b> ${report.shiftStart&&report.shiftEnd?`${report.shiftStart}–${report.shiftEnd}`:'—'}</div>`,
     `<div><b>שעות סינריון:</b> ${report.sinerioHours || 0}</div>`,
-    `<div><b>שעות הדרכה קלה:</b> ${report.lightHours || 0}${report.lightHoursExempt ? ' <span style="color:#b9770e;font-weight:bold;">(הוחרג — ' + _esc(report.lightHoursExemptReason || '') + ')</span>' : ''}</div>`
+    `<div><b>שעות הדרכה קלה:</b> ${report.lightHours || 0}${report.lightHoursExempt ? ' <span style="color:#b9770e;font-weight:bold;">(הוחרג — ' + _esc(report.lightHoursExemptReason || '') + ')</span>' : ''}${report.fullShiftDelay ? ' <span style="color:#c0392b;font-weight:bold;">(עיכוב כיסה את כל המשמרת)</span>' : ''}</div>`
   ];
   // 2026-08-24, לפי בקשת לביא: הצגת עיכובים שדווחו בטופס (שכבה נוספת לצד
   // עיכובי הנסיעות שכבר מוצגים בטבלת הנסיעות של אותו יום).
