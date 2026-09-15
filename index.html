@@ -14,7 +14,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 157</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 159</title>
 
 <style>
 
@@ -1437,7 +1437,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 221;
+  const APP_VERSION = 223;
 
   // 2026-09-07, לפי בקשת לביא: היה קשה לבדוק באיזו גרסה הדפדפן בפועל טוען
   // (כותרת הטאב נחתכת כשיש הרבה טאבים פתוחים, ואי אפשר תמיד לראות "DEPLOYED
@@ -3037,6 +3037,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
           <div id="reportsDropdown" style="display:none;position:absolute;top:110%;right:0;background:white;border:1.5px solid #ddd;border-radius:10px;box-shadow:0 6px 20px rgba(0,0,0,0.12);z-index:1000;min-width:195px;padding:6px 0;">
             <button onclick="exportMonthlyReport();toggleReportsDropdown()" style="width:100%;padding:10px 16px;background:none;border:none;text-align:right;cursor:pointer;font-size:13px;color:#2c3e50;font-weight:600;" onmouseover="this.style.background='#f5f5f5'" onmouseout="this.style.background='none'">📥 ייצא נסיעות CSV</button>
             <button onclick="exportScheduleReport();toggleReportsDropdown()" style="width:100%;padding:10px 16px;background:none;border:none;text-align:right;cursor:pointer;font-size:13px;color:#2c3e50;font-weight:600;" onmouseover="this.style.background='#f5f5f5'" onmouseout="this.style.background='none'">📋 ייצא שיבוצים CSV</button>
+            <button onclick="exportDelaysCSV();toggleReportsDropdown()" style="width:100%;padding:10px 16px;background:none;border:none;text-align:right;cursor:pointer;font-size:13px;color:#2c3e50;font-weight:600;" onmouseover="this.style.background='#f5f5f5'" onmouseout="this.style.background='none'">⏱️ ייצא עיכובים CSV</button>
             <button onclick="exportPDFReport();toggleReportsDropdown()" style="width:100%;padding:10px 16px;background:none;border:none;text-align:right;cursor:pointer;font-size:13px;color:#2c3e50;font-weight:600;" onmouseover="this.style.background='#f5f5f5'" onmouseout="this.style.background='none'">📄 הפק דו"ח PDF</button>
             <hr style="margin:4px 12px;border-color:#eee;">
             <button onclick="exportDashboardXLSX();toggleReportsDropdown()" style="width:100%;padding:10px 16px;background:none;border:none;text-align:right;cursor:pointer;font-size:13px;color:#217346;font-weight:700;" onmouseover="this.style.background='#f5f5f5'" onmouseout="this.style.background='none'">📊 ייצוא Excel מלא</button>
@@ -3078,6 +3079,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
       <button onclick="switchDashTab('compare')" id="tabComp" style="width:auto;padding:8px 16px;background:#f0f4f8;color:#555;border:1px solid #dde;border-bottom:none;border-radius:8px 8px 0 0;cursor:pointer;font-size:12px;font-weight:bold;margin-bottom:-2px;">📈 השוואת תקופות</button>
       <button onclick="switchDashTab('coverage')" id="tabCov" style="width:auto;padding:8px 16px;background:#f0f4f8;color:#555;border:1px solid #dde;border-bottom:none;border-radius:8px 8px 0 0;cursor:pointer;font-size:12px;font-weight:bold;margin-bottom:-2px;">📅 כיסוי שיבוץ</button>
       <button onclick="switchDashTab('efficiency')" id="tabEff" style="width:auto;padding:8px 16px;background:#f0f4f8;color:#555;border:1px solid #dde;border-bottom:none;border-radius:8px 8px 0 0;cursor:pointer;font-size:12px;font-weight:bold;margin-bottom:-2px;">⚡ יעילות מסלול</button>
+      <button onclick="switchDashTab('delays')" id="tabDelays" style="width:auto;padding:8px 16px;background:#f0f4f8;color:#555;border:1px solid #dde;border-bottom:none;border-radius:8px 8px 0 0;cursor:pointer;font-size:12px;font-weight:bold;margin-bottom:-2px;">⏱️ עיכובים</button>
     </div>
 
     <!-- TAB: Timesheet -->
@@ -3138,6 +3140,17 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
       </div>
       <div id="efficiencyBody">
         <div style="color:#aaa;font-size:13px;padding:20px;text-align:center;">לחץ "טען נתונים" ואז "חשב" לצפייה</div>
+      </div>
+    </div>
+
+    <!-- TAB: Delays (unified: trip-based + unified-daily-based, per Lavi #232) -->
+    <div id="dashTabDelays" style="display:none;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+        <span style="font-size:13px;color:#666;">כל העיכובים בתקופה — משני המקורות (נסיעות פורמליות + דיווחי "סיכום יום"), עם הסיבות</span>
+        <button onclick="exportDelaysCSV()" style="width:auto;padding:6px 12px;background:#27ae60;color:white;border:none;border-radius:7px;cursor:pointer;font-size:11px;font-weight:bold;">📥 ייצא CSV</button>
+      </div>
+      <div id="delaysBody">
+        <div style="color:#aaa;font-size:13px;padding:20px;text-align:center;">לחץ "טען נתונים" למעלה לצפייה</div>
       </div>
     </div>
 
@@ -21290,6 +21303,10 @@ async function loadMonthlyDash(){
   const _period=_dashPeriodStrs();
   const _isRangeMode=!!_monthlyDashRange;
   const stats={}; // per-instructor stats accumulator
+  // 2026-09-15, דיון #232 (לפי בקשת לביא): רשימת אירועי-עיכוב שטוחה, מאוחדת
+  // משני המקורות (נסיעה פורמלית / דיווח בטופס "סיכום יום"), עם עמודת מקור —
+  // מוצגת בטאב "⏱️ עיכובים" החדש ובייצוא ה-CSV התואם.
+  const delayEvents=[];
   // Load schedule for this month from localStorage (for timesheet + coverage)
   try{
     const lsRaw=localStorage.getItem('v100_sched_all');
@@ -21321,7 +21338,10 @@ async function loadMonthlyDash(){
       s.minutes+=_ls.minutes;
       s.lessons+=_ls.lessons;
       s.activeDays.add(date); // נסיעה בפועל = יום פעיל למכנה הממוצע
-      if(t.delayMin>0){s.delays++;s.delayMinTotal=(s.delayMinTotal||0)+t.delayMin;}
+      if(t.delayMin>0){
+        s.delays++;s.delayMinTotal=(s.delayMinTotal||0)+t.delayMin;
+        delayEvents.push({date,name:t.name,minutes:t.delayMin,reason:t.delayNote||'',source:'נסיעה'});
+      }
     }
   }
 
@@ -21383,9 +21403,15 @@ async function loadMonthlyDash(){
       v.delays.forEach(d => {
         s.delayMinTotal = (s.delayMinTotal||0) + (d.minutes||0);
         if (d.reason) (s.delayNotes = s.delayNotes||[]).push(d.reason);
+        if ((d.minutes||0)>0 || d.reason) delayEvents.push({date:v.date,name,minutes:d.minutes||0,reason:d.reason||'',source:'סיכום יום'});
       });
     });
   } catch(e) { console.warn('loadMonthlyDash unified fallback:', e); }
+
+  // 2026-09-15, דיון #232: שמירת רשימת האירועים לגישה מהטאב/ייצוא CSV, ממוינת
+  // לפי תאריך יורד (ואז דקות עיכוב יורד באותו תאריך).
+  delayEvents.sort((a,b)=> a.date<b.date?1:a.date>b.date?-1:(b.minutes||0)-(a.minutes||0));
+  window._monthDelayEvents=delayEvents;
 
   // KPIs
   const allNames=Object.keys(stats);
@@ -21479,7 +21505,7 @@ async function loadMonthlyDash(){
 
   // Refresh current active tab
   try{
-    const activePanels=['dashTabSegments','dashTabTimesheet','dashTabCompare','dashTabCoverage','dashTabEfficiency'];
+    const activePanels=['dashTabSegments','dashTabTimesheet','dashTabCompare','dashTabCoverage','dashTabEfficiency','dashTabDelays'];
     const activeTab=activePanels.find(id=>{const el=document.getElementById(id);return el&&el.style.display!=='none';});
     if(activeTab){
       const tabKey=activeTab.replace('dashTab','').toLowerCase();
@@ -22635,6 +22661,70 @@ function renderEfficiencyTab(){
 }
 
 // ══════════════════════════════════════════════════════════════════════
+// FEATURE 3B: Delays — unified view (trip-based + unified-daily-based)
+// 2026-09-15, לפי בקשת לביא (#232): עד כה נתוני העיכוב נספרו לתוך סה"כ/ממוצע
+// בלבד — הסיבות (delayNotes) נאספו אבל מעולם לא הוצגו. window._monthDelayEvents
+// נבנה ב-loadMonthlyDash() משני המקורות ("נסיעה"/"סיכום יום"), עם עמודת מקור.
+// ══════════════════════════════════════════════════════════════════════
+
+function renderDelaysTab(){
+  const body=document.getElementById('delaysBody');
+  if(!body)return;
+  const events=window._monthDelayEvents||[];
+  if(!events.length){
+    body.innerHTML='<div style="color:#aaa;font-size:13px;padding:20px;text-align:center;">אין עיכובים רשומים לתקופה זו</div>';
+    return;
+  }
+
+  const totalMin=events.reduce((a,e)=>a+(e.minutes||0),0);
+  const bySource={'נסיעה':0,'סיכום יום':0};
+  events.forEach(e=>{bySource[e.source]=(bySource[e.source]||0)+1;});
+
+  const rows=events.map(e=>{
+    const srcCol=e.source==='נסיעה'?'#2980b9':'#8e44ad';
+    const srcBg=e.source==='נסיעה'?'#eaf4fd':'#f5f0ff';
+    const d=new Date(e.date+'T12:00:00');
+    const dLabel=d.toLocaleDateString('he-IL',{weekday:'short',day:'numeric',month:'short'});
+    return`<tr style="border-bottom:1px solid #f5f5f5;">
+      <td style="padding:7px 10px;font-size:12px;color:#666;white-space:nowrap;">${_esc(dLabel)}</td>
+      <td style="padding:7px 10px;font-weight:bold;">${_esc(e.name)}</td>
+      <td style="padding:7px 10px;text-align:center;"><span style="background:${srcBg};color:${srcCol};border-radius:12px;padding:2px 10px;font-size:11px;font-weight:bold;">${_esc(e.source)}</span></td>
+      <td style="padding:7px 10px;text-align:center;font-weight:bold;color:${e.minutes>=60?'#e74c3c':'#e67e22'};">${_fmtDelayMinutes(e.minutes)}</td>
+      <td style="padding:7px 10px;font-size:12px;color:#555;">${e.reason?_esc(e.reason):'<span style="color:#ccc;">—</span>'}</td>
+    </tr>`;
+  }).join('');
+
+  body.innerHTML=`
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px;">
+      <span style="background:#faeeda;color:#854F0B;border-radius:20px;padding:4px 14px;font-size:12px;font-weight:bold;">${events.length} אירועים</span>
+      <span style="background:#faeeda;color:#854F0B;border-radius:20px;padding:4px 14px;font-size:12px;font-weight:bold;">${_fmtDelayMinutes(totalMin)} סה"כ</span>
+      <span style="background:#eaf4fd;color:#2980b9;border-radius:20px;padding:4px 14px;font-size:12px;">🚌 ${bySource['נסיעה']||0} מנסיעות</span>
+      <span style="background:#f5f0ff;color:#8e44ad;border-radius:20px;padding:4px 14px;font-size:12px;">📝 ${bySource['סיכום יום']||0} מסיכום יום</span>
+    </div>
+    <div style="overflow-x:auto;">
+      <table class="mgmt-table" style="width:100%;min-width:560px;">
+        <thead><tr>
+          <th>תאריך</th><th>מדריך</th><th style="text-align:center;">מקור</th><th style="text-align:center;">עיכוב</th><th>סיבה</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+}
+
+async function exportDelaysCSV(){
+  if(!window._monthDelayEvents)await loadMonthlyDash();
+  const events=window._monthDelayEvents||[];
+  if(!events.length){showToast('אין עיכובים לייצוא בתקופה זו','warning');return;}
+  const label=_dashPeriodStrs().label;
+  const csvRows=[['תאריך','מדריך','מקור','דקות עיכוב','סיבה'],
+    ...events.map(e=>[e.date,e.name,e.source,e.minutes,e.reason||''])
+  ];
+  _openCsvPreviewWindow(`עיכובים — ${label}`, csvRows, `עיכובים_${label}.csv`,
+    [{n:events.length,l:'אירועים'}]);
+  showToast(`📄 דוח עיכובים ${label} נפתח לתצוגה מקדימה`,'success');
+}
+
+// ══════════════════════════════════════════════════════════════════════
 // FEATURE 4: Audit Log
 // ══════════════════════════════════════════════════════════════════════
 // 2026-08-19: זו הייתה מערכת לוג שנייה, נפרדת לגמרי מ-_logAction (v100_action_log),
@@ -22989,8 +23079,8 @@ function switchToInstructorView(previewName){
 // ══════════════════════════════════════════════════════════════════════
 let _activeDashTab=null;
 async function switchDashTab(tab){
-  const tabs={segments:'dashTabSegments',timesheet:'dashTabTimesheet',compare:'dashTabCompare',coverage:'dashTabCoverage',efficiency:'dashTabEfficiency',tasks:'dashTabTasks'};
-  const btns={segments:'tabSegs',timesheet:'tabTime',compare:'tabComp',coverage:'tabCov',efficiency:'tabEff',tasks:'tabTasks'};
+  const tabs={segments:'dashTabSegments',timesheet:'dashTabTimesheet',compare:'dashTabCompare',coverage:'dashTabCoverage',efficiency:'dashTabEfficiency',delays:'dashTabDelays',tasks:'dashTabTasks'};
+  const btns={segments:'tabSegs',timesheet:'tabTime',compare:'tabComp',coverage:'tabCov',efficiency:'tabEff',delays:'tabDelays',tasks:'tabTasks'};
   // 2026-09-15, דיון #227 שלב 2: כל הטאבים רופקטרו לתמוך בטווח מותאם —
   // timesheet/compare עודכנו לקרוא ל-_dashPeriodStrs()/טווחים עצמאיים;
   // segments/coverage/efficiency התבררו כבר-אז בלתי-תלויים ב-yr/mo (קוראים
@@ -23009,6 +23099,7 @@ async function switchDashTab(tab){
   if(newTab==='compare')initCompareSelects();
   if(newTab==='coverage'){initCoverageWeekSelect();await renderCoverageTab();}
   if(newTab==='efficiency')renderEfficiencyTab();
+  if(newTab==='delays')renderDelaysTab();
   // 2026-09-15, דיון #227 שלב 2: הוסרה קריאת renderTasksTab() הישנה — תגלית
   // אגבית: dashTabTasks כבר מתמלא ב-loadMonthlyDash→enhanceMonthlyDashWithTasks
   // (לפי ההערה הקיימת "dashTabTasks moved to main view"), אבל הקריאה הישנה כאן
@@ -26158,6 +26249,12 @@ async function enhanceMonthlyDashWithTasks(){
   // Aggregate per instructor per task type
   const instrTaskStats={}; // name → taskId → {quantity:0, duration:0, count:0, activeDays:Set}
   Object.values(taskReports).forEach(r=>{
+    // 2026-09-15, לפי דיווח לביא (עמודת "משימות"/"undefined" בטאב "משימות"):
+    // דוחות "סיכום יום" עצמם (unified_daily) אין להם taskId אמיתי — כלל לא
+    // דוחות-משימה, אלא רשומת היום הכללית (שעות הדרכה קלה/עיכובים/משוב, כבר
+    // מטופלת בטבלה הראשית). בלי הסינון הזה הם נכנסו כ-"משימה" עם המחרוזת
+    // "undefined" (מפתח אובייקט של taskId חסר) וכמות/משך ריקים לגמרי.
+    if(!r||!r.taskId||r.type==='unified_daily')return;
     if(!instrTaskStats[r.instructorName])instrTaskStats[r.instructorName]={};
     const ts=instrTaskStats[r.instructorName];
     if(!ts[r.taskId])ts[r.taskId]={count:0,quantity:0,duration:0,taskLabel:r.taskLabel||r.taskId,activeDays:new Set()};
@@ -26176,17 +26273,17 @@ async function enhanceMonthlyDashWithTasks(){
     const nameCell=row.cells[0];
     if(!nameCell)return;
     const name=nameCell.textContent.trim();
-    const ts=instrTaskStats[name];
-    if(!ts)return;
+    const ts=instrTaskStats[name]; // may be undefined — instructor has no other-task reports this period
     // Remove old task cells if any (8 עמודות בסיס — כולל "ממוצע/יום" מ-דיון #227)
     while(row.cells.length>8)row.deleteCell(8);
-    // Add task summary
-    const summary=Object.values(ts).map(t=>{
+    // 2026-09-15: תמיד מוסיפים תא תשיעי (גם ריק) — כדי שכל השורות יישארו
+    // מיושרות עם הכותרת; בעבר שורה בלי ts דילגה על התא לגמרי (חוסר-יישור).
+    const summary=ts?Object.values(ts).map(t=>{
       const parts=[];
       if(t.quantity)parts.push(`${t.quantity} ${t.taskLabel}`);
       if(t.duration)parts.push(`${Math.round(t.duration/60*10)/10}ש'`);
       return parts.join('/');
-    }).join(' | ');
+    }).join(' | '):'';
     const td=document.createElement('td');
     td.style.cssText='font-size:11px;color:#555;';
     td.textContent=summary||'—';
