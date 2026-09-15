@@ -14,7 +14,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 154</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 155</title>
 
 <style>
 
@@ -1437,7 +1437,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 218;
+  const APP_VERSION = 219;
 
   // 2026-09-07, לפי בקשת לביא: היה קשה לבדוק באיזו גרסה הדפדפן בפועל טוען
   // (כותרת הטאב נחתכת כשיש הרבה טאבים פתוחים, ואי אפשר תמיד לראות "DEPLOYED
@@ -3100,15 +3100,19 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 
     <!-- TAB: Period Comparison -->
     <div id="dashTabCompare" style="display:none;">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap;">
-        <span style="font-size:13px;color:#666;">השוואה בין</span>
-        <select id="compareMonthA" style="width:auto;padding:5px 8px;border:1.5px solid #ddd;border-radius:7px;font-size:16px;"></select>
-        <span style="font-size:13px;color:#666;">לבין</span>
-        <select id="compareMonthB" style="width:auto;padding:5px 8px;border:1.5px solid #ddd;border-radius:7px;font-size:16px;"></select>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
+        <span style="font-size:13px;color:#666;">תקופה א׳:</span>
+        <input type="date" id="compareStartA" style="width:auto;padding:5px 6px;border:1.5px solid #ddd;border-radius:6px;font-size:13px;">
+        <span style="font-size:11px;color:#aaa;">–</span>
+        <input type="date" id="compareEndA" style="width:auto;padding:5px 6px;border:1.5px solid #ddd;border-radius:6px;font-size:13px;">
+        <span style="font-size:13px;color:#666;">לעומת ב׳:</span>
+        <input type="date" id="compareStartB" style="width:auto;padding:5px 6px;border:1.5px solid #ddd;border-radius:6px;font-size:13px;">
+        <span style="font-size:11px;color:#aaa;">–</span>
+        <input type="date" id="compareEndB" style="width:auto;padding:5px 6px;border:1.5px solid #ddd;border-radius:6px;font-size:13px;">
         <button onclick="renderComparison()" style="width:auto;padding:6px 14px;background:#8e44ad;color:white;border:none;border-radius:7px;cursor:pointer;font-size:11px;font-weight:bold;">📈 השווה</button>
       </div>
       <div id="compareBody">
-        <div style="color:#aaa;font-size:13px;padding:20px;text-align:center;">בחר שני חודשים ולחץ "השווה"</div>
+        <div style="color:#aaa;font-size:13px;padding:20px;text-align:center;">בחר שתי תקופות (חודש שלם או טווח חופשי) ולחץ "השווה"</div>
       </div>
     </div>
 
@@ -21047,9 +21051,9 @@ function toggleMonthlyDash(){
   panel.style.display=_monthlyDashOpen?'block':'none';
   if(_monthlyDashOpen){
     panel.scrollIntoView({behavior:'smooth',block:'start'});
-    // Show current month in label before loading
+    // Show current period in label before loading (2026-09-15: תומך גם טווח)
     const _lbl=document.getElementById('monthlyDashLabel');
-    if(_lbl)_lbl.textContent=_monthlyDashDate.toLocaleDateString('he-IL',{month:'long',year:'numeric'});
+    if(_lbl&&!_monthlyDashRange)_lbl.textContent=_dashPeriodStrs().label;
     loadMonthlyDash();
   }
 }
@@ -21467,9 +21471,9 @@ async function loadMonthlyDash(){
   // Enhance with task reports data
   try{await enhanceMonthlyDashWithTasks();}catch(e){console.warn('task dash:',e);}
 
-  // Build schedule-based task breakdown for the month — 2026-09-15: עדיין
-  // מבוסס yr/mo (לא רופרקט לטווח בשלב זה), לכן רץ רק במצב חודש רגיל.
-  if(!_isRangeMode){ try{_renderMonthSchedBreakdown(yr,mo);}catch(e){} }
+  // Build schedule-based task breakdown for the period — 2026-09-15, דיון #227
+  // שלב 2: רופרקט לתמוך גם בטווח מותאם (ראו _renderMonthSchedBreakdown).
+  try{_renderMonthSchedBreakdown();}catch(e){}
 
   // Refresh current active tab
   try{
@@ -22021,20 +22025,20 @@ async function renderTimesheet(){
   const tbody=document.getElementById('timesheetBody');
   if(!tbody)return;
 
-  const yr=_monthlyDashDate.getFullYear();
-  const mo=_monthlyDashDate.getMonth();
+  // 2026-09-15, דיון #227 שלב 2: יום-אחר-יום על טווח כללי (_dashPeriodStrs)
+  // במקום לולאת daysInMonth קשיחה — עובד זהה לחודש רגיל וגם לטווח מותאם.
+  const _period=_dashPeriodStrs();
   const rows=[];
 
-  // Build from schedule assignments (primary source of attendance)
   const SHIFT_H={morning:{s:'06:00',e:'14:30'},afternoon:{s:'14:00',e:'22:00'},evening:{s:'13:30',e:'22:00'}};
-  const daysInMonth=new Date(yr,mo+1,0).getDate();
+  const lsSchedRaw=localStorage.getItem('v100_sched_all');
+  const lsSched=lsSchedRaw?JSON.parse(lsSchedRaw):{};
 
-  for(let d=1;d<=daysInMonth;d++){
-    const dateStr=`${yr}-${String(mo+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+  const _d=new Date(_period.start+'T12:00:00');
+  const _pEnd=new Date(_period.end+'T12:00:00');
+  while(_d<=_pEnd){
+    const dateStr=_localDateStr(_d);
     const dayEntries=schedData[dateStr]||[];
-    // In demo mode, also check localStorage sched
-    const lsSchedRaw=localStorage.getItem('v100_sched_all');
-    const lsSched=lsSchedRaw?JSON.parse(lsSchedRaw):{};
     const allEntries=[...(lsSched[dateStr]||[]),...dayEntries.filter(e=>!(lsSched[dateStr]||[]).some(x=>x.id===e.id))];
 
     const dayDate=new Date(dateStr+'T12:00:00');
@@ -22069,10 +22073,11 @@ async function renderTimesheet(){
         status:entry.status||'approved',
         note:entry.note||''});
     });
+    _d.setDate(_d.getDate()+1);
   }
 
   if(!rows.length){
-    tbody.innerHTML='<tr><td colspan="8" style="text-align:center;color:#aaa;padding:20px;">אין שיבוצים לחודש זה</td></tr>';
+    tbody.innerHTML='<tr><td colspan="8" style="text-align:center;color:#aaa;padding:20px;">אין שיבוצים לתקופה זו</td></tr>';
     return;
   }
 
@@ -22105,9 +22110,7 @@ async function exportTimesheetCSV(){
   if(!window._timesheetRows)await renderTimesheet();
   const rows=window._timesheetRows||[];
   if(!rows.length){showToast('אין נתונים לייצוא','warning');return;}
-  const yr=_monthlyDashDate.getFullYear();
-  const mo=_monthlyDashDate.getMonth();
-  const label=new Date(yr,mo,1).toLocaleDateString('he-IL',{month:'long',year:'numeric'});
+  const label=_dashPeriodStrs().label;
   const csvRows=[['מדריך','תאריך','שעת כניסה','שעת יציאה','שעות נסיעה','שיעורים','עיכובים'],
     ...rows.map(r=>[r.name,r.date,r.entry,r.exit,r.hoursStr,r.lessons,r.delays])
   ];
@@ -22123,46 +22126,50 @@ async function exportTimesheetCSV(){
 // FEATURE C: Period Comparison
 // ══════════════════════════════════════════════════════════════════════
 
+// 2026-09-15, דיון #227 שלב 2: הוחלף מ-<select> חודשים ל-4 שדות טווח חופשי.
+// ברירת מחדל (אם ריקים) — בדיוק כמו קודם: חודש נוכחי מול החודש הקודם.
 function initCompareSelects(){
-  const selA=document.getElementById('compareMonthA');
-  const selB=document.getElementById('compareMonthB');
-  if(!selA||!selB||selA.options.length>1)return;
-  // Build last 12 months
-  const opts=[];
+  const sA=document.getElementById('compareStartA'), eA=document.getElementById('compareEndA');
+  const sB=document.getElementById('compareStartB'), eB=document.getElementById('compareEndB');
+  if(!sA||!eA||!sB||!eB||sA.value)return; // כבר מולא — לא לדרוס בחירת משתמש
   const now=new Date();
-  for(let m=0;m<12;m++){
-    const d=new Date(now.getFullYear(),now.getMonth()-m,1);
-    const val=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
-    const label=d.toLocaleDateString('he-IL',{month:'long',year:'numeric'});
-    opts.push(`<option value="${val}">${label}</option>`);
-  }
-  selA.innerHTML=opts.join('');
-  selB.innerHTML=opts.join('');
-  if(selB.options.length>1)selB.selectedIndex=1;
+  const mA0=new Date(now.getFullYear(),now.getMonth(),1);
+  const mA1=new Date(now.getFullYear(),now.getMonth()+1,0);
+  const mB0=new Date(now.getFullYear(),now.getMonth()-1,1);
+  const mB1=new Date(now.getFullYear(),now.getMonth(),0);
+  sA.value=_localDateStr(mA0); eA.value=_localDateStr(mA1);
+  sB.value=_localDateStr(mB0); eB.value=_localDateStr(mB1);
 }
 
 async function renderComparison(){
   const body=document.getElementById('compareBody');
   if(!body)return;
-  initCompareSelects(); // ensure selects are populated
-  const selA=document.getElementById('compareMonthA');
-  const selB=document.getElementById('compareMonthB');
-  if(!selA||!selB)return;
-  const [yrA,moA]=selA.value.split('-').map(Number);
-  const [yrB,moB]=selB.value.split('-').map(Number);
-  if(selA.value===selB.value){
-    showToast('בחר שני חודשים שונים','warning');return;
+  initCompareSelects(); // ממלא ברירת מחדל אם ריק
+  const sA=document.getElementById('compareStartA'), eA=document.getElementById('compareEndA');
+  const sB=document.getElementById('compareStartB'), eB=document.getElementById('compareEndB');
+  if(!sA||!eA||!sB||!eB)return;
+  const startA=sA.value,endA=eA.value,startB=sB.value,endB=eB.value;
+  if(!startA||!endA||!startB||!endB){showToast('יש למלא את שתי התקופות במלואן','warning');return;}
+  if(startA>endA||startB>endB){showToast('תאריך התחלה אחרי תאריך סיום באחת התקופות','warning');return;}
+  if(startA===startB&&endA===endB){
+    showToast('בחר שתי תקופות שונות','warning');return;
   }
   body.innerHTML='<div style="color:#aaa;font-size:13px;padding:20px;text-align:center;">⏳ טוען השוואה...</div>';
   showToast('⏳ טוען נתוני השוואה...','info');
 
   const [dataA,dataB]=await Promise.all([
-    loadMonthHistory(yrA,moA-1),
-    loadMonthHistory(yrB,moB-1)
+    loadDateRangeHistory(startA,endA),
+    loadDateRangeHistory(startB,endB)
   ]);
 
-  const labelA=new Date(yrA,moA-1,1).toLocaleDateString('he-IL',{month:'long',year:'numeric'});
-  const labelB=new Date(yrB,moB-1,1).toLocaleDateString('he-IL',{month:'long',year:'numeric'});
+  const _fmt=(s,e)=>{
+    const sd=new Date(s+'T12:00:00'), ed=new Date(e+'T12:00:00');
+    if(s===_localDateStr(new Date(sd.getFullYear(),sd.getMonth(),1))&&e===_localDateStr(new Date(sd.getFullYear(),sd.getMonth()+1,0)))
+      return sd.toLocaleDateString('he-IL',{month:'long',year:'numeric'}); // חודש שלם — תווית קצרה כמו קודם
+    return sd.toLocaleDateString('he-IL',{day:'numeric',month:'short'})+'–'+ed.toLocaleDateString('he-IL',{day:'numeric',month:'short',year:'numeric'});
+  };
+  const labelA=_fmt(startA,endA);
+  const labelB=_fmt(startB,endB);
 
   // Aggregate per instructor for each month
   function aggregateMonth(data){
@@ -22267,8 +22274,8 @@ async function renderComparison(){
   // Add non-trip tasks comparison
   try{
     const [rptA,rptB]=await Promise.all([
-      loadMonthTaskReports(yrA,moA-1),
-      loadMonthTaskReports(yrB,moB-1)
+      loadDateRangeTaskReports(startA,endA),
+      loadDateRangeTaskReports(startB,endB)
     ]);
     const _aggTasks=(rpts)=>{
       const byTask={};
@@ -22725,8 +22732,8 @@ async function exportPDFReport(){
     rangeData=await loadDateRangeHistory(start,end);
   } else {
     if(!Object.keys(_monthHistoryCache).length){
-      showToast('⏳ טוען נתוני חודש...','info');
-      _monthHistoryCache=await loadMonthHistory(_monthlyDashDate.getFullYear(),_monthlyDashDate.getMonth());
+      showToast('⏳ טוען נתוני תקופה...','info');
+      _monthHistoryCache=await loadDateRangeHistory(start,end);
     }
     rangeData=_monthHistoryCache;
   }
@@ -22982,13 +22989,10 @@ let _activeDashTab=null;
 async function switchDashTab(tab){
   const tabs={segments:'dashTabSegments',timesheet:'dashTabTimesheet',compare:'dashTabCompare',coverage:'dashTabCoverage',efficiency:'dashTabEfficiency',tasks:'dashTabTasks'};
   const btns={segments:'tabSegs',timesheet:'tabTime',compare:'tabComp',coverage:'tabCov',efficiency:'tabEff',tasks:'tabTasks'};
-  // 2026-09-15, דיון #227, שלב 1: טאבים אלה עדיין מבוססי yr/mo (לא רופרקטרו
-  // לטווח מותאם). במצב טווח — חסימת פתיחה (לא הרצת רינדור על נתונים שגויים).
-  const _rangeOnlyTabs=['timesheet','segments','compare','coverage','efficiency'];
-  if(_monthlyDashRange && _rangeOnlyTabs.includes(tab) && _activeDashTab!==tab){
-    showToast('טאב זה תומך כרגע רק בתצוגת חודש — עברו ל"חודש" למעלה (שלב הבא: גם טווח)','info');
-    return;
-  }
+  // 2026-09-15, דיון #227 שלב 2: כל הטאבים רופקטרו לתמוך בטווח מותאם —
+  // timesheet/compare עודכנו לקרוא ל-_dashPeriodStrs()/טווחים עצמאיים;
+  // segments/coverage/efficiency התבררו כבר-אז בלתי-תלויים ב-yr/mo (קוראים
+  // מ-_monthHistoryCache הכללי או מבורר שבוע עצמאי) — החסימה משלב 1 הוסרה.
   const newTab=(_activeDashTab===tab)?null:tab;
   _activeDashTab=newTab;
   Object.entries(tabs).forEach(([k,id])=>{
@@ -23003,7 +23007,12 @@ async function switchDashTab(tab){
   if(newTab==='compare')initCompareSelects();
   if(newTab==='coverage'){initCoverageWeekSelect();await renderCoverageTab();}
   if(newTab==='efficiency')renderEfficiencyTab();
-  if(newTab==='tasks'){await renderTasksTab();}
+  // 2026-09-15, דיון #227 שלב 2: הוסרה קריאת renderTasksTab() הישנה — תגלית
+  // אגבית: dashTabTasks כבר מתמלא ב-loadMonthlyDash→enhanceMonthlyDashWithTasks
+  // (לפי ההערה הקיימת "dashTabTasks moved to main view"), אבל הקריאה הישנה כאן
+  // עדיין דרסה אותו עם רינדור ישן מבוסס yr/mo בלבד בכל פתיחת הטאב — כלומר גם
+  // במצב חודש רגיל זה כבר היה לא-עקבי, ובמצב טווח זה היה שובר את הנתונים לגמרי.
+  // renderTasksTab() נשארה בקובץ (לא נמחקה) למקרה שנדרשת בעתיד.
 }
 // ══════════════════════════════════════════════════════════════════════
 // AUDIT LOG — wire to key actions
@@ -27696,23 +27705,24 @@ let _showZeroTaskRows=(localStorage.getItem('v100_showZeroTaskRows')==='1');
 function _toggleZeroTaskRows(checked){
   _showZeroTaskRows=checked;
   try{localStorage.setItem('v100_showZeroTaskRows',checked?'1':'0');}catch(e){}
-  if(typeof _monthlyDashDate!=='undefined'){
-    try{_renderMonthSchedBreakdown(_monthlyDashDate.getFullYear(),_monthlyDashDate.getMonth());}catch(e){}
-  }
+  try{_renderMonthSchedBreakdown();}catch(e){}
 }
-function _renderMonthSchedBreakdown(yr,mo){
+// 2026-09-15, דיון #227 שלב 2: הוסרו הפרמטרים yr/mo — קורא ישירות ל-_dashPeriodStrs()
+// (תומך גם בטווח מותאם). סינון לפי טווח מחרוזות תאריך ('YYYY-MM-DD' משווה לקסיקוגרפית
+// נכון) במקום startsWith(prefix) שהיה תקף לחודש קלנדרי בלבד.
+function _renderMonthSchedBreakdown(){
   const wrap=document.getElementById('monthSchedBreakdown');
   if(!wrap)return;
+  const _period=_dashPeriodStrs();
 
-  // Count schedule entries per task for this month
-  const prefix=`${yr}-${String(mo+1).padStart(2,'0')}`;
+  // Count schedule entries per task for this period
   const countByTask={};
   const instrByTask={};
 
   // Load from schedData (covers all dates in memory)
   const allSched=JSON.parse(localStorage.getItem('v100_sched_all')||'{}');
   Object.entries(allSched).forEach(([date,entries])=>{
-    if(!date.startsWith(prefix))return;
+    if(date<_period.start||date>_period.end)return;
     (entries||[]).forEach(e=>{
       const tid=e.task||'other';
       if(!countByTask[tid])countByTask[tid]=0;
@@ -27742,7 +27752,7 @@ function _renderMonthSchedBreakdown(yr,mo){
 
   wrap.innerHTML=`
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:8px;">
-      <div style="font-size:12px;font-weight:bold;color:#888;letter-spacing:.3px;">📊 שיבוצים לפי משימה — החודש</div>
+      <div style="font-size:12px;font-weight:bold;color:#888;letter-spacing:.3px;">📊 שיבוצים לפי משימה — ${_esc(_period.label)}</div>
       <label style="display:flex;align-items:center;gap:5px;font-size:11px;color:#888;cursor:pointer;">
         <input type="checkbox" ${_showZeroTaskRows?'checked':''} onchange="_toggleZeroTaskRows(this.checked)" style="width:13px;height:13px;cursor:pointer;">
         הצג גם משימות ללא נתונים
