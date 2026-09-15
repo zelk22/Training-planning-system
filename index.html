@@ -14,7 +14,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 153</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 154</title>
 
 <style>
 
@@ -1437,7 +1437,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 217;
+  const APP_VERSION = 218;
 
   // 2026-09-07, לפי בקשת לביא: היה קשה לבדוק באיזו גרסה הדפדפן בפועל טוען
   // (כותרת הטאב נחתכת כשיש הרבה טאבים פתוחים, ואי אפשר תמיד לראות "DEPLOYED
@@ -3016,9 +3016,21 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px;">
       <h4 style="margin:0;color:var(--primary);">📊 דשבורד חודשי</h4>
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-        <button onclick="changeMonthlyDash(-1)" style="width:auto;background:#f0f4f8;border:1px solid #ccc;border-radius:6px;padding:5px 10px;cursor:pointer;font-size:15px;">‹</button>
-        <span id="monthlyDashLabel" style="font-weight:bold;color:var(--primary);font-size:14px;white-space:nowrap;"></span>
-        <button onclick="changeMonthlyDash(1)" style="width:auto;background:#f0f4f8;border:1px solid #ccc;border-radius:6px;padding:5px 10px;cursor:pointer;font-size:15px;">›</button>
+        <div style="display:flex;gap:2px;background:#f0f4f8;border-radius:7px;padding:2px;">
+          <button onclick="_setDashPeriodMode('month')" id="dashModeMonthBtn" style="width:auto;border:none;border-radius:5px;padding:5px 10px;cursor:pointer;font-size:11px;font-weight:bold;background:#2980b9;color:#fff;">חודש</button>
+          <button onclick="_setDashPeriodMode('range')" id="dashModeRangeBtn" style="width:auto;border:none;border-radius:5px;padding:5px 10px;cursor:pointer;font-size:11px;font-weight:bold;background:#f0f4f8;color:#555;">📅 טווח מותאם</button>
+        </div>
+        <div id="dashMonthNav" style="display:flex;align-items:center;gap:8px;">
+          <button onclick="changeMonthlyDash(-1)" style="width:auto;background:#f0f4f8;border:1px solid #ccc;border-radius:6px;padding:5px 10px;cursor:pointer;font-size:15px;">‹</button>
+          <span id="monthlyDashLabel" style="font-weight:bold;color:var(--primary);font-size:14px;white-space:nowrap;"></span>
+          <button onclick="changeMonthlyDash(1)" style="width:auto;background:#f0f4f8;border:1px solid #ccc;border-radius:6px;padding:5px 10px;cursor:pointer;font-size:15px;">›</button>
+        </div>
+        <div id="dashRangeNav" style="display:none;align-items:center;gap:6px;">
+          <input type="date" id="dashRangeStart" style="width:auto;padding:5px 6px;border:1.5px solid #ddd;border-radius:6px;font-size:13px;">
+          <span style="font-size:12px;color:#888;">עד</span>
+          <input type="date" id="dashRangeEnd" style="width:auto;padding:5px 6px;border:1.5px solid #ddd;border-radius:6px;font-size:13px;">
+          <button onclick="_applyDashRange()" style="width:auto;padding:5px 10px;background:#8e44ad;color:white;border:none;border-radius:6px;cursor:pointer;font-size:11px;font-weight:bold;">החל</button>
+        </div>
         <button onclick="loadMonthlyDash()" style="width:auto;padding:7px 12px;background:#2980b9;color:white;border:none;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;">🔄 טען נתונים</button>
                 <div style="position:relative;display:inline-block;" id="reportsDropdownWrapper">
           <button onclick="toggleReportsDropdown()" style="width:auto;padding:7px 14px;background:#6c3483;color:white;border:none;border-radius:7px;cursor:pointer;font-size:12px;font-weight:bold;">📊 דוחות ▾</button>
@@ -3050,9 +3062,10 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
           <th>עיכובים</th>
           <th>ממוצע עיכוב</th>
           <th>ביצוע</th>
+          <th title="שיעורים ÷ ימים עם תפוקה בפועל (נסיעה או שעות הדרכה קלה)">ממוצע/יום</th>
         </tr></thead>
         <tbody id="monthlyInstrBody">
-          <tr><td colspan="7" style="text-align:center;color:#aaa;padding:20px;">לחץ "טען נתונים" לצפייה</td></tr>
+          <tr><td colspan="8" style="text-align:center;color:#aaa;padding:20px;">לחץ "טען נתונים" לצפייה</td></tr>
         </tbody>
       </table>
     </div>
@@ -12472,7 +12485,7 @@ async function resetFirebaseHistory(){
     await _fbRef(_db,'history').remove();
     try{if(window._clearMonthCache)window._clearMonthCache();}catch(e){}
     const tbody=document.getElementById('monthlyInstrBody');
-    if(tbody)tbody.innerHTML='<tr><td colspan="7" style="text-align:center;color:#aaa;padding:20px;">אין נתוני נסיעות לחודש זה בהיסטוריה</td></tr>';
+    if(tbody)tbody.innerHTML='<tr><td colspan="8" style="text-align:center;color:#aaa;padding:20px;">אין נתוני נסיעות לחודש זה בהיסטוריה</td></tr>';
     const kpi=document.getElementById('monthlyKPIs');
     if(kpi)kpi.innerHTML='';
     showToast('✅ ההיסטוריה נמחקה בהצלחה','success');
@@ -20962,6 +20975,47 @@ function _updateReportsRangeLabel(){
 let _approvalPanelOpen=false;
 let _monthlyDashOpen=false;
 let _monthlyDashDate=new Date();
+// 2026-09-15, לפי דיון #227: מצב טווח מותאם לדשבורד החודשי. null=ברירת מחדל
+// (החודש המוצג, לפי _monthlyDashDate — ללא שינוי התנהגות). כשמוגדר — {start,end,label}
+// גובר על _monthlyDashDate בכל מקום שקורא ל-_dashPeriodStrs().
+let _monthlyDashRange=null;
+function _dashPeriodStrs(){
+  if(_monthlyDashRange) return _monthlyDashRange;
+  const yr=_monthlyDashDate.getFullYear(), mo=_monthlyDashDate.getMonth();
+  const start=`${yr}-${String(mo+1).padStart(2,'0')}-01`;
+  const end=_localDateStr(new Date(yr,mo+1,0));
+  const label=_monthlyDashDate.toLocaleDateString('he-IL',{month:'long',year:'numeric'});
+  return {start,end,label};
+}
+function _setDashPeriodMode(mode){
+  const monthBtn=document.getElementById('dashModeMonthBtn'), rangeBtn=document.getElementById('dashModeRangeBtn');
+  const monthNav=document.getElementById('dashMonthNav'), rangeNav=document.getElementById('dashRangeNav');
+  const onCss='background:#2980b9;color:#fff;', offCss='background:#f0f4f8;color:#555;';
+  if(mode==='month'){
+    _monthlyDashRange=null;
+    if(monthNav)monthNav.style.display='flex';
+    if(rangeNav)rangeNav.style.display='none';
+    if(monthBtn)monthBtn.style.cssText+=onCss;
+    if(rangeBtn)rangeBtn.style.cssText+=offCss;
+  } else {
+    if(monthNav)monthNav.style.display='none';
+    if(rangeNav)rangeNav.style.display='flex';
+    if(monthBtn)monthBtn.style.cssText+=offCss;
+    if(rangeBtn)rangeBtn.style.cssText+=onCss;
+    const sInp=document.getElementById('dashRangeStart'), eInp=document.getElementById('dashRangeEnd');
+    if(sInp&&!sInp.value){const p=_dashPeriodStrs();sInp.value=p.start;if(eInp)eInp.value=p.end;}
+  }
+}
+function _applyDashRange(){
+  const sInp=document.getElementById('dashRangeStart'), eInp=document.getElementById('dashRangeEnd');
+  const s=sInp&&sInp.value, e=eInp&&eInp.value;
+  if(!s||!e){showToast('יש לבחור טווח תאריכים מלא','warning');return;}
+  if(s>e){showToast('תאריך ההתחלה אחרי תאריך הסיום','warning');return;}
+  const sd=new Date(s+'T12:00:00'), ed=new Date(e+'T12:00:00');
+  const label=sd.toLocaleDateString('he-IL',{day:'numeric',month:'short'})+' – '+ed.toLocaleDateString('he-IL',{day:'numeric',month:'short',year:'numeric'});
+  _monthlyDashRange={start:s,end:e,label};
+  loadMonthlyDash();
+}
 
 function toggleApprovalPanel(){
   _approvalPanelOpen=!_approvalPanelOpen;
@@ -21229,35 +21283,40 @@ function changeMonthlyDash(delta){
 async function loadMonthlyDash(){
   const yr=_monthlyDashDate.getFullYear();
   const mo=_monthlyDashDate.getMonth();
+  const _period=_dashPeriodStrs();
+  const _isRangeMode=!!_monthlyDashRange;
   const stats={}; // per-instructor stats accumulator
   // Load schedule for this month from localStorage (for timesheet + coverage)
   try{
     const lsRaw=localStorage.getItem('v100_sched_all');
     if(lsRaw){const lsSched=JSON.parse(lsRaw);Object.assign(schedData,lsSched);}
   }catch(e){}
-  const label=new Date(yr,mo,1).toLocaleDateString('he-IL',{month:'long',year:'numeric'});
+  const label=_period.label;
   const lbl=document.getElementById('monthlyDashLabel');
-  if(lbl)lbl.textContent=label;
+  if(lbl&&!_isRangeMode)lbl.textContent=label;
   // Add קורס מעשי סיטאדיס title above instructor table
   const tableTitle=document.getElementById('monthlyTableTitle');
   if(tableTitle)tableTitle.innerHTML='<span style="font-size:15px;font-weight:bold;color:var(--primary);">🚇 קורס מעשי סיטאדיס</span>';
   const tbody=document.getElementById('monthlyInstrBody');
   const kpiEl=document.getElementById('monthlyKPIs');
-  if(tbody)tbody.innerHTML='<tr><td colspan="7" style="text-align:center;color:#aaa;padding:16px;">⏳ טוען נתוני חודש...</td></tr>';
+  if(tbody)tbody.innerHTML='<tr><td colspan="8" style="text-align:center;color:#aaa;padding:16px;">⏳ טוען נתוני ' + (_isRangeMode?'טווח':'חודש') + '...</td></tr>';
 
-  // Load all trips for this month from history
+  // Load all trips for the period from history (חודש או טווח מותאם — אותה פונקציה,
+  // 2026-09-15 לפי דיון #227: loadMonthHistory הוחלפה ב-loadDateRangeHistory כדי
+  // לתמוך בשני המצבים בלי שכפול קוד; לחודש רגיל, _period.start/end מחושבים זהים).
   showToast('⏳ טוען היסטוריית נסיעות...','info');
-  const monthData=await loadMonthHistory(yr,mo);
+  const monthData=await loadDateRangeHistory(_period.start,_period.end);
   for(const [date,dayTrips] of Object.entries(monthData)){
     for(const t of dayTrips){
       if(!t.name)continue;
-      if(!stats[t.name])stats[t.name]={trips:0,lessons:0,minutes:0,delays:0,delayMinTotal:0,delayNotes:[],reportOnly:0};
+      if(!stats[t.name])stats[t.name]={trips:0,lessons:0,minutes:0,delays:0,delayMinTotal:0,delayNotes:[],reportOnly:0,activeDays:new Set(),gapDays:new Set()};
       const s=stats[t.name];
       s.trips++;
       // 2026-08-27: משתמש ב-_tripLessonStats המשותף (כולל override ידני אם קיים).
       const _ls=_tripLessonStats(t);
       s.minutes+=_ls.minutes;
       s.lessons+=_ls.lessons;
+      s.activeDays.add(date); // נסיעה בפועל = יום פעיל למכנה הממוצע
       if(t.delayMin>0){s.delays++;s.delayMinTotal=(s.delayMinTotal||0)+t.delayMin;}
     }
   }
@@ -21275,16 +21334,14 @@ async function loadMonthlyDash(){
     for (const [date, dayTrips] of Object.entries(monthData)) {
       for (const t of dayTrips) { if (t.name) _tripCoverage.add(date + '|' + t.name); }
     }
-    const _monthStart = `${yr}-${String(mo+1).padStart(2,'0')}-01`;
-    const _monthEnd = _localDateStr(new Date(yr, mo+1, 0));
-    const _allReports = await loadDateRangeTaskReports(_monthStart, _monthEnd);
+    const _allReports = await loadDateRangeTaskReports(_period.start, _period.end);
     const _unifiedNoTrip = Object.values(_allReports || {}).filter(v =>
       v && v.type === 'unified_daily' && v.instructorName &&
       !_tripCoverage.has(v.date + '|' + v.instructorName)
     );
     _unifiedNoTrip.forEach(v => {
       const name = v.instructorName;
-      if (!stats[name]) stats[name] = {trips:0,lessons:0,minutes:0,delays:0,delayMinTotal:0,delayNotes:[],reportOnly:0};
+      if (!stats[name]) stats[name] = {trips:0,lessons:0,minutes:0,delays:0,delayMinTotal:0,delayNotes:[],reportOnly:0,activeDays:new Set(),gapDays:new Set()};
       const s = stats[name];
       // Fix (2026-08-24, per Lavi — אופציה 2): להשתמש ב"שעות הדרכה קלה" שדווחו
       // בפועל (lightHours), לא במשך המשמרת המלאה — משמרת שלמה/45 נתן הערכה
@@ -21295,6 +21352,17 @@ async function loadMonthlyDash(){
       s.minutes += dur;
       if (dur > 0) s.lessons += dur/45;
       activeDaySet.add(v.date);
+      // 2026-09-15, לפי דיון #227: מכנה "ממוצע שיעורים/יום" סופר רק ימים עם
+      // תפוקה בפועל, ורק כשהמדריך היה משובץ בפועל לקורס מעשי אותו יום (לא כל
+      // דוח "סיכום יום" — גם ימי עיוני/ATP מגישים כזה). יום משובץ עם 0 שעות
+      // ולא מוחרג (lightHoursExempt) נספר כ"פער" — מוצג, לא נכנס למכנה.
+      if (!s.activeDays) s.activeDays = new Set();
+      if (!s.gapDays) s.gapDays = new Set();
+      const _wasTripDay = (typeof _wasAssignedToTripTaskOnDate === 'function') && _wasAssignedToTripTaskOnDate(name, v.date);
+      if (_wasTripDay) {
+        if (dur > 0) s.activeDays.add(v.date);
+        else if (!v.lightHoursExempt) s.gapDays.add(v.date);
+      }
     });
 
     // 2026-08-24, לפי בקשת לביא: עיכובים שדווחו בטופס "סיכום יום" הם שכבה
@@ -21303,7 +21371,7 @@ async function loadMonthlyDash(){
     Object.values(_allReports || {}).forEach(v => {
       if (!v || v.type !== 'unified_daily' || !v.instructorName || !Array.isArray(v.delays) || !v.delays.length) return;
       const name = v.instructorName;
-      if (!stats[name]) stats[name] = {trips:0,lessons:0,minutes:0,delays:0,delayMinTotal:0,delayNotes:[],reportOnly:0};
+      if (!stats[name]) stats[name] = {trips:0,lessons:0,minutes:0,delays:0,delayMinTotal:0,delayNotes:[],reportOnly:0,activeDays:new Set(),gapDays:new Set()};
       const s = stats[name];
       s.delays += v.delays.length;
       v.delays.forEach(d => {
@@ -21352,7 +21420,7 @@ async function loadMonthlyDash(){
   }
 
   if(!allNames.length){
-    if(tbody)tbody.innerHTML='<tr><td colspan="7" style="text-align:center;color:#aaa;padding:20px;">אין נתוני נסיעות לחודש זה בהיסטוריה</td></tr>';
+    if(tbody)tbody.innerHTML='<tr><td colspan="8" style="text-align:center;color:#aaa;padding:20px;">אין נתוני נסיעות לחודש זה בהיסטוריה</td></tr>';
     showToast('אין נתונים לחודש זה — נסיעות ישנות לא נשמרו בהיסטוריה','warning');
     return;
   }
@@ -21367,8 +21435,14 @@ async function loadMonthlyDash(){
       const avgDelay=s.delays?Math.round(s.delayMinTotal/s.delays):0;
       const perfPct=Math.round((s.lessons/maxLessons)*100);
       const perfColor=perfPct>=80?'#27ae60':perfPct>=50?'#f39c12':'#e74c3c';
+      // 2026-09-15, דיון #227: ממוצע שיעורים ליום = שיעורים ÷ ימים עם תפוקה
+      // בפועל (activeDays) — לא כל ימי הדיווח. gapDays מוצג כתגית נפרדת.
+      const _activeN=s.activeDays?s.activeDays.size:0;
+      const avgPerDay=_activeN?(s.lessons/_activeN):null;
+      const gapN=s.gapDays?s.gapDays.size:0;
+      const gapBadge=gapN?` <span title="${[...s.gapDays].join(', ')} — משובץ לקורס מעשי, 0 שעות הדרכה קלה, ללא החרגה" style="font-size:11px;color:#e74c3c;cursor:help;">⚠️×${gapN}</span>`:'';
       return`<tr>
-        <td><b>${_esc(name)}</b>${s.reportOnly ? ` <span title="${s.reportOnly} מתוך ${s.trips} מבוססים על סיכום יום בלבד (ללא תכנון נסיעה)" style="font-size:11px;color:#e67e22;">📝×${s.reportOnly}</span>` : ''}</td>
+        <td><b>${_esc(name)}</b>${s.reportOnly ? ` <span title="${s.reportOnly} מתוך ${s.trips} מבוססים על סיכום יום בלבד (ללא תכנון נסיעה)" style="font-size:11px;color:#e67e22;">📝×${s.reportOnly}</span>` : ''}${gapBadge}</td>
         <td style="text-align:center;">${s.trips}</td>
         <td style="text-align:center;font-weight:bold;color:var(--secondary);">${s.lessons.toFixed(1)}</td>
         <td style="text-align:center;">${Math.round(s.minutes/60*10)/10} שע'</td>
@@ -21382,6 +21456,7 @@ async function loadMonthlyDash(){
             <span style="font-size:12px;font-weight:bold;color:${perfColor};min-width:28px;">${perfPct}%</span>
           </div>
         </td>
+        <td style="text-align:center;font-weight:bold;color:${avgPerDay===null?'#aaa':'var(--primary)'};" title="${_activeN} ימי תפוקה בפועל">${avgPerDay===null?'—':avgPerDay.toFixed(1)}</td>
       </tr>`;
     }).join('');
   }
@@ -21392,8 +21467,9 @@ async function loadMonthlyDash(){
   // Enhance with task reports data
   try{await enhanceMonthlyDashWithTasks();}catch(e){console.warn('task dash:',e);}
 
-  // Build schedule-based task breakdown for the month
-  try{_renderMonthSchedBreakdown(yr,mo);}catch(e){}
+  // Build schedule-based task breakdown for the month — 2026-09-15: עדיין
+  // מבוסס yr/mo (לא רופרקט לטווח בשלב זה), לכן רץ רק במצב חודש רגיל.
+  if(!_isRangeMode){ try{_renderMonthSchedBreakdown(yr,mo);}catch(e){} }
 
   // Refresh current active tab
   try{
@@ -21481,15 +21557,11 @@ function _openCsvPreviewWindow(title, rows, filename, kpis){
 }
 
 // 2026-08-19: פותר את טווח התאריכים לדוח — מהבורר המשותף אם המשתמש בחר טווח,
-// אחרת נופל בחזרה לחודש המוצג בדשבורד (ההתנהגות המקורית, ללא שינוי).
+// אחרת נופל בחזרה לתקופה המוצגת בדשבורד (חודש או טווח מותאם — _dashPeriodStrs,
+// 2026-09-15 דיון #227). ההתנהגות המקורית למי שלא נוגע בבוררים לא השתנתה.
 function _resolveReportDates(){
   if(_reportsDateRange) return _reportsDateRange;
-  const yr=_monthlyDashDate.getFullYear();
-  const mo=_monthlyDashDate.getMonth();
-  const start=`${yr}-${String(mo+1).padStart(2,'0')}-01`;
-  const end=_localDateStr(new Date(yr,mo+1,0));
-  const label=new Date(yr,mo,1).toLocaleDateString('he-IL',{month:'long',year:'numeric'});
-  return {start,end,label};
+  return _dashPeriodStrs();
 }
 
 async function exportMonthlyReport(){
@@ -21859,7 +21931,7 @@ async function exportTaskTypeReport(){
 let _monthHistoryCache={};
 window._clearMonthCache=()=>{_monthHistoryCache={};_monthHistoryCacheLoading=false;};
 let _monthHistoryCacheLoading=false;
-window._resetMonthlyDash=()=>{if(typeof _monthlyDashDate!=='undefined')_monthlyDashDate=new Date();_monthHistoryCache={};};
+window._resetMonthlyDash=()=>{if(typeof _monthlyDashDate!=='undefined')_monthlyDashDate=new Date();_monthHistoryCache={};_monthlyDashRange=null;};
 
 // cache loaded inline in loadMonthlyDash
 
@@ -22910,6 +22982,13 @@ let _activeDashTab=null;
 async function switchDashTab(tab){
   const tabs={segments:'dashTabSegments',timesheet:'dashTabTimesheet',compare:'dashTabCompare',coverage:'dashTabCoverage',efficiency:'dashTabEfficiency',tasks:'dashTabTasks'};
   const btns={segments:'tabSegs',timesheet:'tabTime',compare:'tabComp',coverage:'tabCov',efficiency:'tabEff',tasks:'tabTasks'};
+  // 2026-09-15, דיון #227, שלב 1: טאבים אלה עדיין מבוססי yr/mo (לא רופרקטרו
+  // לטווח מותאם). במצב טווח — חסימת פתיחה (לא הרצת רינדור על נתונים שגויים).
+  const _rangeOnlyTabs=['timesheet','segments','compare','coverage','efficiency'];
+  if(_monthlyDashRange && _rangeOnlyTabs.includes(tab) && _activeDashTab!==tab){
+    showToast('טאב זה תומך כרגע רק בתצוגת חודש — עברו ל"חודש" למעלה (שלב הבא: גם טווח)','info');
+    return;
+  }
   const newTab=(_activeDashTab===tab)?null:tab;
   _activeDashTab=newTab;
   Object.entries(tabs).forEach(([k,id])=>{
@@ -26038,19 +26117,22 @@ async function loadDateRangeTaskReports(startStr,endStr){
 /* loadMonthlyDash merged */
 let _monthTaskStatsCache={};
 async function enhanceMonthlyDashWithTasks(){
-  const yr=_monthlyDashDate.getFullYear();
-  const mo=_monthlyDashDate.getMonth();
-  const taskReports=await loadMonthTaskReports(yr,mo);
+  // 2026-09-15, דיון #227: תמיכה בטווח מותאם — loadDateRangeTaskReports במקום
+  // loadMonthTaskReports (אותה תוצאה בדיוק לחודש רגיל, פשוט טווח כללי).
+  const _period=_dashPeriodStrs();
+  const taskReports=await loadDateRangeTaskReports(_period.start,_period.end);
 
   // Aggregate per instructor per task type
-  const instrTaskStats={}; // name → taskId → {quantity:0, duration:0, count:0}
+  const instrTaskStats={}; // name → taskId → {quantity:0, duration:0, count:0, activeDays:Set}
   Object.values(taskReports).forEach(r=>{
     if(!instrTaskStats[r.instructorName])instrTaskStats[r.instructorName]={};
     const ts=instrTaskStats[r.instructorName];
-    if(!ts[r.taskId])ts[r.taskId]={count:0,quantity:0,duration:0,taskLabel:r.taskLabel||r.taskId};
+    if(!ts[r.taskId])ts[r.taskId]={count:0,quantity:0,duration:0,taskLabel:r.taskLabel||r.taskId,activeDays:new Set()};
     ts[r.taskId].count++;
     if(r.quantity)ts[r.taskId].quantity+=r.quantity;
     if(r.duration)ts[r.taskId].duration+=r.duration;
+    // 2026-09-15, דיון #227: יום נספר למכנה הממוצע רק אם דווחה בו כמות בפועל.
+    if(r.quantity>0&&r.date)ts[r.taskId].activeDays.add(r.date);
   });
 
   // Update instructor table - add task columns
@@ -26063,8 +26145,8 @@ async function enhanceMonthlyDashWithTasks(){
     const name=nameCell.textContent.trim();
     const ts=instrTaskStats[name];
     if(!ts)return;
-    // Remove old task cells if any
-    while(row.cells.length>7)row.deleteCell(7);
+    // Remove old task cells if any (8 עמודות בסיס — כולל "ממוצע/יום" מ-דיון #227)
+    while(row.cells.length>8)row.deleteCell(8);
     // Add task summary
     const summary=Object.values(ts).map(t=>{
       const parts=[];
@@ -26080,7 +26162,7 @@ async function enhanceMonthlyDashWithTasks(){
 
   // Add header if not exists
   const thead=document.querySelector('#monthlyInstrTable thead tr');
-  if(thead&&thead.cells.length===7){
+  if(thead&&thead.cells.length===8){
     const th=document.createElement('th');
     th.textContent='משימות';
     thead.appendChild(th);
@@ -26127,10 +26209,14 @@ function _renderTasksTabFromStats(instrTaskStats){
         ?'<div style="font-size:10px;color:#8e44ad;margin-top:2px;">👤 '+t.drivers.map(_esc).join(', ')+'</div>':'';
       const noteBadge=t.notes&&t.notes.length
         ?'<span title="'+_esc(t.notes.join(' | '))+'" style="font-size:10px;color:#e67e22;cursor:help;margin-right:4px;">💬'+t.notes.length+'</span>':'';
+      // 2026-09-15, דיון #227: ממוצע = כמות ÷ ימים עם כמות>0 בדיווח (t.activeDays).
+      const _tActiveN=t.activeDays?t.activeDays.size:0;
+      const tAvg=_tActiveN?(t.quantity/_tActiveN):null;
       instrRows.push(`<tr style="border-bottom:1px solid #f5f5f5;">
         <td style="padding:7px 10px;font-weight:bold;font-size:13px;">${_esc(name)}</td>
         <td style="padding:7px 10px;text-align:center;font-weight:bold;color:var(--primary);">${t.quantity||'—'}</td>
         <td style="padding:7px 10px;text-align:center;color:#888;">${t.duration?Math.round(t.duration)+' דק\'':'—'}</td>
+        <td style="padding:7px 10px;text-align:center;color:${tAvg===null?'#aaa':'#3B6D11'};font-weight:bold;" title="${_tActiveN} ימים">${tAvg===null?'—':tAvg.toFixed(1)}</td>
         <td style="padding:7px 10px;font-size:11px;">${noteBadge}${driversList}</td>
       </tr>`);
     });
@@ -26164,6 +26250,7 @@ function _renderTasksTabFromStats(instrTaskStats){
           <th style="padding:7px 10px;font-size:11px;text-align:right;color:#555;border-bottom:2px solid #dde;">מדריך</th>
           <th style="padding:7px 10px;font-size:11px;text-align:center;color:#555;border-bottom:2px solid #dde;">${qtyLabel}</th>
           <th style="padding:7px 10px;font-size:11px;text-align:center;color:#555;border-bottom:2px solid #dde;">${durLabel}</th>
+          <th style="padding:7px 10px;font-size:11px;text-align:center;color:#555;border-bottom:2px solid #dde;" title="${qtyLabel} ÷ ימים עם דיווח בפועל">ממוצע/יום</th>
           ${driversHeader}
         </tr></thead>
         <tbody>${instrRows.join('')}</tbody>
@@ -27262,7 +27349,7 @@ function exitDemoMode(){
   // Blank out monthly dashboard immediately so stale data not visible
   try{
     const _tbody=document.getElementById('monthlyInstrBody');
-    if(_tbody)_tbody.innerHTML='<tr><td colspan="7" style="text-align:center;color:#aaa;padding:16px;">⏳ מנקה נתוני דמו...</td></tr>';
+    if(_tbody)_tbody.innerHTML='<tr><td colspan="8" style="text-align:center;color:#aaa;padding:16px;">⏳ מנקה נתוני דמו...</td></tr>';
     const _kpi=document.getElementById('monthlyKPIs');
     if(_kpi)_kpi.innerHTML='';
   }catch(e){}
