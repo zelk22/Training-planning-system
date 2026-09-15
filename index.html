@@ -14,7 +14,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 161</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 162</title>
 
 <style>
 
@@ -1437,7 +1437,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 225;
+  const APP_VERSION = 226;
 
   // 2026-09-07, לפי בקשת לביא: היה קשה לבדוק באיזו גרסה הדפדפן בפועל טוען
   // (כותרת הטאב נחתכת כשיש הרבה טאבים פתוחים, ואי אפשר תמיד לראות "DEPLOYED
@@ -4675,11 +4675,11 @@ window.TraineeSystem = {
       <div class="ts-toggle-row">
         <span class="ts-toggle-label">הערות ב"יומן שיעורים מלא" גלויות למדריכים</span>
         <label class="ts-toggle-switch">
-          <input type="checkbox" id="ts-lesson-notes-visible">
+          <input type="checkbox" id="ts-lesson-notes-visible" checked>
           <span class="ts-toggle-slider"></span>
         </label>
       </div>
-      <p style="font-size:12px;color:#888;margin:12px 0 0;">כאשר מכובה (ברירת מחדל) — עמודת "הערות" בטבלת יומן השיעורים בתיק החניך מוסתרת ממדריכים (מוצגת רק למנהל). אינו משפיע על ההערה עצמה שהוגשה בטופס סיכום יום.</p>
+      <p style="font-size:12px;color:#888;margin:12px 0 0;">כאשר דולק (ברירת מחדל) — עמודת "הערות" בטבלת יומן השיעורים בתיק החניך מוצגת גם למדריכים. כיבוי מסתיר אותה מהם (מוצגת רק למנהל). אינו משפיע על ההערה עצמה שהוגשה בטופס סיכום יום.</p>
     </div>
     <!-- Tab: Courses -->
     <div class="ts-spanel" id="ts-panel-courses">
@@ -7563,8 +7563,13 @@ window.TraineeSystem = {
     _renderTab_sig() {
         const chk = this.$('ts-sig-required');
         if (chk && this.settings) chk.checked = this.settings.requireSignature !== false;
+        // 2026-09-15, לפי בקשת לביא (#235): נמצא הבאג האמיתי מאחורי "הערות נעלמות
+        // בפתאומיות" — ברירת המחדל הייתה ===true (רק אם נשמר explicit-true), לא
+        // !==false כמו אחיו ts-sig-required. כל רגע-מירוץ שבו this.settings עדיין
+        // undefined, או שהשדה חסר מסיבה כלשהי, נפל בטעות ל"מוסתר". הוחלף לתבנית
+        // ה-fail-safe-להצגה, זהה לזו שכבר עובדת טוב ב-requireSignature.
         const notesChk = this.$('ts-lesson-notes-visible');
-        if (notesChk && this.settings) notesChk.checked = this.settings.showLessonNotesToInstructors === true;
+        if (notesChk && this.settings) notesChk.checked = this.settings.showLessonNotesToInstructors !== false;
     },
 
     _renderTab_milestones() {
@@ -7836,8 +7841,13 @@ window.TraineeSystem = {
         // 2026-08-31, לפי בקשת לביא: עמודת ההערות מוסתרת ממדריכים/חונכים כברירת מחדל
         // (settings.showLessonNotesToInstructors, נערך בטאב "חתימה" בהגדרות) — המנהל
         // תמיד רואה. לא משפיע על ההערה שהמדריך עצמו רואה בטופס סיכום יום שהוא הגיש.
+        // 2026-09-15, לפי בקשת לביא (#235): הפוך — ברירת המחדל הפכה ל"מוצג", וגם
+        // אם this.settings עצמו עוד לא נטען (undefined/null) — לא רק אם השדה בתוכו
+        // חסר. זה תיקון הבאג עצמו (ר' הערה ב-_renderTab_sig), לא רק שינוי מדיניות:
+        // כל מסלול-קוד שבו ה-state עוד לא נטען/הגיע חלקי כבר לא "נופל" בטעות
+        // להסתרה — נופל להצגה, וממתין לערך מפורש false כדי להסתיר בפועל.
         const _canSeeLessonNotes = (typeof currentRole === 'undefined' || currentRole === 'admin'
-            || (this.settings && this.settings.showLessonNotesToInstructors === true));
+            || !this.settings || this.settings.showLessonNotesToInstructors !== false);
         [...filtered].reverse().forEach((l, revIdx) => {
             const realIdx = lessons.indexOf(l);
             const mIcon = (l.mission === 'קורס מעשי סיטאדיס' || l.mission === 'קורס מעשי אורבוס' || l.mission === 'קורס מעשי' || l.mission === 'קורס') ? '🎓' : l.mission === 'חניכה' ? '🤝' : '⚙️';
