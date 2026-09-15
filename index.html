@@ -14,7 +14,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 159</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 160</title>
 
 <style>
 
@@ -1437,7 +1437,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 223;
+  const APP_VERSION = 224;
 
   // 2026-09-07, לפי בקשת לביא: היה קשה לבדוק באיזו גרסה הדפדפן בפועל טוען
   // (כותרת הטאב נחתכת כשיש הרבה טאבים פתוחים, ואי אפשר תמיד לראות "DEPLOYED
@@ -21573,7 +21573,7 @@ function _openCsvPreviewWindow(title, rows, filename, kpis){
   ${kpiHtml}
   ${body.length?`<table><thead><tr>${headHtml}</tr></thead><tbody>${bodyHtml}</tbody></table>`:'<div class="empty">אין נתונים להצגה</div>'}
   <div class="footer">מסמך זה הופק אוטומטית ממערכת ניהול ההדרכה. לא מהווה מסמך רשמי אלא עזר לניהול פנימי.</div>
-  <scr'+'ipt>
+  ${'<scr'+'ipt>'}
     var csvData = ${JSON.stringify(rows)};
     document.getElementById('csvBtn').addEventListener('click', function(){
       var csv = csvData.map(function(r){ return r.map(function(c){ return '"'+String(c==null?'':c).replace(/"/g,'""')+'"'; }).join(','); }).join('\\n');
@@ -21583,7 +21583,7 @@ function _openCsvPreviewWindow(title, rows, filename, kpis){
       a.download = ${JSON.stringify(filename)};
       a.click();
     });
-  <\/sc'+'ript>
+  ${'<\/scr'+'ipt>'}
 </body></html>`);
   win.document.close();
 }
@@ -22920,7 +22920,7 @@ async function exportPDFReport(){
 
   <div class="footer">מסמך זה הופק אוטומטית ממערכת ניהול ההדרכה. לא מהווה מסמך רשמי אלא עזר לניהול פנימי.</div>
 
-  <scr'+'ipt>setTimeout(()=>window.print(),400);<\/sc'+'ript>
+  ${'<scr'+'ipt>'}setTimeout(()=>window.print(),400);${'<\/scr'+'ipt>'}
 
 
 
@@ -26846,7 +26846,7 @@ async function openDailyReportPreview(dateOverride){
     <tbody>${rows}</tbody>
   </table>
   <div class="footer">מסמך זה הופק אוטומטית ממערכת ניהול ההדרכה. לא מהווה מסמך רשמי אלא עזר לניהול פנימי.</div>
-  <scr'+'ipt>
+  ${'<scr'+'ipt>'}
     var csvData = ${JSON.stringify(csvRows)};
     document.getElementById('csvBtn').addEventListener('click', function(){
       var headers = ['מדריך','משימה','שעות','נסיעות','סטטוס דיווח'];
@@ -26858,7 +26858,7 @@ async function openDailyReportPreview(dateOverride){
       a.download = 'דוח_יומי_${dateStr}.csv';
       a.click();
     });
-  <\/sc'+'ript>
+  ${'<\/scr'+'ipt>'}
 </body></html>`);
   printWin.document.close();
   showToast('📄 דוח יומי נפתח לתצוגה מקדימה','success');
