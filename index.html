@@ -14,7 +14,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 152</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 153</title>
 
 <style>
 
@@ -1437,7 +1437,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 216;
+  const APP_VERSION = 217;
 
   // 2026-09-07, לפי בקשת לביא: היה קשה לבדוק באיזו גרסה הדפדפן בפועל טוען
   // (כותרת הטאב נחתכת כשיש הרבה טאבים פתוחים, ואי אפשר תמיד לראות "DEPLOYED
@@ -4922,12 +4922,16 @@ window.TraineeSystem = {
         c.addEventListener('click', (e) => {
             const card = e.target.closest('.trainee-card');
             if (!card || e.target.closest('.cab')) return;
-            // 2026-08-19: תוקן באג משמעותי — מזהי חניך אמיתיים נוצרים עם
-            // Date.now()+Math.random() (מכיל חלק עשרוני, למשל 1783580045101.3809).
-            // parseInt קטע את החלק העשרוני, כך ש-currentId לעולם לא היה שווה בדיוק
-            // ל-t.id האמיתי (===), renderDetail() לא מצא התאמה ויצא מיד באילם —
-            // בלי לעדכן שם/רכבת/כלום, בלי שום שגיאה בקונסולה. parseFloat שומר על הערך המדויק.
-            const id = parseFloat(card.dataset.id);
+            // 2026-08-19: תוקן באג — מזהי חניך היו אז מספר עשרוני (Date.now()+
+            // Math.random()), ו-parseInt קטע את החלק העשרוני. parseFloat תוקן בזמנו.
+            // 2026-09-15, לפי בקשת לביא (#225): מאז השתנה פורמט המזהה למחרוזת
+            // מורכבת — Date.now()+'_'+Math.random().toString(36) (ר' confirmAddTrainee/
+            // addPendingTrainee) — ו-parseFloat על מחרוזת כזו קוטע את הסיומת אחרי ה-'_'
+            // ומחזיר רק את חלק המספר, בדיוק אותה משפחת-באג מחדש (===  נכשל בשקט,
+            // בלי שגיאה). התיקון הנכון: לא להמיר בכלל — dataset הוא תמיד מחרוזת,
+            // ולהשוות בצד השני עם String(x.id)===String(...) (ר' openTrainee למטה
+            // ו-8 המקומות ב-this.trainees.find שמשתמשים ב-this.currentId).
+            const id = card.dataset.id;
             if (id) this.openTrainee(id);
         });
 
@@ -4935,12 +4939,12 @@ window.TraineeSystem = {
             const editBtn = e.target.closest('[data-edit-name]');
             if (editBtn) {
                 e.stopPropagation();
-                this.editName(parseFloat(editBtn.dataset.editName), editBtn.dataset.name, e);
+                this.editName(editBtn.dataset.editName, editBtn.dataset.name, e);
             }
             const delBtn = e.target.closest('[data-delete-trainee]');
             if (delBtn) {
                 e.stopPropagation();
-                this.deleteTrainee(parseFloat(delBtn.dataset.deleteTrainee), delBtn.dataset.name, e);
+                this.deleteTrainee(delBtn.dataset.deleteTrainee, delBtn.dataset.name, e);
             }
             const delLesson = e.target.closest('[data-delete-lesson]');
             if (delLesson) {
@@ -5344,7 +5348,11 @@ window.TraineeSystem = {
             const cat  = document.getElementById('ts-arch-reason-cat')?.value || 'other';
             const text = document.getElementById('ts-arch-reason-text')?.value.trim() || '';
             const catLabel = (CATS.find(c => c.v === cat) || {}).l || cat;
-            const t = this.trainees.find(x => x.id === id);
+            // 2026-09-15, לפי בקשת לביא: תוקן אותו באג-משפחה כמו ב-#208/#209 (ר'
+            // הערה למעלה ליד parseFloat(card.dataset.id)) — id מגיע כאן ממזהה
+            // מחרוזת מורכב (Date.now()+'_'+random), והשוואת === רגילה נגדו נכשלה
+            // בשקט אם הטיפוס לא תאם בדיוק. String(...) בשני הצדדים בטוח בכל מקרה.
+            const t = this.trainees.find(x => String(x.id) === String(id));
             if (t) {
                 t.archived = true;
                 t.archivedAt = Date.now();
@@ -5416,7 +5424,7 @@ window.TraineeSystem = {
             el.contentEditable = false;
             el.style.cssText = '';
             if (newName && newName !== curName) {
-                const t = this.trainees.find(x => x.id === id);
+                const t = this.trainees.find(x => String(x.id) === String(id)); // אותו תיקון — ר' #225
                 if (t) { t.name = newName; this.persist(); }
             } else { el.innerText = curName; }
         };
@@ -5749,7 +5757,7 @@ window.TraineeSystem = {
     },
 
     renderDetail() {
-        const t = this.trainees.find(x => x.id === this.currentId);
+        const t = this.trainees.find(x => String(x.id) === String(this.currentId));
         if (!t) return;
 
         // 2026-08-19: קודם כל, מיד — כדי שהשם תמיד יוצג גם אם משהו אחר בפונקציה
@@ -5867,7 +5875,7 @@ window.TraineeSystem = {
         chips.style.display = 'flex';
         extraWrap.style.display = 'none';
 
-        const t      = this.trainees.find(x => x.id === this.currentId);
+        const t      = this.trainees.find(x => String(x.id) === String(this.currentId));
         if (!t) return; // חניכים טרם נטענו מ-Firebase — מונע crash
         const isFree = _mType ? _mType.id === 'mt1' : mission === 'חניכה';
         const isOrbus = (mission === 'קורס מעשי אורבוס');
@@ -6135,7 +6143,7 @@ window.TraineeSystem = {
             return;
         }
 
-        const t = this.trainees.find(x => x.id === this.currentId);
+        const t = this.trainees.find(x => String(x.id) === String(this.currentId));
         if (!t.lessons) t.lessons = [];
         const testDef = isTestRow ? TEST_DEFS.find(d => d.key === this.selectedTestKey) : null;
         const lessonObj = {
@@ -6186,7 +6194,7 @@ window.TraineeSystem = {
         // 2026-08-27, לפי בקשת לביא: מחיקת רשומת שיעור (שמאפסת התקדמות/מאפשרת
         // ביצוע מחדש) מוגבלת למנהל בלבד — נאכף גם כאן, לא רק בהסתרת הכפתור.
         if (typeof currentRole !== 'undefined' && currentRole !== 'admin') return;
-        const t = this.trainees.find(x => x.id === this.currentId);
+        const t = this.trainees.find(x => String(x.id) === String(this.currentId));
         if (!t) return;
         const l    = t.lessons[idx];
         const desc = l.mission === 'שעות נוספות'
@@ -6222,7 +6230,7 @@ window.TraineeSystem = {
     // refresh re-renders the trainee detail view while it's open.
     editLesson(lessonId) {
         if (typeof currentRole !== 'undefined' && currentRole !== 'admin') return;
-        const t = this.trainees.find(x => x.id === this.currentId);
+        const t = this.trainees.find(x => String(x.id) === String(this.currentId));
         if (!t) return;
         const l = (t.lessons || []).find(x => x.id === lessonId);
         if (!l) { if (typeof showToast === 'function') showToast('שגיאה: השיעור לא נמצא — ייתכן שכבר נמחק. רענן ונסה שוב', 'warning'); return; }
@@ -6324,7 +6332,7 @@ window.TraineeSystem = {
         // Clamp to the current mission's valid range (a mission switch can otherwise
         // leave stale numbers from the previous mission silently selected).
         ctx.currentNums = ctx.currentNums.filter(n => n >= 1 && n <= maxChip);
-        const t = this.trainees.find(x => x.id === this.currentId);
+        const t = this.trainees.find(x => String(x.id) === String(this.currentId));
         const usedByOthers = new Set();
         (t?.lessons || []).forEach(other => {
             if (other.id === ctx.lessonId) return;
@@ -6357,7 +6365,7 @@ window.TraineeSystem = {
         if (typeof currentRole !== 'undefined' && currentRole !== 'admin') return;
         const ctx = this._leCtx;
         if (!ctx || ctx.lessonId !== lessonId) { if (typeof showToast === 'function') showToast('שגיאה: החלונית לא תואמת את השיעור — סגור ופתח מחדש', 'warning'); return; }
-        const t = this.trainees.find(x => x.id === this.currentId);
+        const t = this.trainees.find(x => String(x.id) === String(this.currentId));
         if (!t) return;
         const idx = (t.lessons || []).findIndex(x => x.id === lessonId);
         if (idx < 0) { if (typeof showToast === 'function') showToast('שגיאה: השיעור כבר לא קיים בתיק — ייתכן שנמחק בינתיים', 'warning'); document.getElementById('_lessonEditModal')?.remove(); return; }
@@ -7780,7 +7788,7 @@ window.TraineeSystem = {
 
     // ── Instructors tab ──────────────────────────────
     filterHistory(missionFilter) {
-        const t = this.trainees.find(x => x.id === this.currentId);
+        const t = this.trainees.find(x => String(x.id) === String(this.currentId));
         if (!t) return;
         const tbody = this.$('history-tbody');
         if (!tbody) return;
@@ -15284,10 +15292,10 @@ function renderDailyScheduleSummary(){
   const _chipBg2=_isDark?'#2a3f52':'#f0f4f8';
   const _muted=_isDark?'#9aa8bc':'#888';
   const BUCKETS=[
-    {key:'morning',label:'🌅 בוקר',..._CS.morning},
-    {key:'evening',label:'🌆 ערב',..._CS.evening},
-    {key:'night',label:'🌙 לילה',..._CS.night},
-    {key:'other',label:'⏳ אחר',..._CS.other}
+    {key:'morning',label:'בוקר',..._CS.morning},
+    {key:'evening',label:'ערב',..._CS.evening},
+    {key:'night',label:'לילה',..._CS.night},
+    {key:'other',label:'אחר',..._CS.other}
   ];
   const grouped={morning:[],evening:[],night:[],other:[]};
   Object.keys(byInstr).forEach(name=>grouped[_entryShiftCategory(_primaryEntry(byInstr[name]))].push(name));
@@ -15310,7 +15318,7 @@ function renderDailyScheduleSummary(){
     let taskHtml;
     if(e.task){
       const tDef=taskDefs.find(t=>t.id===e.task)||{label:e.task,icon:'📋'};
-      taskHtml=`${tDef.icon} <b>${_esc(tDef.label)}</b>`;
+      taskHtml=`<b>${_esc(tDef.label)}</b>`;
     }else if(_isFlexShift(e.shift)){
       taskHtml=`<span style="color:${_muted};">${_esc(_shiftName(e.shift))}</span>`;
     }else{
@@ -16824,7 +16832,7 @@ function renderSchedEntriesList(date){
     const extraHtml=extraEntries.map(ex=>`
       <div style="display:flex;align-items:center;gap:8px;margin-top:6px;padding:5px 10px;background:#f0f4ff;border-radius:7px;border-right:3px solid #3498db;">
         <span style="font-size:10px;color:#3498db;font-weight:600;white-space:nowrap;">➕ משימה נוספת</span>
-        <span class="task-badge" style="font-size:11px;">${TASK_LABELS[ex.task]||ex.task}</span>
+        <span class="task-badge" style="font-size:11px;">${taskDefs.find(t=>t.id===ex.task)?.label||ex.task}</span>
         ${ex.note?`<span style="font-size:11px;color:#888;">· ${_esc(ex.note)}</span>`:''}
         <span style="flex:1;"></span>
         ${currentRole==='admin'?`<button onclick="deleteEntry('${date}','${ex.id}')" title="הסר משימה נוספת"
@@ -16835,10 +16843,10 @@ function renderSchedEntriesList(date){
         <div style="flex:1;min-width:140px;">
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
             <span style="font-size:14px;font-weight:700;color:#1a2a3a;">${_esc(name)}</span>
-            <span class="task-badge">${TASK_LABELS[mainEntry.task]||mainEntry.task}</span>
+            <span class="task-badge">${taskDefs.find(t=>t.id===mainEntry.task)?.label||mainEntry.task}</span>
             <span class="sched-status-badge ${mainEntry.status||'pending'}" style="font-size:11px;">${statusLabel}</span>
           </div>
-          <div style="font-size:11px;color:#888;margin-top:4px;">${SHIFT_LABELS[mainEntry.shift]||''} <span style="color:#555;">${times}</span>${mainEntry.note?` · ${_esc(mainEntry.note)}`:''}</div>
+          <div style="font-size:11px;color:#888;margin-top:4px;">${_shiftName(mainEntry.shift)} <span style="color:#555;">${times}</span>${mainEntry.note?` · ${_esc(mainEntry.note)}`:''}</div>
         </div>
         <div style="display:flex;gap:6px;align-items:center;flex-shrink:0;">
           ${assignBtn}
@@ -23032,7 +23040,7 @@ function renderTodayTasks(){
       ?{s:entry.startTime||'07:00',e:entry.endTime||'15:30'}
       :(SHIFT_HOURS[entry.shift]||{s:'?',e:'?'});
     const timeStr=`${sh.s}–${sh.e}`;
-    const shiftName=SHIFT_LABELS?.[entry.shift]||entry.shift||'';
+    const shiftName=(typeof _shiftName==='function'?_shiftName(entry.shift):null)||entry.shift||'';
 
     // ── Trip task: show יצאתי/חזרתי ──
     if(taskDef.isTrip){
@@ -23040,8 +23048,8 @@ function renderTodayTasks(){
       return`<div style="background:#eaf4fd;border-radius:10px;padding:12px 14px;border:1px solid #b5d4f4;">
         <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:${(taskDef.message||entry.note)?'10px':'0'};">
           <div>
-            <span class="today-task-title" style="font-size:15px;font-weight:bold;color:var(--primary);">${taskDef.icon||'🚇'} ${_esc(taskDef.label)}</span>
-            <span class="today-task-meta" style="font-size:12px;color:#888;margin-right:8px;">${shiftName} ${timeStr}</span>
+            <span class="today-task-meta" style="font-size:12px;color:#888;">${shiftName} ${timeStr}</span>
+            <span class="today-task-title" style="font-size:15px;font-weight:bold;color:var(--primary);margin-right:8px;">${_esc(taskDef.label)}</span>
           </div>
           <span class="today-task-badge" style="font-size:11px;color:#2980b9;background:#ddeeff;padding:3px 8px;border-radius:5px;">${myTrips.length} נסיעות — ראה יומן למטה</span>
         </div>
@@ -23052,26 +23060,29 @@ function renderTodayTasks(){
     // ── All non-trip tasks render as regular cards (summary via unified form) ──
     return`<div style="background:#f8f8f8;border-radius:10px;padding:12px 14px;border:1px solid #e0e0e0;">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:${(taskDef.message||entry.note)?'10px':'0'};">
-        <span class="today-task-title" style="font-size:15px;font-weight:bold;color:var(--primary);">${taskDef.icon||'📋'} ${_esc(taskDef.label)}</span>
         <span class="today-task-meta" style="font-size:12px;color:#888;">${shiftName} ${timeStr}</span>
+        <span class="today-task-title" style="font-size:15px;font-weight:bold;color:var(--primary);">${_esc(taskDef.label)}</span>
       </div>
       ${_buildTaskDetails(taskDef,entry)}
     </div>`;
   }).join('');
 }
 
-// Fix #92: "team today" — read-only shift+task overview of every OTHER instructor
-// scheduled today (own tasks are already shown above), so an instructor can see what
-// teammates are doing for planning/coordination. No notes shown, no click-to-edit —
-// intentionally lighter than the admin daily-plan table (fix #91). Hidden from
-// mentors via .mentor-mode CSS (matches fix #74's precedent).
+// Fix #92: "team today" — read-only shift+task overview of every instructor
+// scheduled today, including the viewer themselves (2026-09-15, לפי בקשת לביא:
+// בעבר הוחרג e.name===currentUserName — הוסר, כדי שהתמונה תהיה מלאה). No notes
+// shown, no click-to-edit — intentionally lighter than the admin daily-plan
+// table (fix #91). Hidden from mentors via .mentor-mode CSS (matches fix #74's precedent).
 function renderInstrTeamToday(today){
   const container=document.getElementById('teamTodayList');
   if(!container)return;
   const day=today||currentDate||_localDateStr(new Date());
-  const todayEntries=(schedData[day]||[]).filter(e=>e.name!==currentUserName);
+  // 2026-09-15, לפי בקשת לביא: "צוות היום" הציג בעבר את כל המדריכים חוץ מהמדריך
+  // הצופה עצמו (e.name!==currentUserName) — עכשיו מציג את כולם, כולל אותו, כדי
+  // שהתמונה תהיה מלאה ולא תיראה כאילו הוא לא משובץ היום.
+  const todayEntries=(schedData[day]||[]);
   if(!todayEntries.length){
-    container.innerHTML='<div style="color:#aaa;font-size:13px;text-align:center;padding:10px;">אין מדריכים נוספים מתוכננים היום</div>';
+    container.innerHTML='<div style="color:#aaa;font-size:13px;text-align:center;padding:10px;">אין מדריכים מתוכננים היום</div>';
     return;
   }
 
@@ -23091,10 +23102,10 @@ function renderInstrTeamToday(today){
   const _muted=_isDark?'#9aa8bc':'#888';
   const _rowBorder=_isDark?'#3a4060':'#eee';
   const BUCKETS=[
-    {key:'morning',label:'🌅 בוקר',..._CS.morning},
-    {key:'evening',label:'🌆 ערב',..._CS.evening},
-    {key:'night',label:'🌙 לילה',..._CS.night},
-    {key:'other',label:'⏳ אחר',..._CS.other}
+    {key:'morning',label:'בוקר',..._CS.morning},
+    {key:'evening',label:'ערב',..._CS.evening},
+    {key:'night',label:'לילה',..._CS.night},
+    {key:'other',label:'אחר',..._CS.other}
   ];
   const grouped={morning:[],evening:[],night:[],other:[]};
   Object.keys(byInstr).forEach(name=>grouped[_entryShiftCategory(_primaryEntry(byInstr[name]))].push(name));
@@ -23113,7 +23124,7 @@ function renderInstrTeamToday(today){
     let taskHtml;
     if(e.task){
       const tDef=taskDefs.find(t=>t.id===e.task)||{label:e.task,icon:'📋'};
-      taskHtml=`${tDef.icon} ${_esc(tDef.label)}`;
+      taskHtml=`${_esc(tDef.label)}`;
     }else if(_isFlexShift(e.shift)){
       taskHtml=`<span style="color:${_muted};">${_esc(_shiftName(e.shift))}</span>`;
     }else{
@@ -29156,7 +29167,7 @@ function _toggleTsBucket(kind, key) {
           ? 'background:#fef9ec;border:1.5px solid #f0ad4e;color:#a6690b;'
           : 'background:#eef3fb;border:1px solid #b5d4f4;color:#2c3e50;';
         var title = pending ? ' title="טסט הגיע אוטומטית לפי מספר שיעורים — טרם סומן ידנית כ\'עבר\' ע״י מנהל"' : '';
-        return '<button' + title + ' onclick="try{if(typeof TraineeSystem!==\'undefined\')TraineeSystem.openTrainee&&TraineeSystem.openTrainee(' + t.id + ');}catch(ex){}" style="width:auto;margin:0;padding:5px 12px;' + style + 'border-radius:16px;cursor:pointer;font-size:12px;font-family:inherit;font-weight:' + (pending?'bold':'normal') + ';white-space:nowrap;">' + (pending?'🟡 ':'') + _esc(t.name) + '</button>';
+        return '<button' + title + ' onclick="try{if(typeof TraineeSystem!==\'undefined\')TraineeSystem.openTrainee&&TraineeSystem.openTrainee(' + JSON.stringify(t.id) + ');}catch(ex){}" style="width:auto;margin:0;padding:5px 12px;' + style + 'border-radius:16px;cursor:pointer;font-size:12px;font-family:inherit;font-weight:' + (pending?'bold':'normal') + ';white-space:nowrap;">' + (pending?'🟡 ':'') + _esc(t.name) + '</button>';
       }).join('') + '</div>'
     : '<div style="padding:6px 4px;color:#888;font-size:12px;">אין חניכים</div>';
   cont.innerHTML = htm;
@@ -29180,7 +29191,7 @@ function _toggleInfoAlerts() {
     var rows = '<div style="border:1px solid #f5e3c3;border-right:4px solid #f39c12;border-radius:8px;padding:8px 14px;">'
       + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;flex-wrap:wrap;gap:6px;">'
       + '<span style="font-size:14px;font-weight:bold;color:#2c3e50;">' + _esc(t.name) + '</span>'
-      + '<button onclick="try{if(typeof TraineeSystem!==\'undefined\')TraineeSystem.openTrainee&&TraineeSystem.openTrainee(' + t.id + ');}catch(ex){}" style="padding:3px 9px;background:#2980b9;color:white;border:none;border-radius:6px;cursor:pointer;font-size:11px;">פתח תיק ←</button></div>'
+      + '<button onclick="try{if(typeof TraineeSystem!==\'undefined\')TraineeSystem.openTrainee&&TraineeSystem.openTrainee(' + JSON.stringify(t.id) + ');}catch(ex){}" style="padding:3px 9px;background:#2980b9;color:white;border:none;border-radius:6px;cursor:pointer;font-size:11px;">פתח תיק ←</button></div>'
       + '<ul style="margin:2px 0 0;padding-right:18px;">'
       + t.infoNotes.map(function(n){ return '<li style="font-size:12px;color:#666;margin-bottom:2px;">'+n+'</li>'; }).join('')
       + '</ul></div>';
@@ -29218,7 +29229,7 @@ function _toggleAtRisk() {
     var row='<div style="border:1px solid '+bc+';border-right:4px solid '+bc+';border-radius:8px;padding:10px 14px;">'
       + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;flex-wrap:wrap;gap:6px;">'
       + '<div style="display:flex;align-items:center;gap:8px;">'+riskBadge(t.riskLevel)+trendArrow(t.trend)+'<span style="font-size:14px;font-weight:bold;color:#2c3e50;">'+_esc(t.name)+'</span></div>'
-      + '<div style="display:flex;align-items:center;gap:8px;"><span style="font-size:11px;color:#888;">'+t.stage+'</span><button onclick="try{if(typeof TraineeSystem!==\'undefined\')TraineeSystem.openTrainee&&TraineeSystem.openTrainee('+t.id+');}catch(ex){}" style="padding:3px 9px;background:#2980b9;color:white;border:none;border-radius:6px;cursor:pointer;font-size:11px;">פתח תיק ←</button></div></div>';
+      + '<div style="display:flex;align-items:center;gap:8px;"><span style="font-size:11px;color:#888;">'+t.stage+'</span><button onclick="try{if(typeof TraineeSystem!==\'undefined\')TraineeSystem.openTrainee&&TraineeSystem.openTrainee('+JSON.stringify(t.id)+');}catch(ex){}" style="padding:3px 9px;background:#2980b9;color:white;border:none;border-radius:6px;cursor:pointer;font-size:11px;">פתח תיק ←</button></div></div>';
     if (t.riskReasons && t.riskReasons.length) {
       row += '<ul style="margin:2px 0 0;padding-right:18px;">'
         + t.riskReasons.map(function(r){ return '<li style="font-size:12px;color:#666;margin-bottom:2px;">'+r+'</li>'; }).join('')
@@ -29537,7 +29548,7 @@ function _renderTraineeSummaryPanel() {
     summary.inactive.forEach(function(t){h.push('<div style="display:flex;align-items:center;justify-content:space-between;border:1px solid #cfe2f3;border-right:4px solid #3498db;border-radius:8px;padding:8px 14px;flex-wrap:wrap;gap:6px;">'+
       '<span style="font-size:14px;font-weight:bold;color:#2c3e50;">'+_esc(t.name)+'</span>'+
       '<span style="display:flex;align-items:center;gap:8px;"><span style="font-size:12px;color:#3498db;font-weight:bold;">'+t.daysSinceLast+' ימים ללא שיעור</span>'+
-      '<button onclick="try{if(typeof TraineeSystem!==\'undefined\')TraineeSystem.openTrainee&&TraineeSystem.openTrainee('+t.id+');}catch(ex){}" style="padding:3px 9px;background:#2980b9;color:white;border:none;border-radius:6px;cursor:pointer;font-size:11px;">פתח תיק ←</button></span></div>');});
+      '<button onclick="try{if(typeof TraineeSystem!==\'undefined\')TraineeSystem.openTrainee&&TraineeSystem.openTrainee('+JSON.stringify(t.id)+');}catch(ex){}" style="padding:3px 9px;background:#2980b9;color:white;border:none;border-radius:6px;cursor:pointer;font-size:11px;">פתח תיק ←</button></span></div>');});
     h.push('</div>');
     h.push(_tsSectionClose());
   }
@@ -29838,7 +29849,7 @@ function _resetTraineeSummaryConfig() {
     <div id="myDayNotesList" style="margin-bottom:10px;"></div>
     <div id="notesList" style="margin-top:16px;border-top:1px solid #eee;padding-top:12px;display:none;">
       <div style="font-size:12px;font-weight:bold;color:#888;margin-bottom:8px;">📋 פתקים קיימים לחודש זה</div>
-      <div id="notesListBody"></div>
+      <div id="notesListBody" style="max-height:320px;overflow-y:auto;"></div>
     </div>
   </div>
 </div>
