@@ -14,7 +14,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 162</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 163</title>
 
 <style>
 
@@ -1437,7 +1437,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 226;
+  const APP_VERSION = 227;
 
   // 2026-09-07, לפי בקשת לביא: היה קשה לבדוק באיזו גרסה הדפדפן בפועל טוען
   // (כותרת הטאב נחתכת כשיש הרבה טאבים פתוחים, ואי אפשר תמיד לראות "DEPLOYED
@@ -3154,11 +3154,9 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
       </div>
     </div>
 
-<!-- dashTabTasks moved to main view -->
+    <div id="dashTabTasks" style="display:none;margin-top:10px;"></div>
 
   </div>
-
-    <div id="dashTabTasks" style="display:none;margin-top:10px;"></div>
 
   <!-- ══ TRAINEE SECTION CARD ════════════════════════════ -->
   <details id="traineeSection" class="manual-section" style="margin-bottom:14px;">
@@ -25865,12 +25863,14 @@ async function _saveEditedUnifiedReportBasics() {
 
   _logAction('edit_unified_report', `עריכת סיכום יום: ${cur.instructorName} — ${cur.date}${dateChanged ? ' → ' + newDate : ''}${_lessonsFixed ? ` (${_lessonsFixed} רשומות שיעור עודכנו)` : ''}`);
   showToast(_lessonsFixed ? `✅ השינויים נשמרו (כולל ${_lessonsFixed} רשומות שיעור בתיקי חניכים)` : '✅ השינויים נשמרו', 'success');
-  // 2026-09-07, לפי בקשת לביא: "הכפתור נשאר תקוע על 'שומר...' גם אחרי ששמירה
-  // הצליחה בפועל" — עד עכשיו רק נתיבי השגיאה איפסו את מצב הכפתור; בהצלחה
-  // הסתמכנו על openViewUnifiedReport() בסוף שיחליף את כל התוכן (כולל הכפתור)
-  // — אם זה איטי/נכשל בשקט, הכפתור נשאר תקוע. עכשיו מאופס מיד כאן, לא תלוי
-  // בהמשך התהליך.
-  if (_saveBtn) { _saveBtn.disabled = false; _saveBtn.textContent = '💾 שמור שינויים'; _saveBtn.style.opacity = '1'; _saveBtn.style.cursor = 'pointer'; }
+  // 2026-09-15, לפי בקשת לביא (#236): "אין חיווי שהשמירה הצליחה, נראה תקוע".
+  // התיקון מ-2026-09-07 (למטה בהיסטוריה) פתר "תקוע על ⏳ שומר..." ע"י איפוס
+  // מיידי חזרה ל-"💾 שמור שינויים" — אבל זה בדיוק הטקסט שהיה *לפני* הלחיצה,
+  // כך שאין שום הבדל חזותי בין "לפני" ל"אחרי הצלחה". טוסט לבדו חולף מהר וקל
+  // לפספס כשהמבט על המודל. עכשיו: אישור ירוק ברור בתוך הכפתור עצמו קודם, ורק
+  // אחריו (בעיכוב קצר) הרענון המלא של התצוגה (openViewUnifiedReport, שעלול
+  // להיות איטי כי הוא קורא מחדש מ-Firebase) — כדי שהאישור יספיק להיראות.
+  if (_saveBtn) { _saveBtn.disabled = true; _saveBtn.textContent = '✅ נשמר!'; _saveBtn.style.opacity = '1'; _saveBtn.style.cursor = 'default'; _saveBtn.style.background = '#27ae60'; }
   try { renderDaySummary(); } catch(e) {}
   // 2026-08-19: תיקון באג — אם חלונית הארכיון פתוחה ברקע, שורתה הייתה נשארת עם
   // הנתונים הישנים (כולל התאריך הישן), וללחוץ עליה שוב חיפש לפי מפתח שכבר נמחק/
@@ -25881,7 +25881,9 @@ async function _saveEditedUnifiedReportBasics() {
   if (document.getElementById('stuckLessonsOverlay')) {
     try { openStuckLessonsManager(); } catch(e) {}
   }
-  try { openViewUnifiedReport(newDate, cur.instructorName); } catch(e) { console.warn('openViewUnifiedReport after edit:', e); }
+  setTimeout(() => {
+    try { openViewUnifiedReport(newDate, cur.instructorName); } catch(e) { console.warn('openViewUnifiedReport after edit:', e); }
+  }, 650);
 }
 
 // ── Custom fields settings (manager) ──
