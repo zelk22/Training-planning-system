@@ -14,7 +14,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 167</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 168</title>
 
 <style>
 
@@ -1437,7 +1437,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 231;
+  const APP_VERSION = 232;
 
   // 2026-09-07, לפי בקשת לביא: היה קשה לבדוק באיזו גרסה הדפדפן בפועל טוען
   // (כותרת הטאב נחתכת כשיש הרבה טאבים פתוחים, ואי אפשר תמיד לראות "DEPLOYED
@@ -16295,7 +16295,7 @@ function renderCalendar(){
         const wrapStyle=(hasNotesEarly||isWeek)?'margin-bottom:3px;':`position:absolute;top:${top};left:3px;right:3px;z-index:1;`;
         return `<div style="${wrapStyle}">
           <div class="cal-entry" style="background:${col};border-right:4px solid ${bdr};font-size:11px;padding:3px 5px;border-radius:4px;font-weight:700;color:${catStyle.text};line-height:1.35;">
-            <div>${_shiftIcon(e.shift)} ${_shiftName(e.shift)} ${ico}</div>
+            <div>${_shiftName(e.shift)} ${ico}</div>
             ${hoursLbl?`<div style="font-size:10px;font-weight:600;">${hoursLbl}</div>`:''}
             ${(isWeek&&tDefI)?`<div style="font-size:10px;font-weight:500;opacity:.85;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${_esc(tDefI.label)}</div>`:''}
           </div>
