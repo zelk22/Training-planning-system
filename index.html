@@ -14,7 +14,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 168</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 169</title>
 
 <style>
 
@@ -1437,7 +1437,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 232;
+  const APP_VERSION = 233;
 
   // 2026-09-07, לפי בקשת לביא: היה קשה לבדוק באיזו גרסה הדפדפן בפועל טוען
   // (כותרת הטאב נחתכת כשיש הרבה טאבים פתוחים, ואי אפשר תמיד לראות "DEPLOYED
@@ -30164,11 +30164,17 @@ function _resetTraineeSummaryConfig() {
 
 <!-- ══ NOTES MODAL ══════════════════════════════════════════ -->
 <div id="notesModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:3000;display:none;align-items:center;justify-content:center;" onclick="if(event.target===this)closeNotesModal()">
-  <div style="background:white;border-radius:14px;padding:24px;width:min(95vw,420px);box-shadow:0 10px 40px rgba(0,0,0,.25);direction:rtl;">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+  <div style="background:white;border-radius:14px;width:min(95vw,420px);max-height:90vh;display:flex;flex-direction:column;box-shadow:0 10px 40px rgba(0,0,0,.25);direction:rtl;overflow:hidden;">
+    <!-- 2026-09-16, לפי בקשת לביא: הכותרת+כפתור הסגירה עברו לבלוק קבוע (flex-shrink:0)
+         שלא נגלל עם השאר — לפני כן החלון כולו גדל בלי הגבלת גובה, וכשהתוכן היה ארוך
+         מגובה המסך הוא נחתך מלמעלה (כולל כפתור ה-✕) בלי דרך לגלול ולראות אותו, אלא
+         רק ע"י הקטנת המסך (זום-אאוט). עכשיו כל החלון מוגבל ל-90vh והגוף (התוכן שמתחת
+         לכותרת) גולל בנפרד — הכותרת תמיד גלויה מיד עם הפתיחה. -->
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:24px 24px 16px 24px;flex-shrink:0;">
       <h3 id="notesModalTitle" style="margin:0;color:var(--primary);">📌 פתק על הלוח</h3>
       <button onclick="closeNotesModal()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#aaa;">✕</button>
     </div>
+    <div style="padding:0 24px 24px 24px;overflow-y:auto;min-height:0;">
     <label style="font-size:13px;font-weight:bold;color:#555;display:block;margin-bottom:4px;">📅 תאריך</label>
     <input type="date" id="noteDate" style="width:100%;padding:8px 10px;border:1.5px solid #ddd;border-radius:8px;font-size:16px;margin-bottom:12px;box-sizing:border-box;direction:ltr;">
     <label style="font-size:13px;font-weight:bold;color:#555;display:block;margin-bottom:4px;">📝 תוכן הפתק</label>
@@ -30205,6 +30211,7 @@ function _resetTraineeSummaryConfig() {
     <div id="notesList" style="margin-top:16px;border-top:1px solid #eee;padding-top:12px;display:none;">
       <div style="font-size:12px;font-weight:bold;color:#888;margin-bottom:8px;">📋 פתקים קיימים לחודש זה</div>
       <div id="notesListBody" style="max-height:320px;overflow-y:auto;"></div>
+    </div>
     </div>
   </div>
 </div>
