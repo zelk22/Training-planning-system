@@ -14,7 +14,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 169</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 170</title>
 
 <style>
 
@@ -1437,7 +1437,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 233;
+  const APP_VERSION = 234;
 
   // 2026-09-07, לפי בקשת לביא: היה קשה לבדוק באיזו גרסה הדפדפן בפועל טוען
   // (כותרת הטאב נחתכת כשיש הרבה טאבים פתוחים, ואי אפשר תמיד לראות "DEPLOYED
@@ -5753,6 +5753,12 @@ window.TraineeSystem = {
     openTrainee(id) {
         this.currentId = id;
         this.updateInMissionSelect();
+        // 2026-09-16, לפי בקשת לביא (#243): "סוג משימה" בטופס "דיווח משוב יומי"
+        // בתיק קופץ אוטומטית לשלב הנוכחי של החניך שנפתח (test50/testOrbus) —
+        // לא נשאר על מה שנבחר עבור חניך קודם שנצפה (זו הייתה ההתנהגות של
+        // updateInMissionSelect לבדה, ששימרה את הבחירה הקודמת — נכון לה
+        // בהקשרים אחרים כמו רענון אחרי שמירת הגדרות, ולכן לא שונה שם עצמו).
+        this._applyDefaultMissionForTrainee(id);
         this.$('main-view').classList.remove('active-view');
         this.$('detail-view').classList.add('active-view');
         this.$('log-body').classList.remove('open');
@@ -5769,12 +5775,30 @@ window.TraineeSystem = {
             this.loadCourses(),
             (typeof loadSettings === 'function') ? loadSettings() : Promise.resolve(),
             (typeof _loadMilestonePassMap === 'function') ? _loadMilestonePassMap() : Promise.resolve()
-        ]).then(() => { if (this.currentId === id) this.renderDetail(); }).catch(() => {});
+        ]).then(() => {
+            if (this.currentId === id) {
+                this.renderDetail();
+                // 2026-09-16, #243: window._milestonePassMap עשוי היה להיות ישן/ריק
+                // בקריאה הראשונה למעלה (סינכרונית, לפני שהרענון הזה הסתיים) — מיושם
+                // שוב עם נתונים טריים, ומרענן את הצ'יפים אם המשימה השתנתה בעקבות כך.
+                this._applyDefaultMissionForTrainee(id);
+                this.updateChips();
+            }
+        }).catch(() => {});
         // 2026-08-19: גלילה לתיק החניך — בלי זה התצוגה מתחלפת אך המשתמש
         // נשאר גלול איפה שהיה ולא שם לב שהתיק נפתח.
         requestAnimationFrame(() => {
             try { this.$('detail-view').scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch(e) {}
         });
+    },
+
+    // 2026-09-16, לפי בקשת לביא (#243): ר' openTrainee למעלה להסבר מלא.
+    _applyDefaultMissionForTrainee(id) {
+        const sel = this.$('in-mission');
+        if (!sel || typeof _defaultMissionIdForTrainee !== 'function') return;
+        const defId = _defaultMissionIdForTrainee(id);
+        const defName = (typeof _MISSION_ID_TO_NAME !== 'undefined' && _MISSION_ID_TO_NAME[defId]) || null;
+        if (defName && [...sel.options].some(o => o.value === defName)) sel.value = defName;
     },
 
     showMainView() {
@@ -23861,6 +23885,18 @@ function _urRemoveFeedbackBlock(btn) {
   }
 }
 
+// 2026-09-16, לפי בקשת לביא (#243): ברירת מחדל אוטומטית ל"סוג משימה"/"קורס"
+// בטפסי משוב (גם "סיכום יום" וגם "משוב בתיק") — לפי השלב הנוכחי של החניך.
+// לפי אישור לביא: מבוסס *אך ורק* על milestones שסומנו (test50/testOrbus),
+// לא על מספר שיעורים/היוריסטיקות אחרות. סיטאדיס הוא ברירת המחדל ההתחלתית.
+const _MISSION_ID_TO_NAME = {course:'קורס מעשי סיטאדיס', orbus:'קורס מעשי אורבוס', mt1:'חניכה', mt2:'כשירות מעשית/ שעות נוספות'};
+function _defaultMissionIdForTrainee(traineeId) {
+  if (!traineeId) return 'course';
+  const ms = (window._milestonePassMap || {})[String(traineeId)] || {};
+  if (ms.testOrbus) return 'mt1';
+  if (ms.test50) return 'orbus';
+  return 'course';
+}
 function _urOnTraineeChange(idx) {
   const sel = document.getElementById(`ur-fb-${idx}-trainee`);
   const freeEl = document.getElementById(`ur-fb-${idx}-free`);
@@ -23870,6 +23906,15 @@ function _urOnTraineeChange(idx) {
     const block = freeEl.closest('.ur-trainee-block');
     if (block) { delete block.dataset.confirmedFree; delete block.dataset.confirmedTraineeId; }
     _urResetFreeConfirmUI(idx);
+  }
+  // 2026-09-16, לפי בקשת לביא (#243): "סוג משימה" קופץ אוטומטית לשלב הנוכחי
+  // של החניך שנבחר (סיטאדיס/אורבוס/חניכה) — עדיין ניתן לשנות ידנית אחרי.
+  if (sel && sel.value) {
+    const missionSel = document.getElementById(`ur-fb-${idx}-mission`);
+    if (missionSel) {
+      const defId = _defaultMissionIdForTrainee(sel.value);
+      if (missionSel.querySelector(`option[value="${defId}"]`)) missionSel.value = defId;
+    }
   }
   _urUpdateChips(idx);
 }
@@ -29522,7 +29567,7 @@ function _toggleTsBucket(kind, key) {
           ? 'background:#fef9ec;border:1.5px solid #f0ad4e;color:#a6690b;'
           : 'background:#eef3fb;border:1px solid #b5d4f4;color:#2c3e50;';
         var title = pending ? ' title="טסט הגיע אוטומטית לפי מספר שיעורים — טרם סומן ידנית כ\'עבר\' ע״י מנהל"' : '';
-        return '<button' + title + ' onclick="try{if(typeof TraineeSystem!==\'undefined\')TraineeSystem.openTrainee&&TraineeSystem.openTrainee(' + JSON.stringify(t.id) + ');}catch(ex){}" style="width:auto;margin:0;padding:5px 12px;' + style + 'border-radius:16px;cursor:pointer;font-size:12px;font-family:inherit;font-weight:' + (pending?'bold':'normal') + ';white-space:nowrap;">' + (pending?'🟡 ':'') + _esc(t.name) + '</button>';
+        return '<button' + title + ' onclick="try{_setTraineeSubView(\'files\');}catch(ex0){}try{if(typeof TraineeSystem!==\'undefined\')TraineeSystem.openTrainee&&TraineeSystem.openTrainee(' + JSON.stringify(t.id) + ');}catch(ex){}" style="width:auto;margin:0;padding:5px 12px;' + style + 'border-radius:16px;cursor:pointer;font-size:12px;font-family:inherit;font-weight:' + (pending?'bold':'normal') + ';white-space:nowrap;">' + (pending?'🟡 ':'') + _esc(t.name) + '</button>';
       }).join('') + '</div>'
     : '<div style="padding:6px 4px;color:#888;font-size:12px;">אין חניכים</div>';
   cont.innerHTML = htm;
@@ -29546,7 +29591,7 @@ function _toggleInfoAlerts() {
     var rows = '<div style="border:1px solid #f5e3c3;border-right:4px solid #f39c12;border-radius:8px;padding:8px 14px;">'
       + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;flex-wrap:wrap;gap:6px;">'
       + '<span style="font-size:14px;font-weight:bold;color:#2c3e50;">' + _esc(t.name) + '</span>'
-      + '<button onclick="try{if(typeof TraineeSystem!==\'undefined\')TraineeSystem.openTrainee&&TraineeSystem.openTrainee(' + JSON.stringify(t.id) + ');}catch(ex){}" style="padding:3px 9px;background:#2980b9;color:white;border:none;border-radius:6px;cursor:pointer;font-size:11px;">פתח תיק ←</button></div>'
+      + '<button onclick="try{_setTraineeSubView(\'files\');}catch(ex0){}try{if(typeof TraineeSystem!==\'undefined\')TraineeSystem.openTrainee&&TraineeSystem.openTrainee(' + JSON.stringify(t.id) + ');}catch(ex){}" style="padding:3px 9px;background:#2980b9;color:white;border:none;border-radius:6px;cursor:pointer;font-size:11px;">פתח תיק ←</button></div>'
       + '<ul style="margin:2px 0 0;padding-right:18px;">'
       + t.infoNotes.map(function(n){ return '<li style="font-size:12px;color:#666;margin-bottom:2px;">'+n+'</li>'; }).join('')
       + '</ul></div>';
@@ -29584,7 +29629,7 @@ function _toggleAtRisk() {
     var row='<div style="border:1px solid '+bc+';border-right:4px solid '+bc+';border-radius:8px;padding:10px 14px;">'
       + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;flex-wrap:wrap;gap:6px;">'
       + '<div style="display:flex;align-items:center;gap:8px;">'+riskBadge(t.riskLevel)+trendArrow(t.trend)+'<span style="font-size:14px;font-weight:bold;color:#2c3e50;">'+_esc(t.name)+'</span></div>'
-      + '<div style="display:flex;align-items:center;gap:8px;"><span style="font-size:11px;color:#888;">'+t.stage+'</span><button onclick="try{if(typeof TraineeSystem!==\'undefined\')TraineeSystem.openTrainee&&TraineeSystem.openTrainee('+JSON.stringify(t.id)+');}catch(ex){}" style="padding:3px 9px;background:#2980b9;color:white;border:none;border-radius:6px;cursor:pointer;font-size:11px;">פתח תיק ←</button></div></div>';
+      + '<div style="display:flex;align-items:center;gap:8px;"><span style="font-size:11px;color:#888;">'+t.stage+'</span><button onclick="try{_setTraineeSubView(\'files\');}catch(ex0){}try{if(typeof TraineeSystem!==\'undefined\')TraineeSystem.openTrainee&&TraineeSystem.openTrainee('+JSON.stringify(t.id)+');}catch(ex){}" style="padding:3px 9px;background:#2980b9;color:white;border:none;border-radius:6px;cursor:pointer;font-size:11px;">פתח תיק ←</button></div></div>';
     if (t.riskReasons && t.riskReasons.length) {
       row += '<ul style="margin:2px 0 0;padding-right:18px;">'
         + t.riskReasons.map(function(r){ return '<li style="font-size:12px;color:#666;margin-bottom:2px;">'+r+'</li>'; }).join('')
@@ -29903,7 +29948,7 @@ function _renderTraineeSummaryPanel() {
     summary.inactive.forEach(function(t){h.push('<div style="display:flex;align-items:center;justify-content:space-between;border:1px solid #cfe2f3;border-right:4px solid #3498db;border-radius:8px;padding:8px 14px;flex-wrap:wrap;gap:6px;">'+
       '<span style="font-size:14px;font-weight:bold;color:#2c3e50;">'+_esc(t.name)+'</span>'+
       '<span style="display:flex;align-items:center;gap:8px;"><span style="font-size:12px;color:#3498db;font-weight:bold;">'+t.daysSinceLast+' ימים ללא שיעור</span>'+
-      '<button onclick="try{if(typeof TraineeSystem!==\'undefined\')TraineeSystem.openTrainee&&TraineeSystem.openTrainee('+JSON.stringify(t.id)+');}catch(ex){}" style="padding:3px 9px;background:#2980b9;color:white;border:none;border-radius:6px;cursor:pointer;font-size:11px;">פתח תיק ←</button></span></div>');});
+      '<button onclick="try{_setTraineeSubView(\'files\');}catch(ex0){}try{if(typeof TraineeSystem!==\'undefined\')TraineeSystem.openTrainee&&TraineeSystem.openTrainee('+JSON.stringify(t.id)+');}catch(ex){}" style="padding:3px 9px;background:#2980b9;color:white;border:none;border-radius:6px;cursor:pointer;font-size:11px;">פתח תיק ←</button></span></div>');});
     h.push('</div>');
     h.push(_tsSectionClose());
   }
