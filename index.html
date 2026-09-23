@@ -14,7 +14,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 172</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 177</title>
 
 <style>
 
@@ -1437,7 +1437,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 236;
+  const APP_VERSION = 241;
 
   // 2026-09-07, לפי בקשת לביא: היה קשה לבדוק באיזו גרסה הדפדפן בפועל טוען
   // (כותרת הטאב נחתכת כשיש הרבה טאבים פתוחים, ואי אפשר תמיד לראות "DEPLOYED
@@ -4066,6 +4066,11 @@ window.TraineeSystem = {
     .trainee-module .btn-dark  { background: var(--rail-dark); color: white; }
     .trainee-module .btn-ghost { background: #fff; border: 1px solid #ddd; color: #4a5568; }
     .trainee-module .btn-success { background: var(--success); color: white; width: 100%; font-size: 1.25em; margin-top: 30px; }
+    /* 2026-09-23, #249: סרגל כלים קומפקטי — כפתורי אייקון עגולים (אופציה 3 שאושרה) */
+    .trainee-module .ts-icon-btn { width:36px; height:36px; padding:0; border:none; border-radius:50%; color:#fff; font-size:15px; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; transition:0.2s; }
+    .trainee-module .ts-icon-btn:hover { filter:brightness(1.1); transform:scale(1.06); }
+    .trainee-module .ts-icon-btn.ghost { background:#fff; border:1px solid #ddd; color:#4a5568; }
+    .trainee-module .ts-icon-btn.active { box-shadow:0 0 0 2px #fff, 0 0 0 4px currentColor; }
 
     .trainee-module .panel { background: #f8f9fa; border: 1px solid #e0e0e0; border-radius: 15px; padding: 20px; margin-bottom: 25px; }
     .trainee-module .panel h4 { margin: 0 0 14px 0; color: var(--rail-dark); }
@@ -4329,21 +4334,19 @@ window.TraineeSystem = {
 
     <div id="main-view" class="view">
         <header>
-            <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
-              <h1 class="header-title" style="margin:0;">ניהול הכשרת נהגים</h1>
-              <div class="ts-course-selector" id="ts-course-selector-wrap">
+            <div class="ts-course-selector" id="ts-course-selector-wrap">
                 <span style="font-size:11px;color:#888;white-space:nowrap;">📚 קורס:</span>
                 <select id="ts-course-select" onchange="TraineeSystem.switchCourse(this.value)" style="width:auto !important;">
                   <option value="">טוען...</option>
                 </select>
-              </div>
             </div>
-            <div style="display:flex; gap:10px; flex-wrap:wrap;">
-                <button id="ts-settings-btn" class="btn btn-ghost" data-action="open-ts-settings" style="display:none;width:auto !important;padding:8px 14px;">⚙️ הגדרות</button>
-                <button id="ts-add-trainee-btn" class="btn btn-blue" data-action="toggle-panel" data-panel="add-panel">+ חניך חדש</button>
-            <button class="btn" data-action="show-reports" style="background:#6c3483;color:white;border:none;border-radius:8px;padding:8px 14px;cursor:pointer;font-size:13px;font-weight:bold;">📊 דוחות</button>
-            <button id="notesSelectModeBtn" onclick="_toggleNotesSelectMode()" style="width:auto;background:#8e44ad;color:white;border:none;border-radius:8px;padding:8px 14px;cursor:pointer;font-size:13px;font-weight:bold;">☑️ בחר חניכים להצגה</button>
-            <button id="ts-archived-btn" class="btn" data-action="show-archived" style="display:none;background:#7f8c8d;color:white;border:none;border-radius:8px;padding:8px 14px;cursor:pointer;font-size:13px;font-weight:bold;">📦 חניכים שהוסרו</button>
+            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                <button id="ts-add-trainee-btn" class="btn btn-blue" data-action="toggle-panel" data-panel="add-panel" style="width:auto;padding:8px 16px;font-size:13px;">+ חניך חדש</button>
+                <span style="width:1px;height:22px;background:#e0e4ea;margin:0 4px;"></span>
+                <button class="ts-icon-btn" data-action="show-reports" title="דוחות" style="background:#6c3483;">📊</button>
+                <button id="notesSelectModeBtn" onclick="_toggleNotesSelectMode()" class="ts-icon-btn" title="בחר חניכים להצגה" style="background:#8e44ad;">☑️</button>
+                <button id="ts-archived-btn" class="ts-icon-btn" data-action="show-archived" title="חניכים שהוסרו" style="display:none;background:#7f8c8d;">📦</button>
+                <button id="ts-settings-btn" class="ts-icon-btn ghost" data-action="open-ts-settings" title="הגדרות" style="display:none;">⚙️</button>
             </div>
         </header>
 
@@ -25212,23 +25215,23 @@ function openAllNotesView(preSelectedTraineeIds) {
           <span style="font-size:16px;font-weight:700;color:#fff;">כל ההערות</span>
           <span style="font-size:11px;color:#8fa0b3;">— תצוגה מרוכזת מכל תיקי החניכים</span>
         </div>
-        <button onclick="document.getElementById('allNotesOverlay').remove()" style="background:transparent;border:1px solid #3c4a5a;color:#c7d0da;border-radius:8px;padding:6px 12px;font-size:12px;cursor:pointer;">✕ סגור</button>
+        <button onclick="document.getElementById('allNotesOverlay').remove()" style="width:auto;background:transparent;border:1px solid #3c4a5a;color:#c7d0da;border-radius:8px;padding:6px 12px;font-size:12px;cursor:pointer;">✕ סגור</button>
       </div>
-      <div style="padding:18px 22px;display:flex;flex-direction:column;gap:12px;overflow:hidden;flex:1;">
-        <div style="background:#fff;border-radius:10px;padding:14px 16px;box-shadow:0 1px 4px rgba(0,0,0,.06);display:flex;flex-direction:column;gap:10px;">
+      <div style="padding:18px 22px;display:flex;flex-direction:column;gap:12px;overflow-y:auto;flex:1;min-height:0;">
+        <div style="background:#fff;border-radius:10px;padding:14px 16px;box-shadow:0 1px 4px rgba(0,0,0,.06);display:flex;flex-direction:column;gap:10px;flex-shrink:0;">
           <input type="text" id="allNotesSearch" placeholder="חיפוש בטקסט ההערה או בשם חניך..." oninput="_renderAllNotesTable()" style="width:100%;padding:9px 12px;border:1.5px solid #e3e7ee;border-radius:8px;font-size:13px;font-family:inherit;box-sizing:border-box;">
-          <div id="allNotesTraineeChips" style="display:flex;gap:6px;flex-wrap:wrap;"></div>
-          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
-            <select id="allNotesCourseFilter" onchange="_renderAllNotesTable()" style="padding:7px 10px;border:1.5px solid #e3e7ee;border-radius:8px;font-size:12px;font-family:inherit;">
+          <div id="allNotesTraineeChips" style="display:flex;gap:6px;flex-wrap:wrap;max-height:60px;overflow-y:auto;padding-left:2px;"></div>
+          <div style="display:flex;gap:8px;flex-wrap:nowrap;align-items:center;overflow-x:auto;">
+            <select id="allNotesCourseFilter" onchange="_renderAllNotesTable()" style="width:auto;flex:0 0 auto;margin:0;padding:5px 8px;border:1.5px solid #e3e7ee;border-radius:7px;font-size:11px;font-family:inherit;">
               <option value="">כל הקורסים/שלבים</option>
               <option value="קורס מעשי סיטאדיס">קורס מעשי סיטאדיס</option>
               <option value="קורס מעשי אורבוס">קורס מעשי אורבוס</option>
               <option value="חניכה">חניכה</option>
             </select>
-            <input type="date" id="allNotesDateFrom" onchange="_renderAllNotesTable()" style="padding:7px 10px;border:1.5px solid #e3e7ee;border-radius:8px;font-size:12px;font-family:inherit;">
-            <span style="font-size:11px;color:#8a94a3;">עד</span>
-            <input type="date" id="allNotesDateTo" onchange="_renderAllNotesTable()" style="padding:7px 10px;border:1.5px solid #e3e7ee;border-radius:8px;font-size:12px;font-family:inherit;">
-            <button onclick="_clearAllNotesFilters()" style="width:auto;padding:7px 12px;background:#f4f6f9;border:1px solid #e3e7ee;border-radius:8px;font-size:12px;cursor:pointer;color:#6b7685;">נקה סינון</button>
+            <input type="date" id="allNotesDateFrom" onchange="_renderAllNotesTable()" style="width:auto;flex:0 0 130px;margin:0;padding:5px 8px;border:1.5px solid #e3e7ee;border-radius:7px;font-size:11px;font-family:inherit;">
+            <span style="font-size:11px;color:#8a94a3;flex:0 0 auto;">עד</span>
+            <input type="date" id="allNotesDateTo" onchange="_renderAllNotesTable()" style="width:auto;flex:0 0 130px;margin:0;padding:5px 8px;border:1.5px solid #e3e7ee;border-radius:7px;font-size:11px;font-family:inherit;">
+            <button onclick="_clearAllNotesFilters()" style="width:auto;flex:0 0 auto;margin:0;padding:5px 10px;background:#f4f6f9;border:1px solid #e3e7ee;border-radius:7px;font-size:11px;cursor:pointer;color:#6b7685;white-space:nowrap;">נקה סינון</button>
           </div>
         </div>
         <div id="allNotesSummary" style="display:flex;align-items:center;justify-content:space-between;"></div>
@@ -25261,8 +25264,8 @@ function _buildAllNotesTraineeChips() {
   const active = window._allNotesActiveTraineeIds || new Set();
   wrap.innerHTML = allTrainees.map(t => {
     const isActive = active.has(String(t.id));
-    return `<button type="button" onclick="_toggleAllNotesTrainee(${JSON.stringify(String(t.id))})"
-      style="padding:5px 12px;border-radius:14px;font-size:11px;cursor:pointer;font-weight:${isActive ? '700' : '400'};border:1.5px solid ${isActive ? '#2980b9' : '#e3e7ee'};background:${isActive ? '#2980b9' : '#fff'};color:${isActive ? '#fff' : '#4a5568'};">${_esc(t.name)}</button>`;
+    return `<button type="button" onclick='_toggleAllNotesTrainee(${JSON.stringify(String(t.id))})'
+      style="width:auto;margin:0;padding:5px 12px;border-radius:14px;font-size:11px;cursor:pointer;font-weight:${isActive ? '700' : '400'};border:1.5px solid ${isActive ? '#2980b9' : '#e3e7ee'};background:${isActive ? '#2980b9' : '#fff'};color:${isActive ? '#fff' : '#4a5568'};">${_esc(t.name)}</button>`;
   }).join('') || '<span style="font-size:12px;color:#aaa;">אין חניכים</span>';
 }
 
@@ -25296,7 +25299,7 @@ function _renderAllNotesTable() {
   // 2026-09-16, #244, לפי אישור מפורש של לביא: ברירת המחדל היא כל השלבים/
   // התאריכים של החניכים הנבחרים — לא רק השלב הנוכחי. courseFilter/dFrom/dTo
   // הם סינון נוסף ואופציונלי בלבד, לא ברירת מחדל מצמצמת.
-  const rows = (window._allNotesData || []).filter(r => {
+  let rows = (window._allNotesData || []).filter(r => {
     if (activeIds.size && !activeIds.has(String(r.traineeId))) return false;
     if (courseFilter && r.mission !== courseFilter) return false;
     if (dFrom && r.date < dFrom) return false;
@@ -25304,6 +25307,39 @@ function _renderAllNotesTable() {
     if (q && !(r.note.toLowerCase().includes(q) || (r.traineeName || '').toLowerCase().includes(q))) return false;
     return true;
   });
+
+  // 2026-09-23, לפי בקשת לביא: כשנבחרו כמה חניכים (>1), ההערות מקובצות
+  // במרוכז לפי חניך (לפי סדר הבחירה), ולא מעורבבות לפי תאריך גלובלי.
+  window._allNotesGroupHeaders = null;
+  const activeArr = [...activeIds];
+  if (activeArr.length > 1) {
+    const byTrainee = new Map();
+    rows.forEach(r => {
+      const key = String(r.traineeId);
+      if (!byTrainee.has(key)) byTrainee.set(key, []);
+      byTrainee.get(key).push(r);
+    });
+    const orderedRows = [];
+    const headerBeforeIdx = new Map(); // index in orderedRows -> {name, count}
+    activeArr.forEach(id => {
+      const key = String(id);
+      const arr = byTrainee.get(key);
+      if (arr && arr.length) {
+        headerBeforeIdx.set(orderedRows.length, { name: arr[0].traineeName, count: arr.length });
+        orderedRows.push(...arr);
+        byTrainee.delete(key);
+      }
+    });
+    // חניכים שנופלים בתוצאה אך לא ברשימת activeArr (לא אמור לקרות בגלל הסינון, רשת ביטחון)
+    byTrainee.forEach(arr => {
+      if (arr.length) {
+        headerBeforeIdx.set(orderedRows.length, { name: arr[0].traineeName, count: arr.length });
+        orderedRows.push(...arr);
+      }
+    });
+    rows = orderedRows;
+    window._allNotesGroupHeaders = headerBeforeIdx;
+  }
 
   const traineeCount = new Set(rows.map(r => r.traineeId)).size;
   const summary = document.getElementById('allNotesSummary');
@@ -25319,12 +25355,18 @@ function _renderAllNotesTable() {
     return;
   }
 
+  const groupHeaders = window._allNotesGroupHeaders;
   body.innerHTML = rows.map((r, i) => {
     const scoreTxt = r.score != null ? r.score.toFixed(1) : '—';
     const scoreColor = r.score == null ? '#aaa' : r.score < 5 ? '#e74c3c' : r.score < 8 ? '#e67e22' : '#27ae60';
     const lessonTxt = r.lessonNums.length ? '#' + r.lessonNums.join(',') : '—';
     const bg = i % 2 ? '#fbfcfd' : '#fff';
-    return `<div onclick="_jumpToNoteSource(${JSON.stringify(String(r.traineeId))})" style="display:grid;grid-template-columns:95px 140px 160px 70px 1fr 70px;padding:11px 16px;border-top:1px solid #eef1f5;cursor:pointer;background:${bg};" onmouseover="this.style.background='#f0f6fb'" onmouseout="this.style.background='${bg}'">
+    let headerHtml = '';
+    if (groupHeaders && groupHeaders.has(i)) {
+      const g = groupHeaders.get(i);
+      headerHtml = `<div style="padding:8px 16px;background:#eaf4fd;border-top:${i ? '2px solid #2980b9' : 'none'};font-size:12px;font-weight:700;color:#2980b9;">${_esc(g.name)} <span style="font-weight:400;color:#6b93ab;">(${g.count} הערות)</span></div>`;
+    }
+    return headerHtml + `<div onclick='_jumpToNoteSource(${JSON.stringify(String(r.traineeId))})' style="display:grid;grid-template-columns:95px 140px 160px 70px 1fr 70px;padding:11px 16px;border-top:1px solid #eef1f5;cursor:pointer;background:${bg};" onmouseover="this.style.background='#f0f6fb'" onmouseout="this.style.background='${bg}'">
       <div style="font-size:11px;color:#8a94a3;white-space:nowrap;">${_esc(r.date)}</div>
       <div style="font-size:12px;font-weight:700;color:#2c3e50;">${_esc(r.traineeName)}</div>
       <div style="font-size:11px;color:#4a5568;">${_esc(r.mission)}</div>
@@ -25352,7 +25394,9 @@ function _toggleNotesSelectMode() {
   if (!window._notesSelectModeOn) window._notesSelection.clear(); // יציאה ממצב-בחירה מנקה גם את הבחירה עצמה
   const btn = document.getElementById('notesSelectModeBtn');
   if (btn) {
-    btn.textContent = window._notesSelectModeOn ? '✕ בטל בחירת חניכים' : '☑️ בחר חניכים להצגה';
+    // 2026-09-23, #249: כפתור אייקון עגול (לא טקסט) — במצב פעיל: אייקון ✕ + צבע כהה יותר + כותרת (tooltip) מתעדכנת
+    btn.textContent = window._notesSelectModeOn ? '✕' : '☑️';
+    btn.title = window._notesSelectModeOn ? 'בטל בחירת חניכים' : 'בחר חניכים להצגה';
     btn.style.background = window._notesSelectModeOn ? '#5b2c6f' : '#8e44ad';
   }
   try { TraineeSystem.renderList(); } catch (e) {}
@@ -29594,9 +29638,9 @@ function _generateTraineeSummary() {
         )
       : null;
 
-    // Milestones
+    // Milestones — OR-based ("הגיע בכל דרך": ידני או סף-שיעורים אוטומטי) — עדיין
+    // משמש להתרעות "שעות נוספות תקועות" בלבד (למטה), לא לקביעת stage יותר.
     const msEntry  = passMap[String(t.id)] || {};
-    // 2026-09-09, לפי בקשת לביא: chinuch-ms הוסר (כפילות ל-testOrbus).
     const _thrOrbGateSum = (typeof _getMilestoneThreshold === 'function') ? _getMilestoneThreshold('chinuch-orbus', 7) : 7;
     const msStatus = {
       test10:    !!(msEntry.test10    || maxSitadis >= 10),
@@ -29604,31 +29648,43 @@ function _generateTraineeSummary() {
       test50:    !!(msEntry.test50    || maxSitadis >= 50),
       chinuchMs: !!(msEntry['testOrbus'] || maxOrbus >= _thrOrbGateSum),
     };
+    // 2026-09-23, #250, לפי בקשת לביא: הפרדה בין "עבר טסט בפועל" (ידני, msEntry)
+    // לבין "רק הגיע לסף שיעורים" (אוטומטי). מי שהגיע לסף אך לא סומן כ"עבר"
+    // מקבל דלי-ביניים נפרד "⏳ ממתין לטסט X" במקום לקפוץ ישירות לשלב הבא —
+    // כך "מוכן לחניכה"/"שלב תפעולי"/וכו' מייצגים רק מי שבאמת אושר.
+    const manualMilestones = {
+      test10:    !!msEntry.test10,
+      test30:    !!msEntry.test30,
+      test50:    !!msEntry.test50,
+      testOrbus: !!msEntry['testOrbus'],
+    };
 
     // Stage
     const maxChinuch = (t.lessons || []).reduce(function(acc, l) {
       if (l.mission === 'חניכה') acc += (l.lessonNums || []).length;
       return acc;
     }, 0);
-    let stage;
-    if      (msStatus.chinuchMs && maxChinuch > 0) stage = 'בחניכה';
-    else if (msStatus.chinuchMs)                   stage = 'מוכן לחניכה';
-    else if (msStatus.test50)                      stage = 'השתלמות אורבוס';
-    else if (msStatus.test30)                      stage = 'שלב מסחרי';
-    else if (msStatus.test10)                      stage = 'שלב תפעולי';
-    else if (maxSitadis > 0)                       stage = 'שלב טכני';
-    else                                           stage = 'טרם התחיל';
+    let confirmedLevel; // 0..6 — קידום מאושר-ידנית בלבד
+    if      (manualMilestones.testOrbus && maxChinuch > 0) confirmedLevel = 6;
+    else if (manualMilestones.testOrbus)                   confirmedLevel = 5;
+    else if (manualMilestones.test50)                      confirmedLevel = 4;
+    else if (manualMilestones.test30)                      confirmedLevel = 3;
+    else if (manualMilestones.test10)                      confirmedLevel = 2;
+    else if (maxSitadis > 0)                                confirmedLevel = 1;
+    else                                                    confirmedLevel = 0;
+    const LEVEL_LABELS = ['טרם התחיל','שלב טכני','שלב תפעולי','שלב מסחרי','השתלמות אורבוס','מוכן לחניכה','בחניכה'];
+    let stage = LEVEL_LABELS[confirmedLevel];
 
     // 2026-08-30, לפי בקשת לביא: "טסט ממתין" — הטסט שהעלה את החניך לשלב
-    // הנוכחי שלו הגיע אוטומטית (לפי מספר שיעורים) אבל טרם סומן ידנית ע"י
-    // מנהל כ"עבר בפועל" (אותה הבחנה כתומה הקיימת בתיק החניך עצמו —
-    // _renderDetailMilestoneBadges). ישמש לצביעת שם החניך בכתום בכל רשימת
-    // חניכים המסוננת לפי שלב/טסט (למשל התפלגות שלבים).
+    // הבא הגיע אוטומטית (לפי מספר שיעורים) אבל טרם סומן ידנית ע"י מנהל
+    // כ"עבר בפועל". מ-#250 ואילך זה קובע דלי נפרד ("⏳ ממתין לטסט X"),
+    // לא רק צביעת שם בכתום בתוך הדלי הבא.
     let pendingTest = false;
-    if      (stage === 'שלב תפעולי')                       pendingTest = maxSitadis >= 10 && !msEntry.test10;
-    else if (stage === 'שלב מסחרי')                         pendingTest = maxSitadis >= 30 && !msEntry.test30;
-    else if (stage === 'השתלמות אורבוס')                    pendingTest = maxSitadis >= 50 && !msEntry.test50;
-    else if (stage === 'מוכן לחניכה' || stage === 'בחניכה')  pendingTest = (maxOrbus >= _thrOrbGateSum) && !msEntry['testOrbus'];
+    if      (confirmedLevel === 1 && maxSitadis >= 10)            { pendingTest = true; stage = '⏳ ממתין לטסט 10'; }
+    else if (confirmedLevel === 2 && maxSitadis >= 30)            { pendingTest = true; stage = '⏳ ממתין לטסט 30'; }
+    else if (confirmedLevel === 3 && maxSitadis >= 50)            { pendingTest = true; stage = '⏳ ממתין לטסט 50'; }
+    else if (confirmedLevel === 4 && maxOrbus  >= _thrOrbGateSum) { pendingTest = true; stage = '⏳ ממתין לטסט אורבוס'; }
+
 
     // Risk Score
     // 2026-08-19: הסיווג "מתקשה" מבוסס אך ורק על ציונים — לביא ביקש להוציא שעות
@@ -29694,6 +29750,7 @@ function _generateTraineeSummary() {
       daysSinceLast,
       lastLessonDate,
       milestones:      msStatus,
+      manualMilestones,
       stage,
       pendingTest,
       riskLevel,
@@ -29728,6 +29785,11 @@ function _generateTraineeSummary() {
     test30:    perTrainee.filter(t => t.milestones.test30).length,
     test50:    perTrainee.filter(t => t.milestones.test50).length,
     chinuchMs: perTrainee.filter(t => t.milestones.chinuchMs).length,
+    // 2026-09-23, #250: מונה מפוצל — כמה מתוך ה-OR למעלה הם "עברו בפועל" (ידני)
+    test10Passed:    perTrainee.filter(t => t.manualMilestones.test10).length,
+    test30Passed:    perTrainee.filter(t => t.manualMilestones.test30).length,
+    test50Passed:    perTrainee.filter(t => t.manualMilestones.test50).length,
+    chinuchMsPassed: perTrainee.filter(t => t.manualMilestones.testOrbus).length,
   };
 
   const scored = perTrainee.filter(t => t.avgScore !== null);
@@ -30100,16 +30162,12 @@ function _renderTraineeSummaryPanel() {
   var distHtml=[];
   var byStage=summary.byStage||{};
   if(Object.keys(byStage).length){
-    var sColors={'טרם התחיל':['\#95a5a6','\#f4f6f7'],'שלב טכני':['\#3498db','\#ebf5fb'],'שלב תפעולי':['\#f39c12','\#fef9e7'],'שלב מסחרי':['\#8e44ad','\#f5eef8'],'השתלמות אורבוס':['\#e67e22','\#fdf2e9'],'מוכן לחניכה':['\#27ae60','\#eafaf1'],'בחניכה':['\#16a085','\#e8f8f5']};
-    var sOrder=['טרם התחיל','שלב טכני','שלב תפעולי','שלב מסחרי','השתלמות אורבוס','מוכן לחניכה','בחניכה'];
+    var sColors={'טרם התחיל':['\#95a5a6','\#f4f6f7'],'שלב טכני':['\#3498db','\#ebf5fb'],'⏳ ממתין לטסט 10':['\#d68910','\#fdf6e3',1],'שלב תפעולי':['\#f39c12','\#fef9e7'],'⏳ ממתין לטסט 30':['\#d68910','\#fdf6e3',1],'שלב מסחרי':['\#8e44ad','\#f5eef8'],'⏳ ממתין לטסט 50':['\#d68910','\#fdf6e3',1],'השתלמות אורבוס':['\#e67e22','\#fdf2e9'],'⏳ ממתין לטסט אורבוס':['\#d68910','\#fdf6e3',1],'מוכן לחניכה':['\#27ae60','\#eafaf1'],'בחניכה':['\#16a085','\#e8f8f5']};
+    var sOrder=['טרם התחיל','שלב טכני','⏳ ממתין לטסט 10','שלב תפעולי','⏳ ממתין לטסט 30','שלב מסחרי','⏳ ממתין לטסט 50','השתלמות אורבוס','⏳ ממתין לטסט אורבוס','מוכן לחניכה','בחניכה'];
     distHtml.push(_tsSectionOpen('📊','התפלגות שלבים <span style="font-weight:400;color:#aaa;font-size:11px;">(לחיצה מציגה חניכים)</span>','#ebf5fb','#3498db','#2471a3'));
-    // 2026-09-16, לפי בקשת לביא (#244, תיקון מיקום+גודל): הועבר מכפתור עצמאי
-    // בראש הפאנל לכאן — צמוד לפילי ההתפלגות, בדיוק כפי שהוצג במוקאפ שאושר.
-    // גם הוקטן (padding/font-size) — היה גדול מדי וחורג מעט מקו השוליים.
-    distHtml.push('<button onclick="try{openAllNotesView();}catch(e){}" style="width:auto;margin:0;background:#2980b9;color:#fff;border:none;border-radius:14px;padding:4px 12px;font-size:11px;font-weight:bold;cursor:pointer;font-family:inherit;white-space:nowrap;">📝 כל ההערות</button>');
     distHtml.push(_tsSectionHeadClose());
     distHtml.push('<div style="display:flex;flex-wrap:wrap;gap:8px;">');
-    sOrder.forEach(function(s){var n=byStage[s];if(!n)return;var c=sColors[s]||['#7f8c8d','#f9f9f9'];distHtml.push('<button onclick="try{_toggleTsBucket(\'stage\',\''+s+'\');}catch(e){}" style="width:auto;margin:0;cursor:pointer;display:inline-flex;align-items:center;gap:6px;background:'+c[1]+';border:1px solid '+c[0]+';border-radius:20px;padding:4px 12px;font-family:inherit;"><span style="font-size:13px;font-weight:bold;color:'+c[0]+';">'+n+'</span><span style="font-size:12px;color:#555;">'+s+'</span></button>');});
+    sOrder.forEach(function(s){var n=byStage[s];if(!n)return;var c=sColors[s]||['#7f8c8d','#f9f9f9'];var bd=c[2]?'1.5px dashed ':'1px solid ';distHtml.push('<button onclick="try{_toggleTsBucket(\'stage\',\''+s+'\');}catch(e){}" style="width:auto;margin:0;cursor:pointer;display:inline-flex;align-items:center;gap:6px;background:'+c[1]+';border:'+bd+c[0]+';border-radius:20px;padding:4px 12px;font-family:inherit;"><span style="font-size:13px;font-weight:bold;color:'+c[0]+';">'+n+'</span><span style="font-size:12px;color:#555;">'+s+'</span></button>');});
     distHtml.push('</div><div id="ts-stage-detail" style="display:none;margin-top:10px;padding-top:10px;border-top:1px dashed #dee2e6;"></div>');
     distHtml.push(_tsSectionClose());
   }
@@ -30118,6 +30176,10 @@ function _renderTraineeSummaryPanel() {
     var lColors={'מתקשים':['#e74c3c','#fdecea'],'בינוניים':['#f1c40f','#fef9e7'],'מתקדמים':['#27ae60','#eafaf1']};
     var lOrder=['מתקשים','בינוניים','מתקדמים'];
     distHtml.push(_tsSectionOpen('🚦','התפלגות רמות <span style="font-weight:400;color:#aaa;font-size:11px;">(לחיצה מציגה חניכים)</span>','#fef9e7','#f39c12','#b9770e'));
+    // 2026-09-17, לפי בקשת לביא (#246): הועבר מ"התפלגות שלבים" לכאן — מרגיש
+    // יותר שייך כאן, וגם יש כאן יותר מקום פנוי (פחות פילים בדרך כלל). אותה
+    // עמדה יחסית בכותרת (קצה נגדי לאייקון+כותרת) ואותו עיצוב בדיוק.
+    distHtml.push('<button onclick="try{openAllNotesView();}catch(e){}" style="width:auto;margin:0;background:#2980b9;color:#fff;border:none;border-radius:14px;padding:4px 12px;font-size:11px;font-weight:bold;cursor:pointer;font-family:inherit;white-space:nowrap;">📝 כל ההערות</button>');
     distHtml.push(_tsSectionHeadClose());
     distHtml.push('<div style="display:flex;flex-wrap:wrap;gap:8px;">');
     lOrder.forEach(function(s){var n=levelDist[s];if(!n)return;var c=lColors[s];distHtml.push('<button onclick="try{_toggleTsBucket(\'level\',\''+s+'\');}catch(e){}" style="width:auto;margin:0;cursor:pointer;display:inline-flex;align-items:center;gap:6px;background:'+c[1]+';border:1px solid '+c[0]+';border-radius:20px;padding:4px 12px;font-family:inherit;"><span style="font-size:13px;font-weight:bold;color:'+c[0]+';">'+n+'</span><span style="font-size:12px;color:#555;">'+s+'</span></button>');});
@@ -30133,11 +30195,19 @@ function _renderTraineeSummaryPanel() {
   var milestoneHtml=[];
   if(summary.milestoneStats){
     var ms=summary.milestoneStats;var tot=summary.activeTrainees||1;
-    var msDefs=[['טסט 10',ms.test10,'#3498db'],['טסט 30',ms.test30,'#f39c12'],['טסט 50',ms.test50,'#8e44ad'],['טסט אורבוס',ms.chinuchMs,'#e67e22']];
+    // 2026-09-23, #250: מונה מפוצל עברו(ידני)/ממתינים(רק סף-שיעורים), לפי בקשת לביא
+    var msDefs=[['טסט 10',ms.test10,ms.test10Passed,'#3498db'],['טסט 30',ms.test30,ms.test30Passed,'#f39c12'],['טסט 50',ms.test50,ms.test50Passed,'#8e44ad'],['טסט אורבוס',ms.chinuchMs,ms.chinuchMsPassed,'#e67e22']];
     milestoneHtml.push(_tsSectionOpen('🏆','אבני דרך','#f5eef8','#8e44ad','#6c3483'));
     milestoneHtml.push(_tsSectionHeadClose());
     milestoneHtml.push('<div style="display:flex;flex-direction:column;gap:8px;">');
-    msDefs.forEach(function(m){var p=tot>0?Math.round((m[1]/tot)*100):0;milestoneHtml.push('<div style="display:flex;align-items:center;gap:10px;"><div style="width:80px;font-size:12px;color:#555;text-align:right;">'+m[0]+'</div><div style="flex:1;background:#f0f4f8;border-radius:6px;height:12px;overflow:hidden;"><div style="height:100%;border-radius:6px;background:'+m[2]+';width:'+p+'%;"></div></div><div style="width:50px;font-size:12px;color:#555;text-align:center;">'+m[1]+'/'+tot+'</div></div>');});
+    msDefs.forEach(function(m){
+      var label=m[0], total=m[1], passed=m[2], color=m[3];
+      var pending=total-passed;
+      var pPassedPct=tot>0?Math.round((passed/tot)*100):0;
+      var pPendingPct=tot>0?Math.round((pending/tot)*100):0;
+      var countTxt=pending>0 ? (passed+' עברו · '+pending+' ⏳ · '+tot+' סה"כ') : (total+'/'+tot);
+      milestoneHtml.push('<div style="display:flex;align-items:center;gap:10px;" title="'+_esc(countTxt)+'"><div style="width:80px;font-size:12px;color:#555;text-align:right;">'+label+'</div><div style="flex:1;background:#f0f4f8;border-radius:6px;height:12px;overflow:hidden;display:flex;"><div style="height:100%;background:'+color+';width:'+pPassedPct+'%;"></div>'+(pending>0?'<div style="height:100%;background:'+color+';opacity:.35;width:'+pPendingPct+'%;"></div>':'')+'</div><div style="width:auto;min-width:50px;font-size:11px;color:#555;text-align:center;white-space:nowrap;">'+countTxt+'</div></div>');
+    });
     milestoneHtml.push('</div>');
     milestoneHtml.push(_tsSectionClose());
   }
