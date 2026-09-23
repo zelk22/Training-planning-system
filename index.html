@@ -14,7 +14,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 178</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 179</title>
 
 <style>
 
@@ -1437,7 +1437,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 242;
+  const APP_VERSION = 243;
 
   // 2026-09-07, לפי בקשת לביא: היה קשה לבדוק באיזו גרסה הדפדפן בפועל טוען
   // (כותרת הטאב נחתכת כשיש הרבה טאבים פתוחים, ואי אפשר תמיד לראות "DEPLOYED
@@ -4603,6 +4603,15 @@ window.TraineeSystem = {
       <p style="font-size:12px;color:#888;margin:0 0 12px;">גרור לשינוי סדר. שינוי שם לא פוגע בנתונים קיימים (מיפוי לפי מיקום).</p>
       <div id="ts-skills-list"></div>
       <button class="ts-add-btn" data-action="ts-add-skill">+ הוסף מיומנות</button>
+      <hr style="border:none;border-top:1px solid #eee;margin:18px 0;">
+      <div class="ts-toggle-row">
+        <span class="ts-toggle-label">דירוג מיומנויות חובה בטפסי משוב (למעט שיעורי טסט)</span>
+        <label class="ts-toggle-switch">
+          <input type="checkbox" id="ts-skill-rating-required" checked>
+          <span class="ts-toggle-slider"></span>
+        </label>
+      </div>
+      <p style="font-size:12px;color:#888;margin:12px 0 0;">כאשר דולק (ברירת מחדל) — לא ניתן לשמור "הוסף משוב" או לשלוח "סיכום יום" בלי לדרג את כל המיומנויות. כיבוי הופך את הדירוג לאופציונלי בשני המקומות. לא חל על שיעורי טסט — שם הדירוג תמיד אופציונלי.</p>
     </div>
     <!-- Tab: Mission types -->
     <div class="ts-spanel" id="ts-panel-missions">
@@ -6194,6 +6203,9 @@ window.TraineeSystem = {
         // "לפחות שיעור אחד" לא רלוונטי (testKey הוא הבחירה עצמה), אבל תוצאה
         // (עבר/לא עבר) חובה במקום זאת.
         const isTestRow = !!this.selectedTestKey;
+        // 2026-09-23, #252, לפי בקשת לביא: דירוג מיומנויות חובה כברירת מחדל
+        // (ניתן לכיבוי ב-⚙️ הגדרות → מיומנויות), לא כולל שיעורי טסט.
+        const _skillRatingRequired = this.settings?.requireSkillRating !== false;
 
         if (!ins) errors.push('• חובה לבחור מדריך / חונך מהרשימה');
         if (isTestRow) {
@@ -6201,9 +6213,11 @@ window.TraineeSystem = {
         } else {
             if (mission !== 'שעות נוספות' && !this.selectedLessons.length) errors.push('• חובה לסמן לפחות שיעור אחד');
             if (mission === 'שעות נוספות' && !this.$('in-extra').value.trim()) errors.push('• חובה לפרט את נושא השעות הנוספות');
-            scores.forEach((s, i) => {
-                if (isNaN(s) || s < 1 || s > 10) errors.push(`• ציון "${skillList[i].name}" חסר או לא תקין (1-10)`);
-            });
+            if (_skillRatingRequired) {
+                scores.forEach((s, i) => {
+                    if (isNaN(s) || s < 1 || s > 10) errors.push(`• ציון "${skillList[i].name}" חסר או לא תקין (1-10)`);
+                });
+            }
         }
         if (!this.isSigned) errors.push('• חובה לחתום על הטופס לאישור');
 
@@ -6231,10 +6245,10 @@ window.TraineeSystem = {
             notes: this.$('in-notes').value
         };
         if (isTestRow) { lessonObj.testKey = this.selectedTestKey; lessonObj.testResult = this.selectedTestResult; }
-        // דירוג מיומנויות אופציונלי לשיעור טסט — רק מה שבאמת מולא נשמר.
+        // דירוג מיומנויות עשוי להיות אופציונלי (שיעור טסט, או שהוגדר לא-חובה) —
+        // בכל מקרה נשמר רק מה שבאמת מולא ותקין, לא נכתב NaN.
         skillList.forEach((sk, i) => {
-            if (isTestRow) { if (!isNaN(scores[i])) lessonObj[sk.id] = scores[i]; }
-            else lessonObj[sk.id] = scores[i];
+            if (!isNaN(scores[i])) lessonObj[sk.id] = scores[i];
         });
         t.lessons.push(lessonObj);
         this.persist();
@@ -6852,6 +6866,9 @@ window.TraineeSystem = {
                 {level:4, name:'טוב',      minAvg:82, maxLessonsPerDay:5}
             ],
             requireSignature: true,
+            // 2026-09-23, #252, לפי בקשת לביא: דירוג מיומנויות חובה כברירת מחדל
+            // (חוסם שליחת "הוסף משוב"/"סיכום יום"), למעט שיעורי טסט — ניתן לכיבוי.
+            requireSkillRating: true,
             // 2026-09-09, לפי בקשת לביא: הוסר מצב 'block' לחלוטין (אחידות בין
             // פאנל השיעור הידני לטופס סיכום יום — ר' תיעוד ב-_getMilestoneMode).
             // chinuch-ms הוסר (כפילות ל-testOrbus) — testOrbus מתווסף כמפתח עצמאי.
@@ -7055,6 +7072,10 @@ window.TraineeSystem = {
         // Signature
         const sigChk = this.$('ts-sig-required');
         if (sigChk) this.settings.requireSignature = sigChk.checked;
+
+        // 2026-09-23, #252: דירוג מיומנויות חובה — ר' saveLesson()/submitUnifiedReport()
+        const skillReqChk = this.$('ts-skill-rating-required');
+        if (skillReqChk) this.settings.requireSkillRating = skillReqChk.checked;
 
         // 2026-08-31, לפי בקשת לביא: הצגת/הסתרת עמודת "הערות" ב"יומן שיעורים מלא"
         // (תיק חניך) עבור מדריכים — ברירת מחדל מוסתר. ר' גם applyLessonNotesVisibility().
@@ -7383,6 +7404,9 @@ window.TraineeSystem = {
     _renderTab_skills() {
         const list = this.$('ts-skills-list');
         if (!list || !this.settings) return;
+        // 2026-09-23, #252: אותה תבנית fail-safe-להצגה כמו ts-sig-required.
+        const reqChk = this.$('ts-skill-rating-required');
+        if (reqChk) reqChk.checked = this.settings.requireSkillRating !== false;
         const skills = this.settings.skills || [];
         list.innerHTML = skills.map((sk, i) => `
             <div class="ts-skill-row" data-ts-skill-idx="${i}" data-ts-skill-id="${_esc(sk.id)}" draggable="true">
@@ -24701,6 +24725,22 @@ async function submitUnifiedReport() {
     }).join(', ');
     showToast(`⚠️ יש לבחור מספר שיעור (שנתון) עבור: ${_names} — אחרת ההתקדמות לא תתעדכן`, 'warning');
     return;
+  }
+
+  // 2026-09-23, #252, לפי בקשת לביא: דירוג מיומנויות חובה כברירת מחדל בטופס
+  // "סיכום יום" (בדיוק כמו ב"הוסף משוב" בתיק חניך), למעט שיעורי טסט — ניתן
+  // לכיבוי ב-⚙️ הגדרות → מיומנויות (TraineeSystem.settings.requireSkillRating).
+  const _skillRatingRequired = !(typeof TraineeSystem !== 'undefined' && TraineeSystem.settings && TraineeSystem.settings.requireSkillRating === false);
+  if (_skillRatingRequired) {
+    const _missingSkillRating = lessonResults.filter(r => !r.testKey && skills.some(sk => r.lesson[sk.id] == null));
+    if (_missingSkillRating.length) {
+      const _names = _missingSkillRating.map(r => {
+        const sel = document.getElementById(`ur-fb-${r.idx}-trainee`);
+        return sel?.options[sel?.selectedIndex]?.textContent || r.freeName || '?';
+      }).join(', ');
+      showToast(`⚠️ יש לדרג את כל המיומנויות עבור: ${_names}`, 'warning');
+      return;
+    }
   }
 
   // Attach feedback count to report before saving
