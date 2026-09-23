@@ -14,7 +14,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 170</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 172</title>
 
 <style>
 
@@ -1437,7 +1437,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 234;
+  const APP_VERSION = 236;
 
   // 2026-09-07, לפי בקשת לביא: היה קשה לבדוק באיזו גרסה הדפדפן בפועל טוען
   // (כותרת הטאב נחתכת כשיש הרבה טאבים פתוחים, ואי אפשר תמיד לראות "DEPLOYED
@@ -4075,7 +4075,7 @@ window.TraineeSystem = {
     .trainee-module #trainee-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
     .trainee-module .trainee-card { background: white; border-radius: 16px; box-shadow: 0 5px 20px rgba(0,0,0,0.07); border-right: 8px solid var(--rail-blue); overflow: hidden; transition: 0.25s; cursor: pointer; }
     .trainee-module .trainee-card:hover { transform: translateY(-4px); box-shadow: 0 12px 28px rgba(0,0,0,0.12); }
-    .trainee-module .card-top { background: linear-gradient(135deg, #1a2a3a, #2c4a6e); padding: 20px; }
+    .trainee-module .card-top { background: linear-gradient(135deg, #1a2a3a, #2c4a6e); padding: 20px; position: relative; }
     /* Fix #79: trainee cards colored by their developing skill-rating average — green/yellow/red
        instead of a uniform blue. No scored lessons yet keeps the original blue (no verdict yet). */
     .trainee-module .trainee-card.level-green { border-right-color: #27ae60; }
@@ -4342,11 +4342,22 @@ window.TraineeSystem = {
                 <button id="ts-settings-btn" class="btn btn-ghost" data-action="open-ts-settings" style="display:none;width:auto !important;padding:8px 14px;">⚙️ הגדרות</button>
                 <button id="ts-add-trainee-btn" class="btn btn-blue" data-action="toggle-panel" data-panel="add-panel">+ חניך חדש</button>
             <button class="btn" data-action="show-reports" style="background:#6c3483;color:white;border:none;border-radius:8px;padding:8px 14px;cursor:pointer;font-size:13px;font-weight:bold;">📊 דוחות</button>
+            <button id="notesSelectModeBtn" onclick="_toggleNotesSelectMode()" style="width:auto;background:#8e44ad;color:white;border:none;border-radius:8px;padding:8px 14px;cursor:pointer;font-size:13px;font-weight:bold;">☑️ בחר חניכים להצגה</button>
             <button id="ts-archived-btn" class="btn" data-action="show-archived" style="display:none;background:#7f8c8d;color:white;border:none;border-radius:8px;padding:8px 14px;cursor:pointer;font-size:13px;font-weight:bold;">📦 חניכים שהוסרו</button>
             </div>
         </header>
 
         <div id="overload-alerts"></div>
+
+        <!-- 2026-09-16, לפי בקשת לביא (#244): בר צף שמופיע כשמסומן חניך אחד לפחות
+             (checkbox על כרטיס) — פותח את מסך "כל ההערות" מסונן מראש אליהם. -->
+        <div id="notesSelectBar" style="display:none;align-items:center;justify-content:space-between;background:#8e44ad;color:#fff;border-radius:10px;padding:10px 16px;margin-bottom:14px;">
+          <span style="font-size:13px;font-weight:700;">נבחרו <span id="notesSelectCount">0</span> חניכים</span>
+          <div style="display:flex;gap:8px;">
+            <button onclick="_openNotesForSelection()" style="width:auto;padding:7px 14px;background:#fff;color:#8e44ad;border:none;border-radius:7px;cursor:pointer;font-size:12px;font-weight:700;">📝 הצג הערות מרוכז</button>
+            <button onclick="_clearNotesSelection()" style="width:auto;padding:7px 14px;background:transparent;color:#fff;border:1px solid rgba(255,255,255,.5);border-radius:7px;cursor:pointer;font-size:12px;">נקה בחירה</button>
+          </div>
+        </div>
 
         <div id="add-panel" style="display:none" class="panel">
             <h4>➕ הוספת חניכים</h4>
@@ -5605,9 +5616,18 @@ window.TraineeSystem = {
             const _countBadgeStyle = _reportCount > 0
                 ? 'background:#eafaf1;color:#1e8449;border:1px solid #a9dfbf;font-weight:700;'
                 : 'background:#f4f4f4;color:#999;border:1px solid #e0e0e0;';
+            // 2026-09-16, לפי בקשת לביא (#244, תיקון): התיבה לא מוצגת כברירת מחדל —
+            // רק כש-window._notesSelectModeOn דלוק (מופעל ע"י כפתור "☑️ בחר חניכים
+            // להצגה" בראש main-view). גם הוקטנה (הייתה גדולה מדי).
+            const _selectCbHtml = window._notesSelectModeOn
+                ? `<label class="cab" style="position:absolute;top:8px;left:8px;width:auto;height:auto;background:rgba(255,255,255,.9);border-radius:5px;padding:2px 3px;display:flex;align-items:center;cursor:pointer;" onclick="event.stopPropagation()" title="בחר לתצוגת הערות מרוכזת">
+                    <input type="checkbox" class="card-select-cb" data-select-trainee="${t.id}" ${window._notesSelection && window._notesSelection.has(String(t.id)) ? 'checked' : ''} onchange="_toggleNoteSelect('${t.id}', this.checked)" style="width:13px;height:13px;margin:0;cursor:pointer;">
+                  </label>`
+                : '';
             l.innerHTML += `
             <div class="trainee-card ${_levelClass}" data-id="${t.id}">
                 <div class="card-top">
+                    ${_selectCbHtml}
                     <div class="card-name">${_esc(t.name)}</div>
                     <div class="card-sub">${phase} • שיעור ${maxL}/50</div>
                     <div class="card-bar"><div class="card-bar-fill" style="width:${pct}%"></div></div>
@@ -25135,6 +25155,236 @@ async function _runMissingLessonRepair(){
 
 // 2026-09-14, לפי בקשת לביא (המשך #199/#216): שלב 1 (סימולציה בלבד) של סריקה
 // לשחזור testResult חסר ברשומות טסט בתיק החניך. השורש (#199): לפני APP_VERSION
+// ═══════════════════════════════════════════════════════════
+// FEATURE: "כל ההערות" — מסך מרוכז לצפייה בהערות שיעור (l.note) מכמה חניכים
+// במקביל. 2026-09-16, לפי בקשת לביא (#244), אחרי דיון מלא ואישור. שתי נקודות
+// כניסה: (1) כפתור "📝 כל ההערות" בדשבורד ניהול חניכים — ללא סינון מראש.
+// (2) checkbox על כרטיסי חניך בטאב "תיקים" + כפתור "הצג הערות מרוכז" —
+// מסונן מראש לחניכים המסומנים. ברירת מחדל: כל ההערות של החניכים הנבחרים,
+// מכל השלבים ומכל התאריכים (לא רק השלב הנוכחי — הוחלט במפורש בדיון), ממוין
+// חדש→ישן. מקור יחיד: l.note (הערת שיעור בודד מ"סיכום יום") — לא ההערה
+// הכללית על המשמרת (report.notes), שאינה קשורה לחניך/שיעור ספציפי.
+// ═══════════════════════════════════════════════════════════
+
+// אותה לולאת-סריקה בדיוק כמו _runMissingTestResultScan (courses→trainees→
+// lessons) — קריטריון שונה (l.note קיים) במקום testResult חסר.
+function _collectAllTraineeNotes() {
+  const rows = [];
+  if (typeof TraineeSystem === 'undefined' || !Array.isArray(TraineeSystem.courses)) return rows;
+  TraineeSystem.courses.forEach(course => {
+    (course.trainees || []).forEach(t => {
+      if (t.archived) return;
+      (t.lessons || []).forEach(l => {
+        const noteVal = (l.notes || l.note || '').trim();
+        if (!noteVal) return;
+        rows.push({
+          date: l.date || '',
+          traineeId: t.id,
+          traineeName: t.name || '',
+          mission: l.mission || '',
+          lessonNums: Array.isArray(l.lessonNums) ? l.lessonNums : [],
+          note: noteVal,
+          score: (typeof _lessonScoreAvg === 'function') ? _lessonScoreAvg(l) : null,
+          instructor: l.ins || ''
+        });
+      });
+    });
+  });
+  rows.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+  return rows;
+}
+
+// preSelectedTraineeIds: מערך מזהים (נקודת כניסה 2) או undefined/null (נקודת
+// כניסה 1 — ללא סינון, "הכל").
+function openAllNotesView(preSelectedTraineeIds) {
+  document.getElementById('allNotesOverlay')?.remove();
+  window._allNotesActiveTraineeIds = new Set((preSelectedTraineeIds || []).map(String));
+  window._allNotesData = _collectAllTraineeNotes();
+
+  const overlay = document.createElement('div');
+  overlay.id = 'allNotesOverlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9500;display:flex;align-items:center;justify-content:center;';
+  overlay.innerHTML = `
+    <div style="background:#eef1f5;border-radius:14px;width:min(96vw,1100px);max-height:90vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.3);direction:rtl;">
+      <div style="background:#1b2733;padding:16px 22px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span style="font-size:17px;">📝</span>
+          <span style="font-size:16px;font-weight:700;color:#fff;">כל ההערות</span>
+          <span style="font-size:11px;color:#8fa0b3;">— תצוגה מרוכזת מכל תיקי החניכים</span>
+        </div>
+        <button onclick="document.getElementById('allNotesOverlay').remove()" style="background:transparent;border:1px solid #3c4a5a;color:#c7d0da;border-radius:8px;padding:6px 12px;font-size:12px;cursor:pointer;">✕ סגור</button>
+      </div>
+      <div style="padding:18px 22px;display:flex;flex-direction:column;gap:12px;overflow:hidden;flex:1;">
+        <div style="background:#fff;border-radius:10px;padding:14px 16px;box-shadow:0 1px 4px rgba(0,0,0,.06);display:flex;flex-direction:column;gap:10px;">
+          <input type="text" id="allNotesSearch" placeholder="חיפוש בטקסט ההערה או בשם חניך..." oninput="_renderAllNotesTable()" style="width:100%;padding:9px 12px;border:1.5px solid #e3e7ee;border-radius:8px;font-size:13px;font-family:inherit;box-sizing:border-box;">
+          <div id="allNotesTraineeChips" style="display:flex;gap:6px;flex-wrap:wrap;"></div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+            <select id="allNotesCourseFilter" onchange="_renderAllNotesTable()" style="padding:7px 10px;border:1.5px solid #e3e7ee;border-radius:8px;font-size:12px;font-family:inherit;">
+              <option value="">כל הקורסים/שלבים</option>
+              <option value="קורס מעשי סיטאדיס">קורס מעשי סיטאדיס</option>
+              <option value="קורס מעשי אורבוס">קורס מעשי אורבוס</option>
+              <option value="חניכה">חניכה</option>
+            </select>
+            <input type="date" id="allNotesDateFrom" onchange="_renderAllNotesTable()" style="padding:7px 10px;border:1.5px solid #e3e7ee;border-radius:8px;font-size:12px;font-family:inherit;">
+            <span style="font-size:11px;color:#8a94a3;">עד</span>
+            <input type="date" id="allNotesDateTo" onchange="_renderAllNotesTable()" style="padding:7px 10px;border:1.5px solid #e3e7ee;border-radius:8px;font-size:12px;font-family:inherit;">
+            <button onclick="_clearAllNotesFilters()" style="width:auto;padding:7px 12px;background:#f4f6f9;border:1px solid #e3e7ee;border-radius:8px;font-size:12px;cursor:pointer;color:#6b7685;">נקה סינון</button>
+          </div>
+        </div>
+        <div id="allNotesSummary" style="display:flex;align-items:center;justify-content:space-between;"></div>
+        <div style="background:#fff;border-radius:10px;box-shadow:0 1px 4px rgba(0,0,0,.06);overflow:hidden;flex:1;display:flex;flex-direction:column;">
+          <div style="display:grid;grid-template-columns:95px 140px 160px 70px 1fr 70px;background:#1b2733;padding:10px 16px;font-size:11px;font-weight:700;color:#c7d0da;">
+            <div>תאריך</div><div>חניך</div><div>קורס/שלב</div><div>שיעור</div><div>הערה</div><div>ציון</div>
+          </div>
+          <div id="allNotesTableBody" style="overflow-y:auto;flex:1;"></div>
+        </div>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+
+  _buildAllNotesTraineeChips();
+  _renderAllNotesTable();
+}
+
+function _buildAllNotesTraineeChips() {
+  const wrap = document.getElementById('allNotesTraineeChips');
+  if (!wrap) return;
+  const seen = new Set();
+  const allTrainees = [];
+  (TraineeSystem.courses || []).forEach(c => (c.trainees || []).forEach(t => {
+    if (t.archived || seen.has(String(t.id))) return;
+    seen.add(String(t.id));
+    allTrainees.push(t);
+  }));
+  allTrainees.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'he'));
+  const active = window._allNotesActiveTraineeIds || new Set();
+  wrap.innerHTML = allTrainees.map(t => {
+    const isActive = active.has(String(t.id));
+    return `<button type="button" onclick="_toggleAllNotesTrainee(${JSON.stringify(String(t.id))})"
+      style="padding:5px 12px;border-radius:14px;font-size:11px;cursor:pointer;font-weight:${isActive ? '700' : '400'};border:1.5px solid ${isActive ? '#2980b9' : '#e3e7ee'};background:${isActive ? '#2980b9' : '#fff'};color:${isActive ? '#fff' : '#4a5568'};">${_esc(t.name)}</button>`;
+  }).join('') || '<span style="font-size:12px;color:#aaa;">אין חניכים</span>';
+}
+
+function _toggleAllNotesTrainee(id) {
+  const set = window._allNotesActiveTraineeIds || (window._allNotesActiveTraineeIds = new Set());
+  const key = String(id);
+  if (set.has(key)) set.delete(key); else set.add(key);
+  _buildAllNotesTraineeChips();
+  _renderAllNotesTable();
+}
+
+function _clearAllNotesFilters() {
+  window._allNotesActiveTraineeIds = new Set();
+  const s = document.getElementById('allNotesSearch'); if (s) s.value = '';
+  const c = document.getElementById('allNotesCourseFilter'); if (c) c.value = '';
+  const df = document.getElementById('allNotesDateFrom'); if (df) df.value = '';
+  const dt = document.getElementById('allNotesDateTo'); if (dt) dt.value = '';
+  _buildAllNotesTraineeChips();
+  _renderAllNotesTable();
+}
+
+function _renderAllNotesTable() {
+  const body = document.getElementById('allNotesTableBody');
+  if (!body) return;
+  const q = (document.getElementById('allNotesSearch')?.value || '').trim().toLowerCase();
+  const courseFilter = document.getElementById('allNotesCourseFilter')?.value || '';
+  const dFrom = document.getElementById('allNotesDateFrom')?.value || '';
+  const dTo = document.getElementById('allNotesDateTo')?.value || '';
+  const activeIds = window._allNotesActiveTraineeIds || new Set();
+
+  // 2026-09-16, #244, לפי אישור מפורש של לביא: ברירת המחדל היא כל השלבים/
+  // התאריכים של החניכים הנבחרים — לא רק השלב הנוכחי. courseFilter/dFrom/dTo
+  // הם סינון נוסף ואופציונלי בלבד, לא ברירת מחדל מצמצמת.
+  const rows = (window._allNotesData || []).filter(r => {
+    if (activeIds.size && !activeIds.has(String(r.traineeId))) return false;
+    if (courseFilter && r.mission !== courseFilter) return false;
+    if (dFrom && r.date < dFrom) return false;
+    if (dTo && r.date > dTo) return false;
+    if (q && !(r.note.toLowerCase().includes(q) || (r.traineeName || '').toLowerCase().includes(q))) return false;
+    return true;
+  });
+
+  const traineeCount = new Set(rows.map(r => r.traineeId)).size;
+  const summary = document.getElementById('allNotesSummary');
+  if (summary) summary.innerHTML = `
+    <div style="display:flex;gap:8px;">
+      <div style="background:#eaf4fd;color:#2980b9;padding:4px 12px;border-radius:14px;font-size:11px;font-weight:700;">${rows.length} הערות</div>
+      <div style="background:#f4f6f9;color:#6b7685;padding:4px 12px;border-radius:14px;font-size:11px;">מתוך ${traineeCount} חניכים</div>
+    </div>
+    <div style="font-size:11px;color:#8a94a3;">ממוין: חדש ← ישן</div>`;
+
+  if (!rows.length) {
+    body.innerHTML = '<div style="padding:30px;text-align:center;color:#9aa4b2;font-size:13px;">אין הערות תואמות</div>';
+    return;
+  }
+
+  body.innerHTML = rows.map((r, i) => {
+    const scoreTxt = r.score != null ? r.score.toFixed(1) : '—';
+    const scoreColor = r.score == null ? '#aaa' : r.score < 5 ? '#e74c3c' : r.score < 8 ? '#e67e22' : '#27ae60';
+    const lessonTxt = r.lessonNums.length ? '#' + r.lessonNums.join(',') : '—';
+    const bg = i % 2 ? '#fbfcfd' : '#fff';
+    return `<div onclick="_jumpToNoteSource(${JSON.stringify(String(r.traineeId))})" style="display:grid;grid-template-columns:95px 140px 160px 70px 1fr 70px;padding:11px 16px;border-top:1px solid #eef1f5;cursor:pointer;background:${bg};" onmouseover="this.style.background='#f0f6fb'" onmouseout="this.style.background='${bg}'">
+      <div style="font-size:11px;color:#8a94a3;white-space:nowrap;">${_esc(r.date)}</div>
+      <div style="font-size:12px;font-weight:700;color:#2c3e50;">${_esc(r.traineeName)}</div>
+      <div style="font-size:11px;color:#4a5568;">${_esc(r.mission)}</div>
+      <div style="font-size:11px;color:#4a5568;">${_esc(lessonTxt)}</div>
+      <div style="font-size:12px;color:#374151;line-height:1.4;">${_esc(r.note)}</div>
+      <div style="font-size:12px;font-weight:700;color:${scoreColor};">${scoreTxt}</div>
+    </div>`;
+  }).join('');
+}
+
+function _jumpToNoteSource(traineeId) {
+  document.getElementById('allNotesOverlay')?.remove();
+  try { _setTraineeSubView('files'); } catch (e) {}
+  if (typeof TraineeSystem !== 'undefined') TraineeSystem.openTrainee(traineeId);
+}
+
+// --- נקודת כניסה 2: בחירה מרובה בכרטיסי "תיקים" ---
+window._notesSelection = window._notesSelection || new Set();
+// 2026-09-16, לפי בקשת לביא (#244, תיקון): התיבות מוסתרות כברירת מחדל —
+// דולקות רק כש-window._notesSelectModeOn=true, מופעל ע"י הכפתור בראש main-view.
+window._notesSelectModeOn = window._notesSelectModeOn || false;
+
+function _toggleNotesSelectMode() {
+  window._notesSelectModeOn = !window._notesSelectModeOn;
+  if (!window._notesSelectModeOn) window._notesSelection.clear(); // יציאה ממצב-בחירה מנקה גם את הבחירה עצמה
+  const btn = document.getElementById('notesSelectModeBtn');
+  if (btn) {
+    btn.textContent = window._notesSelectModeOn ? '✕ בטל בחירת חניכים' : '☑️ בחר חניכים להצגה';
+    btn.style.background = window._notesSelectModeOn ? '#5b2c6f' : '#8e44ad';
+  }
+  try { TraineeSystem.renderList(); } catch (e) {}
+  _updateNotesSelectBar();
+}
+
+function _toggleNoteSelect(id, checked) {
+  const key = String(id);
+  if (checked) window._notesSelection.add(key); else window._notesSelection.delete(key);
+  _updateNotesSelectBar();
+}
+
+function _updateNotesSelectBar() {
+  const bar = document.getElementById('notesSelectBar');
+  if (!bar) return;
+  const n = window._notesSelection.size;
+  if (!n) { bar.style.display = 'none'; return; }
+  bar.style.display = 'flex';
+  const countEl = document.getElementById('notesSelectCount');
+  if (countEl) countEl.textContent = n;
+}
+
+function _openNotesForSelection() {
+  openAllNotesView([...window._notesSelection]);
+}
+
+function _clearNotesSelection() {
+  window._notesSelection.clear();
+  document.querySelectorAll('.card-select-cb').forEach(cb => { cb.checked = false; });
+  _updateNotesSelectBar();
+}
+
 // 192, addLessonFromExternal לא העתיקה testKey/testResult ל-t.lessons — אבל
 // report.feedbackDetails (הדוח היומי עצמו) שמר testResult נכון מאז ומעולם
 // (ר' submitUnifiedReport). לכן ניתן להצליב: לכל שורת-טסט בתיק חניך שחסרה לה
@@ -29812,7 +30062,7 @@ function _renderTraineeSummaryPanel() {
   // הצבעוניות (inline style) כן עבדו.
   h.push('<style>'
     + '#trainee-summary-panel .ts-section-card{background:white;border:1px solid #e8edf5;border-right:3px solid #c3c9d1;border-radius:10px;margin-bottom:12px;overflow:hidden;}'
-    + '#trainee-summary-panel .ts-section-head{padding:12px 14px 6px;display:flex;align-items:center;gap:8px;}'
+    + '#trainee-summary-panel .ts-section-head{padding:12px 14px 6px;display:flex;align-items:center;justify-content:space-between;gap:8px;}'
     + '#trainee-summary-panel .ts-section-head span.ts-sh-title{font-size:13px;font-weight:bold;}'
     + '#trainee-summary-panel .ts-section-body{padding:12px 16px;}'
     + '#trainee-summary-panel .ts-dist-milestone-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start;}'
@@ -29853,6 +30103,10 @@ function _renderTraineeSummaryPanel() {
     var sColors={'טרם התחיל':['\#95a5a6','\#f4f6f7'],'שלב טכני':['\#3498db','\#ebf5fb'],'שלב תפעולי':['\#f39c12','\#fef9e7'],'שלב מסחרי':['\#8e44ad','\#f5eef8'],'השתלמות אורבוס':['\#e67e22','\#fdf2e9'],'מוכן לחניכה':['\#27ae60','\#eafaf1'],'בחניכה':['\#16a085','\#e8f8f5']};
     var sOrder=['טרם התחיל','שלב טכני','שלב תפעולי','שלב מסחרי','השתלמות אורבוס','מוכן לחניכה','בחניכה'];
     distHtml.push(_tsSectionOpen('📊','התפלגות שלבים <span style="font-weight:400;color:#aaa;font-size:11px;">(לחיצה מציגה חניכים)</span>','#ebf5fb','#3498db','#2471a3'));
+    // 2026-09-16, לפי בקשת לביא (#244, תיקון מיקום+גודל): הועבר מכפתור עצמאי
+    // בראש הפאנל לכאן — צמוד לפילי ההתפלגות, בדיוק כפי שהוצג במוקאפ שאושר.
+    // גם הוקטן (padding/font-size) — היה גדול מדי וחורג מעט מקו השוליים.
+    distHtml.push('<button onclick="try{openAllNotesView();}catch(e){}" style="width:auto;margin:0;background:#2980b9;color:#fff;border:none;border-radius:14px;padding:4px 12px;font-size:11px;font-weight:bold;cursor:pointer;font-family:inherit;white-space:nowrap;">📝 כל ההערות</button>');
     distHtml.push(_tsSectionHeadClose());
     distHtml.push('<div style="display:flex;flex-wrap:wrap;gap:8px;">');
     sOrder.forEach(function(s){var n=byStage[s];if(!n)return;var c=sColors[s]||['#7f8c8d','#f9f9f9'];distHtml.push('<button onclick="try{_toggleTsBucket(\'stage\',\''+s+'\');}catch(e){}" style="width:auto;margin:0;cursor:pointer;display:inline-flex;align-items:center;gap:6px;background:'+c[1]+';border:1px solid '+c[0]+';border-radius:20px;padding:4px 12px;font-family:inherit;"><span style="font-size:13px;font-weight:bold;color:'+c[0]+';">'+n+'</span><span style="font-size:12px;color:#555;">'+s+'</span></button>');});
