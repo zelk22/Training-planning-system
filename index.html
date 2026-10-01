@@ -14,7 +14,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 182</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 183</title>
 
 <style>
 
@@ -1437,7 +1437,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 246;
+  const APP_VERSION = 247;
 
   // 2026-09-07, לפי בקשת לביא: היה קשה לבדוק באיזו גרסה הדפדפן בפועל טוען
   // (כותרת הטאב נחתכת כשיש הרבה טאבים פתוחים, ואי אפשר תמיד לראות "DEPLOYED
@@ -5542,7 +5542,9 @@ window.TraineeSystem = {
         // Task 5: compute configurable thresholds dynamically
         const _thr10  = _getMilestoneThreshold('test10', 10);
         const _thr30  = _getMilestoneThreshold('test30', 30);
-        const _thr50  = _getMilestoneThreshold('test50', 50);
+        // 2026-10-01, #256: הבאדג' הזה חישב סף test50 גלובלי במקום היעד האישי
+        // של החניך (t.sitadisTarget) — תוקן, ר' אותו הדפוס שכבר קיים ב-_hasMilestonePassed.
+        const _thr50  = (typeof _sitadisTarget === 'function') ? _sitadisTarget(t) : _getMilestoneThreshold('test50', 50);
         const _thrOrb = _getMilestoneThreshold('chinuch-orbus', 7);
         // Compute orbus progress for testOrbus badge
         let _maxOrbusT = 0;
