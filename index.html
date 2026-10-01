@@ -14,7 +14,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 179</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 180</title>
 
 <style>
 
@@ -1437,7 +1437,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 243;
+  const APP_VERSION = 244;
 
   // 2026-09-07, לפי בקשת לביא: היה קשה לבדוק באיזו גרסה הדפדפן בפועל טוען
   // (כותרת הטאב נחתכת כשיש הרבה טאבים פתוחים, ואי אפשר תמיד לראות "DEPLOYED
@@ -24716,7 +24716,11 @@ async function submitUnifiedReport() {
   // נבחר (lessonNums ריק), כי לא הייתה ולידציה שמחייבת בחירת שנתון. setTrain()
   // (התקדמות הרכבת) מסתמך אך ורק על lessonNums — כך שמשוב תקין נראה "נעלם"
   // מבחינת ההתקדמות הוויזואלית, גם שהוא כן נשמר ומופיע במונה הדיווחים.
-  const _missingLessonNum = lessonResults.filter(r => !r.testKey && !r.lesson.lessonNums.length);
+  // 2026-10-01, לפי בקשת לביא: תיקון — משימת "כשירות מעשית/ שעות נוספות"
+  // אין לה צ'יפים כלל (lessonNums ריק זה תקין לה), ולא אמורה להיחסם או
+  // להיחשב עבור התקדמות. ר' isNoChipsMission למעלה לאותו היגיון.
+  const _isNoChipsMission = m => (m === 'כשירות מעשית/ שעות נוספות' || m === 'שעות נוספות' || (m || '').includes('כשירות'));
+  const _missingLessonNum = lessonResults.filter(r => !r.testKey && !_isNoChipsMission(r.lesson.mission) && !r.lesson.lessonNums.length);
   if (_missingLessonNum.length) {
     const _names = _missingLessonNum.map(r => {
       const block = document.querySelector(`.ur-trainee-block[data-fb-idx="${r.idx}"]`);
