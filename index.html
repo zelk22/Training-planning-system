@@ -14,7 +14,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 180</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 182</title>
 
 <style>
 
@@ -1437,7 +1437,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 244;
+  const APP_VERSION = 246;
 
   // 2026-09-07, לפי בקשת לביא: היה קשה לבדוק באיזו גרסה הדפדפן בפועל טוען
   // (כותרת הטאב נחתכת כשיש הרבה טאבים פתוחים, ואי אפשר תמיד לראות "DEPLOYED
@@ -4406,17 +4406,22 @@ window.TraineeSystem = {
             <div id="det-progress-chart" style="margin-bottom:14px;"></div>
 
             <div style="margin: 36px 0 10px 0;">
-                <div style="font-size:0.85em; font-weight:700; color:#718096; margin-bottom:8px; display:flex; justify-content:space-between;">
+                <div style="font-size:0.85em; font-weight:700; color:#718096; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
                     <span>📍 התקדמות קורס</span>
-                    <span id="course-count" style="color:#a0aec0; font-weight:400;">שיעור 0 / 50</span>
+                    <span>
+                        <span id="course-count" style="color:#a0aec0; font-weight:400;">שיעור 0 / 50</span>
+                        <span id="target-edit-wrap" style="display:none;margin-right:8px;font-weight:400;color:#4a7fd6;cursor:pointer;" title="לחץ לשינוי יעד שיעורי סיטאדיס לחניך זה" onclick="TraineeSystem.editSitadisTarget()">
+                            🎯 יעד: <span id="target-edit-val" contenteditable="false" style="border-bottom:1px dashed #4a7fd6;padding:0 2px;">50</span>
+                        </span>
+                    </span>
                 </div>
 
                 <div style="position:relative; padding-top:40px; overflow:visible;">
-                    <div style="position:absolute; bottom:32px; right:20%; width:0; overflow:visible; pointer-events:none; z-index:10;">
+                    <div id="flag-10" style="position:absolute; bottom:32px; right:20%; width:0; overflow:visible; pointer-events:none; z-index:10;">
                         <div style="position:absolute; bottom:0; left:-1px; width:2px; height:8px; background:#e74c3c;"></div>
                         <div style="position:absolute; bottom:8px; left:-6px; font-size:18px; line-height:1;">🚩</div>
                     </div>
-                    <div style="position:absolute; bottom:32px; right:60%; width:0; overflow:visible; pointer-events:none; z-index:10;">
+                    <div id="flag-30" style="position:absolute; bottom:32px; right:60%; width:0; overflow:visible; pointer-events:none; z-index:10;">
                         <div style="position:absolute; bottom:0; left:-1px; width:2px; height:8px; background:#e74c3c;"></div>
                         <div style="position:absolute; bottom:8px; left:-6px; font-size:18px; line-height:1;">🚩</div>
                     </div>
@@ -5247,12 +5252,23 @@ window.TraineeSystem = {
         if (m) m.style.display = 'none';
     },
 
-    setTrain(lesson) {
-        const pct = (Math.min(lesson, 50) / 50) * 100;
+    setTrain(lesson, target) {
+        target = target > 0 ? target : 50;
+        const pct = (Math.min(lesson, target) / target) * 100;
         const train = this.$('train-marker');
         if (train) train.style.right = pct + '%';
         const counter = this.$('course-count');
-        if (counter) counter.innerText = `שיעור ${lesson} / 50`;
+        if (counter) counter.innerText = `שיעור ${lesson} / ${target}`;
+
+        // 2026-10-01, #254: דגלוני 10/30 יחסיים ליעד — מוסתרים אם היעד עצמו
+        // נמוך מהם (ואז הם מתמזגים עם דגל הסיום ב-100%).
+        [[10, 'flag-10'], [30, 'flag-30']].forEach(([checkpoint, flagId]) => {
+            const flag = this.$(flagId);
+            if (!flag) return;
+            if (checkpoint >= target) { flag.style.display = 'none'; return; }
+            flag.style.display = '';
+            flag.style.right = ((checkpoint / target) * 100) + '%';
+        });
 
         // 2026-08-19: תוקן — התא עצמו שקוף (הצבע מגיע מהפסים מתחתיו), אז opacity
         // על התא לא היה נראה על הצבע בכלל, רק על העיגול הקטן (dot) של דגשי-ביצוע.
@@ -5478,6 +5494,42 @@ window.TraineeSystem = {
                 const t = this.trainees.find(x => String(x.id) === String(id)); // אותו תיקון — ר' #225
                 if (t) { t.name = newName; this.persist(); }
             } else { el.innerText = curName; }
+        };
+        el.onkeydown = ev => { if (ev.key === 'Enter') { ev.preventDefault(); el.blur(); } };
+    },
+
+    // 2026-10-01, #254: עריכת יעד שיעורי סיטאדיס אישי לחניך (ברירת מחדל 50,
+    // כל מספר אפשרי) — אותו דפוס עריכה inline כמו editName. מנהל בלבד.
+    editSitadisTarget() {
+        if (typeof currentRole !== 'undefined' && currentRole !== 'admin') {
+            showToast('רק מנהל יכול לשנות יעד שיעורים', 'warning');
+            return;
+        }
+        const id = this.currentId;
+        const t = this.trainees.find(x => String(x.id) === String(id));
+        if (!t) return;
+        const el = this.$('target-edit-val');
+        if (!el) return;
+        const curVal = (t.sitadisTarget > 0 ? t.sitadisTarget : 50);
+        el.contentEditable = true;
+        el.style.background = 'rgba(74,127,214,0.12)';
+        el.focus();
+        const range = document.createRange();
+        range.selectNodeContents(el);
+        window.getSelection().removeAllRanges();
+        window.getSelection().addRange(range);
+        el.onblur = () => {
+            el.contentEditable = false;
+            el.style.background = '';
+            const n = parseInt(el.innerText.trim(), 10);
+            if (n > 0 && n <= 99 && n !== curVal) {
+                t.sitadisTarget = n;
+                this.persist();
+                this.renderDetail();
+                if (typeof showToast === 'function') showToast(`יעד שיעורי סיטאדיס עודכן ל-${n}`, 'success');
+            } else {
+                el.innerText = curVal;
+            }
         };
         el.onkeydown = ev => { if (ev.key === 'Enter') { ev.preventDefault(); el.blur(); } };
     },
@@ -5885,9 +5937,16 @@ window.TraineeSystem = {
         const len    = (t.lessons || []).length;
         const isTech = maxL < 11;
 
+        const _tTarget = (typeof _sitadisTarget === 'function') ? _sitadisTarget(t) : 50;
         const _orbusSub = orbusDone.size > 0 ? ` • אורבוס: ${orbusDone.size}/7` : '';
-        this.$('det-sub').innerText  = `${len} דיווחים • קורס: שיעור ${maxL}/50${_orbusSub} • חניכה: ${chinuchDone.size}/50`;
-        this.setTrain(maxL);
+        this.$('det-sub').innerText  = `${len} דיווחים • קורס: שיעור ${maxL}/${_tTarget}${_orbusSub} • חניכה: ${chinuchDone.size}/50`;
+        this.setTrain(maxL, _tTarget);
+        try {
+            const _tgtVal = this.$('target-edit-val');
+            if (_tgtVal) _tgtVal.innerText = _tTarget;
+            const _tgtWrap = this.$('target-edit-wrap');
+            if (_tgtWrap) _tgtWrap.style.display = (typeof currentRole !== 'undefined' && currentRole === 'admin') ? 'inline' : 'none';
+        } catch(e) {}
         this.updateS2Label();
         // Render milestone status badges on detail view
         this._renderDetailMilestoneBadges(t, maxL);
@@ -6001,8 +6060,8 @@ window.TraineeSystem = {
         // ── מיילסטון טסט-50: בדיקה לפני אורבוס ──────────────────────
         if (isOrbus && this.currentId) {
             const _ms50passed = (typeof _hasMilestonePassed === 'function')
-                ? _hasMilestonePassed(this.currentId, 'test50', _maxSitadis)
-                : (_maxSitadis >= 50);
+                ? _hasMilestonePassed(this.currentId, 'test50', _maxSitadis, t)
+                : (_maxSitadis >= (typeof _sitadisTarget === 'function' ? _sitadisTarget(t) : 50));
             const _ms50mode = (typeof _getMilestoneMode === 'function')
                 ? _getMilestoneMode('test50')
                 : 'block';
@@ -6024,7 +6083,7 @@ window.TraineeSystem = {
         }
         // ─────────────────────────────────────────────────────────────
 
-        const maxChip = isOrbus ? 7 : 50;
+        const maxChip = isOrbus ? 7 : _sitadisTarget(t);
 
         const locked = new Set();
         (t.lessons || []).forEach(l => {
@@ -6061,9 +6120,10 @@ window.TraineeSystem = {
         const _passedTestChipsT = {};
         if (this.currentId && typeof _hasMilestonePassed === 'function') {
             if (_isSitadis) {
-                if (_hasMilestonePassed(this.currentId, 'test10', 0)) _passedTestChipsT[10] = true;
-                if (_hasMilestonePassed(this.currentId, 'test30', 0)) _passedTestChipsT[30] = true;
-                if (_hasMilestonePassed(this.currentId, 'test50', 0)) _passedTestChipsT[50] = true;
+                if (_hasMilestonePassed(this.currentId, 'test10', 0, t)) _passedTestChipsT[10] = true;
+                if (_hasMilestonePassed(this.currentId, 'test30', 0, t)) _passedTestChipsT[30] = true;
+                const _tTargetT = (typeof _sitadisTarget === 'function') ? _sitadisTarget(t) : 50;
+                if (_hasMilestonePassed(this.currentId, 'test50', 0, t)) _passedTestChipsT[_tTargetT] = true;
             } else if (isOrbus) {
                 if (_hasMilestonePassed(this.currentId, 'testOrbus', 0)) _passedTestChipsT[7] = true;
             }
@@ -6345,7 +6405,7 @@ window.TraineeSystem = {
 
         const isNoChipsMission = m => (m === 'כשירות מעשית/ שעות נוספות' || m === 'שעות נוספות' || (m || '').includes('כשירות'));
         const isOrbusMission = m => (m === 'קורס מעשי אורבוס');
-        const maxChip = isOrbusMission(l.mission) ? 7 : 50;
+        const maxChip = isOrbusMission(l.mission) ? 7 : _sitadisTarget(t);
         const usedByOthers = new Set();
         (t.lessons || []).forEach(other => {
             if (other.id === l.id) return;
@@ -6417,11 +6477,11 @@ window.TraineeSystem = {
               </label>`;
             return;
         }
-        const maxChip = ctx.isOrbusMission(mission) ? 7 : 50;
+        const t = this.trainees.find(x => String(x.id) === String(this.currentId));
+        const maxChip = ctx.isOrbusMission(mission) ? 7 : _sitadisTarget(t);
         // Clamp to the current mission's valid range (a mission switch can otherwise
         // leave stale numbers from the previous mission silently selected).
         ctx.currentNums = ctx.currentNums.filter(n => n >= 1 && n <= maxChip);
-        const t = this.trainees.find(x => String(x.id) === String(this.currentId));
         const usedByOthers = new Set();
         (t?.lessons || []).forEach(other => {
             if (other.id === ctx.lessonId) return;
@@ -9805,6 +9865,14 @@ function _getMilestoneThreshold(key, fallback) {
     return fallback;
 }
 
+// 2026-10-01, לפי בקשת לביא (#254): יעד שיעורי סיטאדיס גמיש לחניך (למשל 10/30/50
+// או כל מספר אחר), נשמר ב-t.sitadisTarget. ברירת מחדל = הסף הגלובלי של test50
+// (50 כברירת מחדל שלו עצמו). משמש לצ'יפים, לדרישת "עבר לפני אורבוס", ולאחוז התקדמות.
+function _sitadisTarget(t) {
+    const v = t && parseInt(t.sitadisTarget, 10);
+    return (v && v > 0) ? v : _getMilestoneThreshold('test50', 50);
+}
+
 function _hasMilestonePassed(traineeId, key, lessonCount, traineeObj) {
     // Manual override
     if (window._milestonePassMap && window._milestonePassMap[String(traineeId)]?.[key] === true) return true;
@@ -9812,10 +9880,11 @@ function _hasMilestonePassed(traineeId, key, lessonCount, traineeObj) {
     // 2026-09-09, לפי בקשת לביא: chinuch-ms הוסר (היה כפול ל-testOrbus —
     // ר' תיעוד ב-#213/#214). testOrbus נספר לפי שיעורי אורבוס (chinuch-orbus,
     // ברירת מחדל 7), לא לפי סף נפרד.
+    // 2026-10-01, #254: test50 משתמש ביעד האישי של החניך (sitadisTarget) אם הוגדר.
     const thresholds = {
         test10:    _getMilestoneThreshold('test10', 10),
         test30:    _getMilestoneThreshold('test30', 30),
-        test50:    _getMilestoneThreshold('test50', 50),
+        test50:    _sitadisTarget(traineeObj),
         testOrbus: _getMilestoneThreshold('chinuch-orbus', 7)
     };
     return lessonCount >= (thresholds[key] || 99);
@@ -23542,13 +23611,33 @@ function _urOnDateChange() {
   const hasUnsaved = (fb && fb.children.length) || (db && db.children.length);
   if (hasUnsaved && !confirm('שינוי התאריך ינקה את שורות המשוב/העיכובים שהוזנו כאן ויטען מחדש לפי התאריך החדש. להמשיך?')) {
     dateEl.value = window._urCurrentLoadedDate || dateEl.value;
+    _urUpdateNotTodayBanner();
     return;
   }
   _urLoadForDate(d);
 }
 
+// 2026-10-01, #255, לפי בקשת לביא: התרעה ויזואלית (לא חוסמת) כששדה התאריך
+// בטופס שונה מהיום הנוכחי בפועל — בדומה ברוח להתרעת "התחלפות יום" (#211),
+// אך כללית לכל מילוי בדיעבד, לא רק מעבר חצות. מתעדכנת בכל טעינה/שינוי תאריך.
+function _urUpdateNotTodayBanner() {
+  const banner = document.getElementById('ur-notoday-banner');
+  const dateEl = document.getElementById('ur-date');
+  if (!banner || !dateEl || !dateEl.value) return;
+  const _todayStr = _localDateStr(new Date());
+  if (dateEl.value !== _todayStr) {
+    const _d = new Date(dateEl.value + 'T12:00:00');
+    const _label = _d.toLocaleDateString('he-IL', {weekday:'long', day:'numeric', month:'numeric'});
+    banner.innerText = `⚠️ שים לב — אתה ממלא דוח לתאריך ${_label}, לא להיום.`;
+    banner.style.display = 'block';
+  } else {
+    banner.style.display = 'none';
+  }
+}
+
 function _urLoadForDate(today) {
   window._urCurrentLoadedDate = today;
+  try { _urUpdateNotTodayBanner(); } catch(e) {}
 
   // Prefill instructor (locked)
   const instrEl = document.getElementById('ur-instructor');
@@ -24240,7 +24329,7 @@ function _urUpdateChips(idx) {
   const isOrbus = (missionId === 'orbus' || missionName === 'קורס מעשי אורבוס');
   const isChinuchMission = (isFree || missionName === 'חניכה') && !isOrbus
     && !(missionName === 'קורס מעשי סיטאדיס' || missionName === 'קורס מעשי' || missionName === 'קורס');
-  const maxChip = isOrbus ? 7 : 50;
+  const maxChip = isOrbus ? 7 : _sitadisTarget(trainee);
   const _isSitadis = (missionId === 'course' || missionName === 'קורס מעשי סיטאדיס' || missionName === 'קורס מעשי' || missionName === 'קורס');
 
   // 2026-08-31, לפי בקשת לביא: תיקון באג — הבלוק הזה היה בסוף הפונקציה, אז
@@ -24296,16 +24385,17 @@ function _urUpdateChips(idx) {
       if (l.mission === 'קורס מעשי סיטאדיס' || l.mission === 'קורס מעשי' || l.mission === 'קורס')
         (l.lessonNums || []).forEach(n => { if (n > _maxSitadis) _maxSitadis = n; });
     });
-    const _ms50passed = _hasMilestonePassed(traineeId, 'test50', _maxSitadis);
+    const _ms50passed = _hasMilestonePassed(traineeId, 'test50', _maxSitadis, trainee);
     const _ms50mode   = (typeof _getMilestoneMode === 'function') ? _getMilestoneMode('test50') : 'block';
+    const _ms50target = (typeof _sitadisTarget === 'function') ? _sitadisTarget(trainee) : 50;
     if (!_ms50passed) {
       if (_ms50mode === 'block') {
         chipsEl.innerHTML = '<div style="padding:10px 14px;background:#fdf2f2;border:1.5px solid #e74c3c;border-radius:9px;color:#c0392b;font-size:13px;font-weight:bold;width:100%;">' +
-          '\uD83D\uDD12 חניך זה טרם עבר טסט 50 — לא ניתן לדווח קורס מעשי אורבוס.<br>' +
-          '<span style="font-weight:400;font-size:12px;">סמן את טסט 50 כ"עבר" בתיק החניך כדי לאפשר דיווח אורבוס.</span></div>';
+          '\uD83D\uDD12 חניך זה טרם עבר טסט ' + _ms50target + ' — לא ניתן לדווח קורס מעשי אורבוס.<br>' +
+          '<span style="font-weight:400;font-size:12px;">סמן את טסט ' + _ms50target + ' כ"עבר" בתיק החניך כדי לאפשר דיווח אורבוס.</span></div>';
         return;
       } else if (_ms50mode === 'warn') {
-        if (typeof showToast === 'function') showToast('⚠️ שים לב: חניך זה טרם עבר טסט 50 רשמית', 'warning');
+        if (typeof showToast === 'function') showToast('⚠️ שים לב: חניך זה טרם עבר טסט ' + _ms50target + ' רשמית', 'warning');
       }
     }
   }
@@ -24321,7 +24411,7 @@ function _urUpdateChips(idx) {
     });
     const _msChecks = [{key:'test10', blockFrom:11}, {key:'test30', blockFrom:31}];
     for (const {key, blockFrom} of _msChecks) {
-      const _passed = _hasMilestonePassed(traineeId, key, _maxSitadis2);
+      const _passed = _hasMilestonePassed(traineeId, key, _maxSitadis2, trainee);
       if (!_passed) {
         const _mode = (typeof _getMilestoneMode === 'function') ? _getMilestoneMode(key) : 'block';
         if (_mode === 'block' && (!_urMsBlockAbove || blockFrom < _urMsBlockAbove)) _urMsBlockAbove = blockFrom;
@@ -24337,11 +24427,12 @@ function _urUpdateChips(idx) {
   const _passedTestChips = {};
   if (traineeId && typeof _hasMilestonePassed === 'function') {
     if (_isSitadis) {
-      if (_hasMilestonePassed(traineeId, 'test10', 0)) _passedTestChips[10] = true;
-      if (_hasMilestonePassed(traineeId, 'test30', 0)) _passedTestChips[30] = true;
-      if (_hasMilestonePassed(traineeId, 'test50', 0)) _passedTestChips[50] = true;
+      if (_hasMilestonePassed(traineeId, 'test10', 0, trainee)) _passedTestChips[10] = true;
+      if (_hasMilestonePassed(traineeId, 'test30', 0, trainee)) _passedTestChips[30] = true;
+      const _tTargetChips = (typeof _sitadisTarget === 'function') ? _sitadisTarget(trainee) : 50;
+      if (_hasMilestonePassed(traineeId, 'test50', 0, trainee)) _passedTestChips[_tTargetChips] = true;
     } else if (isOrbus) {
-      if (_hasMilestonePassed(traineeId, 'testOrbus', 0)) _passedTestChips[7] = true;
+      if (_hasMilestonePassed(traineeId, 'testOrbus', 0, trainee)) _passedTestChips[7] = true;
     }
   }
 
@@ -29686,10 +29777,12 @@ function _generateTraineeSummary() {
     // משמש להתרעות "שעות נוספות תקועות" בלבד (למטה), לא לקביעת stage יותר.
     const msEntry  = passMap[String(t.id)] || {};
     const _thrOrbGateSum = (typeof _getMilestoneThreshold === 'function') ? _getMilestoneThreshold('chinuch-orbus', 7) : 7;
+    // 2026-10-01, #254: _thrSitadisTarget = יעד שיעורי סיטאדיס אישי לחניך (ברירת מחדל 50).
+    const _thrSitadisTarget = (typeof _sitadisTarget === 'function') ? _sitadisTarget(t) : 50;
     const msStatus = {
       test10:    !!(msEntry.test10    || maxSitadis >= 10),
       test30:    !!(msEntry.test30    || maxSitadis >= 30),
-      test50:    !!(msEntry.test50    || maxSitadis >= 50),
+      test50:    !!(msEntry.test50    || maxSitadis >= _thrSitadisTarget),
       chinuchMs: !!(msEntry['testOrbus'] || maxOrbus >= _thrOrbGateSum),
     };
     // 2026-09-23, #250, לפי בקשת לביא: הפרדה בין "עבר טסט בפועל" (ידני, msEntry)
@@ -29708,14 +29801,19 @@ function _generateTraineeSummary() {
       if (l.mission === 'חניכה') acc += (l.lessonNums || []).length;
       return acc;
     }, 0);
+    // 2026-10-01, #254: אם היעד האישי (_thrSitadisTarget) נמוך מ-30/10, הטסט
+    // הסופי-לפני-אורבוס "מתמזג" עם נקודת הביקורת הנמוכה המתאימה (test10/test30)
+    // — כדי שלא תידרש סימון כפול לאותו יעד בפועל (למשל יעד=30: סימון test30
+    // אחד מספיק, בלי לדרוש גם test50 בנפרד).
+    const _finalCheckKey = _thrSitadisTarget <= 10 ? 'test10' : (_thrSitadisTarget <= 30 ? 'test30' : 'test50');
     let confirmedLevel; // 0..6 — קידום מאושר-ידנית בלבד
-    if      (manualMilestones.testOrbus && maxChinuch > 0) confirmedLevel = 6;
-    else if (manualMilestones.testOrbus)                   confirmedLevel = 5;
-    else if (manualMilestones.test50)                      confirmedLevel = 4;
-    else if (manualMilestones.test30)                      confirmedLevel = 3;
-    else if (manualMilestones.test10)                      confirmedLevel = 2;
-    else if (maxSitadis > 0)                                confirmedLevel = 1;
-    else                                                    confirmedLevel = 0;
+    if      (manualMilestones.testOrbus && maxChinuch > 0)                 confirmedLevel = 6;
+    else if (manualMilestones.testOrbus)                                   confirmedLevel = 5;
+    else if (manualMilestones[_finalCheckKey])                             confirmedLevel = 4;
+    else if (manualMilestones.test30 && _thrSitadisTarget > 30)            confirmedLevel = 3;
+    else if (manualMilestones.test10 && _thrSitadisTarget > 10)            confirmedLevel = 2;
+    else if (maxSitadis > 0)                                               confirmedLevel = 1;
+    else                                                                   confirmedLevel = 0;
     const LEVEL_LABELS = ['טרם התחיל','שלב טכני','שלב תפעולי','שלב מסחרי','השתלמות אורבוס','מוכן לחניכה','בחניכה'];
     let stage = LEVEL_LABELS[confirmedLevel];
 
@@ -29723,11 +29821,14 @@ function _generateTraineeSummary() {
     // הבא הגיע אוטומטית (לפי מספר שיעורים) אבל טרם סומן ידנית ע"י מנהל
     // כ"עבר בפועל". מ-#250 ואילך זה קובע דלי נפרד ("⏳ ממתין לטסט X"),
     // לא רק צביעת שם בכתום בתוך הדלי הבא.
+    const _finalLabel = _thrSitadisTarget === 50 ? '⏳ ממתין לטסט 50' : ('⏳ ממתין לטסט יעד (' + _thrSitadisTarget + ')');
     let pendingTest = false;
-    if      (confirmedLevel === 1 && maxSitadis >= 10)            { pendingTest = true; stage = '⏳ ממתין לטסט 10'; }
-    else if (confirmedLevel === 2 && maxSitadis >= 30)            { pendingTest = true; stage = '⏳ ממתין לטסט 30'; }
-    else if (confirmedLevel === 3 && maxSitadis >= 50)            { pendingTest = true; stage = '⏳ ממתין לטסט 50'; }
-    else if (confirmedLevel === 4 && maxOrbus  >= _thrOrbGateSum) { pendingTest = true; stage = '⏳ ממתין לטסט אורבוס'; }
+    if      (confirmedLevel === 1 && _thrSitadisTarget > 10  && maxSitadis >= 10)              { pendingTest = true; stage = '⏳ ממתין לטסט 10'; }
+    else if (confirmedLevel === 1 && _thrSitadisTarget <= 10 && maxSitadis >= _thrSitadisTarget) { pendingTest = true; stage = _finalLabel; }
+    else if (confirmedLevel === 2 && _thrSitadisTarget > 30  && maxSitadis >= 30)              { pendingTest = true; stage = '⏳ ממתין לטסט 30'; }
+    else if (confirmedLevel === 2 && _thrSitadisTarget <= 30 && maxSitadis >= _thrSitadisTarget) { pendingTest = true; stage = _finalLabel; }
+    else if (confirmedLevel === 3 && maxSitadis >= _thrSitadisTarget)                          { pendingTest = true; stage = _finalLabel; }
+    else if (confirmedLevel === 4 && maxOrbus  >= _thrOrbGateSum)                              { pendingTest = true; stage = '⏳ ממתין לטסט אורבוס'; }
 
 
     // Risk Score
@@ -29786,6 +29887,7 @@ function _generateTraineeSummary() {
       name:            t.name,
       lessonCount:     lessons.length,
       maxSitadis,
+      sitadisTarget:   _thrSitadisTarget,
       maxOrbus,
       extraHoursCount,
       avgScore:        avgScore  !== null ? +avgScore.toFixed(2)  : null,
@@ -30289,12 +30391,12 @@ function _renderTraineeSummaryPanel() {
   var progressList = (summary.perTrainee || []).slice().sort(function(a, b) { return (b.maxSitadis || 0) - (a.maxSitadis || 0); });
   if (progressList.length) {
     function _tsProgRow(t) {
-      var pct = Math.round(((t.maxSitadis || 0) / 50) * 100);
+      var pct = Math.min(100, Math.round(((t.maxSitadis || 0) / (t.sitadisTarget || 50)) * 100));
       var dot = (t.avgScore === null || t.avgScore === undefined) ? '#bbb' : (t.avgScore >= 8 ? '#27ae60' : t.avgScore >= 5 ? '#e67e22' : '#e74c3c');
       return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;">'
         + '<span style="width:130px;font-size:12px;color:#333;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + _esc(t.name) + '</span>'
         + '<div style="flex:1;height:11px;background:#eef1f7;border-radius:4px;overflow:hidden;"><div style="height:100%;width:' + pct + '%;background:#4a7fd6;border-radius:4px;"></div></div>'
-        + '<span style="width:36px;font-size:11px;color:#666;text-align:left;">' + (t.maxSitadis || 0) + '/50</span>'
+        + '<span style="width:36px;font-size:11px;color:#666;text-align:left;">' + (t.maxSitadis || 0) + '/' + (t.sitadisTarget || 50) + '</span>'
         + '<span style="width:8px;height:8px;border-radius:50%;background:' + dot + ';flex-shrink:0;"></span>'
         + '</div>';
     }
@@ -30680,6 +30782,9 @@ function _resetTraineeSummaryConfig() {
 
     <!-- 2026-08-30, לפי בקשת לביא: מציג הודעה כשנפתח במצב "הוספה לטופס קיים" -->
     <div id="ur-addmode-banner" style="display:none;margin:0 20px 10px;padding:8px 12px;background:#fff8ee;border:1px solid #f5d9a8;border-radius:8px;font-size:12.5px;color:#8a6d1a;"></div>
+
+    <!-- 2026-10-01, #255, לפי בקשת לביא: התרעה ויזואלית כששדה התאריך אינו היום הנוכחי -->
+    <div id="ur-notoday-banner" style="display:none;margin:0 20px 10px;padding:8px 12px;background:#fdf2f2;border:1.5px solid #e74c3c;border-radius:8px;font-size:12.5px;font-weight:bold;color:#c0392b;"></div>
 
     <!-- Section A: Day Summary -->
     <div class="unified-report-section">
