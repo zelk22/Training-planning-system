@@ -14,7 +14,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 183</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 184</title>
 
 <style>
 
@@ -1437,7 +1437,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 247;
+  const APP_VERSION = 248;
 
   // 2026-09-07, לפי בקשת לביא: היה קשה לבדוק באיזו גרסה הדפדפן בפועל טוען
   // (כותרת הטאב נחתכת כשיש הרבה טאבים פתוחים, ואי אפשר תמיד לראות "DEPLOYED
@@ -29414,7 +29414,22 @@ function _updateTraineeBtnVisibility() {
   // tab switch/init, even though _renderTraineeSummaryPanel() allows them (recurring bug).
   const summaryPanel = document.getElementById('trainee-summary-panel');
   if (summaryPanel) {
-    if (_isAdmin || _isInstr) { try { _renderTraineeSummaryPanel(); } catch(e) {} }
+    if (_isAdmin || _isInstr) {
+      try { _renderTraineeSummaryPanel(); } catch(e) {}
+      // 2026-10-01, #257, לפי בקשת לביא: _milestonePassMap נטען פעם אחת בלבד
+      // בעליית האפליקציה (_doInitialLoad) — אם בוחן סימן "עבר" בשיעור טסט
+      // בסשן/מכשיר נפרד אחרי שהמנהל כבר פתח את האפליקציה, הדשבורד של המנהל
+      // המשיך להציג "ממתין לטסט" גם אחרי שהבוחן כבר עדכן (עד רענון מלא F5,
+      // שאין לו אפילו כפתור ברור). כעת מתרענן ברקע בכל כניסה/חזרה לסעיף
+      // חניכים, ואז מרנדר שוב עם נתונים עדכניים — בלי לחסום את הרנדור הראשוני.
+      Promise.all([
+        (typeof _loadMilestonePassMap === 'function') ? _loadMilestonePassMap() : Promise.resolve(),
+        (typeof TraineeSystem !== 'undefined' && typeof TraineeSystem.loadCourses === 'function') ? TraineeSystem.loadCourses() : Promise.resolve()
+      ]).then(() => {
+        window._traineeSummaryCache = null;
+        try { _renderTraineeSummaryPanel(); } catch(e) {}
+      }).catch(() => {});
+    }
     // 2026-09-14: חונך — _applyTraineeSubViewVisibility() מטפלת גם בהסתרת
     // סרגל הטוגל וגם בהצגת תיקי החניכים (במקום סתם panel.style.display='none'
     // בלבד, שהיה משאיר את הסרגל/תיקים במצב-תצוגה שאריתי ממקדימה-קודמת כמנהל/מדריך).
