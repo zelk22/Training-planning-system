@@ -14,7 +14,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 185</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 186</title>
 
 <style>
 
@@ -1437,7 +1437,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 249;
+  const APP_VERSION = 250;
 
   // 2026-09-07, לפי בקשת לביא: היה קשה לבדוק באיזו גרסה הדפדפן בפועל טוען
   // (כותרת הטאב נחתכת כשיש הרבה טאבים פתוחים, ואי אפשר תמיד לראות "DEPLOYED
@@ -30053,8 +30053,10 @@ function _toggleTsBucket(kind, key) {
 // 2026-10-04, #258, לפי בקשת לביא: ריחוף עכבר (מחשב בלבד) על פיל "התפלגות
 // שלבים/רמות" — מציג רשימת שמות בלי ללחוץ. אותה לוגיקת סינון בדיוק כמו
 // _toggleTsBucket (לא כפול-קוד — רק תצוגה שונה: צף ליד הסמן, לא accordion).
+let _tsHoverTipHideTimer = null;
 function _tsShowHoverTip(ev, kind, key) {
   if (!window.matchMedia || !window.matchMedia('(hover:hover) and (pointer:fine)').matches) return;
+  if (_tsHoverTipHideTimer) { clearTimeout(_tsHoverTipHideTimer); _tsHoverTipHideTimer = null; }
   const tip = document.getElementById('ts-hover-tip');
   if (!tip) return;
   const list = (window._tsPerTrainee || []).filter(function(t) {
@@ -30071,17 +30073,39 @@ function _tsShowHoverTip(ev, kind, key) {
     : '<div class="ts-hover-empty">אין חניכים</div>';
   const r = ev.currentTarget.getBoundingClientRect();
   tip.style.display = 'block';
-  // מיקום מתחת לפיל; אם קרוב מדי לתחתית המסך — מוצג מעליו במקום.
-  const topBelow = r.bottom + 6;
-  const fitsBelow = (topBelow + 200) < window.innerHeight;
-  tip.style.top = (fitsBelow ? topBelow : (r.top - 6)) + 'px';
+  // 2026-10-04, #258 תיקון: גובה דינמי לפי המקום הפנוי בפועל מעל/מתחת לפיל —
+  // כדי שרשימות קצרות-בינוניות יוצגו *במלואן* בלי גלילה כלל; גלילה (overflow-y:auto)
+  // נשארת רק כרשת-ביטחון לרשימות ארוכות במיוחד שבאמת לא יכולות להיכנס למסך.
+  const margin = 10;
+  const spaceBelow = window.innerHeight - r.bottom - margin;
+  const spaceAbove = r.top - margin;
+  const fitsBelow = spaceBelow >= Math.min(260, spaceAbove + 9999) || spaceBelow >= spaceAbove;
+  tip.style.maxHeight = Math.max(80, (fitsBelow ? spaceBelow : spaceAbove)) + 'px';
+  tip.style.top = (fitsBelow ? (r.bottom + 6) : (r.top - 6)) + 'px';
   tip.style.transform = fitsBelow ? '' : 'translateY(-100%)';
   tip.style.right = Math.max(8, window.innerWidth - r.right) + 'px';
 }
-function _tsHideHoverTip() {
+// 2026-10-04, #258 תיקון: לביא דיווח שהעכבר לא "מצליח לסמן את הגלילה" — השורש:
+// mouseleave על הפיל ירה מיד כשהעכבר זז לכיוון הטולטיפ עצמו (אין overlap בין
+// השניים), כך שהטולטיפ נסגר *לפני* שהעכבר בכלל מגיע אליו. תוקן בשני חלקים:
+// 1) השהיה קצרה לפני סגירה בפועל (_tsScheduleHideHoverTip), כדי לתת לעכבר זמן
+//    לנוע מהפיל לטולטיפ בלי שהוא ייסגר תוך כדי המעבר.
+// 2) הטולטיפ עצמו מבטל את ההשהיה כשנכנסים אליו (_tsCancelHideHoverTip) — כך
+//    שאפשר לגלול בתוכו (אם בכל זאת נדרשת גלילה ברשימה ארוכה) בלי שהוא ייעלם.
+function _tsScheduleHideHoverTip() {
+  if (_tsHoverTipHideTimer) clearTimeout(_tsHoverTipHideTimer);
+  _tsHoverTipHideTimer = setTimeout(_tsHideHoverTipNow, 180);
+}
+function _tsCancelHideHoverTip() {
+  if (_tsHoverTipHideTimer) { clearTimeout(_tsHoverTipHideTimer); _tsHoverTipHideTimer = null; }
+}
+function _tsHideHoverTipNow() {
   const tip = document.getElementById('ts-hover-tip');
   if (tip) tip.style.display = 'none';
+  _tsHoverTipHideTimer = null;
 }
+// שם ישן נשמר כ-alias (נקרא ממקומות קיימים) — מתנהג כעת כסגירה-מתוזמנת, לא מיידית.
+function _tsHideHoverTip() { _tsScheduleHideHoverTip(); }
 
 // 2026-08-19: אזור "התרעות מידע למנהל" מתקפל — מכווץ כברירת מחדל, בנייה עצלה בפתיחה
 function _toggleInfoAlerts() {
@@ -30330,12 +30354,12 @@ function _renderTraineeSummaryPanel() {
     + '@media (max-width:700px){#trainee-summary-panel .ts-dist-milestone-row{grid-template-columns:1fr;}#trainee-summary-panel .ts-milestone-col .ts-section-card{height:auto;}}'
     // 2026-10-04, #258, לפי בקשת לביא: ריחוף עכבר (מחשב בלבד — לא מגע) על פילי
     // "התפלגות שלבים/רמות" מציג את שמות החניכים (+ מספר שיעור) בלי צורך ללחיצה.
-    + '#ts-hover-tip{position:fixed;display:none;background:white;border:1px solid #d8dde3;border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.12);padding:6px 0;min-width:190px;max-width:260px;max-height:260px;overflow-y:auto;z-index:9999;}'
+    + '#ts-hover-tip{position:fixed;display:none;background:white;border:1px solid #d8dde3;border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.12);padding:6px 0;min-width:190px;max-width:260px;overflow-y:auto;z-index:9999;}'
     + '#ts-hover-tip .ts-hover-row{padding:5px 14px;font-size:12.5px;display:flex;justify-content:space-between;gap:12px;white-space:nowrap;}'
     + '#ts-hover-tip .ts-hover-row:hover{background:#f5f7fa;}'
     + '#ts-hover-tip .ts-hover-empty{padding:8px 14px;font-size:12px;color:#aaa;}'
     + '</style>');
-  h.push('<div id="ts-hover-tip"></div>');
+  h.push('<div id="ts-hover-tip" onmouseenter="try{_tsCancelHideHoverTip();}catch(e){}" onmouseleave="try{_tsScheduleHideHoverTip();}catch(e){}"></div>');
   h.push(_tsSectionOpen('📊','סטטוס כללי','#ebf5fb','#3498db','#2471a3'));
   h.push(_tsSectionHeadClose());
   var kpis=[
