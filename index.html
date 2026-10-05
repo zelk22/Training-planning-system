@@ -14,7 +14,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 184</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 185</title>
 
 <style>
 
@@ -1437,7 +1437,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 248;
+  const APP_VERSION = 249;
 
   // 2026-09-07, לפי בקשת לביא: היה קשה לבדוק באיזו גרסה הדפדפן בפועל טוען
   // (כותרת הטאב נחתכת כשיש הרבה טאבים פתוחים, ואי אפשר תמיד לראות "DEPLOYED
@@ -30050,6 +30050,39 @@ function _toggleTsBucket(kind, key) {
   cont.style.display = 'block';
 }
 
+// 2026-10-04, #258, לפי בקשת לביא: ריחוף עכבר (מחשב בלבד) על פיל "התפלגות
+// שלבים/רמות" — מציג רשימת שמות בלי ללחוץ. אותה לוגיקת סינון בדיוק כמו
+// _toggleTsBucket (לא כפול-קוד — רק תצוגה שונה: צף ליד הסמן, לא accordion).
+function _tsShowHoverTip(ev, kind, key) {
+  if (!window.matchMedia || !window.matchMedia('(hover:hover) and (pointer:fine)').matches) return;
+  const tip = document.getElementById('ts-hover-tip');
+  if (!tip) return;
+  const list = (window._tsPerTrainee || []).filter(function(t) {
+    if (kind === 'stage') return t.stage === key;
+    return _levelOf(t) === key;
+  });
+  tip.innerHTML = list.length
+    ? list.map(function(t) {
+        const metric = kind === 'stage'
+          ? ((t.maxSitadis || 0) + '/' + (t.sitadisTarget || 50))
+          : (t.avgScore != null ? t.avgScore.toFixed(1) : '—');
+        return '<div class="ts-hover-row"><span>' + _esc(t.name) + '</span><span style="color:#999;">' + metric + '</span></div>';
+      }).join('')
+    : '<div class="ts-hover-empty">אין חניכים</div>';
+  const r = ev.currentTarget.getBoundingClientRect();
+  tip.style.display = 'block';
+  // מיקום מתחת לפיל; אם קרוב מדי לתחתית המסך — מוצג מעליו במקום.
+  const topBelow = r.bottom + 6;
+  const fitsBelow = (topBelow + 200) < window.innerHeight;
+  tip.style.top = (fitsBelow ? topBelow : (r.top - 6)) + 'px';
+  tip.style.transform = fitsBelow ? '' : 'translateY(-100%)';
+  tip.style.right = Math.max(8, window.innerWidth - r.right) + 'px';
+}
+function _tsHideHoverTip() {
+  const tip = document.getElementById('ts-hover-tip');
+  if (tip) tip.style.display = 'none';
+}
+
 // 2026-08-19: אזור "התרעות מידע למנהל" מתקפל — מכווץ כברירת מחדל, בנייה עצלה בפתיחה
 function _toggleInfoAlerts() {
   var body  = document.getElementById('ts-infoalerts-body');
@@ -30295,7 +30328,14 @@ function _renderTraineeSummaryPanel() {
     + '#trainee-summary-panel .ts-milestone-col{height:100%;box-sizing:border-box;}'
     + '#trainee-summary-panel .ts-milestone-col .ts-section-card{height:100%;box-sizing:border-box;margin-bottom:0;}'
     + '@media (max-width:700px){#trainee-summary-panel .ts-dist-milestone-row{grid-template-columns:1fr;}#trainee-summary-panel .ts-milestone-col .ts-section-card{height:auto;}}'
+    // 2026-10-04, #258, לפי בקשת לביא: ריחוף עכבר (מחשב בלבד — לא מגע) על פילי
+    // "התפלגות שלבים/רמות" מציג את שמות החניכים (+ מספר שיעור) בלי צורך ללחיצה.
+    + '#ts-hover-tip{position:fixed;display:none;background:white;border:1px solid #d8dde3;border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.12);padding:6px 0;min-width:190px;max-width:260px;max-height:260px;overflow-y:auto;z-index:9999;}'
+    + '#ts-hover-tip .ts-hover-row{padding:5px 14px;font-size:12.5px;display:flex;justify-content:space-between;gap:12px;white-space:nowrap;}'
+    + '#ts-hover-tip .ts-hover-row:hover{background:#f5f7fa;}'
+    + '#ts-hover-tip .ts-hover-empty{padding:8px 14px;font-size:12px;color:#aaa;}'
     + '</style>');
+  h.push('<div id="ts-hover-tip"></div>');
   h.push(_tsSectionOpen('📊','סטטוס כללי','#ebf5fb','#3498db','#2471a3'));
   h.push(_tsSectionHeadClose());
   var kpis=[
@@ -30331,7 +30371,7 @@ function _renderTraineeSummaryPanel() {
     // (אושרו בפועל) למעלה, וכל ה"⏳ ממתינים לטסט" ביחד למטה, מופרדות בקו דק.
     var pColor=['\#d68910','\#fdf6e3'];
     var pOrder=['⏳ ממתין לטסט 10','⏳ ממתין לטסט 30','⏳ ממתין לטסט 50','⏳ ממתין לטסט אורבוס'];
-    function _stageChip(s,c,dashed){var bd=dashed?'1.5px dashed ':'1px solid ';return '<button onclick="try{_toggleTsBucket(\'stage\',\''+s+'\');}catch(e){}" style="width:auto;margin:0;cursor:pointer;display:inline-flex;align-items:center;gap:6px;background:'+c[1]+';border:'+bd+c[0]+';border-radius:20px;padding:4px 12px;font-family:inherit;"><span style="font-size:13px;font-weight:bold;color:'+c[0]+';">'+byStage[s]+'</span><span style="font-size:12px;color:#555;">'+s+'</span></button>';}
+    function _stageChip(s,c,dashed){var bd=dashed?'1.5px dashed ':'1px solid ';return '<button onclick="try{_toggleTsBucket(\'stage\',\''+s+'\');}catch(e){}" onmouseenter="try{_tsShowHoverTip(event,\'stage\',\''+s+'\');}catch(e){}" onmouseleave="try{_tsHideHoverTip();}catch(e){}" style="width:auto;margin:0;cursor:pointer;display:inline-flex;align-items:center;gap:6px;background:'+c[1]+';border:'+bd+c[0]+';border-radius:20px;padding:4px 12px;font-family:inherit;"><span style="font-size:13px;font-weight:bold;color:'+c[0]+';">'+byStage[s]+'</span><span style="font-size:12px;color:#555;">'+s+'</span></button>';}
     distHtml.push(_tsSectionOpen('📊','התפלגות שלבים <span style="font-weight:400;color:#aaa;font-size:11px;">(לחיצה מציגה חניכים)</span>','#ebf5fb','#3498db','#2471a3'));
     distHtml.push(_tsSectionHeadClose());
     var stageRow=sOrder.filter(function(s){return byStage[s];});
@@ -30363,7 +30403,7 @@ function _renderTraineeSummaryPanel() {
     distHtml.push('<button onclick="try{openAllNotesView();}catch(e){}" style="width:auto;margin:0;background:#2980b9;color:#fff;border:none;border-radius:14px;padding:4px 12px;font-size:11px;font-weight:bold;cursor:pointer;font-family:inherit;white-space:nowrap;">📝 כל ההערות</button>');
     distHtml.push(_tsSectionHeadClose());
     distHtml.push('<div style="display:flex;flex-wrap:wrap;gap:8px;">');
-    lOrder.forEach(function(s){var n=levelDist[s];if(!n)return;var c=lColors[s];distHtml.push('<button onclick="try{_toggleTsBucket(\'level\',\''+s+'\');}catch(e){}" style="width:auto;margin:0;cursor:pointer;display:inline-flex;align-items:center;gap:6px;background:'+c[1]+';border:1px solid '+c[0]+';border-radius:20px;padding:4px 12px;font-family:inherit;"><span style="font-size:13px;font-weight:bold;color:'+c[0]+';">'+n+'</span><span style="font-size:12px;color:#555;">'+s+'</span></button>');});
+    lOrder.forEach(function(s){var n=levelDist[s];if(!n)return;var c=lColors[s];distHtml.push('<button onclick="try{_toggleTsBucket(\'level\',\''+s+'\');}catch(e){}" onmouseenter="try{_tsShowHoverTip(event,\'level\',\''+s+'\');}catch(e){}" onmouseleave="try{_tsHideHoverTip();}catch(e){}" style="width:auto;margin:0;cursor:pointer;display:inline-flex;align-items:center;gap:6px;background:'+c[1]+';border:1px solid '+c[0]+';border-radius:20px;padding:4px 12px;font-family:inherit;"><span style="font-size:13px;font-weight:bold;color:'+c[0]+';">'+n+'</span><span style="font-size:12px;color:#555;">'+s+'</span></button>');});
     distHtml.push('</div><div id="ts-level-detail" style="display:none;margin-top:10px;padding-top:10px;border-top:1px dashed #dee2e6;"></div>');
     // 2026-09-03, לפי בקשת לביא: "אין חניכים מתקשים" הפך מכרטיס נפרד ברוחב מלא
     // (שתופס שורה שלמה ותמיד תפוסה) להערה קטנה כאן, בתוך "התפלגות רמות" עצמה —
