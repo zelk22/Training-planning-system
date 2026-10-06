@@ -14,7 +14,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 186</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 187</title>
 
 <style>
 
@@ -1437,7 +1437,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 250;
+  const APP_VERSION = 251;
 
   // 2026-09-07, לפי בקשת לביא: היה קשה לבדוק באיזו גרסה הדפדפן בפועל טוען
   // (כותרת הטאב נחתכת כשיש הרבה טאבים פתוחים, ואי אפשר תמיד לראות "DEPLOYED
@@ -5538,7 +5538,7 @@ window.TraineeSystem = {
         const container = this.$('det-milestones');
         if (!container) return;
         const _ms = window._milestonePassMap || {};
-        const tms = _ms[String(t.id)] || {};
+        const tms = _ms[this._fbKey(t.id)] || {}; // 2026-10-06, #259: מפתח מסונן, ר' _toggleMilestonePass
         // Task 5: compute configurable thresholds dynamically
         const _thr10  = _getMilestoneThreshold('test10', 10);
         const _thr30  = _getMilestoneThreshold('test30', 30);
@@ -7737,7 +7737,7 @@ window.TraineeSystem = {
         }
         const _ms = window._milestonePassMap || {};
         container.innerHTML = this.trainees.map(t => {
-            const tms = _ms[String(t.id)] || {};
+            const tms = _ms[this._fbKey(t.id)] || {}; // 2026-10-06, #259
             const badges = ['test10','test30','test50','testOrbus'].map(k => {
                 const passed = tms[k] === true;
                 const label  = {test10:'טסט 10', test30:'טסט 30', test50:'טסט 50', testOrbus:'טסט אורבוס'}[k];
@@ -7775,16 +7775,33 @@ window.TraineeSystem = {
 
     async _toggleMilestonePass(traineeId, key) {
         if (!window._milestonePassMap) window._milestonePassMap = {};
-        if (!window._milestonePassMap[traineeId]) window._milestonePassMap[traineeId] = {};
-        const cur = window._milestonePassMap[traineeId][key] === true;
-        window._milestonePassMap[traineeId][key] = !cur;
+        // 2026-10-06, #259, לפי בקשת לביא: חניכים שה-id שלהם נוצר פעם (לפני
+        // התיקון ב-#67 לקורסים) דרך Date.now()+Math.random() מכיל נקודה עשרונית
+        // (למשל 1786896561112.163) — זה ערך לגיטימי ל-t.id עצמו (לא נוגעים בו,
+        // משמש בכל מקום אחר באפליקציה), אבל Firebase RTDB אוסר "." במפתח נתיב,
+        // כך ש-.set()/.remove() כאן נכשלו בשקט (רק console.warn), אף פעם לא
+        // הגיעו ל-Firebase בפועל — וה-localStorage המקומי "הסתיר" את זה כי
+        // הדשבורד הקורא מאותו דפדפן המשיך להיראות תקין. מכשיר/דפדפן אחר, שקורא
+        // רק מ-Firebase, המשיך להראות "טרם עבר" לנצח. התיקון: אותו הלפר
+        // _fbKey שכבר קיים ומטפל בדיוק בזה לנתיב הקורסים (fix #67) — כעת גם
+        // כמפתח הפנימי של _milestonePassMap עצמו (לא רק בנתיב Firebase), כדי
+        // שקריאה/כתיבה תמיד יתאימו לאותו מפתח, בלי תלות אם ה-id "נקי" או לא.
+        const fbKey = this._fbKey(traineeId);
+        if (!window._milestonePassMap[fbKey]) window._milestonePassMap[fbKey] = {};
+        const cur = window._milestonePassMap[fbKey][key] === true;
+        window._milestonePassMap[fbKey][key] = !cur;
         // Save to Firebase: settings/milestones/{traineeId}/{key}
         if (window._fbDb) {
             try {
-                const ref = window._fbDb.ref('settings/milestones/' + traineeId + '/' + key);
+                const ref = window._fbDb.ref('settings/milestones/' + fbKey + '/' + key);
                 if (!cur) { await ref.set(true); }
                 else       { await ref.remove(); }
-            } catch(e) { console.warn('milestone toggle Firebase:', e); }
+            } catch(e) {
+                console.warn('milestone toggle Firebase:', e);
+                // 2026-10-06, #259: קודם זה היה שקט לגמרי — localStorage "הסתיר" כשלים
+                // כאלה, אז הם לא נראו עד שמכשיר אחר קרא רק מ-Firebase. מעכשיו גלוי.
+                if (typeof showToast === 'function') showToast('⚠️ הסימון נשמר רק מקומית — לא עלה ל-Firebase (ר׳ קונסול)', 'warning');
+            }
         }
         // Also save to localStorage backup
         try { localStorage.setItem('v100_milestones', JSON.stringify(window._milestonePassMap)); } catch(e) {}
@@ -8940,13 +8957,19 @@ function _testDefByMission(mission){ return TEST_DEFS.find(d => d.mission === mi
 // מ-TraineeSystem.saveLesson.
 async function _setMilestonePassExplicit(traineeId, key, value) {
     if (!window._milestonePassMap) window._milestonePassMap = {};
-    if (!window._milestonePassMap[traineeId]) window._milestonePassMap[traineeId] = {};
-    window._milestonePassMap[traineeId][key] = !!value;
+    // 2026-10-06, #259: ר' הערה מפורטת ב-TraineeSystem._toggleMilestonePass —
+    // אותו תיקון בדיוק, גם כאן (נתיב ה"סימון אוטומטי" כשבוחן מתעד "עבר").
+    const fbKey = (typeof TraineeSystem !== 'undefined' && TraineeSystem._fbKey) ? TraineeSystem._fbKey(traineeId) : String(traineeId).replace(/[.#$/\[\]]/g, '_');
+    if (!window._milestonePassMap[fbKey]) window._milestonePassMap[fbKey] = {};
+    window._milestonePassMap[fbKey][key] = !!value;
     if (window._fbDb) {
         try {
-            const ref = window._fbDb.ref('settings/milestones/' + traineeId + '/' + key);
+            const ref = window._fbDb.ref('settings/milestones/' + fbKey + '/' + key);
             if (value) { await ref.set(true); } else { await ref.remove(); }
-        } catch(e) { console.warn('milestone auto-set Firebase:', e); }
+        } catch(e) {
+            console.warn('milestone auto-set Firebase:', e);
+            if (typeof showToast === 'function') showToast('⚠️ סימון טסט אוטומטי נשמר רק מקומית — לא עלה ל-Firebase (ר׳ קונסול)', 'warning');
+        }
     }
     try { localStorage.setItem('v100_milestones', JSON.stringify(window._milestonePassMap)); } catch(e) {}
     window._traineeSummaryCache = null;
@@ -9834,16 +9857,41 @@ async function _loadMilestonePassMap() {
         } catch(e) { console.warn('_loadMilestonePassMap:', e); }
     }
     // localStorage fallback/merge
+    const _localOnly = []; // {fbKey, key} — קיים מקומית אך לא אושר שהגיע ל-Firebase
     try {
         const raw = localStorage.getItem('v100_milestones');
         if (raw) {
             const ls = JSON.parse(raw);
+            // 2026-10-06, #259: מפתחות ישנים ב-localStorage (מלפני התיקון) עלולים
+            // עדיין להיות במבנה ה-id הלא-מסונן (עם נקודה) — ממפים דרך _fbKey
+            // כדי שימשיכו להצטרף לאותה "דלי" כמו שדשבורד/תיק חניך קוראים ממנה.
+            const _fk = (typeof TraineeSystem !== 'undefined' && TraineeSystem._fbKey) ? TraineeSystem._fbKey : (s => String(s).replace(/[.#$/\[\]]/g, '_'));
             Object.keys(ls).forEach(tid => {
-                if (!window._milestonePassMap[tid]) window._milestonePassMap[tid] = {};
-                Object.assign(window._milestonePassMap[tid], ls[tid]);
+                const k = _fk(tid);
+                const fromFirebase = window._milestonePassMap[k] || {};
+                Object.keys(ls[tid] || {}).forEach(key => {
+                    if (ls[tid][key] === true && fromFirebase[key] !== true) _localOnly.push({ fbKey: k, key });
+                });
+                if (!window._milestonePassMap[k]) window._milestonePassMap[k] = {};
+                Object.assign(window._milestonePassMap[k], ls[tid]);
             });
         }
     } catch(e) {}
+    // 2026-10-06, #259: ריפוי-עצמי חד-פעמי — סימונים שהיו "תקועים" רק מקומית
+    // (בדיוק באג #259: id עם נקודה גרם לכשלון שקט בכתיבה ל-Firebase) מועלים
+    // כעת ברקע, בלי לחכות שלביא ילחץ שוב ידנית על כל אחד מהם בנפרד.
+    if (_localOnly.length && window._fbDb) {
+        let pushed = 0;
+        for (const { fbKey, key } of _localOnly) {
+            try {
+                await window._fbDb.ref('settings/milestones/' + fbKey + '/' + key).set(true);
+                pushed++;
+            } catch(e) { console.warn('_loadMilestonePassMap self-heal push failed:', fbKey, key, e); }
+        }
+        if (pushed && typeof showToast === 'function') {
+            showToast(`🔄 ${pushed} סימוני טסט שהיו תקועים מקומית הועלו עכשיו ל-Firebase`, 'info');
+        }
+    }
 }
 
 // Get milestone mode for a key (from TraineeSystem settings)
@@ -9877,7 +9925,10 @@ function _sitadisTarget(t) {
 
 function _hasMilestonePassed(traineeId, key, lessonCount, traineeObj) {
     // Manual override
-    if (window._milestonePassMap && window._milestonePassMap[String(traineeId)]?.[key] === true) return true;
+    // 2026-10-06, #259: ר' TraineeSystem._toggleMilestonePass — המפתח הפנימי
+    // ב-_milestonePassMap הוא כעת תמיד _fbKey(id) (מסונן), לא ה-id הגולמי.
+    const _fbk = (typeof TraineeSystem !== 'undefined' && TraineeSystem._fbKey) ? TraineeSystem._fbKey(traineeId) : String(traineeId).replace(/[.#$/\[\]]/g, '_');
+    if (window._milestonePassMap && window._milestonePassMap[_fbk]?.[key] === true) return true;
     // Auto: based on configurable lesson count threshold
     // 2026-09-09, לפי בקשת לביא: chinuch-ms הוסר (היה כפול ל-testOrbus —
     // ר' תיעוד ב-#213/#214). testOrbus נספר לפי שיעורי אורבוס (chinuch-orbus,
@@ -29705,7 +29756,7 @@ function _traineeStageIsChinuch(t) {
       .filter(l => l.mission === 'קורס מעשי אורבוס')
       .flatMap(l => l.lessonNums || []);
     const maxOrbus = orbusLessons.length ? Math.max(...orbusLessons) : 0;
-    const msEntry = passMap[String(t.id)] || {};
+    const msEntry = passMap[(typeof TraineeSystem !== 'undefined' && TraineeSystem._fbKey) ? TraineeSystem._fbKey(t.id) : String(t.id)] || {}; // 2026-10-06, #259
     // 2026-09-09, לפי בקשת לביא: chinuch-ms הוסר (כפילות ל-testOrbus). מקור
     // האמת היחיד לזכאות-לחניכה הוא כעת testOrbus (ידני או אוטומטי לפי סף אורבוס).
     const _thrOrbGate = (typeof _getMilestoneThreshold === 'function') ? _getMilestoneThreshold('chinuch-orbus', 7) : 7;
@@ -29792,7 +29843,7 @@ function _generateTraineeSummary() {
 
     // Milestones — OR-based ("הגיע בכל דרך": ידני או סף-שיעורים אוטומטי) — עדיין
     // משמש להתרעות "שעות נוספות תקועות" בלבד (למטה), לא לקביעת stage יותר.
-    const msEntry  = passMap[String(t.id)] || {};
+    const msEntry  = passMap[(typeof TraineeSystem !== 'undefined' && TraineeSystem._fbKey) ? TraineeSystem._fbKey(t.id) : String(t.id)] || {}; // 2026-10-06, #259
     const _thrOrbGateSum = (typeof _getMilestoneThreshold === 'function') ? _getMilestoneThreshold('chinuch-orbus', 7) : 7;
     // 2026-10-01, #254: _thrSitadisTarget = יעד שיעורי סיטאדיס אישי לחניך (ברירת מחדל 50).
     const _thrSitadisTarget = (typeof _sitadisTarget === 'function') ? _sitadisTarget(t) : 50;
