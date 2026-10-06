@@ -14,7 +14,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 187</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 189</title>
 
 <style>
 
@@ -1437,7 +1437,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 251;
+  const APP_VERSION = 253;
 
   // 2026-09-07, לפי בקשת לביא: היה קשה לבדוק באיזו גרסה הדפדפן בפועל טוען
   // (כותרת הטאב נחתכת כשיש הרבה טאבים פתוחים, ואי אפשר תמיד לראות "DEPLOYED
@@ -4403,6 +4403,7 @@ window.TraineeSystem = {
             <span id="det-level-badge" style="display:inline-block;margin-right:10px;vertical-align:middle;"></span>
             <p id="det-sub" style="color:#a0aec0; margin:0 0 8px; font-size:0.93em;"></p>
             <div id="det-milestones" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;"></div>
+            <div id="det-final-actions" style="display:none;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:12px;"></div>
             <div id="det-progress-chart" style="margin-bottom:14px;"></div>
 
             <div style="margin: 36px 0 10px 0;">
@@ -5107,6 +5108,8 @@ window.TraineeSystem = {
         // Update current course trainees before saving
         const cur = this.courses.find(c => c.id === this.currentCourseId);
         if (cur) cur.trainees = JSON.parse(JSON.stringify(this.trainees));
+        // 2026-10-06, #261: סגירת קורס אוטומטית כשלכל החניכים יש סטטוס סופי.
+        try { this._checkCourseAutoClose(); } catch(e) { console.warn('_checkCourseAutoClose:', e); }
 
         // Filter out temporary courses (created in day summary form but not yet confirmed)
         const coursesToSave = this.courses.filter(c => !c._temp);
@@ -5429,6 +5432,86 @@ window.TraineeSystem = {
             this.renderList();
             close();
             if (typeof showToast === 'function') showToast('👤 החניך הוסר מהרשימה — הנתונים נשמרו', 'info');
+        };
+    },
+
+    // 2026-10-06, #261, לפי בקשת לביא: "סטטוס סופי" לכל חניך = t.archived + קטגוריה
+    // ב-t.archiveReason (מנגנון קיים מ-2026-08-27: completed/dropout/transfer/other).
+    // קורס נסגר אוטומטית (status='completed') כשלכל החניכים בו יש סטטוס סופי, ונפתח
+    // מחדש אוטומטית אם נוסף אליו חניך פעיל. סטטוס 'archived' (ארכיון ידני) לא נוגעים בו.
+    // כתיבה ממוקדת לשדות המטא-דאטה בלבד (לא _saveCourses, שכותב את כל העץ — ר' fix #64).
+    _checkCourseAutoClose() {
+        const course = this.courses.find(c => c.id === this.currentCourseId);
+        if (!course || course._temp || course.status === 'archived') return;
+        const all = this.trainees || [];
+        const allFinal = all.length > 0 && all.every(t => t.archived);
+        let newStatus = null;
+        if (allFinal && course.status !== 'completed') newStatus = 'completed';
+        else if (!allFinal && course.status === 'completed') newStatus = 'active';
+        if (!newStatus) return;
+        course.status = newStatus;
+        course.completedAt = newStatus === 'completed' ? Date.now() : null;
+        const isDemo = typeof _isDemoMode === 'function' && _isDemoMode();
+        if (this.coursesRef && !isDemo) {
+            this.coursesRef.child(course.id).update({ status: newStatus, completedAt: course.completedAt })
+                .catch(e => {
+                    console.warn('course auto-close Firebase:', e);
+                    if (typeof showToast === 'function') showToast('⚠️ סטטוס הקורס עודכן רק מקומית — לא עלה ל-Firebase', 'warning');
+                });
+        }
+        try { localStorage.setItem('trainee_courses', JSON.stringify(this.courses.filter(c => !c._temp))); } catch(e) {}
+        try { this._updateCourseSelector(); } catch(e) {}
+        if (typeof showToast === 'function') {
+            showToast(newStatus === 'completed'
+                ? `🏁 הקורס "${course.name}" הסתיים — לכל החניכים נקבע סטטוס סופי`
+                : `🔄 הקורס "${course.name}" נפתח מחדש — יש בו שוב חניך פעיל`, newStatus === 'completed' ? 'success' : 'info');
+        }
+    },
+
+    // 2026-10-06, #261: סימון ידני "סיים הכשרה בהצלחה" — לכל חניך (לא רק למי שלא
+    // ממשיך לחניכה), כי בפועל החונכים לא מתעדים כרגע את שלב החניכה דרך המערכת.
+    // אותו מנגנון בדיוק כמו "הסרה" עם קטגוריה completed — רק בניסוח של הצלחה.
+    completeTraining(id) {
+        if (typeof currentRole !== 'undefined' && currentRole !== 'admin') {
+            showToast('רק מנהל יכול לסמן סיום הכשרה', 'warning');
+            return;
+        }
+        const t = this.trainees.find(x => String(x.id) === String(id));
+        if (!t) return;
+        if (!confirm(`לסמן את ${t.name} כ"סיים הכשרה בהצלחה"?\n\nזה סטטוס סופי: החניך יוצא מרשימת הפעילים ונספר כמסיים בדשבורד ובדוח הקורס. כל הנתונים וההיסטוריה נשמרים.`)) return;
+        t.archived = true;
+        t.archivedAt = Date.now();
+        t.archiveReason = { category: 'completed', categoryLabel: 'סיום מוצלח', text: '', by: (typeof currentUserName !== 'undefined' ? currentUserName : '') };
+        this.persist();
+        this.showMainView();
+        this.renderList();
+        if (typeof showToast === 'function') showToast(`🎓 ${t.name} — סיים הכשרה בהצלחה`, 'success');
+    },
+
+    // 2026-10-06, #261: שורת פעולות סופיות בתיק חניך (מנהל בלבד) — כפתור סיום הכשרה
+    // + "ממשיך לשלב חניכה" (t.noChinuch; ברירת מחדל: ממשיך — שום דבר לא משתנה לרוב החניכים).
+    _renderDetailFinalActions(t) {
+        const el = this.$('det-final-actions');
+        if (!el) return;
+        const isAdmin = typeof currentRole !== 'undefined' && currentRole === 'admin';
+        if (!isAdmin || !t) { el.innerHTML = ''; el.style.display = 'none'; return; }
+        el.style.display = 'flex';
+        const noChinuch = !!t.noChinuch;
+        const orbusDone = (typeof _hasMilestonePassed === 'function') && _hasMilestonePassed(t.id, 'testOrbus', 0, t);
+        const hint = (noChinuch && orbusDone)
+            ? '<span style="font-size:12px;color:#1e8449;font-weight:bold;">🎓 השלים את מסלול ההכשרה שהוגדר לו — ניתן לסמן סיום</span>'
+            : '';
+        el.innerHTML =
+            '<button type="button" data-ts-complete="1" style="width:auto;margin:0;padding:6px 14px;background:#eafaf1;color:#1e8449;border:1.5px solid #27ae60;border-radius:8px;cursor:pointer;font-size:12.5px;font-weight:bold;font-family:inherit;">✅ סיים הכשרה בהצלחה</button>'
+          + '<label style="display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:#4a5568;cursor:pointer;margin:0;">'
+          +   '<input type="checkbox" id="ts-nochinuch-chk" style="width:auto;margin:0;" ' + (noChinuch ? '' : 'checked') + '> ממשיך לשלב חניכה</label>'
+          + hint;
+        el.querySelector('[data-ts-complete]').onclick = () => this.completeTraining(t.id);
+        el.querySelector('#ts-nochinuch-chk').onchange = (e) => {
+            t.noChinuch = !e.target.checked;
+            this.persist();
+            this.renderDetail();
+            if (typeof showToast === 'function') showToast(t.noChinuch ? 'מסומן: לא ממשיך לשלב חניכה' : 'מסומן: ממשיך לשלב חניכה', 'info');
         };
     },
 
@@ -5952,6 +6035,7 @@ window.TraineeSystem = {
         this.updateS2Label();
         // Render milestone status badges on detail view
         this._renderDetailMilestoneBadges(t, maxL);
+        try { this._renderDetailFinalActions(t); } catch(e) {} // 2026-10-06, #261
         // 2026-08-19: תג רמה/סטטוס (נגזרת ניקוד) על תיק החניך — היה קיים רק על
         // הכרטיס ברשימה הראשית, לא בתיק עצמו.
         try { _renderDetailLevelBadge(t); } catch(e) {}
@@ -5961,7 +6045,11 @@ window.TraineeSystem = {
 
         const orbusSection = this.$('orbus-section');
         if (orbusSection) {
-            if (maxL >= 50) {
+            // 2026-10-06, #260: זה נשאר תלוי ב-50 הגלובלי במקום ביעד האישי
+            // (_tTarget, כבר מחושב למעלה עבור det-sub/setTrain) — פוספס בסבב
+            // #254/#256. חניך עם יעד 35 שסיים (35/35) והתקדם לאורבוס לא ראה
+            // את בר ההתקדמות של האורבוס בכלל, גם עם 7/7 שיעורים.
+            if (maxL >= _tTarget) {
                 orbusSection.style.display = 'block';
                 const pct = Math.min((orbusDone.size / 7) * 100, 100);
                 this.$('orbus-bar-fill').style.width = pct + '%';
@@ -8387,7 +8475,7 @@ window.TraineeSystem = {
         const priorityLabel = {1:'ראשי', 2:'משני', 3:'שלישי'};
         sel.innerHTML = this.courses.filter(c => !c._temp).map(c => {
             const label = c.isDefault ? ` ⭐` : '';
-            const arch  = c.status === 'archived' ? ' 📦' : '';
+            const arch  = c.status === 'archived' ? ' 📦' : c.status === 'completed' ? ' 🏁' : '';
             const pLabel = priorityLabel[c.priority] ? ` [${priorityLabel[c.priority]}]` : '';
             return `<option value="${c.id}" ${c.id === this.currentCourseId ? 'selected' : ''}>
                 ${_esc(c.name)}${pLabel}${label}${arch}
@@ -8454,11 +8542,14 @@ window.TraineeSystem = {
                     👥 ${traineeCount} חניכים
                     ${isDefault ? ' &nbsp;|&nbsp; <span style="color:#27ae60;font-weight:bold;">⭐ ברירת מחדל</span>' : ''}
                     ${isArchived ? ' &nbsp;|&nbsp; <span style="color:#888;">📦 ארכיון</span>' : ''}
+                    ${course.status === 'completed' ? ' &nbsp;|&nbsp; <span style="color:#1e8449;font-weight:bold;">🏁 הסתיים' + (course.completedAt ? ' ' + new Date(course.completedAt).toLocaleDateString('he-IL') : '') + '</span>' : ''}
                   </div>
                 </div>
                 <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
                   <span style="font-size:11px;background:${isArchived?'#eee':'#e8f4fd'};color:${isArchived?'#888':'#2980b9'};
                     padding:2px 8px;border-radius:10px;font-weight:600;">${pLabel}</span>
+                  <button onclick="try{_openCourseReport('${course.id}');}catch(e){console.warn(e);}"
+                    style="padding:4px 10px;background:#2c3e50;color:white;border:none;border-radius:6px;cursor:pointer;font-size:11px;width:auto !important;">📋 דוח קורס</button>
                   ${!isDefault && !isArchived ? `<button data-ts-set-default="${course.id}"
                     style="padding:4px 10px;background:#27ae60;color:white;border:none;border-radius:6px;
                            cursor:pointer;font-size:11px;width:auto !important;">⭐ הגדר ראשי</button>` : ''}
@@ -29897,6 +29988,9 @@ function _generateTraineeSummary() {
     else if (confirmedLevel === 2 && _thrSitadisTarget <= 30 && maxSitadis >= _thrSitadisTarget) { pendingTest = true; stage = _finalLabel; }
     else if (confirmedLevel === 3 && maxSitadis >= _thrSitadisTarget)                          { pendingTest = true; stage = _finalLabel; }
     else if (confirmedLevel === 4 && maxOrbus  >= _thrOrbGateSum)                              { pendingTest = true; stage = '⏳ ממתין לטסט אורבוס'; }
+    // 2026-10-06, #261: חניך שמסומן "לא ממשיך לחניכה" ועבר את טסט האורבוס — סיים את
+    // המסלול שלו בפועל. דלי נפרד מ"מוכן לחניכה", כדי שהמנהל יזהה שנותר רק לסמן סיום.
+    if (t.noChinuch && confirmedLevel >= 5) { stage = '🎓 השלים מסלול'; pendingTest = false; }
 
 
     // Risk Score
@@ -30158,6 +30252,170 @@ function _tsHideHoverTipNow() {
 // שם ישן נשמר כ-alias (נקרא ממקומות קיימים) — מתנהג כעת כסגירה-מתוזמנת, לא מיידית.
 function _tsHideHoverTip() { _tsScheduleHideHoverTip(); }
 
+// 2026-10-06, #261, לפי בקשת לביא: דוח קורס — כמה התחילו/סיימו/נשרו, שעות נוספות/כשירות,
+// זמן ממוצע לסיום, ציונים (מסיימים מול נושרים), עמידה בטסט בניסיון ראשון, עומס לפי מדריך,
+// סיבות נשירה, וטבלת חניכים מלאה. כולל חניכים עם סטטוס סופי (archived) — זה כל הטעם.
+function _openCourseReport(courseId) {
+  if (typeof TraineeSystem === 'undefined') return;
+  const TS = TraineeSystem;
+  const course = (TS.courses || []).find(c => c.id === (courseId || TS.currentCourseId));
+  if (!course) { if (typeof showToast === 'function') showToast('לא נמצא קורס', 'warning'); return; }
+  // הקורס הפתוח כרגע: TS.trainees הוא העותק העדכני ביותר בזיכרון.
+  const trainees = (course.id === TS.currentCourseId ? (TS.trainees || []) : (course.trainees || []));
+  const isExtra = l => l.mission === 'כשירות מעשית/ שעות נוספות' || l.mission === 'שעות נוספות';
+  const isSit   = l => !l.testKey && (l.mission === 'קורס מעשי סיטאדיס' || l.mission === 'קורס מעשי' || l.mission === 'קורס');
+  const isOrb   = l => !l.testKey && l.mission === 'קורס מעשי אורבוס';
+  const catOf   = t => t.archived ? ((t.archiveReason && t.archiveReason.category) || 'other') : 'active';
+  const CAT_LABEL = { active:'פעיל', completed:'סיים בהצלחה', dropout:'נשר', transfer:'עבר מסלול/קורס', other:'אחר' };
+  const avg = arr => arr.length ? arr.reduce((a,b)=>a+b,0) / arr.length : null;
+  const fmt = (v, d) => v === null || v === undefined || isNaN(v) ? '—' : (+v).toFixed(d === undefined ? 1 : d);
+  const dayMs = 86400000;
+
+  const insMap = {};       // מדריך → {lessons, extraHours}
+  const firstAttempt = {}; // testKey → {n, pass}
+  let totalLessons = 0, extraSessions = 0, extraHours = 0, testAttempts = 0;
+  const rows = trainees.map(t => {
+    const lessons = t.lessons || [];
+    totalLessons += lessons.length;
+    let tExtraH = 0, tExtraN = 0;
+    lessons.forEach(l => {
+      const ins = l.ins || l.instructor || '—';
+      if (!insMap[ins]) insMap[ins] = { lessons: 0, extraHours: 0 };
+      insMap[ins].lessons++;
+      if (isExtra(l)) {
+        const h = parseFloat(l.extraHours) || 0;
+        tExtraN++; tExtraH += h; insMap[ins].extraHours += h;
+      }
+      if (l.testKey) testAttempts++;
+    });
+    extraSessions += tExtraN; extraHours += tExtraH;
+    // ניסיון ראשון לכל טסט (לפי תאריך)
+    const byKey = {};
+    lessons.filter(l => l.testKey).forEach(l => { (byKey[l.testKey] = byKey[l.testKey] || []).push(l); });
+    Object.keys(byKey).forEach(k => {
+      const first = byKey[k].slice().sort((a,b) => (a.date||'').localeCompare(b.date||''))[0];
+      if (!firstAttempt[k]) firstAttempt[k] = { n: 0, pass: 0 };
+      firstAttempt[k].n++;
+      if (first.testResult === 'pass') firstAttempt[k].pass++;
+    });
+    const sitNums = lessons.filter(isSit).flatMap(l => l.lessonNums || []);
+    const orbNums = lessons.filter(isOrb).flatMap(l => l.lessonNums || []);
+    const scores = lessons.map(l => (typeof _lessonScoreAvg === 'function') ? _lessonScoreAvg(l) : null).filter(v => v !== null);
+    const dates = lessons.map(l => l.date).filter(Boolean).sort();
+    const startMs = dates.length ? new Date(dates[0] + 'T12:00:00').getTime()
+                  : (course.startDate ? new Date(course.startDate + 'T12:00:00').getTime() : null);
+    const cat = catOf(t);
+    const days = (cat !== 'active' && t.archivedAt && startMs) ? Math.max(0, Math.round((t.archivedAt - startMs) / dayMs)) : null;
+    return {
+      name: t.name || '', cat, catLabel: CAT_LABEL[cat] || cat,
+      sit: sitNums.length ? Math.max(...sitNums) : 0,
+      target: (typeof _sitadisTarget === 'function') ? _sitadisTarget(t) : 50,
+      orb: orbNums.length ? Math.max(...orbNums) : 0,
+      lessons: lessons.length, extraN: tExtraN, extraH: tExtraH,
+      avgScore: avg(scores), days,
+      reason: (t.archiveReason && t.archiveReason.text) || ''
+    };
+  });
+
+  const count = c => rows.filter(r => r.cat === c).length;
+  const started = rows.length, done = count('completed'), drop = count('dropout'),
+        transfer = count('transfer'), other = count('other'), active = count('active');
+  const decided = started - active;
+  const doneRows = rows.filter(r => r.cat === 'completed');
+  const dropRows = rows.filter(r => r.cat === 'dropout');
+  const avgDays = avg(doneRows.map(r => r.days).filter(v => v !== null));
+  const avgScoreDone = avg(doneRows.map(r => r.avgScore).filter(v => v !== null));
+  const avgScoreDrop = avg(dropRows.map(r => r.avgScore).filter(v => v !== null));
+  const faN = Object.values(firstAttempt).reduce((a,b)=>a+b.n,0);
+  const faP = Object.values(firstAttempt).reduce((a,b)=>a+b.pass,0);
+  const pct = (a,b) => b ? Math.round((a/b)*100) + '%' : '—';
+  const TEST_LBL = { test10:'טסט 10', test30:'טסט 30', test50:'טסט 50', testOrbus:'טסט אורבוס' };
+
+  const statusLine = course.status === 'completed'
+    ? '🏁 הקורס הסתיים' + (course.completedAt ? ' ב-' + new Date(course.completedAt).toLocaleDateString('he-IL') : '')
+    : (course.status === 'archived' ? '📦 בארכיון' : '🟢 פעיל — ' + active + ' חניכים טרם קיבלו סטטוס סופי');
+
+  const kpi = (lbl, val, sub) => '<div style="background:#f8fafc;border-radius:10px;padding:12px;text-align:center;"><div style="font-size:11px;color:#888;margin-bottom:4px;">' + lbl + '</div><div style="font-size:21px;font-weight:bold;color:#2c3e50;">' + val + '</div>' + (sub ? '<div style="font-size:10.5px;color:#999;margin-top:2px;">' + sub + '</div>' : '') + '</div>';
+  const th = 'style="padding:6px 8px;background:#f0f4f8;border-bottom:1px solid #dde3ea;text-align:right;white-space:nowrap;font-size:12px;"';
+  const td = 'style="padding:6px 8px;border-bottom:1px solid #eef1f5;font-size:12px;"';
+  const catColor = { completed:'#1e8449', dropout:'#c0392b', transfer:'#8e44ad', other:'#7f8c8d', active:'#2980b9' };
+
+  const insRows = Object.keys(insMap).filter(k => k !== '—').sort((a,b) => insMap[b].lessons - insMap[a].lessons);
+  const body =
+    '<div style="font-size:13px;color:#555;margin-bottom:12px;">' + _esc(statusLine) + (course.startDate ? ' &nbsp;·&nbsp; תחילת קורס: ' + _esc(course.startDate) : '') + '</div>'
+  + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(125px,1fr));gap:10px;margin-bottom:16px;">'
+  +   kpi('👥 התחילו', started)
+  +   kpi('✅ סיימו בהצלחה', done, pct(done, started) + ' מהמתחילים')
+  +   kpi('🚪 נשרו', drop, 'אחוז נשירה ' + pct(drop, started))
+  +   kpi('🔀 עברו / אחר', transfer + other)
+  +   kpi('⚡ עדיין פעילים', active)
+  +   kpi('⏱️ שעות נוספות/כשירות', fmt(extraHours, 1), extraSessions + ' מפגשים')
+  +   kpi('📅 ימים ממוצע לסיום', avgDays === null ? '—' : Math.round(avgDays), 'מסיימים בלבד')
+  +   kpi('★ ציון ממוצע מסיימים', fmt(avgScoreDone), 'נושרים: ' + fmt(avgScoreDrop))
+  +   kpi('🎯 עמידה בטסט בניסיון 1', pct(faP, faN), faN + ' טסטים · ' + testAttempts + ' ניסיונות')
+  +   kpi('📚 סה"כ שיעורים מדווחים', totalLessons, started ? 'ממוצע ' + Math.round(totalLessons / started) + ' לחניך' : '')
+  + '</div>'
+  + (faN ? '<div style="font-size:12px;color:#555;margin:-6px 0 14px;">עמידה בניסיון ראשון לפי טסט: ' + Object.keys(firstAttempt).map(k => _esc(TEST_LBL[k] || k) + ' ' + pct(firstAttempt[k].pass, firstAttempt[k].n) + ' (' + firstAttempt[k].n + ')').join(' · ') + '</div>' : '')
+  + '<h4 style="margin:6px 0 8px;font-size:14px;">חניכים</h4>'
+  + '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;">'
+  +   '<tr><th ' + th + '>שם</th><th ' + th + '>סטטוס</th><th ' + th + '>סיטאדיס</th><th ' + th + '>אורבוס</th><th ' + th + '>שיעורים</th><th ' + th + '>שעות נוספות</th><th ' + th + '>ציון ממוצע</th><th ' + th + '>ימים</th></tr>'
+  +   rows.slice().sort((a,b) => (a.cat === b.cat ? a.name.localeCompare(b.name, 'he') : a.cat.localeCompare(b.cat))).map(r =>
+        '<tr><td ' + td + '>' + _esc(r.name) + '</td>'
+      + '<td ' + td + '><span style="color:' + (catColor[r.cat] || '#555') + ';font-weight:bold;">' + _esc(r.catLabel) + '</span></td>'
+      + '<td ' + td + '>' + r.sit + '/' + r.target + '</td><td ' + td + '>' + r.orb + '/7</td><td ' + td + '>' + r.lessons + '</td>'
+      + '<td ' + td + '>' + (r.extraN ? fmt(r.extraH, 1) + ' ש׳ (' + r.extraN + ')' : '—') + '</td>'
+      + '<td ' + td + '>' + fmt(r.avgScore) + '</td><td ' + td + '>' + (r.days === null ? '—' : r.days) + '</td></tr>').join('')
+  + '</table></div>'
+  + (dropRows.length ? '<h4 style="margin:16px 0 8px;font-size:14px;">סיבות נשירה</h4><ul style="margin:0;padding-right:18px;font-size:12.5px;color:#555;">'
+      + dropRows.map(r => '<li><b>' + _esc(r.name) + '</b>' + (r.reason ? ' — ' + _esc(r.reason) : ' — <span style="color:#aaa;">לא פורט</span>') + '</li>').join('') + '</ul>' : '')
+  + (insRows.length ? '<h4 style="margin:16px 0 8px;font-size:14px;">עומס לפי מדריך</h4><div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;">'
+      + '<tr><th ' + th + '>מדריך</th><th ' + th + '>שיעורים שדווחו</th><th ' + th + '>שעות נוספות/כשירות</th></tr>'
+      + insRows.map(k => '<tr><td ' + td + '>' + _esc(k) + '</td><td ' + td + '>' + insMap[k].lessons + '</td><td ' + td + '>' + (insMap[k].extraHours ? fmt(insMap[k].extraHours, 1) : '—') + '</td></tr>').join('')
+      + '</table></div>' : '');
+
+  const old = document.getElementById('ts-course-report-overlay');
+  if (old) old.remove();
+  const overlay = document.createElement('div');
+  overlay.id = 'ts-course-report-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center;';
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  overlay.innerHTML = '<div style="background:white;border-radius:16px;padding:22px 24px;width:min(900px,96vw);max-height:90vh;overflow-y:auto;direction:rtl;">'
+    + '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap;">'
+    +   '<h3 style="margin:0;">📋 דוח קורס — ' + _esc(course.name || '') + '</h3>'
+    +   '<div style="display:flex;gap:8px;">'
+    +     '<button id="ts-cr-csv" style="width:auto;margin:0;padding:6px 12px;background:#f0f4f8;border:1px solid #d5dde6;border-radius:8px;cursor:pointer;font-size:12px;">⬇️ CSV</button>'
+    +     '<button id="ts-cr-print" style="width:auto;margin:0;padding:6px 12px;background:#2c3e50;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:12px;">🖨️ הדפס / PDF</button>'
+    +     '<button id="ts-cr-close" style="width:auto;margin:0;background:none;border:none;font-size:20px;cursor:pointer;">✕</button>'
+    +   '</div></div>'
+    + '<div id="ts-cr-body">' + body + '</div></div>';
+  document.body.appendChild(overlay);
+  overlay.querySelector('#ts-cr-close').onclick = () => overlay.remove();
+  overlay.querySelector('#ts-cr-print').onclick = () => {
+    const w = window.open('', '_blank');
+    if (!w) { if (typeof showToast === 'function') showToast('הדפדפן חסם חלון קופץ — אפשר חלונות קופצים לאתר', 'warning'); return; }
+    w.document.write('<html dir="rtl"><head><meta charset="utf-8"><title>דוח קורס — ' + _esc(course.name || '') + '</title><style>body{font-family:Arial,sans-serif;padding:20px;}@media print{button{display:none}}</style></head><body><h2>📋 דוח קורס — ' + _esc(course.name || '') + '</h2>' + overlay.querySelector('#ts-cr-body').innerHTML + '</body></html>');
+    w.document.close();
+    setTimeout(() => { try { w.focus(); w.print(); } catch(e) {} }, 300);
+  };
+  overlay.querySelector('#ts-cr-csv').onclick = () => {
+    const q = v => '"' + String(v === null || v === undefined ? '' : v).replace(/"/g, '""') + '"';
+    const lines = [
+      ['קורס', course.name || ''], ['סטטוס', statusLine], ['התחילו', started], ['סיימו בהצלחה', done], ['נשרו', drop],
+      ['עברו/אחר', transfer + other], ['פעילים', active], ['שעות נוספות/כשירות', fmt(extraHours, 1)], ['מפגשי שעות נוספות', extraSessions],
+      ['ימים ממוצע לסיום', avgDays === null ? '' : Math.round(avgDays)], ['ציון ממוצע מסיימים', fmt(avgScoreDone)], ['ציון ממוצע נושרים', fmt(avgScoreDrop)],
+      ['עמידה בטסט בניסיון ראשון', pct(faP, faN)], [], 
+      ['שם','סטטוס','סיטאדיס','יעד','אורבוס','שיעורים','שעות נוספות','מפגשי שעות נוספות','ציון ממוצע','ימים','פירוט סיבה']
+    ].map(r => r.map(q).join(','));
+    rows.forEach(r => lines.push([r.name, r.catLabel, r.sit, r.target, r.orb, r.lessons, fmt(r.extraH, 1), r.extraN, fmt(r.avgScore), r.days === null ? '' : r.days, r.reason].map(q).join(',')));
+    const blob = new Blob(['\uFEFF' + lines.join('\n')], { type: 'text/csv;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'course_report_' + (course.name || course.id).replace(/[\\/:*?"<>|\s]+/g, '_') + '.csv';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  };
+}
+
 // 2026-08-19: אזור "התרעות מידע למנהל" מתקפל — מכווץ כברירת מחדל, בנייה עצלה בפתיחה
 function _toggleInfoAlerts() {
   var body  = document.getElementById('ts-infoalerts-body');
@@ -30412,6 +30670,7 @@ function _renderTraineeSummaryPanel() {
     + '</style>');
   h.push('<div id="ts-hover-tip" onmouseenter="try{_tsCancelHideHoverTip();}catch(e){}" onmouseleave="try{_tsScheduleHideHoverTip();}catch(e){}"></div>');
   h.push(_tsSectionOpen('📊','סטטוס כללי','#ebf5fb','#3498db','#2471a3'));
+  if (typeof currentRole!=='undefined'&&currentRole==='admin') h.push('<button onclick="try{_openCourseReport();}catch(e){console.warn(e);}" style="width:auto;margin:0;background:#2c3e50;color:#fff;border:none;border-radius:14px;padding:4px 12px;font-size:11px;font-weight:bold;cursor:pointer;font-family:inherit;white-space:nowrap;">📋 דוח קורס</button>'); // 2026-10-06, #261
   h.push(_tsSectionHeadClose());
   var kpis=[
     ['🎓 חניכים',     String(summary.totalTrainees),  '#2c3e50'],
@@ -30420,6 +30679,18 @@ function _renderTraineeSummaryPanel() {
   ];
   h.push('<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:10px;direction:rtl;">');
   kpis.forEach(function(k){h.push('<div style="background:#f8fafc;border-radius:10px;padding:12px;text-align:center;"><div style="font-size:11px;color:#888;margin-bottom:4px;">'+k[0]+'</div><div style="font-size:22px;font-weight:bold;color:'+k[2]+';">'+k[1]+'</div></div>');});
+  // 2026-10-06, #261, לפי בקשת לביא: מסיימים/נושרים בקורס הנוכחי (מתוך סטטוס סופי).
+  // לחיצה פותחת את רשימת החניכים שיצאו מהרשימה הפעילה (קיימת, מנהל בלבד).
+  (function(){
+    var _all=(typeof TraineeSystem!=='undefined'&&TraineeSystem.trainees)||[];
+    var _cat=function(t){return t.archived&&t.archiveReason?t.archiveReason.category:null;};
+    var _fin=_all.filter(function(t){return _cat(t)==='completed';}).length;
+    var _drop=_all.filter(function(t){return _cat(t)==='dropout';}).length;
+    var _isAdm=(typeof currentRole!=='undefined'&&currentRole==='admin');
+    var _card=function(lbl,val,fg,bg){return '<button '+(_isAdm?'onclick="try{TraineeSystem.showArchivedTrainees();}catch(e){}" ':'')+'style="width:auto;margin:0;font-family:inherit;border:none;cursor:'+(_isAdm?'pointer':'default')+';background:'+bg+';border-radius:10px;padding:12px;text-align:center;"><div style="font-size:11px;color:'+fg+';margin-bottom:4px;">'+lbl+'</div><div style="font-size:22px;font-weight:bold;color:'+fg+';">'+val+'</div></button>';};
+    h.push(_card('✅ סיימו בהצלחה',_fin,'#1e8449','#eafaf1'));
+    h.push(_card('🚪 נשרו',_drop,'#c0392b','#fdecea'));
+  })();
   h.push('</div>');
   // 2026-08-27, לפי בקשת לביא: "מגמת שיפור/ירידה" היו רק מספר בלי אפשרות לדעת
   // במי מדובר — הפכו לכפתורים לחיצים (כמו התפלגות שלבים/רמות) שפותחים רשימת
@@ -30440,8 +30711,8 @@ function _renderTraineeSummaryPanel() {
   var distHtml=[];
   var byStage=summary.byStage||{};
   if(Object.keys(byStage).length){
-    var sColors={'טרם התחיל':['\#95a5a6','\#f4f6f7'],'שלב טכני':['\#3498db','\#ebf5fb'],'שלב תפעולי':['\#f39c12','\#fef9e7'],'שלב מסחרי':['\#8e44ad','\#f5eef8'],'השתלמות אורבוס':['\#e67e22','\#fdf2e9'],'מוכן לחניכה':['\#27ae60','\#eafaf1'],'בחניכה':['\#16a085','\#e8f8f5']};
-    var sOrder=['טרם התחיל','שלב טכני','שלב תפעולי','שלב מסחרי','השתלמות אורבוס','מוכן לחניכה','בחניכה'];
+    var sColors={'טרם התחיל':['\#95a5a6','\#f4f6f7'],'שלב טכני':['\#3498db','\#ebf5fb'],'שלב תפעולי':['\#f39c12','\#fef9e7'],'שלב מסחרי':['\#8e44ad','\#f5eef8'],'השתלמות אורבוס':['\#e67e22','\#fdf2e9'],'מוכן לחניכה':['\#27ae60','\#eafaf1'],'בחניכה':['\#16a085','\#e8f8f5'],'🎓 השלים מסלול':['\#1e8449','\#e9f7ef']};
+    var sOrder=['טרם התחיל','שלב טכני','שלב תפעולי','שלב מסחרי','השתלמות אורבוס','מוכן לחניכה','בחניכה','🎓 השלים מסלול'];
     // 2026-09-23, #251, לפי בקשת לביא: שתי שורות נפרדות — שלבים "נקיים"
     // (אושרו בפועל) למעלה, וכל ה"⏳ ממתינים לטסט" ביחד למטה, מופרדות בקו דק.
     var pColor=['\#d68910','\#fdf6e3'];
