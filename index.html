@@ -14,7 +14,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 189</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 191</title>
 
 <style>
 
@@ -1437,7 +1437,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 253;
+  const APP_VERSION = 255;
 
   // 2026-09-07, לפי בקשת לביא: היה קשה לבדוק באיזו גרסה הדפדפן בפועל טוען
   // (כותרת הטאב נחתכת כשיש הרבה טאבים פתוחים, ואי אפשר תמיד לראות "DEPLOYED
@@ -4393,10 +4393,12 @@ window.TraineeSystem = {
     </div>
 
     <div id="detail-view" class="view">
-        <div class="detail-top">
-            <button class="btn btn-ghost" data-action="show-main">← חזרה לרשימה</button>
-            <button class="btn btn-dark"  data-action="print">🖨️ הדפס / PDF</button>
+        <!-- 2026-10-06, #263, לפי בקשת לביא: חזרה+הדפסה בשורה אחת (ההדפסה לא הייתה בשימוש ותפסה שורה שלמה) -->
+        <div class="detail-top" style="margin-bottom:10px;flex-wrap:nowrap;">
+            <button class="btn btn-ghost" data-action="show-main" style="flex:1;width:auto;padding:10px 16px;">← חזרה לרשימה</button>
+            <button class="btn btn-dark"  data-action="print" title="הדפס / שמור כ-PDF" style="width:auto;padding:10px 16px;white-space:nowrap;">🖨️ הדפס</button>
         </div>
+        <div id="det-nav" style="display:none;align-items:center;justify-content:space-between;gap:8px;margin:0 0 16px;"></div>
 
         <div id="pdf-content">
             <h1 id="det-name" style="margin:0 0 4px; font-size:2.5em; color:var(--rail-dark); font-weight:800; display:inline-block;"></h1>
@@ -5483,9 +5485,25 @@ window.TraineeSystem = {
         t.archivedAt = Date.now();
         t.archiveReason = { category: 'completed', categoryLabel: 'סיום מוצלח', text: '', by: (typeof currentUserName !== 'undefined' ? currentUserName : '') };
         this.persist();
-        this.showMainView();
         this.renderList();
+        this.renderDetail(); // נשארים בתיק — הכפתור מתחלף לירוק (#262)
         if (typeof showToast === 'function') showToast(`🎓 ${t.name} — סיים הכשרה בהצלחה`, 'success');
+    },
+
+    // 2026-10-06, #262: ביטול סימון סיום (טעות) — מחזיר לרשימת הפעילים. אם הקורס
+    // נסגר אוטומטית בגלל הסימון, הוא נפתח מחדש אוטומטית דרך persist().
+    reopenTraining(id) {
+        if (typeof currentRole !== 'undefined' && currentRole !== 'admin') return;
+        const t = this.trainees.find(x => String(x.id) === String(id));
+        if (!t) return;
+        if (!confirm(`לבטל את סימון "סיים הכשרה בהצלחה" של ${t.name}?\nהחניך יחזור לרשימת הפעילים.`)) return;
+        t.archived = false;
+        delete t.archivedAt;
+        delete t.archiveReason;
+        this.persist();
+        this.renderList();
+        this.renderDetail();
+        if (typeof showToast === 'function') showToast(`↩ ${t.name} הוחזר לרשימת הפעילים`, 'info');
     },
 
     // 2026-10-06, #261: שורת פעולות סופיות בתיק חניך (מנהל בלבד) — כפתור סיום הכשרה
@@ -5501,12 +5519,28 @@ window.TraineeSystem = {
         const hint = (noChinuch && orbusDone)
             ? '<span style="font-size:12px;color:#1e8449;font-weight:bold;">🎓 השלים את מסלול ההכשרה שהוגדר לו — ניתן לסמן סיום</span>'
             : '';
+        // 2026-10-06, #262, לפי בקשת לביא: לפני הסימון — כתום (כמו טסט שטרם סומן) כדי
+        // שלא ייראה כאילו כבר בוצע; אחרי הסימון — ירוק עם תאריך + [בטל].
+        const _isDone = !!(t.archived && t.archiveReason && t.archiveReason.category === 'completed');
+        const _doneDate = t.archivedAt ? new Date(t.archivedAt).toLocaleDateString('he-IL') : '';
+        const _otherFinal = !!(t.archived && !_isDone);
+        const _btnHtml = _otherFinal
+            ? '<span style="display:inline-flex;align-items:center;gap:6px;padding:6px 14px;background:#f4f6f7;color:#5d6d7e;border:1.5px solid #ccd1d6;border-radius:8px;font-size:12.5px;font-weight:bold;">📦 סטטוס סופי: ' + _esc((t.archiveReason && t.archiveReason.categoryLabel) || 'הוסר') + (_doneDate ? ' · ' + _doneDate : '') + '</span>'
+            : _isDone
+            ? '<span style="display:inline-flex;align-items:center;gap:8px;padding:6px 14px;background:#eafaf1;color:#1e8449;border:1.5px solid #27ae60;border-radius:8px;font-size:12.5px;font-weight:bold;">✅ סיים הכשרה בהצלחה' + (_doneDate ? ' · ' + _doneDate : '') + ' <a href="#" data-ts-reopen="1" style="color:#1e8449;font-weight:normal;text-decoration:underline;">[בטל]</a></span>'
+            : '<button type="button" data-ts-complete="1" style="width:auto;margin:0;padding:6px 14px;background:#fef9ec;color:#a6690b;border:1.5px solid #f0ad4e;border-radius:8px;cursor:pointer;font-size:12.5px;font-weight:bold;font-family:inherit;">🏁 סמן: סיים הכשרה בהצלחה</button>';
         el.innerHTML =
-            '<button type="button" data-ts-complete="1" style="width:auto;margin:0;padding:6px 14px;background:#eafaf1;color:#1e8449;border:1.5px solid #27ae60;border-radius:8px;cursor:pointer;font-size:12.5px;font-weight:bold;font-family:inherit;">✅ סיים הכשרה בהצלחה</button>'
+            _btnHtml
           + '<label style="display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:#4a5568;cursor:pointer;margin:0;">'
           +   '<input type="checkbox" id="ts-nochinuch-chk" style="width:auto;margin:0;" ' + (noChinuch ? '' : 'checked') + '> ממשיך לשלב חניכה</label>'
           + hint;
-        el.querySelector('[data-ts-complete]').onclick = () => this.completeTraining(t.id);
+        if (_otherFinal) {
+            // סטטוס סופי אחר (נשירה/מעבר/אחר) — תצוגה בלבד, אין פעולה מכאן.
+        } else if (_isDone) {
+            el.querySelector('[data-ts-reopen]').onclick = (ev) => { ev.preventDefault(); this.reopenTraining(t.id); };
+        } else {
+            el.querySelector('[data-ts-complete]').onclick = () => this.completeTraining(t.id);
+        }
         el.querySelector('#ts-nochinuch-chk').onchange = (e) => {
             t.noChinuch = !e.target.checked;
             this.persist();
@@ -5515,35 +5549,76 @@ window.TraineeSystem = {
         };
     },
 
+    // 2026-10-06, #262, לפי בקשת לביא: דפדוף בין תיקי חניכים בלי לחזור לרשימה.
+    // הסדר = סדר הכרטיסים ברשימה (this._navIds, נבנה ב-renderList). חניך שאינו
+    // ברשימה הפעילה (למשל אחרי סימון סיום) — הדפדוף נמשך מהמקום שבו היה.
+    _renderDetailNav() {
+        const el = this.$('det-nav');
+        if (!el) return;
+        if (!this._navIds || !this._navIds.length) { try { this.renderList(); } catch(e) {} }
+        const ids = this._navIds || [];
+        const cur = String(this.currentId);
+        let idx = ids.indexOf(cur), prevId = null, nextId = null, posTxt;
+        if (idx >= 0) {
+            this._navLastIdx = idx;
+            prevId = ids[idx - 1] || null; nextId = ids[idx + 1] || null;
+            posTxt = (idx + 1) + ' / ' + ids.length;
+        } else {
+            // החניך הנוכחי יצא מהרשימה (למשל סומן כמסיים) — ממשיכים מהמקום שבו היה.
+            const li = Math.min(this._navLastIdx != null ? this._navLastIdx : 0, ids.length);
+            prevId = ids[li - 1] || null; nextId = ids[li] || null;
+            posTxt = ids.length + ' פעילים';
+        }
+        if (!prevId && !nextId) { el.style.display = 'none'; el.innerHTML = ''; return; }
+        const nameOf = id => { const x = this.trainees.find(t => String(t.id) === id); return x ? x.name : ''; };
+        const btn = (id, label, attr) => id
+            ? `<button type="button" ${attr} style="width:auto;margin:0;padding:6px 12px;background:#f0f4f8;border:1px solid #d5dde6;border-radius:8px;cursor:pointer;font-size:12.5px;font-family:inherit;max-width:42%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${label}</button>`
+            : '<span style="min-width:60px;"></span>';
+        el.style.display = 'flex';
+        el.innerHTML = btn(prevId, '→ ' + _esc(nameOf(prevId) || ''), 'data-nav-prev="1"')
+            + `<span style="font-size:12.5px;color:#888;white-space:nowrap;"><bdi dir="ltr">${posTxt}</bdi></span>`
+            + btn(nextId, _esc(nameOf(nextId) || '') + ' ←', 'data-nav-next="1"');
+        const go = id => { if (!id) return; this.openTrainee(id); try { window.scrollTo({ top: Math.max(0, (this.$('detail-view').getBoundingClientRect().top + window.scrollY) - 70), behavior: 'smooth' }); } catch(e) {} };
+        const p = el.querySelector('[data-nav-prev]'); if (p) p.onclick = () => go(prevId);
+        const n = el.querySelector('[data-nav-next]'); if (n) n.onclick = () => go(nextId);
+    },
+
     // רשימת חניכים שהוסרו (soft-deleted) + סיבת הסרה — לצפייה בלבד, מנהל בלבד.
-    showArchivedTrainees() {
+    // 2026-10-06, #262: פרמטר אופציונלי filterCat — כרטיסי הדשבורד "סיימו בהצלחה"/"נשרו"
+    // פותחים רשימה מסוננת לקטגוריה שלהם (קודם שניהם פתחו את כל המוסרים — מבלבל).
+    showArchivedTrainees(filterCat) {
         if (typeof currentRole !== 'undefined' && currentRole !== 'admin') return;
-        const archived = (this.trainees || []).filter(t => t.archived);
+        const _TITLES = { completed: '✅ סיימו הכשרה בהצלחה', dropout: '🚪 נשרו מהקורס' };
+        const _catOf = t => (t.archiveReason && t.archiveReason.category) || 'other';
+        const archived = (this.trainees || []).filter(t => t.archived && (!filterCat || _catOf(t) === filterCat));
+        const _title = (filterCat && _TITLES[filterCat]) || '📦 חניכים שהוסרו';
+        const _emptyTxt = filterCat === 'completed' ? 'עדיין אין חניכים שסיימו הכשרה בהצלחה'
+                        : filterCat === 'dropout' ? 'אין חניכים שנשרו' : 'אין חניכים שהוסרו';
         const rows = archived.length
             ? [...archived].sort((a,b) => (b.archivedAt||0) - (a.archivedAt||0)).map(t => {
                 const r = t.archiveReason || {};
                 const dateStr = t.archivedAt ? new Date(t.archivedAt).toLocaleDateString('he-IL') : '—';
                 return `<tr>
-                    <td style="padding:8px 10px;border-bottom:1px solid #eee;">${_esc(t.name)}</td>
+                    <td style="padding:8px 10px;border-bottom:1px solid #eee;"><a href="#" data-arch-open="${_esc(String(t.id))}" style="color:#2471a3;text-decoration:underline;cursor:pointer;" title="פתח תיק">${_esc(t.name)}</a></td>
                     <td style="padding:8px 10px;border-bottom:1px solid #eee;text-align:center;white-space:nowrap;">${dateStr}</td>
                     <td style="padding:8px 10px;border-bottom:1px solid #eee;text-align:center;">${_esc(r.categoryLabel || '—')}</td>
                     <td style="padding:8px 10px;border-bottom:1px solid #eee;color:#555;">${_esc(r.text || '')}</td>
                 </tr>`;
             }).join('')
-            : `<tr><td colspan="4" style="padding:16px;text-align:center;color:#aaa;">אין חניכים שהוסרו</td></tr>`;
+            : `<tr><td colspan="4" style="padding:16px;text-align:center;color:#aaa;">${_emptyTxt}</td></tr>`;
         const overlay = document.createElement('div');
         overlay.id = 'ts-archived-overlay';
         overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center;';
         overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
         overlay.innerHTML = `<div style="background:white;border-radius:16px;padding:24px;width:min(700px,95vw);max-height:85vh;overflow-y:auto;direction:rtl;">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">
-                <h3 style="margin:0;">📦 חניכים שהוסרו — ${archived.length}</h3>
+                <h3 style="margin:0;">${_title} — ${archived.length}</h3>
                 <button onclick="this.closest('#ts-archived-overlay').remove()" style="background:none;border:none;font-size:20px;cursor:pointer;">✕</button>
             </div>
             <table style="width:100%;border-collapse:collapse;font-size:13px;">
                 <thead><tr style="background:#f0f4ff;">
                     <th style="padding:10px;text-align:right;">שם</th>
-                    <th style="padding:10px;text-align:center;">תאריך הסרה</th>
+                    <th style="padding:10px;text-align:center;">${filterCat === 'completed' ? 'תאריך סיום' : 'תאריך הסרה'}</th>
                     <th style="padding:10px;text-align:center;">סיבה</th>
                     <th style="padding:10px;text-align:right;">פירוט</th>
                 </tr></thead>
@@ -5551,6 +5626,15 @@ window.TraineeSystem = {
             </table>
         </div>`;
         document.body.appendChild(overlay);
+        // 2026-10-06, #262: לחיצה על שם פותחת את התיק (גם של חניך שהוסר — לצפייה/ביטול סיום).
+        overlay.querySelectorAll('[data-arch-open]').forEach(a => {
+            a.onclick = (ev) => {
+                ev.preventDefault();
+                overlay.remove();
+                try { if (typeof _setTraineeSubView === 'function') _setTraineeSubView('files'); } catch(e) {}
+                this.openTrainee(a.getAttribute('data-arch-open'));
+            };
+        });
     },
 
     editName(id, curName, e) {
@@ -5722,6 +5806,8 @@ window.TraineeSystem = {
         const _visible = this.trainees
             .filter(t => !t.archived)
             .filter(t => !_isMentorView || (typeof _traineeStageIsChinuch === 'function' && _traineeStageIsChinuch(t)));
+        // 2026-10-06, #262: סדר הדפדוף בתיק החניך = בדיוק סדר הכרטיסים ברשימה.
+        this._navIds = _visible.map(t => String(t.id));
         if (!_visible.length) { emp.style.display = 'block'; return; }
         emp.style.display = 'none';
         // Fix #79: color-code cards by the trainee's developing skill-rating average, using the
@@ -6036,6 +6122,7 @@ window.TraineeSystem = {
         // Render milestone status badges on detail view
         this._renderDetailMilestoneBadges(t, maxL);
         try { this._renderDetailFinalActions(t); } catch(e) {} // 2026-10-06, #261
+        try { this._renderDetailNav(); } catch(e) {} // 2026-10-06, #262
         // 2026-08-19: תג רמה/סטטוס (נגזרת ניקוד) על תיק החניך — היה קיים רק על
         // הכרטיס ברשימה הראשית, לא בתיק עצמו.
         try { _renderDetailLevelBadge(t); } catch(e) {}
@@ -30687,9 +30774,9 @@ function _renderTraineeSummaryPanel() {
     var _fin=_all.filter(function(t){return _cat(t)==='completed';}).length;
     var _drop=_all.filter(function(t){return _cat(t)==='dropout';}).length;
     var _isAdm=(typeof currentRole!=='undefined'&&currentRole==='admin');
-    var _card=function(lbl,val,fg,bg){return '<button '+(_isAdm?'onclick="try{TraineeSystem.showArchivedTrainees();}catch(e){}" ':'')+'style="width:auto;margin:0;font-family:inherit;border:none;cursor:'+(_isAdm?'pointer':'default')+';background:'+bg+';border-radius:10px;padding:12px;text-align:center;"><div style="font-size:11px;color:'+fg+';margin-bottom:4px;">'+lbl+'</div><div style="font-size:22px;font-weight:bold;color:'+fg+';">'+val+'</div></button>';};
-    h.push(_card('✅ סיימו בהצלחה',_fin,'#1e8449','#eafaf1'));
-    h.push(_card('🚪 נשרו',_drop,'#c0392b','#fdecea'));
+    var _card=function(lbl,val,fg,bg,cat){return '<button '+(_isAdm?'onclick="try{TraineeSystem.showArchivedTrainees(\''+cat+'\');}catch(e){}" ':'')+'style="width:auto;margin:0;font-family:inherit;border:none;cursor:'+(_isAdm?'pointer':'default')+';background:'+bg+';border-radius:10px;padding:12px;text-align:center;"><div style="font-size:11px;color:'+fg+';margin-bottom:4px;">'+lbl+'</div><div style="font-size:22px;font-weight:bold;color:'+fg+';">'+val+'</div></button>';};
+    h.push(_card('✅ סיימו בהצלחה',_fin,'#1e8449','#eafaf1','completed'));
+    h.push(_card('🚪 נשרו',_drop,'#c0392b','#fdecea','dropout'));
   })();
   h.push('</div>');
   // 2026-08-27, לפי בקשת לביא: "מגמת שיפור/ירידה" היו רק מספר בלי אפשרות לדעת
