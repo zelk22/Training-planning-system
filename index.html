@@ -14,7 +14,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 191</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 192</title>
 
 <style>
 
@@ -1437,7 +1437,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 255;
+  const APP_VERSION = 256;
 
   // 2026-09-07, לפי בקשת לביא: היה קשה לבדוק באיזו גרסה הדפדפן בפועל טוען
   // (כותרת הטאב נחתכת כשיש הרבה טאבים פתוחים, ואי אפשר תמיד לראות "DEPLOYED
@@ -9114,6 +9114,7 @@ let _mentorNames=[];
 let _mentorSchedPerms={};
 let _hiddenInstrs=new Set();  // instructor names hidden from scheduling
 window._examinerInstrs=new Set();  // 2026-08-30: instructor names permitted to document test lessons ("בוחן")
+window._msgSenderInstrs=new Set(); // 2026-10-07, #264: instructor names permitted to send messages to other instructors
 
 // 2026-08-30, לפי בקשת לביא: הגדרת שיעורי "טסט" נוספים (לא חלק ממספור 1-50/1-7
 // הרגיל) — צ'יפ נפרד, רק "בוחן" יכול לתעד, מסמן אבן-דרך אוטומטית ב"עבר".
@@ -9126,6 +9127,9 @@ const TEST_DEFS = [
   {key:'testOrbus', mission:'טסט אורבוס',   label:'🎯 טסט אורבוס',   appliesTo:'orbus',   color:'#f0ad4e'},
 ];
 function _isExaminer(name){ return !!(window._examinerInstrs && name && window._examinerInstrs.has(name)); }
+// 2026-10-07, #264, לפי בקשת לביא: הרשאת "שליחת הודעות" למדריך — אותה תבנית בדיוק כמו "בוחן".
+function _isMsgSender(name){ return !!(window._msgSenderInstrs && name && window._msgSenderInstrs.has(name)); }
+function _canSendMsgs(){ return (typeof currentRole !== 'undefined') && (currentRole === 'admin' || (currentRole === 'instructor' && _isMsgSender(currentUserName))); }
 function _testDefByMission(mission){ return TEST_DEFS.find(d => d.mission === mission) || null; }
 
 // 2026-08-30: קובע (לא הופך) סטטוס מיילסטון — בשונה מ-TraineeSystem._toggleMilestonePass
@@ -9163,6 +9167,19 @@ async function _setExaminerInstr(name, grant){
   }
   renderSettingsInstrList();
   showToast(grant?`✅ ${name} מוגדר כעת "בוחן" — יכול לתעד שיעורי טסט`:`הוסרה הרשאת "בוחן" מ-${name}`,'info');
+}
+
+async function _setMsgSenderInstr(name, grant){
+  if(grant) window._msgSenderInstrs.add(name); else window._msgSenderInstrs.delete(name);
+  try{localStorage.setItem('v100_msgSenderInstrs',JSON.stringify([...window._msgSenderInstrs]));}catch(e){}
+  if(window._fbDb){
+    try{await _fbSet(_fbRef(_db,'settings/msgSenderInstrs/'+_msgKey(name)),grant?name:null);}catch(e){
+      console.warn('msgSender permission Firebase:', e);
+      showToast('⚠️ ההרשאה נשמרה רק מקומית — לא עלתה ל-Firebase','warning');
+    }
+  }
+  renderSettingsInstrList();
+  showToast(grant?`✅ ${name} יכול כעת לשלוח הודעות למדריכים`:`הוסרה הרשאת שליחת הודעות מ-${name}`,'info');
 }
 
 let _hiddenMentors=new Set(); // mentor names hidden from scheduling
@@ -9499,6 +9516,81 @@ function _closeMsgDrawer() {
   if (_p) _p.style.display = 'none';
 }
 
+// 2026-10-07, #264: טופס "שליחת הודעה חדשה" — הוצא לפונקציה כדי שישמש גם מדריך
+// עם הרשאת "שליחת הודעות" (לא רק מנהל). המבנה זהה לחלוטין למה שהיה אצל המנהל.
+function _msgComposeHtml() {
+  return `<div class="msg-drawer-section">✍️ שליחת הודעה חדשה</div>
+    <div class="msg-card" id="msgComposeCard">
+      <div style="margin-bottom:10px;">
+        <label style="font-size:12px;font-weight:bold;color:#555;display:block;margin-bottom:6px;">נמענים</label>
+        <div id="msgRecipientsWrap" style="max-height:220px;overflow-y:auto;border:1.5px solid #e0e7ef;border-radius:8px;padding:8px 10px;"></div>
+      </div>
+      <div style="margin-bottom:10px;">
+        <label style="font-size:12px;font-weight:bold;color:#555;display:block;margin-bottom:6px;">סוג הודעה</label>
+        <div style="display:flex;gap:8px;">
+          <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer;">
+            <input type="radio" name="msgType" value="info" checked style="accent-color:var(--primary);"> מידע (אישור קריאה)
+          </label>
+          <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer;">
+            <input type="radio" name="msgType" value="reply" style="accent-color:var(--primary);"> נדרשת תגובה
+          </label>
+        </div>
+      </div>
+      <div style="margin-bottom:10px;">
+        <label style="font-size:12px;font-weight:bold;color:#555;display:block;margin-bottom:6px;">טקסט ההודעה</label>
+        <textarea id="msgComposeText" rows="3" placeholder="כתוב הודעה..."
+          style="width:100%;box-sizing:border-box;padding:9px 11px;border:1.5px solid #ddd;border-radius:8px;font-size:13px;direction:rtl;font-family:inherit;resize:vertical;"></textarea>
+      </div>
+      <div style="margin-bottom:12px;">
+        <label style="font-size:12px;font-weight:bold;color:#555;display:block;margin-bottom:6px;">משך תוקף</label>
+        <select id="msgComposeDur" style="padding:7px 10px;border:1.5px solid #ddd;border-radius:7px;font-size:13px;direction:rtl;width:100%;">
+          <option value="day">יום אחד (ברירת מחדל)</option>
+          <option value="3days">3 ימים</option>
+          <option value="week">שבוע</option>
+          <option value="permanent">קבוע</option>
+        </select>
+      </div>
+      <button onclick="_sendMsg()" style="width:100%;padding:10px;background:var(--primary);color:white;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:bold;">📨 שלח הודעה</button>
+    </div>`;
+}
+
+// 2026-10-07, #264: מילוי רשימת הנמענים. מנהל — מדריכים + חונכים (כמו קודם).
+// מדריך עם הרשאה — מדריכים בלבד, בלי עצמו.
+function _populateMsgRecipients() {
+  const wrap = document.getElementById('msgRecipientsWrap');
+  if (!wrap) return;
+  const isAdmin = (currentRole === 'admin');
+  const me = currentUserName;
+  const instrList = (_instrNames || []).filter(n => isAdmin || n !== me);
+  const mentorList = isAdmin ? (_mentorNames || []) : [];
+  if (!instrList.length && !mentorList.length) {
+    wrap.innerHTML = '<div style="color:#aaa;font-size:12px;text-align:center;padding:8px;">אין מדריכים/חונכים מוגדרים</div>';
+    return;
+  }
+  const rowHtml = (name, group) => `<label style="display:flex;align-items:center;gap:8px;padding:6px 4px;border-radius:6px;cursor:pointer;font-size:13px;">
+    <input type="checkbox" class="msgRecipientChk" data-name="${_esc(name)}" data-group="${group}" onchange="_updateMsgRecipientsCount()" style="accent-color:var(--primary);width:15px;height:15px;flex-shrink:0;">
+    <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${_esc(name)}</span>
+  </label>`;
+  const groupHtml = (icon, label, list, group) => !list.length ? '' : `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin:10px 0 4px;padding:0 2px;">
+      <span style="font-size:11px;font-weight:bold;color:#888;">${icon} ${label} (${list.length})</span>
+      <label style="display:flex;align-items:center;gap:4px;font-size:10.5px;color:var(--primary);cursor:pointer;font-weight:bold;">
+        <input type="checkbox" class="msgGroupSelectAll" data-group="${group}" onchange="_toggleGroupRecipients('${group}',this.checked)" style="accent-color:var(--primary);width:13px;height:13px;"> בחר הכל
+      </label>
+    </div>
+    ${list.map(n => rowHtml(n, group)).join('')}`;
+  wrap.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:8px;margin-bottom:4px;border-bottom:1.5px solid #e0e7ef;">
+      <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:bold;cursor:pointer;">
+        <input type="checkbox" id="msgSelectAll" onchange="_toggleSelectAllRecipients(this.checked)" style="accent-color:var(--primary);width:15px;height:15px;"> בחר הכל (הכל)
+      </label>
+      <span id="msgRecipientsCount" style="font-size:11px;color:#aaa;"></span>
+    </div>
+    ${groupHtml('👤','מדריכים', instrList, 'instr')}
+    ${groupHtml('🎓','חונכים', mentorList, 'mentor')}
+  `;
+}
+
 function _renderMsgDrawer() {
   const body = document.getElementById('msgDrawerBody');
   if (!body) return;
@@ -9565,39 +9657,7 @@ function _renderMsgDrawer() {
     }
 
     // ── 2. Compose section ──
-    html += `<div class="msg-drawer-section">✍️ שליחת הודעה חדשה</div>
-    <div class="msg-card" id="msgComposeCard">
-      <div style="margin-bottom:10px;">
-        <label style="font-size:12px;font-weight:bold;color:#555;display:block;margin-bottom:6px;">נמענים</label>
-        <div id="msgRecipientsWrap" style="max-height:220px;overflow-y:auto;border:1.5px solid #e0e7ef;border-radius:8px;padding:8px 10px;"></div>
-      </div>
-      <div style="margin-bottom:10px;">
-        <label style="font-size:12px;font-weight:bold;color:#555;display:block;margin-bottom:6px;">סוג הודעה</label>
-        <div style="display:flex;gap:8px;">
-          <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer;">
-            <input type="radio" name="msgType" value="info" checked style="accent-color:var(--primary);"> מידע (אישור קריאה)
-          </label>
-          <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer;">
-            <input type="radio" name="msgType" value="reply" style="accent-color:var(--primary);"> נדרשת תגובה
-          </label>
-        </div>
-      </div>
-      <div style="margin-bottom:10px;">
-        <label style="font-size:12px;font-weight:bold;color:#555;display:block;margin-bottom:6px;">טקסט ההודעה</label>
-        <textarea id="msgComposeText" rows="3" placeholder="כתוב הודעה..."
-          style="width:100%;box-sizing:border-box;padding:9px 11px;border:1.5px solid #ddd;border-radius:8px;font-size:13px;direction:rtl;font-family:inherit;resize:vertical;"></textarea>
-      </div>
-      <div style="margin-bottom:12px;">
-        <label style="font-size:12px;font-weight:bold;color:#555;display:block;margin-bottom:6px;">משך תוקף</label>
-        <select id="msgComposeDur" style="padding:7px 10px;border:1.5px solid #ddd;border-radius:7px;font-size:13px;direction:rtl;width:100%;">
-          <option value="day">יום אחד (ברירת מחדל)</option>
-          <option value="3days">3 ימים</option>
-          <option value="week">שבוע</option>
-          <option value="permanent">קבוע</option>
-        </select>
-      </div>
-      <button onclick="_sendMsg()" style="width:100%;padding:10px;background:var(--primary);color:white;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:bold;">📨 שלח הודעה</button>
-    </div>`;
+    html += _msgComposeHtml();
 
     // ── 3. Sent messages (BOTTOM) ──
     const msgs = Object.entries(_msgsCache)
@@ -9630,7 +9690,7 @@ function _renderMsgDrawer() {
           <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">
             <div style="display:flex;align-items:center;gap:8px;">
               <input type="checkbox" class="msgBulkChk" data-id="${id}" data-section="sent" onchange="_updateMsgBulkBar('sent')" style="accent-color:#e74c3c;width:14px;height:14px;flex-shrink:0;margin-top:2px;">
-              <div style="font-size:11px;color:#888;">${date} · ${typeLabel} · ${readR}/${totalR} נקראו</div>
+              <div style="font-size:11px;color:#888;">${date} · ${typeLabel} · ${readR}/${totalR} נקראו${msg.fromRole === 'instructor' ? ' · מאת <b>' + _esc(msg.from||'') + '</b>' : ''}</div>
             </div>
             <button onclick="_deleteMsg('${id}')" style="background:none;border:none;color:#e74c3c;cursor:pointer;font-size:14px;padding:0;" title="מחק">🗑️</button>
           </div>
@@ -9645,6 +9705,38 @@ function _renderMsgDrawer() {
       });
     }
   } else {
+    // 2026-10-07, #264: מדריך עם הרשאת "שליחת הודעות" — טופס שליחה + ההודעות ששלח (עם סטטוס קריאה/תגובות).
+    if (_canSendMsgs()) {
+      html += _msgComposeHtml();
+      const mySent = Object.entries(_msgsCache)
+        .filter(([,m]) => m && !m.toAdmin && m.fromRole === 'instructor' && m.from === me)
+        .sort((a,b) => (b[1].createdAt||0)-(a[1].createdAt||0));
+      if (mySent.length) {
+        html += `<div class="msg-drawer-section">📋 הודעות ששלחתי (${mySent.length})</div>`;
+        mySent.forEach(([id, msg]) => {
+          const totalR = Object.keys(msg.recipients||{}).length;
+          const readR  = Object.values(msg.recipients||{}).filter(r=>r.read).length;
+          const date = msg.createdAt ? new Date(msg.createdAt).toLocaleDateString('he-IL') : '';
+          const chips = Object.entries(msg.recipients||{}).map(([k,r]) => {
+            const cls = r.reply ? 'replied' : r.read ? 'read' : '';
+            const icon = r.reply ? '💬' : r.read ? '✓' : '○';
+            return `<span class="msg-recipient-chip ${cls}">${icon} ${_esc(r.name||k)}</span>`;
+          }).join('');
+          const replies = Object.entries(msg.recipients||{}).filter(([,r])=>r.reply)
+            .map(([k,r]) => `<div style="font-size:12px;color:#555;margin-bottom:4px;"><b>${_esc(r.name||k)}:</b> ${_esc(r.reply)}</div>`).join('');
+          html += `<div class="msg-card">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">
+              <div style="font-size:11px;color:#888;">${date} · ${msg.requiresReply ? '💬 תגובה נדרשת' : 'ℹ️ מידע'} · ${readR}/${totalR} נקראו</div>
+              <button onclick="_deleteMsg('${id}')" style="background:none;border:none;color:#e74c3c;cursor:pointer;font-size:14px;padding:0;width:auto;" title="מחק">🗑️</button>
+            </div>
+            <div style="font-size:13px;color:#222;margin-bottom:8px;white-space:pre-wrap;">${_esc(msg.text||'')}</div>
+            <div style="flex-wrap:wrap;display:flex;">${chips}</div>
+            ${replies ? `<div style="margin-top:8px;border-top:1px solid #eee;padding-top:8px;">${replies}</div>` : ''}
+          </div>`;
+        });
+      }
+    }
+
     // ── Employee view: send message to admin ──
     html += `<div class="msg-drawer-section">✍️ שלח הודעה למנהל</div>
     <div class="msg-card" style="margin-bottom:14px;">
@@ -9686,40 +9778,8 @@ function _renderMsgDrawer() {
 
   body.innerHTML = html;
 
-  // Populate recipients checkboxes (admin only)
-  if (isAdmin) {
-    const wrap = document.getElementById('msgRecipientsWrap');
-    if (wrap) {
-      const instrList = _instrNames||[];
-      const mentorList = _mentorNames||[];
-      if (!instrList.length && !mentorList.length) {
-        wrap.innerHTML = '<div style="color:#aaa;font-size:12px;text-align:center;padding:8px;">אין מדריכים/חונכים מוגדרים</div>';
-      } else {
-        const rowHtml = (name, group) => `<label style="display:flex;align-items:center;gap:8px;padding:6px 4px;border-radius:6px;cursor:pointer;font-size:13px;">
-          <input type="checkbox" class="msgRecipientChk" data-name="${_esc(name)}" data-group="${group}" onchange="_updateMsgRecipientsCount()" style="accent-color:var(--primary);width:15px;height:15px;flex-shrink:0;">
-          <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${_esc(name)}</span>
-        </label>`;
-        const groupHtml = (icon, label, list, group) => !list.length ? '' : `
-          <div style="display:flex;align-items:center;justify-content:space-between;margin:10px 0 4px;padding:0 2px;">
-            <span style="font-size:11px;font-weight:bold;color:#888;">${icon} ${label} (${list.length})</span>
-            <label style="display:flex;align-items:center;gap:4px;font-size:10.5px;color:var(--primary);cursor:pointer;font-weight:bold;">
-              <input type="checkbox" class="msgGroupSelectAll" data-group="${group}" onchange="_toggleGroupRecipients('${group}',this.checked)" style="accent-color:var(--primary);width:13px;height:13px;"> בחר הכל
-            </label>
-          </div>
-          ${list.map(n => rowHtml(n, group)).join('')}`;
-        wrap.innerHTML = `
-          <div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:8px;margin-bottom:4px;border-bottom:1.5px solid #e0e7ef;">
-            <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:bold;cursor:pointer;">
-              <input type="checkbox" id="msgSelectAll" onchange="_toggleSelectAllRecipients(this.checked)" style="accent-color:var(--primary);width:15px;height:15px;"> בחר הכל (הכל)
-            </label>
-            <span id="msgRecipientsCount" style="font-size:11px;color:#aaa;"></span>
-          </div>
-          ${groupHtml('👤','מדריכים', instrList, 'instr')}
-          ${groupHtml('🎓','חונכים', mentorList, 'mentor')}
-        `;
-      }
-    }
-  }
+  // Populate recipients checkboxes (admin, or instructor with send permission — #264)
+  if (isAdmin || _canSendMsgs()) { try { _populateMsgRecipients(); } catch(e) { console.warn('_populateMsgRecipients:', e); } }
 }
 
 function _updateMsgRecipientsCount() {
@@ -9761,6 +9821,7 @@ function _toggleMsgBadgeSetting(val) {
 }
 
 async function _sendMsg() {
+  if (!_canSendMsgs()) { showToast('אין לך הרשאה לשלוח הודעות', 'warning'); return; }
   const text = document.getElementById('msgComposeText')?.value.trim();
   if (!text) { showToast('יש לכתוב הודעה', 'warning'); return; }
 
@@ -9781,6 +9842,9 @@ async function _sendMsg() {
 
   const msg = {
     text, from: currentUserName || 'מנהל',
+    // 2026-10-07, #264: מבחין בין הודעת מנהל להודעת מדריך (כותרת ההתרעה אצל הנמען).
+    // הודעות ישנות בלי השדה ממשיכות להיחשב "מהמנהל".
+    fromRole: (currentRole === 'admin') ? 'admin' : 'instructor',
     requiresReply, recipients,
     createdAt: Date.now(), expiresAt, permanent: !expiresAt
   };
@@ -9988,25 +10052,32 @@ function _renderInstrMsgBanner() {
   if (!myUnread.length) { banner.innerHTML = ''; banner.style.display = 'none'; return; }
 
   banner.style.display = 'block';
-  banner.innerHTML = myUnread.map(([id, msg]) => `
-    <div class="instr-msg-banner" style="margin-bottom:8px;">
-      <div style="display:flex;align-items:flex-start;gap:10px;">
-        <span style="font-size:18px;flex-shrink:0;">📌</span>
-        <div style="flex:1;">
-          <div style="font-size:11px;font-weight:bold;color:#856404;margin-bottom:3px;">הודעה מהמנהל</div>
-          <div style="font-size:13px;color:#333;white-space:pre-wrap;margin-bottom:8px;">${_esc(msg.text||'')}</div>
-          ${msg.requiresReply && !msg.recipients[_msgKey(me)].reply ? `
-            <div style="display:flex;gap:6px;margin-bottom:6px;">
+  // 2026-10-07, #264, לפי בקשת לביא: עיצוב כמו התרעת "טפסי סיכום יום חסרים" —
+  // גופן 12.5px, שורת כותרת עם קו מפריד, תוכן ההודעה מתחת, וכפתור "קראתי" בקצה
+  // השמאלי של שורת ההודעה (במקום ה-✕ שם). הצבעים הצהובים נשארו.
+  banner.innerHTML = myUnread.map(([id, msg]) => {
+    const fromInstr = msg.fromRole === 'instructor' && msg.from;
+    const title = fromInstr ? 'הודעה מ' + _esc(msg.from) : 'הודעה מהמנהל';
+    const needsReply = msg.requiresReply && !msg.recipients[_msgKey(me)].reply;
+    return `
+    <div class="instr-msg-banner" style="margin-bottom:8px;padding:0;overflow:hidden;">
+      <div style="padding:7px 12px;font-weight:bold;color:#856404;font-size:12.5px;border-bottom:1px solid #f0d78c;">📌 ${title}</div>
+      <div style="padding:7px 12px;font-size:12.5px;display:flex;align-items:flex-start;justify-content:space-between;gap:10px;">
+        <div style="flex:1;min-width:0;">
+          <div style="color:#333;white-space:pre-wrap;line-height:1.5;">${_esc(msg.text||'')}</div>
+          ${needsReply ? `
+            <div style="display:flex;gap:6px;margin-top:7px;">
               <input id="bannerReply_${id}" type="text" placeholder="כתוב תגובה..."
-                style="flex:1;padding:6px 10px;border:1.5px solid #ddd;border-radius:7px;font-size:12px;direction:rtl;">
+                style="flex:1;padding:5px 10px;border:1.5px solid #ddd;border-radius:7px;font-size:12px;direction:rtl;">
               <button onclick="_sendMsgReply('${id}')"
-                style="padding:6px 10px;background:var(--primary);color:white;border:none;border-radius:7px;cursor:pointer;font-size:12px;width:auto;">שלח</button>
+                style="padding:5px 10px;background:var(--primary);color:white;border:none;border-radius:7px;cursor:pointer;font-size:12px;width:auto;">שלח</button>
             </div>` : ''}
-          <button onclick="_markMsgRead('${id}')"
-            style="padding:5px 12px;background:#eafaf1;border:1.5px solid #27ae60;color:#1a7a42;border-radius:6px;cursor:pointer;font-size:12px;font-weight:bold;width:auto;">✓ קראתי</button>
         </div>
+        <button onclick="_markMsgRead('${id}')" title="סמן כנקרא"
+          style="flex-shrink:0;padding:3px 10px;background:#eafaf1;border:1.5px solid #27ae60;color:#1a7a42;border-radius:6px;cursor:pointer;font-size:12px;font-weight:bold;width:auto;white-space:nowrap;">✓ קראתי</button>
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 
 
@@ -11817,6 +11888,14 @@ async function loadInstructors(){
           try{localStorage.setItem('v100_examinerInstrs',JSON.stringify([...window._examinerInstrs]));}catch(e){}
         }catch(e){}
 
+        // 2026-10-07, #264: הרשאת "שליחת הודעות" — אותה תבנית כמו examinerInstrs.
+        try{
+          const msSnap=await _fbGet(_fbRef(_db,'settings/msgSenderInstrs'));
+          window._msgSenderInstrs=new Set();
+          if(msSnap.exists()){const v=msSnap.val();Object.keys(v).forEach(k=>{if(v[k])window._msgSenderInstrs.add(typeof v[k]==='string'?v[k]:k);});}
+          try{localStorage.setItem('v100_msgSenderInstrs',JSON.stringify([...window._msgSenderInstrs]));}catch(e){}
+        }catch(e){}
+
         populateAllInstrSelects();
 
         return;
@@ -11839,6 +11918,8 @@ async function loadInstructors(){
   try{const rawH=localStorage.getItem('v100_hiddenInstrs');const hi=rawH?JSON.parse(rawH):[];_hiddenInstrs=new Set(hi);}catch(e){_hiddenInstrs=new Set();}
 
   try{const rawE=localStorage.getItem('v100_examinerInstrs');const ei=rawE?JSON.parse(rawE):[];window._examinerInstrs=new Set(ei);}catch(e){window._examinerInstrs=new Set();}
+
+  try{const rawM=localStorage.getItem('v100_msgSenderInstrs');const mi=rawM?JSON.parse(rawM):[];window._msgSenderInstrs=new Set(mi);}catch(e){window._msgSenderInstrs=new Set();}
 
   populateAllInstrSelects();
 
@@ -15100,6 +15181,7 @@ function renderSettingsInstrList(){
     // ליד כל מדריך ברשימה הזו, לא בסקציה נפרדת שקל לפספס.
     const isFormTracker=(typeof _settings!=='undefined'&&Array.isArray(_settings.formTrackingInstructors)&&_settings.formTrackingInstructors.includes(name));
     const isExaminer=_isExaminer(name);
+    const isMsgSender=_isMsgSender(name);
     const nameDisplay=isHidden?`<span style="text-decoration:line-through;color:#aaa;">${_esc(name)}</span>`:_esc(name);
     return`<div style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid #f0f4f8;${isHidden?'opacity:0.6':''}">
 
@@ -15121,6 +15203,12 @@ function renderSettingsInstrList(){
         <input type="checkbox" data-instr-name="${_esc(name)}" ${isExaminer?'checked':''} onchange="_setExaminerInstr(this.dataset.instrName,this.checked)"
           style="accent-color:#e67e22;width:15px;height:15px;cursor:pointer;">
         <span style="font-size:11px;color:${isExaminer?'#e67e22':'#888'};white-space:nowrap;">בוחן</span>
+      </label>
+
+      <label title="הרשאת שליחת הודעות למדריכים אחרים (כמו המנהל)" style="display:flex;align-items:center;gap:4px;cursor:pointer;flex-shrink:0;">
+        <input type="checkbox" data-instr-name="${_esc(name)}" ${isMsgSender?'checked':''} onchange="_setMsgSenderInstr(this.dataset.instrName,this.checked)"
+          style="accent-color:#8e44ad;width:15px;height:15px;cursor:pointer;">
+        <span style="font-size:11px;color:${isMsgSender?'#8e44ad':'#888'};white-space:nowrap;">שליחת הודעות</span>
       </label>
 
       <div style="display:flex;gap:6px;align-items:center;">
