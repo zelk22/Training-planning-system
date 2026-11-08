@@ -14,7 +14,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 194</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 195</title>
 
 <style>
 
@@ -1437,7 +1437,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 258;
+  const APP_VERSION = 259;
 
   // 2026-09-07, לפי בקשת לביא: היה קשה לבדוק באיזו גרסה הדפדפן בפועל טוען
   // (כותרת הטאב נחתכת כשיש הרבה טאבים פתוחים, ואי אפשר תמיד לראות "DEPLOYED
@@ -30417,6 +30417,12 @@ function _generateTraineeSummary() {
     // 2026-10-06, #261: חניך שמסומן "לא ממשיך לחניכה" ועבר את טסט האורבוס — סיים את
     // המסלול שלו בפועל. דלי נפרד מ"מוכן לחניכה", כדי שהמנהל יזהה שנותר רק לסמן סיום.
     if (t.noChinuch && confirmedLevel >= 5) { stage = '🎓 השלים מסלול'; pendingTest = false; }
+    // 2026-11-08, #267: איזה טסט בדיוק ממתין — לסימון מרוכז מהדשבורד. רמה 1→test10,
+    // 2→test30, 3→test50, 4→testOrbus. במקרים שבהם היעד האישי נמוך, _finalCheckKey
+    // מתמזג בדיוק לאותם מפתחות (יעד≤10 ברמה 1 = test10, יעד≤30 ברמה 2 = test30).
+    const pendingTestKey = !pendingTest ? null
+      : confirmedLevel === 1 ? 'test10' : confirmedLevel === 2 ? 'test30'
+      : confirmedLevel === 3 ? 'test50' : confirmedLevel === 4 ? 'testOrbus' : null;
 
 
     // Risk Score
@@ -30487,6 +30493,7 @@ function _generateTraineeSummary() {
       manualMilestones,
       stage,
       pendingTest,
+      pendingTestKey,
       riskLevel,
       riskReasons,
       infoNotes,
@@ -30606,6 +30613,7 @@ function _toggleTsBucket(kind, key) {
   // אבל טרם סומן ידנית ע"י מנהל (t.pendingTest) — השם שלו מוצג בכתום, כדי
   // לזהות בקלות מי עדיין ממתין לאישור ידני. אותה משמעות כתומה כמו בתיק
   // החניך עצמו (_renderDetailMilestoneBadges).
+  window._tsBulk = null; // פתיחה/החלפה של דלי = יציאה ממצב סימון מרוכז
   var htm = list.length
     ? '<div style="display:flex;flex-wrap:wrap;gap:6px;">' + list.map(function(t) {
         var pending = !!t.pendingTest;
@@ -30616,9 +30624,86 @@ function _toggleTsBucket(kind, key) {
         return '<button' + title + ' onclick="try{_setTraineeSubView(\'files\');}catch(ex0){}try{if(typeof TraineeSystem!==\'undefined\')TraineeSystem.openTrainee&&TraineeSystem.openTrainee(' + JSON.stringify(t.id) + ');}catch(ex){}" style="width:auto;margin:0;padding:5px 12px;' + style + 'border-radius:16px;cursor:pointer;font-size:12px;font-family:inherit;font-weight:' + (pending?'bold':'normal') + ';white-space:nowrap;">' + (pending?'🟡 ':'') + _esc(t.name) + '</button>';
       }).join('') + '</div>'
     : '<div style="padding:6px 4px;color:#888;font-size:12px;">אין חניכים</div>';
+  // 2026-11-08, #267, לפי בקשת לביא: סימון "עבר" מרוכז לכמה חניכים מתוך דלי
+  // "⏳ ממתין לטסט X" — בלי להיכנס לכל תיק בנפרד. מנהל בלבד.
+  var _isAdm = (typeof currentRole === 'undefined' || currentRole === 'admin');
+  if (kind === 'stage' && _isAdm && list.some(function(t){ return t.pendingTestKey; })) {
+    htm += '<div style="margin-top:10px;"><button onclick="_tsBulkStart(' + JSON.stringify(key).replace(/"/g,'&quot;') + ')" style="width:auto !important;margin:0;padding:5px 12px;background:#27ae60;color:white;border:none;border-radius:8px;cursor:pointer;font-size:12px;font-weight:bold;">✅ סימון "עבר" לכמה חניכים</button></div>';
+  }
   cont.innerHTML = htm;
   cont.setAttribute('data-key', key);
   cont.style.display = 'block';
+}
+
+var _TS_TEST_LABEL = { test10:'טסט 10', test30:'טסט 30', test50:'טסט 50', testOrbus:'טסט אורבוס' };
+function _tsBulkStart(key) {
+  window._tsBulk = { key: key, sel: {} };
+  _tsBulkRender();
+}
+function _tsBulkList() {
+  var B = window._tsBulk; if (!B) return [];
+  return (window._tsPerTrainee || []).filter(function(t){ return t.stage === B.key && t.pendingTestKey; });
+}
+function _tsBulkRender() {
+  var B = window._tsBulk, cont = document.getElementById('ts-stage-detail');
+  if (!B || !cont) return;
+  var list = _tsBulkList();
+  var n = list.filter(function(t){ return B.sel[String(t.id)]; }).length;
+  var keys = {}; list.forEach(function(t){ keys[t.pendingTestKey] = 1; });
+  var testLbl = Object.keys(keys).map(function(k){ return _TS_TEST_LABEL[k] || k; }).join(' / ');
+  cont.innerHTML =
+    '<div style="font-size:12px;color:#555;margin-bottom:8px;">בחר את החניכים שעברו <b>' + _esc(testLbl) + '</b> (לחיצה על שם = בחירה):</div>' +
+    '<div style="display:flex;flex-wrap:wrap;gap:6px;">' + list.map(function(t) {
+      var on = !!B.sel[String(t.id)];
+      var st = on ? 'background:#27ae60;border:1.5px solid #1e8449;color:white;font-weight:bold;' : 'background:#fff;border:1.5px dashed #b5c4d4;color:#2c3e50;';
+      return '<button onclick="_tsBulkToggle(' + JSON.stringify(String(t.id)).replace(/"/g,'&quot;') + ')" style="width:auto;margin:0;padding:5px 12px;' + st + 'border-radius:16px;cursor:pointer;font-size:12px;font-family:inherit;white-space:nowrap;">' + (on ? '✓ ' : '') + _esc(t.name) + '</button>';
+    }).join('') + '</div>' +
+    '<div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">' +
+      '<button onclick="_tsBulkAll()" style="width:auto !important;margin:0;padding:5px 12px;background:#fff;border:1px solid #ccd;border-radius:8px;cursor:pointer;font-size:12px;">' + (n === list.length && n ? 'נקה הכל' : 'בחר הכל') + '</button>' +
+      '<button id="ts-bulk-go" onclick="_tsBulkApply()" ' + (n ? '' : 'disabled ') + 'style="width:auto !important;margin:0;padding:5px 14px;background:' + (n ? '#27ae60' : '#b8c4cc') + ';color:white;border:none;border-radius:8px;cursor:' + (n ? 'pointer' : 'default') + ';font-size:12px;font-weight:bold;">✅ סמן ' + n + ' כ"עבר"</button>' +
+      '<button onclick="var k=window._tsBulk&&window._tsBulk.key;window._tsBulk=null;var c=document.getElementById(\'ts-stage-detail\');if(c)c.setAttribute(\'data-key\',\'\');_toggleTsBucket(\'stage\',k)" style="width:auto !important;margin:0;padding:5px 12px;background:none;border:none;color:#888;cursor:pointer;font-size:12px;">ביטול</button>' +
+    '</div>';
+}
+function _tsBulkToggle(id) {
+  var B = window._tsBulk; if (!B) return;
+  if (B.sel[id]) delete B.sel[id]; else B.sel[id] = true;
+  _tsBulkRender();
+}
+function _tsBulkAll() {
+  var B = window._tsBulk; if (!B) return;
+  var list = _tsBulkList();
+  var all = list.length && list.every(function(t){ return B.sel[String(t.id)]; });
+  B.sel = {};
+  if (!all) list.forEach(function(t){ B.sel[String(t.id)] = true; });
+  _tsBulkRender();
+}
+async function _tsBulkApply() {
+  var B = window._tsBulk; if (!B) return;
+  var chosen = _tsBulkList().filter(function(t){ return B.sel[String(t.id)]; });
+  if (!chosen.length) return;
+  var names = chosen.map(function(t){ return t.name + ' — ' + (_TS_TEST_LABEL[t.pendingTestKey] || t.pendingTestKey); }).join('\n');
+  if (!confirm('לסמן "עבר" עבור ' + chosen.length + ' חניכים?\n\n' + names)) return;
+  var btn = document.getElementById('ts-bulk-go'); if (btn) { btn.disabled = true; btn.textContent = '⏳ שומר...'; }
+  if (!window._milestonePassMap) window._milestonePassMap = {};
+  var upd = {};
+  chosen.forEach(function(t) {
+    var fk = (typeof TraineeSystem !== 'undefined' && TraineeSystem._fbKey) ? TraineeSystem._fbKey(t.id) : String(t.id).replace(/[.#$/\[\]]/g, '_');
+    upd[fk + '/' + t.pendingTestKey] = true;
+    if (!window._milestonePassMap[fk]) window._milestonePassMap[fk] = {};
+    window._milestonePassMap[fk][t.pendingTestKey] = true;
+  });
+  var ok = true;
+  if (window._fbDb) {
+    try { await window._fbDb.ref('settings/milestones').update(upd); }
+    catch(e) { ok = false; console.warn('bulk milestone update:', e); }
+  }
+  try { localStorage.setItem('v100_milestones', JSON.stringify(window._milestonePassMap)); } catch(e) {}
+  try { if (typeof _logAction === 'function') _logAction('bulk_milestones', 'סימון "עבר" מרוכז: ' + chosen.map(function(t){ return t.name + ' (' + t.pendingTestKey + ')'; }).join(', ')); } catch(e) {}
+  window._tsBulk = null;
+  window._traineeSummaryCache = null;
+  try { _renderTraineeSummaryPanel(); } catch(e) {}
+  try { if (typeof TraineeSystem !== 'undefined' && TraineeSystem._renderMilestoneTrainees) TraineeSystem._renderMilestoneTrainees(); } catch(e) {}
+  showToast(ok ? ('✅ ' + chosen.length + ' חניכים סומנו כ"עבר"') : '⚠️ נשמר רק מקומית — לא עלה ל-Firebase (ר׳ קונסול)', ok ? 'success' : 'warning');
 }
 
 // 2026-10-04, #258, לפי בקשת לביא: ריחוף עכבר (מחשב בלבד) על פיל "התפלגות
