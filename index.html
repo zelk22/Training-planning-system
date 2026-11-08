@@ -14,7 +14,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 195</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 196</title>
 
 <style>
 
@@ -1437,7 +1437,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 259;
+  const APP_VERSION = 260;
 
   // 2026-09-07, לפי בקשת לביא: היה קשה לבדוק באיזו גרסה הדפדפן בפועל טוען
   // (כותרת הטאב נחתכת כשיש הרבה טאבים פתוחים, ואי אפשר תמיד לראות "DEPLOYED
@@ -5144,7 +5144,10 @@ window.TraineeSystem = {
                 await this._refreshLessonsBeforeWrite(_courseId, traineesToWrite, [this.currentId, ...(extraProtectedIds||[])]);
                 const tData = {};
                 traineesToWrite.forEach(t => { tData[this._fbKey(t.id)] = t; });
-                this.coursesRef.child(_courseId).child('trainees').set(tData).catch(err => {
+                // 2026-11-08, #268: .update() ולא .set() — טאב עם זיכרון ישן לא ימחק יותר
+                // חניכים שנוספו ממכשיר אחר אחרי שהטאב נטען (.set החליף את כל הרשימה).
+                // אין במערכת מחיקת חניך קשיחה (רק archived), כך שאין צורך ב-.set כאן.
+                this.coursesRef.child(_courseId).child('trainees').update(tData).catch(err => {
                     console.error('persist courses failed:', err);
                     if (typeof showToast === 'function') showToast('❌ שמירת החניכים נכשלה — בדוק חיבור אינטרנט', 'error');
                 });
@@ -8421,6 +8424,11 @@ window.TraineeSystem = {
         if (this.coursesRef && !isDemoMode) {
             try {
                 const snap = await this.coursesRef.once('value');
+                // #268: אילו קורסים קיימים בפועל ב-Firebase — _saveCourses כותב עץ מלא
+                // רק לקורס חדש, ומטא-דאטה בלבד לקורס קיים. undefined = לא נקרא מ-Firebase.
+                const _v = snap.exists() ? snap.val() : {};
+                this._fbCourseIds  = new Set(Object.entries(_v).map(([k, c]) => (c && c.id) || k));
+                this._fbCourseKeys = new Set(Object.keys(_v)); // מחיקה רק לנתיב שקיים בפועל
                 if (snap.exists()) {
                     // #266: גיבוי יומי אוטומטי של courses_v20 (פעם ביום, ברקע, לא חוסם)
                     try { this._dailyCoursesBackup(snap.val()); } catch(e) {}
@@ -8493,49 +8501,52 @@ window.TraineeSystem = {
         } catch(e) { console.warn('courses daily backup:', e); }
     },
 
-    async _saveCourses() {
+    // 2026-11-08, #268, לפי בקשת לביא (חיזוק אחרי #265): _saveCourses כבר לא כותבת
+    // את כל עץ courses_v20 מהזיכרון (.set). זה היה מוחק חניכים/קורסים שנוספו ממכשיר
+    // אחר אחרי שהטאב נטען, ומחזיר שדות ישנים (קורס ראשי, עדיפות). עכשיו:
+    //   • קורס שלא קיים ב-Firebase (חדש) — נכתב במלואו, כולל חניכים.
+    //   • קורס קיים — רק שדות מטא-דאטה (בלי trainees/resourceGroups), ורק של הקורסים
+    //     שהשתנו אם הועברה רשימה (changedIds); בלי רשימה — של כולם (ברירת מחדל/סדר).
+    //   • קורס שנמחק בטאב הזה (היה ב-Firebase בטעינה, אין בזיכרון) — נמחק במפורש.
+    //   • אם הקורסים מעולם לא נקראו מ-Firebase בסשן הזה — לא כותבים כלום (נמנע
+    //     מצב שבו גיבוי localStorage ישן או "קורס ברירת מחדל" חדש דורסים את השרת).
+    async _saveCourses(changedIds) {
         const coursesToSave = this.courses.filter(c => !c._temp);
         if (!(typeof _isDemoMode === 'function' && _isDemoMode())) {
             try { localStorage.setItem('trainee_courses', JSON.stringify(coursesToSave)); } catch(e) {}
         }
-        // Fix #66: return a Promise so callers (e.g. _setDefaultCourse) can wait for a REAL
-        // server confirmation before showing a "success" toast. Previously the success toast
-        // fired unconditionally right after calling this — a synchronous throw here was only
-        // ever logged to console.warn (invisible to the user), so "success" could show even
-        // when the write never reached Firebase at all. Both failure paths (sync throw AND
-        // async .catch()) now surface a red toast, so a failed save is never silent again.
         if (this.coursesRef && !(typeof _isDemoMode === 'function' && _isDemoMode())) {
+            if (!this._fbCourseIds) {
+                console.warn('_saveCourses: courses were never loaded from Firebase in this session — Firebase write skipped');
+                if (typeof showToast === 'function') showToast('⚠️ השינוי נשמר רק מקומית — הקורסים לא נטענו מהשרת. רענן את הדף ונסה שוב', 'warning');
+                return false;
+            }
             try {
-                // 2026-09-07, לפי בקשת לביא: תוקן באג-שורש חוזר ("שיעורים ששוחזרו
-                // נעלמים שוב") — _saveCourses() כתבה .set() על *כל* עץ הקורסים,
-                // כולל lessons[] של כל חניך, לפי מה שהיה בזיכרון המקומי של הטאב.
-                // הפונקציה נקראת מ-9 מקומות שונים — כולל פעולות שגרתיות לגמרי
-                // שלא נראות כמו "עריכת קורס" (למשל שינוי קבוצת תיעדוף א'/ב'/ג'
-                // דרך setTraineeGroup) — ולכל אחת מהן הייתה סיכון לדרוס בשקט
-                // שיעורים שנוספו ע"י מדריך אחר/שחזור, אחרי שהטאב הזה טען את
-                // this.courses (יכול להיות שעות/ימים קודם לכן). עכשיו, *לפני*
-                // הכתיבה, ה-lessons של כל חניך נקרא טרי ישירות מ-Firebase —
-                // במקביל לכל החניכים (לא מוסיף השהיה משמעותית) — במקום להסתמך
-                // על מה שבזיכרון המקומי.
-                const refreshPromises = [];
+                const upd = {};
+                const memIds = new Set(this.courses.map(c => c.id));
                 coursesToSave.forEach(c => {
-                    (c.trainees || []).forEach(t => {
-                        refreshPromises.push(
-                            this.coursesRef.child(c.id).child('trainees').child(this._fbKey(t.id)).child('lessons').once('value')
-                                .then(snap => { t.lessons = snap.exists() ? Object.values(snap.val()) : (t.lessons || []); })
-                                .catch(() => {}) // קריאה נכשלה — נשארים עם הזיכרון המקומי, עדיף על כלום
-                        );
+                    if (!this._fbCourseIds.has(c.id)) {
+                        const tData = {};
+                        (c.trainees || []).forEach(t => { tData[this._fbKey(t.id)] = t; });
+                        upd[c.id] = { ...c, trainees: tData };
+                        return;
+                    }
+                    if (Array.isArray(changedIds) && !changedIds.includes(c.id)) return;
+                    Object.keys(c).forEach(k => {
+                        if (k === 'trainees' || k === 'resourceGroups' || k === '_temp' || c[k] === undefined) return;
+                        upd[c.id + '/' + k] = c[k];
                     });
                 });
-                await Promise.all(refreshPromises);
-
-                const cData = {};
-                coursesToSave.forEach(c => {
-                    const tData = {};
-                    (c.trainees || []).forEach(t => { tData[this._fbKey(t.id)] = t; });
-                    cData[c.id] = { ...c, trainees: tData };
-                });
-                return this.coursesRef.set(cData).then(() => true).catch(err => {
+                this._fbCourseIds.forEach(id => { if (!memIds.has(id) && this._fbCourseKeys && this._fbCourseKeys.has(id)) upd[id] = null; });
+                if (!Object.keys(upd).length) return true;
+                return this.coursesRef.update(upd).then(() => {
+                    Object.keys(upd).forEach(k => {
+                        if (k.includes('/')) return;
+                        if (upd[k] === null) { this._fbCourseIds.delete(k); this._fbCourseKeys && this._fbCourseKeys.delete(k); }
+                        else { this._fbCourseIds.add(k); this._fbCourseKeys && this._fbCourseKeys.add(k); }
+                    });
+                    return true;
+                }).catch(err => {
                     console.error('_saveCourses failed:', err);
                     if (typeof showToast === 'function') showToast('❌ שמירת הקורסים נכשלה — בדוק חיבור אינטרנט (' + (err && err.message || err) + ')', 'error');
                     return false;
@@ -8559,7 +8570,14 @@ window.TraineeSystem = {
         const key = this._fbKey(traineeId);
         if (group) course.resourceGroups[key] = group;
         else delete course.resourceGroups[key];
-        this._saveCourses();
+        // #268: כתיבה ממוקדת לשיוך הבודד הזה בלבד (קודם: _saveCourses על כל העץ).
+        try { localStorage.setItem('trainee_courses', JSON.stringify(this.courses.filter(c => !c._temp))); } catch(e) {}
+        if (this.coursesRef && !(typeof _isDemoMode === 'function' && _isDemoMode())) {
+            this.coursesRef.child(course.id).child('resourceGroups').child(key).set(group || null).catch(err => {
+                console.warn('setTraineeGroup:', err);
+                if (typeof showToast === 'function') showToast('⚠️ השיוך נשמר רק מקומית', 'warning');
+            });
+        }
         try { _renderResourceGroupsBody(); } catch(e) {}
     },
 
@@ -8624,7 +8642,7 @@ window.TraineeSystem = {
             resourceGroups: {}
         };
         this.courses.push(newCourse);
-        this._saveCourses();
+        this._saveCourses([newCourse.id]);
         nameEl.value = '';
         dateEl.value = '';
         this._renderTab_courses();
@@ -8715,7 +8733,7 @@ window.TraineeSystem = {
         const course = this.courses.find(c => c.id === courseId);
         if (course && newName.trim()) {
             course.name = newName.trim();
-            this._saveCourses();
+            this._saveCourses([courseId]);
             this._updateCourseSelector();
         }
     },
@@ -8747,7 +8765,7 @@ window.TraineeSystem = {
             return;
         }
         course.status = 'archived';
-        this._saveCourses();
+        this._saveCourses([courseId]);
         this._renderTab_courses();
         this._updateCourseSelector();
         showToast('📦 הקורס הועבר לארכיון', 'info');
@@ -8755,7 +8773,7 @@ window.TraineeSystem = {
 
     _restoreCourse(courseId) {
         const course = this.courses.find(c => c.id === courseId);
-        if (course) { course.status = 'active'; this._saveCourses(); this._renderTab_courses(); this._updateCourseSelector(); }
+        if (course) { course.status = 'active'; this._saveCourses([courseId]); this._renderTab_courses(); this._updateCourseSelector(); }
     },
 
     _deleteCourse(courseId) {
@@ -8779,7 +8797,7 @@ window.TraineeSystem = {
         }
         this._renderTab_courses();
         this._updateCourseSelector();
-        this._saveCourses().then(ok => {
+        this._saveCourses([]).then(ok => {
             if (ok) {
                 showToast('🗑 הקורס נמחק', 'info');
             } else {
@@ -25297,6 +25315,9 @@ async function submitUnifiedReport() {
 
       // Now save all courses (including any temp ones that survived) to Firebase + localStorage
       if (TraineeSystem.courses && TraineeSystem.courses.length) {
+        // #268: רק קורסים שנוצרו בטופס הזה (_temp) נכתבים — לא מטא-דאטה של כל הקורסים
+        // מהזיכרון של המדריך (שעלול להיות ישן ולהחזיר קורס ראשי/עדיפות קודמים).
+        const _newCourses = TraineeSystem.courses.filter(c => c._temp);
         // Remove _temp flag — they're now permanent
         TraineeSystem.courses.forEach(c => { delete c._temp; });
         try { localStorage.setItem('trainee_courses', JSON.stringify(TraineeSystem.courses)); } catch(e) {}
@@ -25315,16 +25336,21 @@ async function submitUnifiedReport() {
             // update עם מפתחות שטוחים "courseId/field" (לא set() מקונן), כדי
             // שבאמת ייגע רק בשדות המטא-דאטה עצמם ולא ידרוס/ימחק את trainees.
             const _cData = {};
-            TraineeSystem.courses.forEach(c => {
+            _newCourses.forEach(c => {
               Object.keys(c).forEach(k => {
-                if (k === 'trainees') return;
+                if (k === 'trainees' || c[k] === undefined) return;
                 _cData[`${c.id}/${k}`] = c[k];
               });
             });
-            _fbRef(_db, 'courses_v20').update(_cData);
+            if (Object.keys(_cData).length) {
+              _fbRef(_db, 'courses_v20').update(_cData);
+              if (TraineeSystem._fbCourseIds) _newCourses.forEach(c => { TraineeSystem._fbCourseIds.add(c.id); TraineeSystem._fbCourseKeys && TraineeSystem._fbCourseKeys.add(c.id); });
+            }
           } catch(e) { console.warn('save courses final:', e); }
         }
-        try { TraineeSystem.persist(); } catch(e) {}
+        // #268: הוסר TraineeSystem.persist() — השיעורים כבר נכתבו ממוקד לכל חניך
+        // (addLessonFromExternal, למעלה). persist כאן כתב את כל רשימת החניכים של
+        // הקורס הפעיל מהזיכרון של המדריך — מיותר, ומסוכן בטאב ישן.
         // Update course selector UI so new courses appear immediately
         try { TraineeSystem._updateCourseSelector(); } catch(e) {}
         try { TraineeSystem._renderTab_courses(); } catch(e) {}
