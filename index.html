@@ -14,7 +14,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 193</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 194</title>
 
 <style>
 
@@ -1437,7 +1437,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 257;
+  const APP_VERSION = 258;
 
   // 2026-09-07, לפי בקשת לביא: היה קשה לבדוק באיזו גרסה הדפדפן בפועל טוען
   // (כותרת הטאב נחתכת כשיש הרבה טאבים פתוחים, ואי אפשר תמיד לראות "DEPLOYED
@@ -8422,6 +8422,8 @@ window.TraineeSystem = {
             try {
                 const snap = await this.coursesRef.once('value');
                 if (snap.exists()) {
+                    // #266: גיבוי יומי אוטומטי של courses_v20 (פעם ביום, ברקע, לא חוסם)
+                    try { this._dailyCoursesBackup(snap.val()); } catch(e) {}
                     this.courses = Object.values(snap.val()).map(c => ({
                         ...c,
                         trainees: c.trainees ? Object.values(c.trainees) : []
@@ -8469,6 +8471,26 @@ window.TraineeSystem = {
         this.courses.sort((a,b) => (a.priority||99) - (b.priority||99));
 
         this._updateCourseSelector();
+    },
+
+    // 2026-11-08, #266, לפי בקשת לביא: גיבוי יומי של כל עץ courses_v20 —
+    // courses_backups/{YYYY-MM-DD}. נכתב פעם ביום ע"י הטעינה הראשונה (כל משתמש),
+    // מהנתונים שנקראו זה עתה מ-Firebase (לא מהזיכרון). נשמרים 14 יום; ימים 15–30
+    // נמחקים בכתיבה ממוקדת (בלי להוריד את כל עץ הגיבויים).
+    async _dailyCoursesBackup(raw) {
+        if (!this.db || !raw) return;
+        if (typeof _isDemoMode === 'function' && _isDemoMode()) return;
+        const today = _localDateStr(new Date());
+        if (this._lastCoursesBackupDay === today) return;
+        this._lastCoursesBackupDay = today;
+        try {
+            const ref = this.db.ref('courses_backups/' + today);
+            if ((await ref.child('savedAt').once('value')).exists()) return;
+            await ref.set({ savedAt: Date.now(), savedBy: (typeof currentUserName !== 'undefined' && currentUserName) || 'system', courses: raw });
+            const prune = {};
+            for (let i = 15; i <= 30; i++) { const d = new Date(); d.setDate(d.getDate() - i); prune[_localDateStr(d)] = null; }
+            await this.db.ref('courses_backups').update(prune);
+        } catch(e) { console.warn('courses daily backup:', e); }
     },
 
     async _saveCourses() {
@@ -8648,6 +8670,8 @@ window.TraineeSystem = {
                     padding:2px 8px;border-radius:10px;font-weight:600;">${pLabel}</span>
                   <button onclick="try{_openCourseReport('${course.id}');}catch(e){console.warn(e);}"
                     style="padding:4px 10px;background:#2c3e50;color:white;border:none;border-radius:6px;cursor:pointer;font-size:11px;width:auto !important;">📋 דוח קורס</button>
+                  <button onclick="try{_openCourseRecovery('${course.id}');}catch(e){console.warn(e);}" title="שחזור חניכים ושיעורים מתוך טופסי סיכום יום"
+                    style="padding:4px 10px;background:#fff;color:#1a5276;border:1px solid #aac4dd;border-radius:6px;cursor:pointer;font-size:11px;width:auto !important;">🛟 שחזור מטפסים</button>
                   ${!isDefault && !isArchived ? `<button data-ts-set-default="${course.id}"
                     style="padding:4px 10px;background:#27ae60;color:white;border:none;border-radius:6px;
                            cursor:pointer;font-size:11px;width:auto !important;">⭐ הגדר ראשי</button>` : ''}
@@ -25408,6 +25432,222 @@ async function _runMissingLessonScan(){
 
   window._lastMissingLessonScan = results; // בשימוש שלב 2 (_runMissingLessonRepair)
   _showMissingLessonScanResults(results, label);
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// 2026-11-08, #266, לפי בקשת לביא: שחזור חניכי קורס מטופסי "סיכום יום".
+// רקע: #265 — רשימת החניכים של קורס 20 נדרסה ברשימת קורס 21, ולא נמצא עותק
+// תקין במטמון ולא גיבוי. המקור היחיד: report.feedbackDetails בטופסי סיכום יום
+// (שם חניך בלבד, בלי מזהה — קיים מאז DEPLOYED 84). אבני דרך: 13 מזהים יתומים
+// ב-settings/milestones (בלי שם) — הצעת קישור אוטומטית לפי התאמה מלאה של
+// הטסטים שעבר, וניתנת לשינוי ידני. שני שלבים: תצוגה מקדימה → אישור → כתיבה.
+// לפני הכתיבה נשמר גיבוי של מצב הקורס הנוכחי ב-recovery_backups/.
+// ══════════════════════════════════════════════════════════════════════
+function _crIdDate(id){ const n=parseInt(String(id),10); return (n>1e12&&n<4e12)? new Date(n).toLocaleDateString('he-IL') : '—'; }
+function _crLessonKey(l){ return [l.date||'',l.ins||'',l.mission||'',(Array.isArray(l.lessonNums)?l.lessonNums:Object.values(l.lessonNums||{})).slice().sort((a,b)=>a-b).join('-'),l.testKey||'',l.testResult||''].join('|'); }
+function _crArr(v){ return Array.isArray(v) ? v.filter(Boolean) : (v ? Object.values(v) : []); }
+const _CR_TEST_SHORT = {test10:'10', test30:'30', test50:'50', testOrbus:'אורבוס'};
+
+async function _openCourseRecovery(courseId){
+  if (typeof currentRole!=='undefined' && currentRole!=='admin'){ showToast('רק למנהל','warning'); return; }
+  if (typeof _isDemoMode==='function' && _isDemoMode()){ showToast('לא זמין במצב דמו','warning'); return; }
+  const TS = TraineeSystem;
+  if (!TS.db) { try { TS.init('traineeSystemContainer'); } catch(e) { console.warn('_openCourseRecovery init:', e); } }
+  if (!TS.coursesRef || !window._fbDb) { showToast('❌ אין חיבור ל-Firebase','error'); return; }
+  showToast('⏳ טוען טפסי סיכום יום ונתוני קורסים...','info');
+  let coursesRaw, reportsRaw, msRaw;
+  try {
+    [coursesRaw, reportsRaw, msRaw] = await Promise.all([
+      TS.coursesRef.once('value').then(s=>s.val()||{}),
+      _fbGet(_fbRef(_db,'taskReports')).then(s=>s.val()||{}),
+      window._fbDb.ref('settings/milestones').once('value').then(s=>s.val()||{})
+    ]);
+  } catch(e) { showToast('❌ הטעינה נכשלה: '+(e&&e.message||e),'error'); return; }
+  const courses = Object.entries(coursesRaw).map(([k,c])=>({ ...c, _key:k, trainees:_crArr(c.trainees) }));
+  const target = courses.find(c => c.id===courseId || c._key===courseId);
+  if (!target) { showToast('הקורס לא נמצא','error'); return; }
+  const existingNames = new Set(), allKeys = new Set();
+  courses.forEach(c => c.trainees.forEach(t => { if (t && t.name) existingNames.add(String(t.name).trim()); if (t) allKeys.add(TS._fbKey(t.id)); }));
+  const orphans = Object.entries(msRaw)
+    .filter(([k]) => !allKeys.has(k))
+    .map(([k,v]) => ({ key:k, passed:Object.keys(v||{}).filter(x=>v[x]===true).sort() }));
+  // כפילויות: חניכים בקורס היעד שהמזהה שלהם קיים גם בקורס אחר
+  const dupInfo = [];
+  target.trainees.forEach(t => {
+    const k = TS._fbKey(t.id);
+    const other = courses.find(c => c !== target && c.trainees.some(x => TS._fbKey(x.id)===k));
+    if (other) dupInfo.push({ key:k, name:t.name, otherName:other.name });
+  });
+  const idTs = parseInt(String(target.id).replace(/^course_/,''),10);
+  const created = (idTs>1e12 && idTs<4e12) ? _localDateStr(new Date(idTs)) : '';
+  const from = [target.startDate, created].filter(Boolean).sort()[0] || '';
+  window._crState = { courseKey:target._key, courseName:target.name, reportsRaw, existingNames, orphans, dupInfo, from };
+  _crRender();
+}
+
+function _crCompute(){
+  const S = window._crState;
+  const byName = {}; let scanned = 0, noDetail = 0;
+  Object.entries(S.reportsRaw).forEach(([dateKey, day]) => {
+    if (!day || typeof day !== 'object') return;
+    Object.values(day).forEach(r => {
+      if (!r || r.type !== 'unified_daily') return;
+      const date = r.date || dateKey;
+      if (S.from && date < S.from) return;
+      scanned++;
+      const det = _crArr(r.feedbackDetails);
+      if (!det.length) { if ((r.feedbackCount||0) > 0) noDetail++; return; }
+      det.forEach(fb => {
+        const name = String(fb.name||'').trim();
+        if (!name || name === '?' || S.existingNames.has(name)) return;
+        const td = (typeof _testDefByMission === 'function') ? _testDefByMission(fb.mission) : null;
+        const l = { date, ins:r.instructorName||'', mission:fb.mission||'קורס מעשי סיטאדיס',
+          lessonNums:_crArr(fb.lessonNums).map(Number).sort((a,b)=>a-b),
+          extraDesc:fb.extraDesc||'', note:fb.note||'', _fromUnifiedReport:true, _restoredFromReport:true };
+        if (td) { l.testKey = td.key; if (fb.testResult) l.testResult = fb.testResult; }
+        Object.entries(fb.skills||{}).forEach(([k,v]) => { if (v != null) l[k] = v; });
+        Object.keys(l).forEach(k => { if (l[k]==='' || (Array.isArray(l[k]) && !l[k].length)) delete l[k]; });
+        const g = byName[name] || (byName[name] = { name, lessons:[], _keys:new Set() });
+        const lk = _crLessonKey(l); if (g._keys.has(lk)) return;
+        g._keys.add(lk); g.lessons.push(l);
+      });
+    });
+  });
+  const cands = Object.values(byName).map(g => {
+    g.lessons.sort((a,b) => (a.date||'').localeCompare(b.date||''));
+    const passed = [...new Set(g.lessons.filter(l=>l.testKey && l.testResult==='pass').map(l=>l.testKey))].sort();
+    let maxL = 0;
+    g.lessons.forEach(l => { if (!l.testKey && /סיטאדיס|^קורס מעשי$|^קורס$/.test(l.mission||'')) (l.lessonNums||[]).forEach(n => { if (n>maxL) maxL=n; }); });
+    const onlyExtra = g.lessons.every(l => /כשירות/.test(l.mission||''));
+    return { name:g.name, lessons:g.lessons, passed, maxL, onlyExtra,
+      first:g.lessons[0]?.date||'', last:g.lessons[g.lessons.length-1]?.date||'', checked:!onlyExtra, link:'' };
+  }).sort((a,b) => a.name.localeCompare(b.name,'he'));
+  // הצעת קישור לאבני דרך יתומות — רק התאמה מלאה וחד-חד-ערכית של רשימת הטסטים שעבר
+  const sig = arr => arr.join(',');
+  const orphBySig = {}; S.orphans.filter(o=>o.passed.length).forEach(o => (orphBySig[sig(o.passed)] = orphBySig[sig(o.passed)]||[]).push(o));
+  const candBySig = {}; cands.filter(c=>c.checked && c.passed.length).forEach(c => (candBySig[sig(c.passed)] = candBySig[sig(c.passed)]||[]).push(c));
+  Object.keys(candBySig).forEach(s => {
+    if (candBySig[s].length===1 && (orphBySig[s]||[]).length===1) candBySig[s][0].link = orphBySig[s][0].key;
+  });
+  S.cands = cands; S.scanned = scanned; S.noDetail = noDetail;
+}
+
+function _crRender(){
+  const S = window._crState; _crCompute();
+  document.getElementById('courseRecoveryOverlay')?.remove();
+  const orphOpts = sel => `<option value="">🆕 מזהה חדש — אבני דרך לפי הטסטים בטפסים</option>` +
+    S.orphans.map(o => `<option value="${_esc(o.key)}" ${o.key===sel?'selected':''}>🔗 נוצר ${_crIdDate(o.key)} · ${o.passed.length ? 'עבר: '+o.passed.map(k=>_CR_TEST_SHORT[k]||k).join(', ') : 'ללא טסטים'}</option>`).join('');
+  const rows = S.cands.length ? S.cands.map((c,i) => `
+    <tr style="border-bottom:1px solid #f0f2f7;${c.checked?'':'opacity:.55;'}" data-cr-row="${i}">
+      <td style="padding:6px 8px;text-align:center;"><input type="checkbox" data-cr-check="${i}" ${c.checked?'checked':''} onchange="window._crState.cands[${i}].checked=this.checked;this.closest('tr').style.opacity=this.checked?'1':'.55';_crUpdateSummary()" style="width:16px;height:16px;"></td>
+      <td style="padding:6px 8px;font-weight:bold;">${_esc(c.name)}${c.onlyExtra?' <span style="font-size:10.5px;color:#a0522d;font-weight:400;">(רק כשירות/שעות נוספות — ייתכן נהג חיצוני)</span>':''}</td>
+      <td style="padding:6px 8px;text-align:center;">${c.lessons.length}</td>
+      <td style="padding:6px 8px;text-align:center;">${c.maxL||'—'}</td>
+      <td style="padding:6px 8px;font-size:11.5px;white-space:nowrap;">${c.first}${c.last&&c.last!==c.first?' ← '+c.last:''}</td>
+      <td style="padding:6px 8px;font-size:11.5px;">${c.passed.length ? c.passed.map(k=>_CR_TEST_SHORT[k]||k).join(', ') : '—'}</td>
+      <td style="padding:6px 8px;"><select data-cr-link="${i}" onchange="window._crState.cands[${i}].link=this.value" style="width:auto !important;max-width:260px;font-size:11.5px;padding:3px;">${orphOpts(c.link)}</select></td>
+    </tr>`).join('')
+    : `<tr><td colspan="7" style="text-align:center;padding:24px;color:#888;">לא נמצאו בטפסים שמות שאינם קיימים כבר באחד הקורסים</td></tr>`;
+  const ov = document.createElement('div');
+  ov.id = 'courseRecoveryOverlay'; ov.className = 'log-overlay';
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9900;display:flex;align-items:center;justify-content:center;';
+  ov.innerHTML = `
+    <div style="background:white;border-radius:16px;width:min(1000px,96vw);max-height:88vh;overflow:hidden;display:flex;flex-direction:column;direction:rtl;">
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 20px;border-bottom:2px solid #eef2f8;">
+        <h3 style="margin:0;font-size:16px;">🛟 שחזור חניכים מטופסי סיכום יום — ${_esc(S.courseName)}</h3>
+        <button onclick="this.closest('.log-overlay').remove()" style="width:auto !important;background:none;border:none;font-size:22px;cursor:pointer;color:#888;">×</button>
+      </div>
+      <div style="padding:10px 20px;font-size:12.5px;line-height:1.7;border-bottom:1px solid #eef2f8;background:#fafbfe;">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+          <span>טפסים מתאריך:</span>
+          <input type="date" id="cr-from" value="${_esc(S.from)}" style="width:auto !important;padding:3px 6px;font-size:12px;">
+          <button onclick="window._crState.from=document.getElementById('cr-from').value;_crRender()" style="width:auto !important;padding:4px 10px;font-size:11.5px;border:1px solid #ccd;border-radius:6px;background:white;cursor:pointer;">רענן</button>
+          <span style="color:#666;">· נסרקו ${S.scanned} טפסים · נמצאו ${S.cands.length} שמות שאינם קיימים באף קורס</span>
+        </div>
+        ${S.noDetail ? `<div style="color:#b9770e;">⚠️ ${S.noDetail} טפסים בטווח הוגשו לפני שהמערכת שמרה פירוט משוב — השיעורים מהם לא ניתנים לשחזור.</div>` : ''}
+        ${S.dupInfo.length ? `<div style="color:#1a5276;">ℹ️ ${S.dupInfo.length} חניכים שמופיעים כרגע בקורס הזה הם כפילות של "${_esc(S.dupInfo[0].otherName)}" — יוסרו מכאן בלבד (נשארים בקורס המקורי; שיעורים שנרשמו רק בעותק הזה יועברו אליו).</div>` : ''}
+        <div style="color:#666;">לא ישוחזרו: משובים שהוזנו ישירות בתיק החניך (לא דרך סיכום יום), שעות של כשירות/שעות נוספות, וסטטוס הסרה/סיום. לפני הכתיבה נשמר גיבוי של מצב הקורס הנוכחי.</div>
+      </div>
+      <div style="overflow-y:auto;flex:1;padding:0 20px 10px;">
+        <table style="width:100%;border-collapse:collapse;font-size:12.5px;">
+          <thead><tr style="background:#f8faff;position:sticky;top:0;">
+            <th style="padding:7px 8px;font-size:11px;color:#888;">שחזר</th>
+            <th style="padding:7px 8px;text-align:right;font-size:11px;color:#888;">שם</th>
+            <th style="padding:7px 8px;font-size:11px;color:#888;">רשומות</th>
+            <th style="padding:7px 8px;font-size:11px;color:#888;">שיעור אחרון</th>
+            <th style="padding:7px 8px;text-align:right;font-size:11px;color:#888;">טווח תאריכים</th>
+            <th style="padding:7px 8px;text-align:right;font-size:11px;color:#888;">טסטים שעבר</th>
+            <th style="padding:7px 8px;text-align:right;font-size:11px;color:#888;">אבני דרך</th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+      <div style="padding:12px 20px;border-top:2px solid #eef2f8;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
+        <span id="cr-summary" style="font-size:12.5px;color:#444;"></span>
+        <button id="cr-go" onclick="_crRestore()" style="width:auto !important;padding:8px 18px;background:#27ae60;color:white;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:bold;">✅ שחזר לקורס</button>
+      </div>
+    </div>`;
+  document.body.appendChild(ov);
+  _crUpdateSummary();
+}
+
+function _crUpdateSummary(){
+  const S = window._crState; const el = document.getElementById('cr-summary'); if (!el) return;
+  const sel = S.cands.filter(c => c.checked);
+  el.textContent = `ישוחזרו ${sel.length} חניכים עם ${sel.reduce((s,c)=>s+c.lessons.length,0)} רשומות` + (S.dupInfo.length ? ` · יוסרו ${S.dupInfo.length} כפילויות` : '');
+}
+
+async function _crRestore(){
+  const S = window._crState, TS = TraineeSystem;
+  const sel = S.cands.filter(c => c.checked);
+  if (!sel.length && !S.dupInfo.length) { showToast('לא נבחר אף חניך','warning'); return; }
+  const used = {};
+  for (const c of sel) { if (!c.link) continue; if (used[c.link]) { showToast(`⚠️ אותן אבני דרך שויכו גם ל-${used[c.link]} וגם ל-${c.name}`,'warning'); return; } used[c.link] = c.name; }
+  if (!confirm(`לשחזר ${sel.length} חניכים לקורס "${S.courseName}"${S.dupInfo.length ? ` ולהסיר ממנו ${S.dupInfo.length} כפילויות` : ''}?\nלפני הכתיבה יישמר גיבוי של מצב הקורס הנוכחי.`)) return;
+  const btn = document.getElementById('cr-go'); if (btn) { btn.disabled = true; btn.textContent = '⏳ משחזר...'; }
+  try {
+    const coursesRaw = (await TS.coursesRef.once('value')).val() || {};
+    const fresh = (coursesRaw[S.courseKey] && coursesRaw[S.courseKey].trainees) || {};
+    // 1. גיבוי — אם נכשל, לא ממשיכים
+    await TS.db.ref('recovery_backups/' + S.courseKey + '_' + Date.now()).set({ courseKey:S.courseKey, courseName:S.courseName, savedAt:Date.now(), trainees:fresh });
+    // 2. כפילויות: הסרה מקורס היעד בלבד + העברת שיעורים שקיימים רק בעותק הזה
+    const updates = {}; let moved = 0;
+    for (const [k, t] of Object.entries(fresh)) {
+      const otherKey = Object.keys(coursesRaw).find(ck => ck !== S.courseKey && coursesRaw[ck] && coursesRaw[ck].trainees && coursesRaw[ck].trainees[k]);
+      if (!otherKey) continue; // חניך ייחודי לקורס הזה — לא נוגעים
+      const lRef = TS.coursesRef.child(otherKey).child('trainees').child(k).child('lessons');
+      const otherLessons = _crArr((await lRef.once('value')).val());
+      const have = new Set(otherLessons.map(_crLessonKey));
+      const extra = _crArr(t && t.lessons).filter(l => !have.has(_crLessonKey(l)));
+      if (extra.length) { await lRef.set(otherLessons.concat(extra)); moved += extra.length; }
+      updates[k] = null;
+    }
+    // 3. החניכים המשוחזרים
+    const msUpd = {};
+    sel.forEach((c, i) => {
+      const id = c.link || (Date.now() + i) + '_' + Math.random().toString(36).slice(2,8);
+      const key = TS._fbKey(id);
+      updates[key] = { id, name:c.name, lessons:c.lessons, _restoredAt:Date.now() };
+      c.passed.forEach(tk => { msUpd[key + '/' + tk] = true; });
+    });
+    await TS.coursesRef.child(S.courseKey).child('trainees').update(updates);
+    if (Object.keys(msUpd).length) await window._fbDb.ref('settings/milestones').update(msUpd);
+    // 4. רענון
+    try { await TS.loadCourses(); } catch(e) {}
+    const cur = TS.courses.find(c => c.id === TS.currentCourseId);
+    if (cur) TS.trainees = cur.trainees || [];
+    try { TS.renderList(); } catch(e) {}
+    try { if (typeof _loadMilestonePassMap === 'function') await _loadMilestonePassMap(); } catch(e) {}
+    window._traineeSummaryCache = null;
+    try { _renderTraineeSummaryPanel(); } catch(e) {}
+    try { TS._renderTab_courses(); } catch(e) {}
+    document.getElementById('courseRecoveryOverlay')?.remove();
+    showToast(`✅ שוחזרו ${sel.length} חניכים${S.dupInfo.length ? ` · הוסרו ${S.dupInfo.length} כפילויות` : ''}${moved ? ` · ${moved} שיעורים הועברו לקורס המקורי` : ''}`, 'success');
+  } catch(e) {
+    console.error('_crRestore:', e);
+    showToast('❌ השחזור נכשל: ' + (e && e.message || e) + ' — אם חלק נכתב, הגיבוי נשמר ב-recovery_backups', 'error');
+    if (btn) { btn.disabled = false; btn.textContent = '✅ שחזר לקורס'; }
+  }
 }
 
 // 2026-09-14, לפי בקשת לביא: מפתח יציב לרשומה בודדת ברשימת "שיעורים חסרים" —
