@@ -14,7 +14,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 192</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 193</title>
 
 <style>
 
@@ -1437,7 +1437,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 256;
+  const APP_VERSION = 257;
 
   // 2026-09-07, לפי בקשת לביא: היה קשה לבדוק באיזו גרסה הדפדפן בפועל טוען
   // (כותרת הטאב נחתכת כשיש הרבה טאבים פתוחים, ואי אפשר תמיד לראות "DEPLOYED
@@ -5107,8 +5107,14 @@ window.TraineeSystem = {
             return;
         }
 
+        // 2026-11-08, #265 (תיקון-שורש לדריסת קורס 20 ע"י חניכי קורס 21): מזהה הקורס
+        // נלכד כאן פעם אחת. קודם this.currentCourseId נקרא שוב *אחרי* ה-await של
+        // _refreshLessonsBeforeWrite — ואם בינתיים loadCourses() (ברקע, מ-openTrainee או
+        // מכניסה לסעיף חניכים) החזירה אותו לקורס ברירת המחדל, רשימת החניכים של קורס אחד
+        // נכתבה לתוך קורס אחר.
+        const _courseId = this.currentCourseId;
         // Update current course trainees before saving
-        const cur = this.courses.find(c => c.id === this.currentCourseId);
+        const cur = this.courses.find(c => c.id === _courseId);
         if (cur) cur.trainees = JSON.parse(JSON.stringify(this.trainees));
         // 2026-10-06, #261: סגירת קורס אוטומטית כשלכל החניכים יש סטטוס סופי.
         try { this._checkCourseAutoClose(); } catch(e) { console.warn('_checkCourseAutoClose:', e); }
@@ -5124,7 +5130,7 @@ window.TraineeSystem = {
         // for every course. Same clobber pattern as the trainees_v20 bug fixed in AA #2,
         // just one level up, in courses_v20's metadata instead of the flat trainee list.)
         // .update() on the scoped path only ever touches this course's trainees subtree.
-        if (this.coursesRef && this.currentCourseId) {
+        if (this.coursesRef && _courseId) {
             try {
                 const traineesToWrite = cur ? (cur.trainees || []) : (this.trainees || []);
                 // 2026-09-07, לפי בקשת לביא: persist() היא הפונקציה הכי נפוצה במערכת
@@ -5135,10 +5141,10 @@ window.TraineeSystem = {
                 // הנוכחית עצמה נועדה לשמור עריכה ב-lessons[] שלו ממש (מחיקת/עריכת
                 // שיעור וכו') — רענון שלו כאן היה עלול למחוק בשקט את העריכה הזו
                 // עצמה, לפני שהיא בכלל נשמרה.
-                await this._refreshLessonsBeforeWrite(this.currentCourseId, traineesToWrite, [this.currentId, ...(extraProtectedIds||[])]);
+                await this._refreshLessonsBeforeWrite(_courseId, traineesToWrite, [this.currentId, ...(extraProtectedIds||[])]);
                 const tData = {};
                 traineesToWrite.forEach(t => { tData[this._fbKey(t.id)] = t; });
-                this.coursesRef.child(this.currentCourseId).child('trainees').set(tData).catch(err => {
+                this.coursesRef.child(_courseId).child('trainees').set(tData).catch(err => {
                     console.error('persist courses failed:', err);
                     if (typeof showToast === 'function') showToast('❌ שמירת החניכים נכשלה — בדוק חיבור אינטרנט', 'error');
                 });
@@ -8449,8 +8455,13 @@ window.TraineeSystem = {
             if (active.length) active[0].isDefault = true;
         }
 
-        // Set current course = default
-        const def = this.courses.find(c => c.isDefault) || this.courses[0];
+        // 2026-11-08, #265: שומרים על הקורס שהמשתמש בחר אם הוא עדיין קיים. קודם כל
+        // רענון ברקע (openTrainee, כניסה לסעיף חניכים, טופס סיכום יום) החזיר בשקט את
+        // currentCourseId לקורס ברירת המחדל בזמן שהמסך המשיך להציג קורס אחר — וכל שמירה
+        // אחר כך נכתבה לקורס הלא נכון. ברירת מחדל רק בטעינה ראשונה או אם הקורס נמחק.
+        const _prevId = this.currentCourseId;
+        const _keep = _prevId ? this.courses.find(c => c.id === _prevId) : null;
+        const def = _keep || this.courses.find(c => c.isDefault) || this.courses[0];
         this.currentCourseId = def ? def.id : null;
         if (def) this.trainees = def.trainees || [];
 
