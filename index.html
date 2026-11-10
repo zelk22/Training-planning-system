@@ -14,7 +14,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 196</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 197</title>
 
 <style>
 
@@ -1437,7 +1437,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 260;
+  const APP_VERSION = 261;
 
   // 2026-09-07, לפי בקשת לביא: היה קשה לבדוק באיזו גרסה הדפדפן בפועל טוען
   // (כותרת הטאב נחתכת כשיש הרבה טאבים פתוחים, ואי אפשר תמיד לראות "DEPLOYED
@@ -6172,9 +6172,15 @@ window.TraineeSystem = {
         // קשיחה. הוסר גם ה-"חדש" / דריסת השם האוטומטית של המיומנות השנייה
         // (מבנה דיפו/קו) — המנהל שולט בשם דרך ההגדרות בלבד.
         const avgs = sums.map((s, i) => counts[i] ? (s / (counts[i] * 10)) * 100 : null);
+        // #269: ספי הצבע — מאותן הגדרות של תג הרמה/הדשבורד (lowScoreRed/lowScoreOrange
+        // על סולם 0–10, כאן ×10 לאחוזים). קודם: 65%/82% קשיחים — ולכן 8.0 ירוק בתג
+        // אבל 80% כתום בכרטיס.
+        const _scCfg = (typeof _getTraineeSummaryConfig === 'function')
+            ? _getTraineeSummaryConfig() : { lowScoreRed: 5, lowScoreOrange: 8 };
+        const _redPct = (_scCfg.lowScoreRed ?? 5) * 10, _orangePct = (_scCfg.lowScoreOrange ?? 8) * 10;
         this.$('stats-row').innerHTML = skillList.map((sk, i) => {
             const a = avgs[i];
-            const c = a === null ? 'var(--neutral)' : a < 65 ? 'var(--danger)' : a < 82 ? 'var(--warning)' : 'var(--success)';
+            const c = a === null ? 'var(--neutral)' : a < _redPct ? 'var(--danger)' : a < _orangePct ? 'var(--warning)' : 'var(--success)';
             return `<div class="stat-card" style="background:${c}">
                         <div class="stat-label">${_esc(sk.name)}${_skillHelpIcon(sk.name, sk.desc)}</div>
                         <div class="stat-val">${a === null ? 'אין נתון' : a.toFixed(0) + '%'}</div>
@@ -30143,8 +30149,20 @@ function _getAllKnownSkillIds() {
   return Array.from(new Set([...active, ...retired]));
 }
 
+// 2026-11-09, #269, לפי בקשת לביא: תג הרמה/הדשבורד (5.2) לא תאם את "סטטוס כשירות"
+// (80%) — התג מיצע גם מיומנויות "בגמלאות" שנשמרו ברשומת השיעור לצד המיומנות
+// הפעילה. לביא אישר שהחישוב לפי המיומנויות הפעילות הוא הנכון. הכלל: בשיעור שבו
+// דורגה לפחות מיומנות פעילה אחת — רק המיומנויות הפעילות נספרות; מיומנויות
+// בגמלאות נספרות רק בשיעורים היסטוריים שאין בהם אף מיומנות פעילה (כדי לא לאבד
+// את ציוני העבר — ההחלטה מ-2026-09-03 נשמרת עבורם).
+function _lessonScoreSkillIds(l) {
+  const active = _getSkillIds();
+  if (l && active.some(id => l[id] != null)) return active;
+  return _getAllKnownSkillIds();
+}
+
 function _lessonMeetsScoreThreshold(l) {
-  const skillIds = _getAllKnownSkillIds();
+  const skillIds = _lessonScoreSkillIds(l);
   const filledCount = skillIds.filter(id => l[id] != null).length;
   if (filledCount === 0) return false;
 
@@ -30166,7 +30184,7 @@ function _lessonMeetsScoreThreshold(l) {
 
 function _lessonScoreAvg(l) {
   if (!_lessonMeetsScoreThreshold(l)) return null;
-  const skillIds = _getAllKnownSkillIds();
+  const skillIds = _lessonScoreSkillIds(l);
   const vals = skillIds.map(id => l[id]).filter(v => v != null);
   return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
 }
