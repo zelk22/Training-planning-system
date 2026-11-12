@@ -16,7 +16,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 206</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 207</title>
 
 <style>
 
@@ -1439,7 +1439,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 270;
+  const APP_VERSION = 271;
 
   // 2026-09-07, לפי בקשת לביא: היה קשה לבדוק באיזו גרסה הדפדפן בפועל טוען
   // (כותרת הטאב נחתכת כשיש הרבה טאבים פתוחים, ואי אפשר תמיד לראות "DEPLOYED
@@ -4069,10 +4069,19 @@ window.TraineeSystem = {
     .trainee-module .btn-ghost { background: #fff; border: 1px solid #ddd; color: #4a5568; }
     .trainee-module .btn-success { background: var(--success); color: white; width: 100%; font-size: 1.25em; margin-top: 30px; }
     /* 2026-09-23, #249: סרגל כלים קומפקטי — כפתורי אייקון עגולים (אופציה 3 שאושרה) */
-    .trainee-module .ts-icon-btn { width:36px; height:36px; padding:0; border:none; border-radius:50%; color:#fff; font-size:15px; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; transition:0.2s; }
-    .trainee-module .ts-icon-btn:hover { filter:brightness(1.1); transform:scale(1.06); }
-    .trainee-module .ts-icon-btn.ghost { background:#fff; border:1px solid #ddd; color:#4a5568; }
-    .trainee-module .ts-icon-btn.active { box-shadow:0 0 0 2px #fff, 0 0 0 4px currentColor; }
+    /* 2026-11-12, לפי בקשת לביא: כפתורי הכותרת — טקסט + אייקון, רקע בהיר ומסגרת צבעונית (הצעה א׳). */
+    .trainee-module .ts-icon-btn { height:34px; padding:0 12px; border:1px solid #b4b2a9; border-radius:8px; background:#f1efe8; color:#444441; font-size:13px; font-weight:600; font-family:inherit; cursor:pointer; display:inline-flex; align-items:center; gap:6px; flex-shrink:0; white-space:nowrap; width:auto; margin:0; transition:background .15s, border-color .15s; }
+    .trainee-module .ts-icon-btn .tsib-ic { font-size:15px; line-height:1; }
+    .trainee-module .ts-icon-btn:hover { background:#e6e3d8; border-color:#888780; }
+    .trainee-module .ts-icon-btn.tsib-purple { background:#eeedfe; border-color:#afa9ec; color:#3c3489; }
+    .trainee-module .ts-icon-btn.tsib-purple:hover { background:#e1dffb; border-color:#7f77dd; }
+    .trainee-module .ts-icon-btn.tsib-teal { background:#e1f5ee; border-color:#5dcaa5; color:#085041; }
+    .trainee-module .ts-icon-btn.tsib-teal:hover { background:#cdeee1; border-color:#1d9e75; }
+    .trainee-module .ts-icon-btn.active { background:#085041; border-color:#085041; color:#fff; }
+    body.dark-mode .trainee-module .ts-icon-btn { background:#2c2c2a; border-color:#5f5e5a; color:#d3d1c7; }
+    body.dark-mode .trainee-module .ts-icon-btn.tsib-purple { background:#26215c; border-color:#534ab7; color:#cecbf6; }
+    body.dark-mode .trainee-module .ts-icon-btn.tsib-teal { background:#04342c; border-color:#0f6e56; color:#9fe1cb; }
+    @media (max-width:600px) { .trainee-module .ts-icon-btn .tsib-lbl { display:none; } .trainee-module .ts-icon-btn { padding:0 9px; } }
 
     .trainee-module .panel { background: #f8f9fa; border: 1px solid #e0e0e0; border-radius: 15px; padding: 20px; margin-bottom: 25px; }
     .trainee-module .panel h4 { margin: 0 0 14px 0; color: var(--rail-dark); }
@@ -4345,10 +4354,10 @@ window.TraineeSystem = {
             <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
                 <button id="ts-add-trainee-btn" class="btn btn-blue" data-action="toggle-panel" data-panel="add-panel" style="width:auto;padding:8px 16px;font-size:13px;">+ חניך חדש</button>
                 <span style="width:1px;height:22px;background:#e0e4ea;margin:0 4px;"></span>
-                <button class="ts-icon-btn" data-action="show-reports" title="דוחות" style="background:#6c3483;">📊</button>
-                <button id="notesSelectModeBtn" onclick="_toggleNotesSelectMode()" class="ts-icon-btn" title="בחר חניכים להצגה" style="background:#8e44ad;">☑️</button>
-                <button id="ts-archived-btn" class="ts-icon-btn" data-action="show-archived" title="חניכים שהוסרו" style="display:none;background:#7f8c8d;">📦</button>
-                <button id="ts-settings-btn" class="ts-icon-btn ghost" data-action="open-ts-settings" title="הגדרות" style="display:none;">⚙️</button>
+                <button class="ts-icon-btn tsib-purple" data-action="show-reports" title="דוחות"><span class="tsib-ic">📊</span><span class="tsib-lbl">דוחות</span></button>
+                <button id="notesSelectModeBtn" onclick="_toggleNotesSelectMode()" class="ts-icon-btn tsib-teal" title="בחר חניכים להצגה"><span class="tsib-ic">☑️</span><span class="tsib-lbl">בחירת חניכים</span></button>
+                <button id="ts-archived-btn" class="ts-icon-btn" data-action="show-archived" title="חניכים שהוסרו" style="display:none;"><span class="tsib-ic">📦</span><span class="tsib-lbl">ארכיון</span></button>
+                <button id="ts-settings-btn" class="ts-icon-btn" data-action="open-ts-settings" title="הגדרות" style="display:none;"><span class="tsib-ic">⚙️</span><span class="tsib-lbl">הגדרות</span></button>
             </div>
         </header>
 
@@ -26777,9 +26786,12 @@ function _toggleNotesSelectMode() {
   const btn = document.getElementById('notesSelectModeBtn');
   if (btn) {
     // 2026-09-23, #249: כפתור אייקון עגול (לא טקסט) — במצב פעיל: אייקון ✕ + צבע כהה יותר + כותרת (tooltip) מתעדכנת
-    btn.textContent = window._notesSelectModeOn ? '✕' : '☑️';
+    // 2026-11-12: כפתור עם טקסט — במצב פעיל: ✕ + "בטל בחירה" + צבע מלא (class active).
+    const _ic = btn.querySelector('.tsib-ic'), _lb = btn.querySelector('.tsib-lbl');
+    if (_ic) _ic.textContent = window._notesSelectModeOn ? '✕' : '☑️';
+    if (_lb) _lb.textContent = window._notesSelectModeOn ? 'בטל בחירה' : 'בחירת חניכים';
+    btn.classList.toggle('active', !!window._notesSelectModeOn);
     btn.title = window._notesSelectModeOn ? 'בטל בחירת חניכים' : 'בחר חניכים להצגה';
-    btn.style.background = window._notesSelectModeOn ? '#5b2c6f' : '#8e44ad';
   }
   try { TraineeSystem.renderList(); } catch (e) {}
   _updateNotesSelectBar();
