@@ -16,7 +16,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 202</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 203</title>
 
 <style>
 
@@ -1439,7 +1439,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 266;
+  const APP_VERSION = 267;
 
   // 2026-09-07, לפי בקשת לביא: היה קשה לבדוק באיזו גרסה הדפדפן בפועל טוען
   // (כותרת הטאב נחתכת כשיש הרבה טאבים פתוחים, ואי אפשר תמיד לראות "DEPLOYED
@@ -4605,6 +4605,7 @@ window.TraineeSystem = {
       <button class="ts-stab" data-ts-tab="courses">📚 קורסים</button>
       <button class="ts-stab" data-ts-tab="reportfields">📋 שדות דיווח</button>
       <button class="ts-stab" data-ts-tab="milestones">🏁 אבני דרך</button>
+      <button class="ts-stab" data-ts-tab="tracks">🛤️ מסלולי הכשרה</button>
       <button class="ts-stab" data-ts-tab="mentors">🎓 חונכים</button>
       <button class="ts-stab" data-ts-tab="highlights" id="ts-tab-highlights-btn" style="display:none;">📌 דגשי ביצוע</button>
     </div>
@@ -4764,6 +4765,12 @@ window.TraineeSystem = {
       <div id="ts-ins-tags" style="display:flex;flex-wrap:wrap;gap:8px;"></div>
     </div>
     <!-- Tab: Milestones -->
+    <div class="ts-spanel" id="ts-panel-tracks">
+      <h3 style="margin:0 0 4px;font-size:15px;color:#1a2a3a;">🛤️ מסלולי הכשרה</h3>
+      <p style="font-size:12px;color:#888;margin:0 0 14px;">תבנית קבועה: הכשרה לנהג (חובה) ← הסבה לנייד (אופציונלי) ← חניכה (אופציונלי). שם המסלול נבנה מהשלבים. יעד אישי בתיק חניך גובר על מספר השיעורים של המסלול.</p>
+      <div id="ts-tracks-root"></div>
+    </div>
+
     <div class="ts-spanel" id="ts-panel-milestones">
       <p style="font-size:12px;color:#888;margin:0 0 14px;">הגדר את התנהגות המערכת כאשר חניך מגיע לנקודת ציון בקורס המעשי.</p>
       <div style="display:flex;flex-direction:column;gap:14px;" id="ts-milestones-list">
@@ -4805,12 +4812,11 @@ window.TraineeSystem = {
         <div style="background:#f8faff;border:1.5px solid #f0ad4e;border-radius:10px;padding:14px 16px;">
           <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
             <div>
-              <div style="font-size:14px;font-weight:bold;color:#1a2a3a;">🏁 טסט 50 — כניסה להשתלמות אורבוס</div>
-              <div style="font-size:11px;color:#888;margin-top:2px;">נדרש לפני השתלמות אורבוס (שיעור 50)</div>
+              <div style="font-size:14px;font-weight:bold;color:#1a2a3a;">🏁 טסט סיום ההכשרה לנהג</div>
+              <div style="font-size:11px;color:#888;margin-top:2px;">נדרש לפני ההסבה לנייד · מספר השיעורים נקבע במסלול ההכשרה (🛤️ מסלולי הכשרה)</div>
             </div>
             <div style="display:flex;align-items:center;gap:8px;">
-              <label style="font-size:11px;color:#888;white-space:nowrap;">סף שיעורים:</label>
-              <input type="number" id="ts-m-test50-val" min="1" max="200" value="50" style="width:58px;padding:5px 8px;border:1.5px solid #ddd;border-radius:7px;font-size:13px;text-align:center;">
+              <input type="number" id="ts-m-test50-val" min="1" max="200" value="50" style="display:none;width:58px;padding:5px 8px;border:1.5px solid #ddd;border-radius:7px;font-size:13px;text-align:center;">
               <select id="ts-m-test50" style="padding:7px 12px;border:1.5px solid #ddd;border-radius:7px;font-size:13px;direction:rtl;min-width:130px;">
                 <option value="warn">⚠️ אזהרה בלבד</option>
                 <option value="ignore">✅ התעלם</option>
@@ -4822,12 +4828,11 @@ window.TraineeSystem = {
         <div style="background:#f0fff4;border:1.5px solid #27ae60;border-radius:10px;padding:14px 16px;">
           <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
             <div>
-              <div style="font-size:14px;font-weight:bold;color:#1a2a3a;">🏁 טסט אורבוס — תנאי לחניכה</div>
-              <div style="font-size:11px;color:#888;margin-top:2px;" id="ts-chinuch-desc">נדרש לפני כניסה לחניכה (7 שיעורי קורס מעשי אורבוס)</div>
+              <div style="font-size:14px;font-weight:bold;color:#1a2a3a;">🏁 טסט הסבה — תנאי לחניכה</div>
+              <div style="font-size:11px;color:#888;margin-top:2px;" id="ts-chinuch-desc">נדרש לפני כניסה לחניכה · מספר השיעורים נקבע במסלול ההכשרה (🛤️ מסלולי הכשרה)</div>
             </div>
             <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-              <label style="font-size:11px;color:#888;white-space:nowrap;">סף שיעורי אורבוס:</label>
-              <input type="number" id="ts-m-chinuch-orbus-val" min="1" max="100" value="7" style="width:52px;padding:5px 8px;border:1.5px solid #27ae60;border-radius:7px;font-size:13px;text-align:center;">
+              <input type="number" id="ts-m-chinuch-orbus-val" min="1" max="100" value="7" style="display:none;width:52px;padding:5px 8px;border:1.5px solid #27ae60;border-radius:7px;font-size:13px;text-align:center;">
               <select id="ts-m-testOrbus" style="padding:7px 12px;border:1.5px solid #ddd;border-radius:7px;font-size:13px;direction:rtl;min-width:130px;">
                 <option value="warn">⚠️ אזהרה בלבד</option>
                 <option value="ignore">✅ התעלם</option>
@@ -5584,11 +5589,11 @@ window.TraineeSystem = {
         const old = document.getElementById('_trackModal');
         if (old) old.remove();
         const list = _trackList();
-        const def = list.find(x => x.isDefault) || _trackDefault();
-        const curId = (t.trackId && _trackById(t.trackId) && !_trackById(t.trackId).isDefault) ? t.trackId : '';
+        const def = _trackCourseDefault(_trackCourseIdOf(t)); // ספרינט 5: ברירת המחדל של הקורס
+        const curId = (t.trackId && _trackById(t.trackId)) ? t.trackId : '';
         const msEntry = (window._milestonePassMap || {})[this._fbKey ? this._fbKey(t.id) : String(t.id)] || {};
-        const opts = ['<option value="">ברירת מחדל · ' + _esc(_trackName(def)) + '</option>']
-            .concat(list.filter(x => !x.isDefault).map(x =>
+        const opts = ['<option value="">ברירת מחדל של הקורס · ' + _esc(_trackName(def)) + '</option>']
+            .concat(list.filter(x => x.id !== def.id).map(x =>
                 '<option value="' + _esc(x.id) + '"' + (x.id === curId ? ' selected' : '') + '>' + _esc(_trackName(x)) + (x.chinuch === false ? '' : '') + '</option>'))
             .join('');
         const ov = document.createElement('div');
@@ -6536,6 +6541,7 @@ window.TraineeSystem = {
     _renderTestChips(mission, isChinuchMission, isSitadis, isOrbus) {
         const wrap = this.$('test-chips-wrap');
         if (!wrap) return;
+        const t = this.trainees.find(x => String(x.id) === String(this.currentId)); // ספרינט 5: תווית טסט לפי מסלול
         const examinerName = (typeof currentUserName !== 'undefined') ? currentUserName : '';
         const canExamine = _isExaminer(examinerName);
         // 2026-08-31, לפי בקשת לביא: הסתרה מלאה ממי שאינו בוחן — לא רק ניטרול —
@@ -6549,7 +6555,7 @@ window.TraineeSystem = {
             const selected = this.selectedTestKey === d.key;
             const bg = selected ? d.color : 'white';
             const fg = selected ? 'white' : '#8a6d1a';
-            h += `<button type="button" data-test-key="${d.key}" style="padding:5px 12px;border-radius:16px;border:1.5px solid ${d.color};background:${bg};color:${fg};font-size:12px;font-weight:bold;cursor:pointer;">${d.label}</button>`;
+            h += `<button type="button" data-test-key="${d.key}" style="padding:5px 12px;border-radius:16px;border:1.5px solid ${d.color};background:${bg};color:${fg};font-size:12px;font-weight:bold;cursor:pointer;">${_trackTestChipLabel(t, d)}</button>`;
         });
         h += '</div>';
         if (this.selectedTestKey) {
@@ -7797,6 +7803,198 @@ window.TraineeSystem = {
         if (panel) { panel.classList.add('active'); this['_renderTab_' + tab]?.(); }
     },
 
+    // ── 2026-11-12, מסלולים ספרינט 5: מסך עריכת מסלולים (מוקאפ 1) ─────────────
+    // כל המסלולים ניתנים לעריכה (גם המובנים — נשמרים כדריסה ב-settings.tracks/{id}).
+    // מספרי השיעורים של מסלול ברירת המחדל מוגדרים כאן בלבד (השדות במסך אבני דרך
+    // הוסתרו). עריכת מסלול חלה על כל החניכים המשויכים אליו — עם אזהרה לפני שמירה.
+    // ברירת מחדל ברמת קורס: settings.courseTracks/{courseId}.
+    _trackAllTrainees() {
+        const seen = new Set(), out = [];
+        const add = arr => (arr || []).forEach(x => {
+            if (!x || x.archived) return;
+            const k = String(x.id); if (seen.has(k)) return; seen.add(k); out.push(x);
+        });
+        add(this.trainees);
+        (this.courses || []).forEach(c => add((c.trainees || []).map(x => Object.assign({ courseId: c.id }, x))));
+        return out;
+    },
+    _trackUsage(id) {
+        const all = this._trackAllTrainees();
+        const assigned = all.filter(x => x.trackId === id).length;
+        const ct = (this.settings && this.settings.courseTracks) || {};
+        const courses = Object.keys(ct).filter(k => ct[k] === id).length;
+        const viaDefault = all.filter(x => !x.trackId && _getTrack(x).id === id).length;
+        return { assigned, courses, viaDefault };
+    },
+    async _trackWrite(path, value) {
+        // כתיבה ממוקדת לצומת הבודד (לא set על כל ההגדרות).
+        if (typeof _isDemoMode === 'function' && _isDemoMode()) {
+            try { localStorage.setItem('trainee_settings', JSON.stringify(this.settings)); } catch(e) {}
+            return true;
+        }
+        if (!this.settingsRef) return false;
+        try {
+            if (value === null) await this.settingsRef.child(path).remove();
+            else await this.settingsRef.child(path).set(value);
+            try { localStorage.setItem('trainee_settings', JSON.stringify(this.settings)); } catch(e) {}
+            return true;
+        } catch(e) {
+            console.warn('tracks write:', e);
+            showToast('⚠️ השמירה נכשלה (ר׳ קונסול)', 'warning');
+            return false;
+        }
+    },
+    _trackAfterChange() {
+        window._traineeSummaryCache = null;
+        try { this.renderList(); } catch(e) {}
+        try { if (this.currentId) { this.renderDetail(); this.updateInMissionSelect(); } } catch(e) {}
+        try { if (typeof _renderTraineeSummaryPanel === 'function') _renderTraineeSummaryPanel(); } catch(e) {}
+    },
+    _renderTab_tracks(editId) {
+        const root = this.$('ts-tracks-root');
+        if (!root || !this.settings) return;
+        const list = _trackList();
+        const VEH = [['sitadis', 'סיטאדיס'], ['orbus', 'אורבוס']];
+        const card = (tr) => {
+            const u = this._trackUsage(tr.id);
+            const usage = tr.isDefault
+                ? 'ברירת מחדל · לא ניתן למחיקה' + (u.viaDefault ? ' · ללא שיוך · ' + u.viaDefault : '') + (u.assigned ? ' · משויכים · ' + u.assigned : '')
+                : 'משויכים · ' + u.assigned + (u.courses ? ' · ברירת מחדל ב-' + u.courses + ' קורסים' : '');
+            const canDel = !tr.isDefault && !u.assigned && !u.courses;
+            return '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;background:' + (editId === tr.id ? '#eef5ff' : '#f8faff') + ';border:1.5px solid ' + (editId === tr.id ? '#4a7fd6' : '#c5d8f0') + ';border-radius:10px;padding:10px 14px;">'
+                + '<div><div style="font-size:14px;font-weight:bold;color:#1a2a3a;">' + _esc(_trackName(tr)) + '</div>'
+                + '<div style="font-size:11px;color:#888;margin-top:2px;">' + (tr.chinuch === false ? 'ללא חניכה' : 'כולל חניכה') + ' · ' + usage + '</div></div>'
+                + '<div style="display:flex;gap:6px;">'
+                + '<button type="button" data-trk-edit="' + _esc(tr.id) + '" style="width:auto;margin:0;padding:5px 12px;background:#fff;border:1.5px solid #b5d4f4;border-radius:8px;cursor:pointer;font-size:12px;font-family:inherit;">✏️ עריכה</button>'
+                + (canDel ? '<button type="button" data-trk-del="' + _esc(tr.id) + '" style="width:auto;margin:0;padding:5px 10px;background:#fff;border:1.5px solid #f1b0a8;color:#c0392b;border-radius:8px;cursor:pointer;font-size:12px;font-family:inherit;">🗑</button>' : '')
+                + '</div></div>';
+        };
+        let html = '<div style="display:flex;flex-direction:column;gap:8px;">' + list.map(card).join('') + '</div>'
+            + '<button type="button" data-trk-new="1" style="width:auto;margin:10px 0 0;padding:6px 14px;background:#2c5282;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:12.5px;font-weight:bold;font-family:inherit;">+ מסלול חדש</button>'
+            + '<div id="ts-trk-form" style="margin-top:14px;"></div>';
+        // ברירת מחדל לפי קורס
+        const courses = (this.courses || []).filter(c => c && c.status !== 'archived');
+        if (courses.length) {
+            const ct = this.settings.courseTracks || {};
+            const glob = list.find(x => x.isDefault) || _trackDefault();
+            html += '<h4 style="margin:22px 0 6px;font-size:14px;color:#1a2a3a;">ברירת מחדל לפי קורס</h4>'
+                + '<p style="font-size:11.5px;color:#888;margin:0 0 8px;">חניך בלי שיוך אישי מקבל את המסלול של הקורס שלו.</p>'
+                + '<div style="display:flex;flex-direction:column;gap:6px;">'
+                + courses.map(c => {
+                    const cur = ct[String(c.id)] && _trackById(ct[String(c.id)]) ? ct[String(c.id)] : '';
+                    return '<div style="display:flex;align-items:center;gap:10px;"><span style="min-width:160px;font-size:13px;">' + _esc(c.name || String(c.id)) + '</span>'
+                        + '<select data-trk-course="' + _esc(String(c.id)) + '" style="padding:6px 10px;border:1.5px solid #ddd;border-radius:7px;font-size:13px;direction:rtl;">'
+                        + '<option value="">ברירת המחדל הכללית · ' + _esc(_trackName(glob)) + '</option>'
+                        + list.filter(x => !x.isDefault).map(x => '<option value="' + _esc(x.id) + '"' + (x.id === cur ? ' selected' : '') + '>' + _esc(_trackName(x)) + '</option>').join('')
+                        + '</select></div>';
+                }).join('') + '</div>';
+        }
+        root.innerHTML = html;
+        root.querySelectorAll('[data-trk-edit]').forEach(b => b.onclick = () => this._renderTab_tracks(b.dataset.trkEdit));
+        root.querySelector('[data-trk-new]').onclick = () => this._renderTab_tracks('__new__');
+        root.querySelectorAll('[data-trk-del]').forEach(b => b.onclick = async () => {
+            const tr = _trackById(b.dataset.trkDel); if (!tr) return;
+            if (!confirm('למחוק את המסלול "' + _trackName(tr) + '"?')) return;
+            if (!this.settings.tracks) this.settings.tracks = {};
+            if (_trackBuiltins().some(x => x.id === tr.id)) {
+                // מסלול מובנה — "מחיקה" = סימון כמחוק (אחרת היה חוזר מהקוד).
+                this.settings.tracks[tr.id] = Object.assign({}, tr, { deleted: true });
+                await this._trackWrite('tracks/' + tr.id, JSON.parse(JSON.stringify(this.settings.tracks[tr.id])));
+            } else {
+                delete this.settings.tracks[tr.id];
+                await this._trackWrite('tracks/' + tr.id, null);
+            }
+            this._renderTab_tracks(); this._trackAfterChange();
+        });
+        root.querySelectorAll('[data-trk-course]').forEach(sel => sel.onchange = async () => {
+            if (!this.settings.courseTracks) this.settings.courseTracks = {};
+            const cid = sel.dataset.trkCourse;
+            if (sel.value) this.settings.courseTracks[cid] = sel.value; else delete this.settings.courseTracks[cid];
+            await this._trackWrite('courseTracks/' + cid, sel.value || null);
+            this._trackAfterChange();
+            showToast('ברירת המחדל של הקורס עודכנה', 'success');
+        });
+        if (editId) this._renderTrackForm(editId === '__new__' ? null : _trackById(editId), VEH);
+    },
+    _renderTrackForm(tr, VEH) {
+        const box = this.$('ts-trk-form');
+        if (!box) return;
+        const isNew = !tr;
+        const main = tr ? (tr.stages || []).find(s => s && s.role === 'main') : null;
+        const conv = tr ? (tr.stages || []).find(s => s && s.role === 'conv') : null;
+        const mainN = tr ? _trackStageTarget({ trackId: tr.id, courseId: '__none__' }, 'main') : 50;
+        const convN = conv ? (parseInt(conv.lessons, 10) > 0 ? parseInt(conv.lessons, 10) : _getMilestoneThreshold('chinuch-orbus', 7)) : 7;
+        const vehSel = (id, cur) => '<select id="' + id + '" style="padding:6px 10px;border:1.5px solid #ddd;border-radius:7px;font-size:13px;direction:rtl;">'
+            + VEH.map(v => '<option value="' + v[0] + '"' + (v[0] === cur ? ' selected' : '') + '>' + v[1] + '</option>').join('') + '</select>';
+        const num = (id, val) => '<input type="number" id="' + id + '" min="1" max="200" value="' + val + '" style="width:64px;padding:5px 8px;border:1.5px solid #ddd;border-radius:7px;font-size:13px;text-align:center;">';
+        const row = (n, title, sub, body) => '<div style="display:flex;gap:10px;align-items:flex-start;padding:10px 0;border-top:1px solid #eef1f5;">'
+            + '<span style="min-width:22px;height:22px;border-radius:50%;background:#2c5282;color:#fff;font-size:12px;display:flex;align-items:center;justify-content:center;">' + n + '</span>'
+            + '<div style="flex:1;"><div style="font-size:13.5px;font-weight:bold;color:#1a2a3a;">' + title + '</div>'
+            + '<div style="font-size:11px;color:#888;margin:2px 0 6px;">' + sub + '</div>' + body + '</div></div>';
+        box.innerHTML = '<div style="border:1.5px solid #4a7fd6;border-radius:12px;padding:14px 16px;background:#fff;">'
+            + '<div style="font-size:11px;color:#888;">שם המסלול · נוצר אוטומטית</div>'
+            + '<div id="ts-trk-name" style="font-size:16px;font-weight:bold;color:#1a2a3a;margin-bottom:6px;"></div>'
+            + row(1, 'הכשרה לנהג', 'חובה · טסט 10 · טסט 30 · טסט סיום · טכני / תפעולי / מסחרי',
+                '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;"><label style="font-size:12px;color:#555;">רכב</label>' + vehSel('ts-trk-mv', main ? main.vehicle : 'orbus')
+                + '<label style="font-size:12px;color:#555;">מספר שיעורים</label>' + num('ts-trk-mn', mainN) + '</div>')
+            + row(2, 'הסבה לנייד', 'אופציונלי · טסט סיום',
+                '<label style="display:flex;align-items:center;gap:6px;font-size:12.5px;cursor:pointer;margin-bottom:6px;"><input type="checkbox" id="ts-trk-ch-conv" style="width:auto;margin:0;"' + (conv || isNew ? ' checked' : '') + '> כלול במסלול</label>'
+                + '<div id="ts-trk-conv-box" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;"><label style="font-size:12px;color:#555;">רכב</label>' + vehSel('ts-trk-cv', conv ? conv.vehicle : 'sitadis')
+                + '<label style="font-size:12px;color:#555;">מספר שיעורים</label>' + num('ts-trk-cn', convN) + '</div>')
+            + row(3, 'חניכה', 'נפתחת אחרי טסט הסיום של השלב האחרון',
+                '<label style="display:flex;align-items:center;gap:6px;font-size:12.5px;cursor:pointer;"><input type="checkbox" id="ts-trk-ch-chin" style="width:auto;margin:0;"' + (!tr || tr.chinuch !== false ? ' checked' : '') + '> כלול במסלול</label>')
+            + '<div id="ts-trk-warn" style="font-size:12px;margin-top:8px;"></div>'
+            + '<div style="display:flex;gap:8px;margin-top:12px;">'
+            + '<button type="button" id="ts-trk-save" style="width:auto;margin:0;padding:7px 18px;background:#2c5282;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:bold;font-family:inherit;">שמור מסלול</button>'
+            + '<button type="button" id="ts-trk-cancel" style="width:auto;margin:0;padding:7px 18px;background:#edf2f7;color:#4a5568;border:none;border-radius:8px;cursor:pointer;font-family:inherit;">ביטול</button>'
+            + '</div></div>';
+        const $ = id => this.$(id);
+        const read = () => {
+            const stages = [{ role: 'main', vehicle: $('ts-trk-mv').value, lessons: parseInt($('ts-trk-mn').value, 10) || 0 }];
+            if ($('ts-trk-ch-conv').checked) stages.push({ role: 'conv', vehicle: $('ts-trk-cv').value, lessons: parseInt($('ts-trk-cn').value, 10) || 0 });
+            return { id: tr ? tr.id : 'trk_' + Date.now(), chinuch: $('ts-trk-ch-chin').checked, stages };
+        };
+        const validate = (cand) => {
+            const m = cand.stages[0], c = cand.stages[1];
+            if (!(m.lessons >= 1 && m.lessons <= 200)) return 'מספר השיעורים בהכשרה לנהג חייב להיות בין 1 ל-200.';
+            if (c && !(c.lessons >= 1 && c.lessons <= 200)) return 'מספר השיעורים בהסבה לנייד חייב להיות בין 1 ל-200.';
+            if (c && c.vehicle === m.vehicle) return 'רכב ההסבה חייב להיות שונה מרכב ההכשרה לנהג.';
+            const sig = x => _trackBaseName(x) + '|' + (x.chinuch === false ? 0 : 1);
+            const dup = _trackList().find(x => x.id !== cand.id && sig(x) === sig(cand));
+            if (dup) return 'מסלול זהה כבר קיים: ' + _trackName(dup);
+            return '';
+        };
+        const refresh = () => {
+            $('ts-trk-conv-box').style.display = $('ts-trk-ch-conv').checked ? 'flex' : 'none';
+            const cand = read();
+            $('ts-trk-name').textContent = _trackBaseName(cand) + (cand.chinuch === false ? ' · ללא חניכה' : '');
+            const err = validate(cand);
+            let w = err ? '<span style="color:#c0392b;">' + _esc(err) + '</span>' : '';
+            if (!err && tr) {
+                const u = this._trackUsage(tr.id);
+                const n = u.assigned + (tr.isDefault ? u.viaDefault : 0) + (u.courses && !tr.isDefault ? 0 : 0);
+                if (n) w = '<span style="color:#a6690b;">⚠️ השינוי יחול על ' + n + ' חניכים במסלול הזה' + (u.courses ? ' (וגם על הקורסים שזו ברירת המחדל שלהם)' : '') + '.</span>';
+            }
+            $('ts-trk-warn').innerHTML = w;
+            $('ts-trk-save').disabled = !!err;
+            $('ts-trk-save').style.opacity = err ? '0.5' : '1';
+        };
+        box.querySelectorAll('input,select').forEach(el => { el.oninput = refresh; el.onchange = refresh; });
+        refresh();
+        $('ts-trk-cancel').onclick = () => this._renderTab_tracks();
+        $('ts-trk-save').onclick = async () => {
+            const cand = read();
+            if (validate(cand)) return;
+            const obj = { chinuch: cand.chinuch, stages: cand.stages };
+            if (!this.settings.tracks) this.settings.tracks = {};
+            this.settings.tracks[cand.id] = obj;
+            const ok = await this._trackWrite('tracks/' + cand.id, JSON.parse(JSON.stringify(obj)));
+            if (ok) showToast('🛤️ המסלול נשמר: ' + _trackName(_trackById(cand.id)), 'success');
+            this._renderTab_tracks();
+            this._trackAfterChange();
+        };
+    },
+
     _renderTab_skills() {
         const list = this.$('ts-skills-list');
         if (!list || !this.settings) return;
@@ -8056,7 +8254,7 @@ window.TraineeSystem = {
         const descEl = this.$('ts-chinuch-desc');
         if (descEl) {
             const o = mth['chinuch-orbus'] ?? 7;
-            descEl.textContent = `נדרש לפני כניסה לחניכה (${o} שיעורי קורס מעשי אורבוס)`;
+            descEl.textContent = 'נדרש לפני כניסה לחניכה · מספר השיעורים נקבע במסלול ההכשרה (🛤️ מסלולי הכשרה)'; // ספרינט 5
         }
         // Render per-trainee milestone status
         this._renderMilestoneTrainees();
@@ -10395,12 +10593,14 @@ function _trackVehicleMissionIds(vehicle) {
     return [];
 }
 function _trackDefault() {
-    // lessons:null בשלב העיקרי = לפי הסף הגלובלי של test50 (כמו קודם).
+    // lessons:null = לפי הסף הגלובלי הקיים (test50 בהכשרה לנהג, chinuch-orbus בהסבה)
+    // — כך עד שמנהל שומר את המסלול במסך "מסלולי הכשרה" (ספרינט 5), ואז נשמר מספר
+    // מפורש ב-settings.tracks.default והוא המקור היחיד מאותו רגע.
     return {
         id: 'default', isDefault: true, chinuch: true,
         stages: [
             { role: 'main', vehicle: 'sitadis', lessons: null },
-            { role: 'conv', vehicle: 'orbus',   lessons: 7 }
+            { role: 'conv', vehicle: 'orbus',   lessons: null }
         ]
     };
 }
@@ -10424,6 +10624,11 @@ function _trackList() {
     if (custom && typeof custom === 'object') {
         Object.keys(custom).forEach(id => {
             const tr = custom[id];
+            if (tr && tr.deleted && id !== 'default') {
+                const di = list.findIndex(x => x.id === id);
+                if (di >= 0) list.splice(di, 1);
+                return;
+            }
             if (!_trackIsValid(tr)) return;
             const merged = Object.assign({}, tr, { id: id });
             if (id === 'default') merged.isDefault = true;
@@ -10437,13 +10642,31 @@ function _trackById(id) {
     if (!id) return null;
     return _trackList().find(x => x.id === id) || null;
 }
+// 2026-11-12, מסלולים ספרינט 5: ברירת מחדל ברמת קורס (settings.courseTracks).
+function _trackCourseDefault(courseId) {
+    const ct = (typeof TraineeSystem !== 'undefined' && TraineeSystem.settings && TraineeSystem.settings.courseTracks) || null;
+    const id = ct && courseId != null ? ct[String(courseId)] : null;
+    return (id && _trackById(id)) || _trackList().find(x => x.isDefault) || _trackDefault();
+}
+function _trackCourseIdOf(t) {
+    if (t && t.courseId != null) return t.courseId;
+    return (typeof TraineeSystem !== 'undefined') ? TraineeSystem.currentCourseId : null;
+}
 function _getTrack(t) {
     const tid = t && t.trackId;
     if (tid) {
         const tr = _trackById(tid);
         if (tr) return tr;
     }
-    return _trackList().find(x => x.isDefault) || _trackDefault();
+    return _trackCourseDefault(_trackCourseIdOf(t));
+}
+// תווית צ'יפ טסט בטפסים: טסט ההסבה לפי רכב ההסבה של החניך.
+function _trackTestChipLabel(t, d) {
+    if (d && d.key === 'testOrbus') {
+        const v = _trackStageVehicleLabel(t, 'conv');
+        if (v) return '🎯 טסט ' + v;
+    }
+    return d ? d.label : '';
 }
 // שם המסלול נגזר מהשלבים: "סיטאדיס 50 ← אורבוס 7". personalTarget מחליף את
 // מספר השיעורים של ההכשרה לנהג (תווית לחניך עם יעד אישי). בכפילות שם בין שני
@@ -10454,7 +10677,7 @@ function _trackBaseName(tr, personalTarget) {
         if (s.role === 'main') {
             if (personalTarget > 0) n = personalTarget;
             else if (!(n > 0)) n = _getMilestoneThreshold('test50', 50);
-        } else if (!(n > 0)) n = 7;
+        } else if (!(n > 0)) n = _getMilestoneThreshold('chinuch-orbus', 7);
         return _trackVehicleLabel(s.vehicle) + ' ' + n;
     }).join(' ← ');
 }
@@ -10537,7 +10760,7 @@ function _trackStageTarget(t, role) {
     }
     if (!s) return 0;
     const n = parseInt(s.lessons, 10);
-    return (n && n > 0) ? n : 7;
+    return (n && n > 0) ? n : _getMilestoneThreshold('chinuch-orbus', 7); // ספרינט 5: מקור אחד עם סף הטסט
 }
 // מספר המשבצות בבחירת שיעורים למשימה: הסבה → יעד ההסבה, אחרת → יעד העיקרי
 // (כמו קודם: כל משימה שאינה אורבוס קיבלה את יעד הסיטאדיס).
@@ -10584,10 +10807,7 @@ function _trackMilestoneThreshold(t, key) {
     if (key === 'test10') return _getMilestoneThreshold('test10', 10);
     if (key === 'test30') return _getMilestoneThreshold('test30', 30);
     if (key === 'test50') return _trackStageTarget(t, 'main');
-    if (key === 'testOrbus') {
-        if (_getTrack(t).isDefault) return _getMilestoneThreshold('chinuch-orbus', 7);
-        return _trackStage(t, 'conv') ? _trackStageTarget(t, 'conv') : 99;
-    }
+    if (key === 'testOrbus') return _trackStage(t, 'conv') ? _trackStageTarget(t, 'conv') : 99;
     return 99;
 }
 // מונה השיעורים שמול הסף: מספר השיעור הגבוה בשלב שהמפתח שייך אליו.
@@ -25156,7 +25376,7 @@ function _urUpdateChips(idx) {
             return '<button type="button" data-test-key="' + d.key + '" data-fb-idx="' + idx + '" data-selected="false"'
               + (' onclick="_urToggleTestChip(' + idx + ',\'' + d.key + '\')"')
               + ' style="padding:5px 12px;border-radius:16px;border:1.5px solid ' + d.color + ';background:white;color:#8a6d1a;font-size:12px;font-weight:bold;cursor:pointer;">'
-              + d.label + '</button>';
+              + _trackTestChipLabel(trainee, d) + '</button>';
           }).join('')
         + '</div>'
         + '<div id="ur-fb-' + idx + '-testresult-wrap" style="display:none;margin-top:8px;"></div>'
