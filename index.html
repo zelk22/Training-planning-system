@@ -16,7 +16,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 203</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 204</title>
 
 <style>
 
@@ -1439,7 +1439,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 267;
+  const APP_VERSION = 268;
 
   // 2026-09-07, לפי בקשת לביא: היה קשה לבדוק באיזו גרסה הדפדפן בפועל טוען
   // (כותרת הטאב נחתכת כשיש הרבה טאבים פתוחים, ואי אפשר תמיד לראות "DEPLOYED
@@ -5886,9 +5886,12 @@ window.TraineeSystem = {
         const defs = [
             {key:'test10',     label:`טסט ${_thr10}`,                   threshold:_thr10},
             {key:'test30',     label:`טסט ${_thr30}`,                   threshold:_thr30},
-            {key:'test50',     label:_convVeh ? `טסט ${_thr50} (${_convVeh})` : `טסט ${_thr50}`, threshold:_thr50},
+            {key:'test50',     label:`טסט ${_thr50}`,                   threshold:_thr50},
             {key:'testOrbus',  label:`טסט ${_convVeh} — תנאי לחניכה`,   threshold:_thrOrb, isOrbus:true}
         ].filter(d => _trackMilestoneKeys(t).includes(d.key));
+        // טסט הסיום של ההכשרה לנהג — עם שם רכב ההסבה בסוגריים, אם יש הסבה.
+        const _mainFinalK = _trackMainFinalKey(t);
+        defs.forEach(d => { if (d.key === _mainFinalK && _convVeh) d.label += ` (${_convVeh})`; });
         const isAdmin = (typeof currentRole !== 'undefined' && (currentRole === 'admin'));
         container.innerHTML = defs.map(def => {
             const manualPassed = tms[def.key] === true;
@@ -10795,8 +10798,14 @@ function _trackMilestoneRole(key) {
     return null;
 }
 // אילו מפתחות רלוונטיים במסלול של החניך (בלי הסבה → אין testOrbus).
+// 2026-11-12: טסט ביניים מוצג רק כשהוא קטן מהיעד. כשהיעד ≤10 / ≤30 טסט הסיום
+// "מתמזג" לתוך test10 / test30 (_trackMainFinalKey) — כך כבר עבד הדשבורד (#254),
+// ועכשיו גם התיק וההתרעות. במסלול 50 (ברירת המחדל) — אין שינוי.
 function _trackMilestoneKeys(t) {
-    const keys = ['test10', 'test30', 'test50'];
+    const tg = _trackStageTarget(t, 'main');
+    const keys = ['test10'];
+    if (tg > 10) keys.push('test30');
+    if (tg > 30) keys.push('test50');
     if (_trackStage(t, 'conv')) keys.push('testOrbus');
     return keys;
 }
@@ -10804,6 +10813,8 @@ function _trackMilestoneKeys(t) {
 // יעד ההכשרה, testOrbus = הסף הגלובלי chinuch-orbus (7). במסלול אחר: סיום
 // ההסבה = מספר שיעורי ההסבה במסלול (או היעד, אם אין סף מוגדר במסלול).
 function _trackMilestoneThreshold(t, key) {
+    // טסט הסיום הממוזג — הסף הוא יעד ההכשרה לנהג (למשל "טסט 7" במסלול אורבוס 7).
+    if ((key === 'test10' || key === 'test30') && _trackMainFinalKey(t) === key) return _trackStageTarget(t, 'main');
     if (key === 'test10') return _getMilestoneThreshold('test10', 10);
     if (key === 'test30') return _getMilestoneThreshold('test30', 30);
     if (key === 'test50') return _trackStageTarget(t, 'main');
@@ -10883,7 +10894,9 @@ function _checkMilestoneWarnings(traineeId) {
         if (mode === 'ignore') return;
         const count = _trackMilestoneRole(key) === 'conv' ? maxOrbus : maxSitadis;
         if (_hasMilestonePassed(traineeId, key, count, traineeObj)) return;
-        const label = { test10: 'טסט 10', test30: 'טסט 30', test50: 'טסט 50', testOrbus: 'טסט ' + _trackStageVehicleLabel(traineeObj, 'conv') }[key];
+        const label = key === 'testOrbus' ? 'טסט ' + _trackStageVehicleLabel(traineeObj, 'conv')
+            : (key === _trackMainFinalKey(traineeObj) ? 'טסט ' + _trackStageTarget(traineeObj, 'main')
+            : { test10: 'טסט 10', test30: 'טסט 30', test50: 'טסט 50' }[key]);
         pending.push(label);
     });
     if (pending.length) {
