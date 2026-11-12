@@ -1,10 +1,12 @@
 <!DOCTYPE html>
 
-<html lang="he" dir="rtl">
+<html lang="he" dir="rtl" translate="no" class="notranslate">
 
 <head>
 
 <meta charset="UTF-8">
+
+<meta name="google" content="notranslate">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
@@ -14,7 +16,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 200</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 202</title>
 
 <style>
 
@@ -1437,7 +1439,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 264;
+  const APP_VERSION = 266;
 
   // 2026-09-07, לפי בקשת לביא: היה קשה לבדוק באיזו גרסה הדפדפן בפועל טוען
   // (כותרת הטאב נחתכת כשיש הרבה טאבים פתוחים, ואי אפשר תמיד לראות "DEPLOYED
@@ -4465,7 +4467,7 @@ window.TraineeSystem = {
 
             <div id="orbus-section" style="display:none;margin:20px 0 10px;">
               <div style="font-size:0.85em;font-weight:700;color:#718096;margin-bottom:8px;display:flex;justify-content:space-between;">
-                <span id="orbus-title">🚋 השתלמות אורבוס</span>
+                <span id="orbus-title">🚋 הסבה לנייד · אורבוס</span>
                 <span id="orbus-count" style="color:#a0aec0;font-weight:400;">0 / 7 שיעורים</span>
               </div>
               <div id="orbus-ticks-numbers" style="position:relative;height:9px;margin-bottom:1px;"></div>
@@ -6288,7 +6290,7 @@ window.TraineeSystem = {
             if (_trackStage(t, 'conv') && maxL >= _tTarget) {
                 orbusSection.style.display = 'block';
                 const _ot = this.$('orbus-title');
-                if (_ot) _ot.innerText = _trk.isDefault ? '🚋 השתלמות אורבוס' : `🚋 הסבה לנייד · ${_convVehSub}`;
+                if (_ot) _ot.innerText = `🚋 הסבה לנייד · ${_convVehSub}`; // ספרינט 4: שם אחיד
                 if (this._orbusTicksN !== _convN) {
                     this._orbusTicksN = _convN;
                     try { this._buildInteractiveCells('orbus-ticks', _convN, 'orbus'); } catch(e) {}
@@ -6383,7 +6385,7 @@ window.TraineeSystem = {
             const _chinuchMode   = (typeof _getMilestoneMode === 'function') ? _getMilestoneMode('testOrbus') : 'warn';
             if (!_chinuchPassed && _chinuchMode === 'warn') {
                 if (typeof showToast === 'function')
-                    showToast('שים לב: חניך זה טרם עבר טסט אורבוס — תנאי לכניסה לחניכה', 'warning');
+                    showToast('שים לב: חניך זה טרם עבר ' + _trackFinalTestLabel(t) + ' — תנאי לכניסה לחניכה', 'warning');
             }
         }
         // -------------------------------------------------
@@ -10480,6 +10482,12 @@ function _trackMainFinalKey(t) {
 }
 // טסט הסיום של השלב האחרון במסלול — הוא השער לחניכה / ל"סיים מסלול".
 function _trackFinalKey(t) { return _trackStage(t, 'conv') ? 'testOrbus' : _trackMainFinalKey(t); }
+// שם טסט הסיום של השלב האחרון לתצוגה אישית (ספרינט 4): "טסט אורבוס" / "טסט סיטאדיס"
+// במסלול עם הסבה, "טסט סיום ההכשרה לנהג" בלי הסבה.
+function _trackFinalTestLabel(t) {
+    const v = _trackStageVehicleLabel(t, 'conv');
+    return v ? 'טסט ' + v : 'טסט סיום ההכשרה לנהג';
+}
 // האם עבר את טסט הסיום של השלב האחרון (ידני, או אוטומטי לפי מספר שיעורים).
 function _trackFinalPassed(t, msEntry) {
     const key = _trackFinalKey(t);
@@ -25168,7 +25176,7 @@ function _urUpdateChips(idx) {
     const _chinuchMode   = (typeof _getMilestoneMode === 'function') ? _getMilestoneMode('testOrbus') : 'warn';
     if (!_chinuchPassed && _chinuchMode === 'warn') {
       if (typeof showToast === 'function')
-        showToast('שים לב: חניך זה טרם עבר טסט אורבוס — תנאי לכניסה לחניכה', 'warning');
+        showToast('שים לב: חניך זה טרם עבר ' + _trackFinalTestLabel(trainee) + ' — תנאי לכניסה לחניכה', 'warning');
     }
   }
   // -------------------------------------------------
@@ -25887,7 +25895,7 @@ async function _runMissingLessonScan(){
 function _crIdDate(id){ const n=parseInt(String(id),10); return (n>1e12&&n<4e12)? new Date(n).toLocaleDateString('he-IL') : '—'; }
 function _crLessonKey(l){ return [l.date||'',l.ins||'',l.mission||'',(Array.isArray(l.lessonNums)?l.lessonNums:Object.values(l.lessonNums||{})).slice().sort((a,b)=>a-b).join('-'),l.testKey||'',l.testResult||''].join('|'); }
 function _crArr(v){ return Array.isArray(v) ? v.filter(Boolean) : (v ? Object.values(v) : []); }
-const _CR_TEST_SHORT = {test10:'10', test30:'30', test50:'50', testOrbus:'אורבוס'};
+const _CR_TEST_SHORT = {test10:'10', test30:'30', test50:'50', testOrbus:'הסבה'}; // ספרינט 4
 
 async function _openCourseRecovery(courseId){
   if (typeof currentRole!=='undefined' && currentRole!=='admin'){ showToast('רק למנהל','warning'); return; }
@@ -30845,7 +30853,10 @@ function _generateTraineeSummary() {
     else if (manualMilestones.test10 && _thrSitadisTarget > 10)            confirmedLevel = 2;
     else if (maxSitadis > 0)                                               confirmedLevel = 1;
     else                                                                   confirmedLevel = 0;
-    const LEVEL_LABELS = ['טרם התחיל','שלב טכני','שלב תפעולי','שלב מסחרי','השתלמות אורבוס','מוכן לחניכה','בחניכה'];
+    // 2026-11-12, מסלולים ספרינט 4: "השתלמות אורבוס" → "הסבה לנייד" (הרכב — בריחוף),
+    // כי ההסבה יכולה להיות גם בסיטאדיס. טכני/תפעולי/מסחרי — לפי ההכשרה לנהג של
+    // כל חניך, כל סוגי הרישיון יחד (מחושב לפי שלב מאז ספרינט 1).
+    const LEVEL_LABELS = ['טרם התחיל','שלב טכני','שלב תפעולי','שלב מסחרי','הסבה לנייד','מוכן לחניכה','בחניכה'];
     let stage = LEVEL_LABELS[confirmedLevel];
 
     // 2026-08-30, לפי בקשת לביא: "טסט ממתין" — הטסט שהעלה את החניך לשלב
@@ -30859,7 +30870,7 @@ function _generateTraineeSummary() {
     else if (confirmedLevel === 2 && _thrSitadisTarget > 30  && maxSitadis >= 30)              { pendingTest = true; stage = '⏳ ממתין לטסט 30'; }
     else if (confirmedLevel === 2 && _thrSitadisTarget <= 30 && maxSitadis >= _thrSitadisTarget) { pendingTest = true; stage = _finalLabel; }
     else if (confirmedLevel === 3 && maxSitadis >= _thrSitadisTarget)                          { pendingTest = true; stage = _finalLabel; }
-    else if (confirmedLevel === 4 && maxOrbus  >= _thrOrbGateSum)                              { pendingTest = true; stage = '⏳ ממתין לטסט אורבוס'; }
+    else if (confirmedLevel === 4 && maxOrbus  >= _thrOrbGateSum)                              { pendingTest = true; stage = '⏳ ממתין לטסט הסבה'; }
     // 2026-10-06, #261: חניך שמסומן "לא ממשיך לחניכה" ועבר את טסט האורבוס — סיים את
     // המסלול שלו בפועל. דלי נפרד מ"מוכן לחניכה", כדי שהמנהל יזהה שנותר רק לסמן סיום.
     if (_trackNoChinuch(t) && confirmedLevel >= 5) { stage = '🎓 השלים מסלול'; pendingTest = false; } // ספרינט 3: גם מסלול ללא חניכה
@@ -30929,6 +30940,11 @@ function _generateTraineeSummary() {
       maxSitadis,
       sitadisTarget:   _thrSitadisTarget,
       maxOrbus,
+      // מסלולים ספרינט 4: לריחוף בדשבורד — תווית מסלול רק מחוץ לברירת המחדל.
+      trackLabel:      _getTrack(t).isDefault ? null : _trackLabelForTrainee(t),
+      mainVehicle:     _trackStageVehicleLabel(t, 'main'),
+      convVehicle:     _trackStageVehicleLabel(t, 'conv'),
+      convTarget:      _trackStage(t, 'conv') ? _trackStageTarget(t, 'conv') : null,
       extraHoursCount,
       avgScore:        avgScore  !== null ? +avgScore.toFixed(2)  : null,
       recentAvg:       recentAvg !== null ? +recentAvg.toFixed(2) : null,
@@ -31081,7 +31097,7 @@ function _toggleTsBucket(kind, key) {
   cont.style.display = 'block';
 }
 
-var _TS_TEST_LABEL = { test10:'טסט 10', test30:'טסט 30', test50:'טסט 50', testOrbus:'טסט אורבוס' };
+var _TS_TEST_LABEL = { test10:'טסט 10', test30:'טסט 30', test50:'טסט 50', testOrbus:'טסט הסבה' }; // ספרינט 4
 function _tsBulkStart(key) {
   window._tsBulk = { key: key, sel: {} };
   _tsBulkRender();
@@ -31167,10 +31183,16 @@ function _tsShowHoverTip(ev, kind, key) {
   });
   tip.innerHTML = list.length
     ? list.map(function(t) {
+        // מסלולים ספרינט 4: בדליי ההסבה — רכב ההסבה ומונה שיעוריה; בשאר — שיעור
+        // בהכשרה לנהג. תווית מסלול רק לחניכים מחוץ למסלול ברירת המחדל.
+        const _isConvKey = kind === 'stage' && (key === 'הסבה לנייד' || key === '⏳ ממתין לטסט הסבה');
         const metric = kind === 'stage'
-          ? ((t.maxSitadis || 0) + '/' + (t.sitadisTarget || 50))
+          ? (_isConvKey && t.convVehicle
+              ? (t.convVehicle + ' ' + (t.maxOrbus || 0) + '/' + (t.convTarget || 7))
+              : ((t.maxSitadis || 0) + '/' + (t.sitadisTarget || 50)))
           : (t.avgScore != null ? t.avgScore.toFixed(1) : '—');
-        return '<div class="ts-hover-row"><span>' + _esc(t.name) + '</span><span style="color:#999;">' + metric + '</span></div>';
+        const trk = t.trackLabel ? '<div style="font-size:10.5px;color:#8a9bb0;">' + _esc(t.trackLabel) + '</div>' : '';
+        return '<div class="ts-hover-row"><span>' + _esc(t.name) + trk + '</span><span style="color:#999;">' + metric + '</span></div>';
       }).join('')
     : '<div class="ts-hover-empty">אין חניכים</div>';
   const r = ev.currentTarget.getBoundingClientRect();
@@ -31285,7 +31307,7 @@ function _openCourseReport(courseId) {
   const faN = Object.values(firstAttempt).reduce((a,b)=>a+b.n,0);
   const faP = Object.values(firstAttempt).reduce((a,b)=>a+b.pass,0);
   const pct = (a,b) => b ? Math.round((a/b)*100) + '%' : '—';
-  const TEST_LBL = { test10:'טסט 10', test30:'טסט 30', test50:'טסט 50', testOrbus:'טסט אורבוס' };
+  const TEST_LBL = { test10:'טסט 10', test30:'טסט 30', test50:'טסט 50', testOrbus:'טסט הסבה' }; // ספרינט 4
 
   const statusLine = course.status === 'completed'
     ? '🏁 הקורס הסתיים' + (course.completedAt ? ' ב-' + new Date(course.completedAt).toLocaleDateString('he-IL') : '')
@@ -31667,12 +31689,12 @@ function _renderTraineeSummaryPanel() {
   var distHtml=[];
   var byStage=summary.byStage||{};
   if(Object.keys(byStage).length){
-    var sColors={'טרם התחיל':['\#95a5a6','\#f4f6f7'],'שלב טכני':['\#3498db','\#ebf5fb'],'שלב תפעולי':['\#f39c12','\#fef9e7'],'שלב מסחרי':['\#8e44ad','\#f5eef8'],'השתלמות אורבוס':['\#e67e22','\#fdf2e9'],'מוכן לחניכה':['\#27ae60','\#eafaf1'],'בחניכה':['\#16a085','\#e8f8f5'],'🎓 השלים מסלול':['\#1e8449','\#e9f7ef']};
-    var sOrder=['טרם התחיל','שלב טכני','שלב תפעולי','שלב מסחרי','השתלמות אורבוס','מוכן לחניכה','בחניכה','🎓 השלים מסלול'];
+    var sColors={'טרם התחיל':['\#95a5a6','\#f4f6f7'],'שלב טכני':['\#3498db','\#ebf5fb'],'שלב תפעולי':['\#f39c12','\#fef9e7'],'שלב מסחרי':['\#8e44ad','\#f5eef8'],'הסבה לנייד':['\#e67e22','\#fdf2e9'],'מוכן לחניכה':['\#27ae60','\#eafaf1'],'בחניכה':['\#16a085','\#e8f8f5'],'🎓 השלים מסלול':['\#1e8449','\#e9f7ef']};
+    var sOrder=['טרם התחיל','שלב טכני','שלב תפעולי','שלב מסחרי','הסבה לנייד','מוכן לחניכה','בחניכה','🎓 השלים מסלול'];
     // 2026-09-23, #251, לפי בקשת לביא: שתי שורות נפרדות — שלבים "נקיים"
     // (אושרו בפועל) למעלה, וכל ה"⏳ ממתינים לטסט" ביחד למטה, מופרדות בקו דק.
     var pColor=['\#d68910','\#fdf6e3'];
-    var pOrder=['⏳ ממתין לטסט 10','⏳ ממתין לטסט 30','⏳ ממתין לטסט 50','⏳ ממתין לטסט אורבוס'];
+    var pOrder=['⏳ ממתין לטסט 10','⏳ ממתין לטסט 30','⏳ ממתין לטסט 50','⏳ ממתין לטסט הסבה'];
     function _stageChip(s,c,dashed){var bd=dashed?'1.5px dashed ':'1px solid ';return '<button onclick="try{_toggleTsBucket(\'stage\',\''+s+'\');}catch(e){}" onmouseenter="try{_tsShowHoverTip(event,\'stage\',\''+s+'\');}catch(e){}" onmouseleave="try{_tsHideHoverTip();}catch(e){}" style="width:auto;margin:0;cursor:pointer;display:inline-flex;align-items:center;gap:6px;background:'+c[1]+';border:'+bd+c[0]+';border-radius:20px;padding:4px 12px;font-family:inherit;"><span style="font-size:13px;font-weight:bold;color:'+c[0]+';">'+byStage[s]+'</span><span style="font-size:12px;color:#555;">'+s+'</span></button>';}
     distHtml.push(_tsSectionOpen('📊','התפלגות שלבים <span style="font-weight:400;color:#aaa;font-size:11px;">(לחיצה מציגה חניכים)</span>','#ebf5fb','#3498db','#2471a3'));
     distHtml.push(_tsSectionHeadClose());
@@ -31720,7 +31742,7 @@ function _renderTraineeSummaryPanel() {
     var ms=summary.milestoneStats;var tot=summary.activeTrainees||1;
     // 2026-09-23, #251, לפי בקשת לביא: "סה\"כ" זהה בכל שורה ולכן חוזר לחינם —
     // הועבר לכותרת אחת ("מתוך N חניכים פעילים"); כל שורה מציגה רק את המונים.
-    var msDefs=[['טסט 10',ms.test10,ms.test10Passed,'#3498db'],['טסט 30',ms.test30,ms.test30Passed,'#f39c12'],['טסט 50',ms.test50,ms.test50Passed,'#8e44ad'],['טסט אורבוס',ms.chinuchMs,ms.chinuchMsPassed,'#e67e22']];
+    var msDefs=[['טסט 10',ms.test10,ms.test10Passed,'#3498db'],['טסט 30',ms.test30,ms.test30Passed,'#f39c12'],['טסט 50',ms.test50,ms.test50Passed,'#8e44ad'],['טסט הסבה',ms.chinuchMs,ms.chinuchMsPassed,'#e67e22']];
     milestoneHtml.push(_tsSectionOpen('🏆','אבני דרך <span style="font-weight:400;color:#9aa4b2;font-size:10px;">— מתוך '+tot+' חניכים פעילים</span>','#f5eef8','#8e44ad','#6c3483'));
     milestoneHtml.push(_tsSectionHeadClose());
     milestoneHtml.push('<div style="display:flex;flex-direction:column;gap:8px;">');
