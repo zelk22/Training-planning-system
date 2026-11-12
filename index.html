@@ -14,7 +14,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 197</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 199</title>
 
 <style>
 
@@ -1437,7 +1437,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 261;
+  const APP_VERSION = 263;
 
   // 2026-09-07, לפי בקשת לביא: היה קשה לבדוק באיזו גרסה הדפדפן בפועל טוען
   // (כותרת הטאב נחתכת כשיש הרבה טאבים פתוחים, ואי אפשר תמיד לראות "DEPLOYED
@@ -5716,18 +5716,14 @@ window.TraineeSystem = {
         const _ms = window._milestonePassMap || {};
         const tms = _ms[this._fbKey(t.id)] || {}; // 2026-10-06, #259: מפתח מסונן, ר' _toggleMilestonePass
         // Task 5: compute configurable thresholds dynamically
-        const _thr10  = _getMilestoneThreshold('test10', 10);
-        const _thr30  = _getMilestoneThreshold('test30', 30);
-        // 2026-10-01, #256: הבאדג' הזה חישב סף test50 גלובלי במקום היעד האישי
-        // של החניך (t.sitadisTarget) — תוקן, ר' אותו הדפוס שכבר קיים ב-_hasMilestonePassed.
-        const _thr50  = (typeof _sitadisTarget === 'function') ? _sitadisTarget(t) : _getMilestoneThreshold('test50', 50);
-        const _thrOrb = _getMilestoneThreshold('chinuch-orbus', 7);
+        // 2026-11-11, מסלולים ספרינט 2: ספים ושמות רכב לפי תפקיד השלב במסלול.
+        const _thr10  = _trackMilestoneThreshold(t, 'test10');
+        const _thr30  = _trackMilestoneThreshold(t, 'test30');
+        const _thr50  = _trackMilestoneThreshold(t, 'test50');
+        const _thrOrb = _trackMilestoneThreshold(t, 'testOrbus');
+        const _convVeh = _trackStageVehicleLabel(t, 'conv');
         // Compute orbus progress for testOrbus badge
-        let _maxOrbusT = 0;
-        (t.lessons || []).forEach(l => {
-            if (l.mission === 'קורס מעשי אורבוס')
-                (l.lessonNums || []).forEach(n => { if (n > _maxOrbusT) _maxOrbusT = n; });
-        });
+        const _maxOrbusT = _trackMaxLesson(t, 'conv'); // מסלולים ספרינט 1
         // 2026-08-30, לפי בקשת לביא: היסטוריית ניסיונות טסט (שיעורי טסט נפרדים,
         // ר' TEST_DEFS) — כמות ניסיונות + תוצאת/תאריך האחרון, לכל אחד מ-4 הטסטים.
         const _testAttempts = {};
@@ -5744,9 +5740,9 @@ window.TraineeSystem = {
         const defs = [
             {key:'test10',     label:`טסט ${_thr10}`,                   threshold:_thr10},
             {key:'test30',     label:`טסט ${_thr30}`,                   threshold:_thr30},
-            {key:'test50',     label:`טסט ${_thr50} (אורבוס)`,          threshold:_thr50},
-            {key:'testOrbus',  label:`טסט אורבוס — תנאי לחניכה`,        threshold:_thrOrb, isOrbus:true}
-        ];
+            {key:'test50',     label:_convVeh ? `טסט ${_thr50} (${_convVeh})` : `טסט ${_thr50}`, threshold:_thr50},
+            {key:'testOrbus',  label:`טסט ${_convVeh} — תנאי לחניכה`,   threshold:_thrOrb, isOrbus:true}
+        ].filter(d => _trackMilestoneKeys(t).includes(d.key));
         const isAdmin = (typeof currentRole !== 'undefined' && (currentRole === 'admin'));
         container.innerHTML = defs.map(def => {
             const manualPassed = tms[def.key] === true;
@@ -5831,11 +5827,7 @@ window.TraineeSystem = {
             // בכל פער (שיעורים שלא דווחו ברצף) — בדיוק המקרה שלביא דיווח (17 מול
             // 22). הוחלף לאותה נוסחה בדיוק כמו renderDetail, כדי שהכרטיס והתיק
             // תמיד יראו את אותו מספר.
-            let maxL = 0;
-            (t.lessons || []).forEach(ls => {
-                if (ls.mission === 'קורס מעשי סיטאדיס' || ls.mission === 'קורס מעשי' || ls.mission === 'קורס')
-                    (ls.lessonNums || []).forEach(n => { if (n > maxL) maxL = n; });
-            });
+            const maxL = _trackMaxLesson(t, 'main'); // מסלולים ספרינט 1
             const pct   = Math.min((maxL / 50) * 100, 100).toFixed(0);
             const phase = maxL < 10 ? 'שלב טכני' : maxL < 30 ? 'שלב תפעולי' : 'שלב מסחרי';
             const safeName = t.name.replace(/'/g, "\\'").replace(/"/g, '&quot;');
@@ -6101,9 +6093,10 @@ window.TraineeSystem = {
         let counts = skillList.map(() => 0);
 
         (t.lessons || []).forEach(l => {
-            if (l.mission === 'קורס מעשי סיטאדיס' || l.mission === 'קורס מעשי' || l.mission === 'קורס') {
+            const _role = _trackRoleOfMission(t, l.mission); // מסלולים ספרינט 1
+            if (_role === 'main') {
                 (l.lessonNums || []).forEach(n => { if (n > maxL) maxL = n; });
-            } else if (l.mission === 'קורס מעשי אורבוס') {
+            } else if (_role === 'conv') {
                 (l.lessonNums || []).forEach(n => orbusDone.add(n));
             } else if (l.mission === 'חניכה') {
                 (l.lessonNums || []).forEach(n => chinuchDone.add(n));
@@ -6118,7 +6111,7 @@ window.TraineeSystem = {
         const isTech = maxL < 11;
 
         const _tTarget = (typeof _sitadisTarget === 'function') ? _sitadisTarget(t) : 50;
-        const _orbusSub = orbusDone.size > 0 ? ` • אורבוס: ${orbusDone.size}/7` : '';
+        const _orbusSub = orbusDone.size > 0 ? ` • אורבוס: ${orbusDone.size}/${_trackStageTarget(t, 'conv')}` : '';
         this.$('det-sub').innerText  = `${len} דיווחים • קורס: שיעור ${maxL}/${_tTarget}${_orbusSub} • חניכה: ${chinuchDone.size}/50`;
         this.setTrain(maxL, _tTarget);
         try {
@@ -6213,10 +6206,11 @@ window.TraineeSystem = {
         const t      = this.trainees.find(x => String(x.id) === String(this.currentId));
         if (!t) return; // חניכים טרם נטענו מ-Firebase — מונע crash
         const isFree = _mType ? _mType.id === 'mt1' : mission === 'חניכה';
-        const isOrbus = (mission === 'קורס מעשי אורבוס');
-        const isChinuchMission = (isFree || mission === 'חניכה') && !isOrbus
-            && !(mission === 'קורס מעשי סיטאדיס' || mission === 'קורס מעשי' || mission === 'קורס');
-        const _isSitadis = (mission === 'קורס מעשי סיטאדיס' || mission === 'קורס מעשי' || mission === 'קורס');
+        // מסלולים ספרינט 1: שייכות לשלב לפי המסלול של החניך (שמות המשתנים נשמרו).
+        const _mRole = _trackRoleOfMission(t, mission);
+        const isOrbus = (_mRole === 'conv');
+        const _isSitadis = (_mRole === 'main');
+        const isChinuchMission = (isFree || mission === 'חניכה') && !isOrbus && !_isSitadis;
 
         // 2026-08-31, לפי בקשת לביא: תיקון באג — קריאה זו הייתה בסוף הפונקציה,
         // אז כל return מוקדם (חסימת חניכה/אורבוס, למטה) דילג עליה לגמרי
@@ -6228,11 +6222,7 @@ window.TraineeSystem = {
         // 2026-09-09, לפי בקשת לביא: chinuch-ms הוסר כאבן דרך עצמאית (הייתה
         // כפילות לוגית ל-testOrbus). השער נבדק כעת ישירות מול testOrbus.
         if (isChinuchMission && this.currentId && typeof _hasMilestonePassed === 'function') {
-            let _maxOrbusGate = 0;
-            (t?.lessons || []).forEach(l => {
-                if (l.mission === 'קורס מעשי אורבוס')
-                    (l.lessonNums || []).forEach(n => { if (n > _maxOrbusGate) _maxOrbusGate = n; });
-            });
+            const _maxOrbusGate = _trackMaxLesson(t, 'conv');
             const _chinuchPassed = _hasMilestonePassed(this.currentId, 'testOrbus', _maxOrbusGate, t);
             const _chinuchMode   = (typeof _getMilestoneMode === 'function') ? _getMilestoneMode('testOrbus') : 'warn';
             if (!_chinuchPassed && _chinuchMode === 'warn') {
@@ -6243,11 +6233,7 @@ window.TraineeSystem = {
         // -------------------------------------------------
 
         // ── חישוב _maxSitadis — משותף לכל בדיקות המיילסטון ──────────
-        let _maxSitadis = 0;
-        (t?.lessons || []).forEach(l => {
-            if (l.mission === 'קורס מעשי סיטאדיס' || l.mission === 'קורס מעשי' || l.mission === 'קורס')
-                (l.lessonNums || []).forEach(n => { if (n > _maxSitadis) _maxSitadis = n; });
-        });
+        const _maxSitadis = _trackMaxLesson(t, 'main');
 
         // ── מיילסטון טסט-50: בדיקה לפני אורבוס ──────────────────────
         if (isOrbus && this.currentId) {
@@ -6275,7 +6261,7 @@ window.TraineeSystem = {
         }
         // ─────────────────────────────────────────────────────────────
 
-        const maxChip = isOrbus ? 7 : _sitadisTarget(t);
+        const maxChip = _trackChipCount(t, mission);
 
         const locked = new Set();
         (t.lessons || []).forEach(l => {
@@ -6317,7 +6303,7 @@ window.TraineeSystem = {
                 const _tTargetT = (typeof _sitadisTarget === 'function') ? _sitadisTarget(t) : 50;
                 if (_hasMilestonePassed(this.currentId, 'test50', 0, t)) _passedTestChipsT[_tTargetT] = true;
             } else if (isOrbus) {
-                if (_hasMilestonePassed(this.currentId, 'testOrbus', 0)) _passedTestChipsT[7] = true;
+                if (_hasMilestonePassed(this.currentId, 'testOrbus', 0)) _passedTestChipsT[_trackStageTarget(t, 'conv')] = true;
             }
         }
 
@@ -6397,7 +6383,7 @@ window.TraineeSystem = {
         // 2026-08-31, לפי בקשת לביא: הסתרה מלאה ממי שאינו בוחן — לא רק ניטרול —
         // כדי לא להעמיס שדות לא-רלוונטיים על מדריכים רגילים.
         if (isChinuchMission || !canExamine) { wrap.innerHTML = ''; return; }
-        const applies = isSitadis ? 'sitadis' : isOrbus ? 'orbus' : null;
+        const applies = _trackTestAppliesForRole(isSitadis ? 'main' : isOrbus ? 'conv' : null); // ספרינט 2
         const relevant = applies ? TEST_DEFS.filter(d => d.appliesTo === applies) : [];
         if (!relevant.length) { wrap.innerHTML = ''; return; }
         let h = '<div style="font-size:11.5px;font-weight:600;color:#8a6d1a;margin-bottom:5px;">🎯 שיעורי טסט (בוחן בלבד):</div><div style="display:flex;flex-wrap:wrap;gap:6px;">';
@@ -6596,8 +6582,8 @@ window.TraineeSystem = {
         if (l.mission && !allMissions.includes(l.mission)) allMissions.unshift(l.mission);
 
         const isNoChipsMission = m => (m === 'כשירות מעשית/ שעות נוספות' || m === 'שעות נוספות' || (m || '').includes('כשירות'));
-        const isOrbusMission = m => (m === 'קורס מעשי אורבוס');
-        const maxChip = isOrbusMission(l.mission) ? 7 : _sitadisTarget(t);
+        const isOrbusMission = m => (_trackRoleOfMission(t, m) === 'conv'); // מסלולים ספרינט 1
+        const maxChip = _trackChipCount(t, l.mission);
         const usedByOthers = new Set();
         (t.lessons || []).forEach(other => {
             if (other.id === l.id) return;
@@ -6670,7 +6656,7 @@ window.TraineeSystem = {
             return;
         }
         const t = this.trainees.find(x => String(x.id) === String(this.currentId));
-        const maxChip = ctx.isOrbusMission(mission) ? 7 : _sitadisTarget(t);
+        const maxChip = _trackChipCount(t, mission); // מסלולים ספרינט 1
         // Clamp to the current mission's valid range (a mission switch can otherwise
         // leave stale numbers from the previous mission silently selected).
         ctx.currentNums = ctx.currentNums.filter(n => n >= 1 && n <= maxChip);
@@ -7941,11 +7927,7 @@ window.TraineeSystem = {
             }).join('');
             // 2026-09-02 תיקון עקביות (כמו ברשימת הכרטיסים למעלה): מספר השיעור
             // הגבוה ביותר שדווח, לא כמות שיעורים שונים עם דיווח.
-            let _maxLDone = 0;
-            (t.lessons||[]).forEach(l => {
-                if (l.mission === 'קורס מעשי סיטאדיס' || l.mission === 'קורס מעשי' || l.mission === 'קורס')
-                    (l.lessonNums||[]).forEach(n => { if (n > _maxLDone) _maxLDone = n; });
-            });
+            const _maxLDone = _trackMaxLesson(t, 'main'); // מסלולים ספרינט 1
             return `<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;padding:8px 10px;border-bottom:1px solid #f0f4f8;">
                 <div style="font-size:13px;font-weight:bold;color:#1a2a3a;min-width:120px;">${_esc(t.name)}
                     <span style="font-size:10px;color:#aaa;font-weight:400;"> ${_maxLDone}/50</span>
@@ -8188,7 +8170,7 @@ window.TraineeSystem = {
             || !this.settings || this.settings.showLessonNotesToInstructors !== false);
         [...filtered].reverse().forEach((l, revIdx) => {
             const realIdx = lessons.indexOf(l);
-            const mIcon = (l.mission === 'קורס מעשי סיטאדיס' || l.mission === 'קורס מעשי אורבוס' || l.mission === 'קורס מעשי' || l.mission === 'קורס') ? '🎓' : l.mission === 'חניכה' ? '🤝' : '⚙️';
+            const mIcon = _trackIsCourseMission(l.mission) ? '🎓' : l.mission === 'חניכה' ? '🤝' : '⚙️';
             const skillCells = '<div class="hist-skill-grid">' +
                 skillList.map(sk => `<div title="${_esc(sk.name)}">${l[sk.id] != null ? l[sk.id] : '—'}</div>`).join('') +
                 '</div>';
@@ -10223,12 +10205,153 @@ function _getMilestoneThreshold(key, fallback) {
     return fallback;
 }
 
+// ═══════════════════════════════════════════════════════════════════════
+// 2026-11-11, מסלולי הכשרה — ספרינט 1 (שכבת מסלול, ללא שינוי נראה לעין).
+// מסלול = תבנית קבועה: "הכשרה לנהג" (role:'main', חובה) + "הסבה לנייד"
+// (role:'conv', אופציונלי) + חניכה (אופציונלי). נשמר כרשימת שלבים כדי
+// שמבנה הנתונים יישאר פתוח להרחבה. נתוני השיעורים לא משתנים: כל שיעור
+// נשאר עם שם משימה לפי רכב; המסלול רק קובע לאיזה שלב הוא שייך.
+// בספרינט 1 לאף חניך אין trackId ו-settings.tracks לא קיים → כולם במסלול
+// ברירת המחדל, ששווה בדיוק להתנהגות הקודמת (סיטאדיס ← אורבוס 7 ← חניכה).
+// ═══════════════════════════════════════════════════════════════════════
+function _trackVehicleMissions(vehicle) {
+    // אותם שמות בדיוק שנבדקו עד כה בקוד (כולל כינויים ישנים של סיטאדיס).
+    if (vehicle === 'sitadis') return ['קורס מעשי סיטאדיס', 'קורס מעשי', 'קורס'];
+    if (vehicle === 'orbus')   return ['קורס מעשי אורבוס'];
+    return [];
+}
+function _trackVehicleMissionIds(vehicle) {
+    if (vehicle === 'sitadis') return ['course'];
+    if (vehicle === 'orbus')   return ['orbus'];
+    return [];
+}
+function _trackDefault() {
+    // lessons:null בשלב העיקרי = לפי הסף הגלובלי של test50 (כמו קודם).
+    return {
+        id: 'default', isDefault: true, chinuch: true,
+        stages: [
+            { role: 'main', vehicle: 'sitadis', lessons: null },
+            { role: 'conv', vehicle: 'orbus',   lessons: 7 }
+        ]
+    };
+}
+function _getTrack(t) {
+    const tid = t && t.trackId;
+    if (tid && typeof TraineeSystem !== 'undefined' && TraineeSystem.settings && TraineeSystem.settings.tracks) {
+        const tr = TraineeSystem.settings.tracks[tid];
+        if (tr && Array.isArray(tr.stages) && tr.stages.some(s => s && s.role === 'main')) return tr;
+    }
+    return _trackDefault();
+}
+function _trackStages(t) { return (_getTrack(t).stages || []).filter(Boolean); }
+function _trackStage(t, role) { return _trackStages(t).find(s => s.role === role) || null; }
+function _trackHasChinuch(t) { return _getTrack(t).chinuch !== false; }
+// לאיזה שלב שייכת משימה אצל החניך: 'main' | 'conv' | null (לא משימת קורס).
+function _trackRoleOfMission(t, missionName, missionId) {
+    for (const s of _trackStages(t)) {
+        if (missionName && _trackVehicleMissions(s.vehicle).includes(missionName)) return s.role;
+        if (missionId && _trackVehicleMissionIds(s.vehicle).includes(missionId)) return s.role;
+    }
+    return null;
+}
+function _trackIsCourseMission(missionName) {
+    return ['sitadis', 'orbus'].some(v => _trackVehicleMissions(v).includes(missionName));
+}
+// מזהה המשימה (course/orbus) של שלב אצל החניך.
+function _trackStageMissionId(t, role) {
+    const s = _trackStage(t, role);
+    return s ? (_trackVehicleMissionIds(s.vehicle)[0] || null) : null;
+}
+// יעד השיעורים של שלב: בשלב העיקרי — יעד אישי (t.sitadisTarget) ← יעד המסלול
+// ← הסף הגלובלי test50. בהסבה — מספר השיעורים במסלול (7 בברירת המחדל).
+function _trackStageTarget(t, role) {
+    const s = _trackStage(t, role);
+    if (role === 'main') {
+        const v = t && parseInt(t.sitadisTarget, 10);
+        if (v && v > 0) return v;
+        const sl = s && parseInt(s.lessons, 10);
+        if (sl && sl > 0) return sl;
+        return _getMilestoneThreshold('test50', 50);
+    }
+    if (!s) return 0;
+    const n = parseInt(s.lessons, 10);
+    return (n && n > 0) ? n : 7;
+}
+// מספר המשבצות בבחירת שיעורים למשימה: הסבה → יעד ההסבה, אחרת → יעד העיקרי
+// (כמו קודם: כל משימה שאינה אורבוס קיבלה את יעד הסיטאדיס).
+function _trackChipCount(t, missionName, missionId) {
+    return _trackRoleOfMission(t, missionName, missionId) === 'conv'
+        ? _trackStageTarget(t, 'conv') : _trackStageTarget(t, 'main');
+}
+// מספרי השיעורים שדווחו בשלב (שטוח). opts.excludeTests → בלי שיעורי טסט.
+function _trackLessonNums(t, role, opts) {
+    const ex = opts && opts.excludeTests;
+    return ((t && t.lessons) || [])
+        .filter(l => !(ex && l.testKey) && _trackRoleOfMission(t, l.mission) === role)
+        .flatMap(l => l.lessonNums || []);
+}
+// מספר השיעור הגבוה ביותר שדווח בשלב. opts.mathMax → Math.max על הרשימה
+// (כפי שחושב בחלק מהמקומות), אחרת השוואה ברצף (כפי שחושב בשאר) — נשמרו שתי
+// הצורות המקוריות כדי שהתוצאה תהיה זהה בדיוק בכל מקום.
+function _trackMaxLesson(t, role, opts) {
+    const nums = _trackLessonNums(t, role, opts);
+    if (opts && opts.mathMax) return nums.length ? Math.max(...nums) : 0;
+    let max = 0;
+    nums.forEach(n => { if (n > max) max = n; });
+    return max;
+}
+// ── מסלולים ספרינט 2: אבני דרך לפי תפקיד שלב ─────────────────────────────
+// המפתחות הקיימים נשמרו (אין שינוי בנתונים / ב-settings/milestones), ומקבלים
+// משמעות של תפקיד: test10/test30 = ביניים בהכשרה לנהג, test50 = סיום ההכשרה
+// לנהג (לפי היעד), testOrbus = סיום ההסבה לנייד (= תנאי לחניכה).
+function _trackMilestoneRole(key) {
+    if (key === 'test10' || key === 'test30' || key === 'test50') return 'main';
+    if (key === 'testOrbus') return 'conv';
+    return null;
+}
+// אילו מפתחות רלוונטיים במסלול של החניך (בלי הסבה → אין testOrbus).
+function _trackMilestoneKeys(t) {
+    const keys = ['test10', 'test30', 'test50'];
+    if (_trackStage(t, 'conv')) keys.push('testOrbus');
+    return keys;
+}
+// סף אוטומטי למפתח. בברירת המחדל זהה בדיוק לקודם: 10/30 מההגדרות, test50 =
+// יעד ההכשרה, testOrbus = הסף הגלובלי chinuch-orbus (7). במסלול אחר: סיום
+// ההסבה = מספר שיעורי ההסבה במסלול (או היעד, אם אין סף מוגדר במסלול).
+function _trackMilestoneThreshold(t, key) {
+    if (key === 'test10') return _getMilestoneThreshold('test10', 10);
+    if (key === 'test30') return _getMilestoneThreshold('test30', 30);
+    if (key === 'test50') return _trackStageTarget(t, 'main');
+    if (key === 'testOrbus') {
+        if (_getTrack(t).isDefault) return _getMilestoneThreshold('chinuch-orbus', 7);
+        return _trackStage(t, 'conv') ? _trackStageTarget(t, 'conv') : 99;
+    }
+    return 99;
+}
+// מונה השיעורים שמול הסף: מספר השיעור הגבוה בשלב שהמפתח שייך אליו.
+function _trackMilestoneCount(t, key) {
+    const r = _trackMilestoneRole(key);
+    return r ? _trackMaxLesson(t, r) : 0;
+}
+// שם הרכב לתצוגה ושיוך שיעורי טסט (TEST_DEFS.appliesTo) לפי תפקיד שלב.
+function _trackVehicleLabel(vehicle) {
+    return vehicle === 'orbus' ? 'אורבוס' : vehicle === 'sitadis' ? 'סיטאדיס' : '';
+}
+function _trackStageVehicleLabel(t, role) {
+    const s = _trackStage(t, role);
+    return s ? _trackVehicleLabel(s.vehicle) : '';
+}
+function _trackTestAppliesForRole(role) {
+    return role === 'main' ? 'sitadis' : role === 'conv' ? 'orbus' : null;
+}
+// ═══════════════════════════════════════════════════════════════════════
+
 // 2026-10-01, לפי בקשת לביא (#254): יעד שיעורי סיטאדיס גמיש לחניך (למשל 10/30/50
 // או כל מספר אחר), נשמר ב-t.sitadisTarget. ברירת מחדל = הסף הגלובלי של test50
 // (50 כברירת מחדל שלו עצמו). משמש לצ'יפים, לדרישת "עבר לפני אורבוס", ולאחוז התקדמות.
+// 2026-11-11, מסלולים ספרינט 1: עטיפה ל-_trackStageTarget(t,'main') — שם נשמר לתאימות.
 function _sitadisTarget(t) {
-    const v = t && parseInt(t.sitadisTarget, 10);
-    return (v && v > 0) ? v : _getMilestoneThreshold('test50', 50);
+    return _trackStageTarget(t, 'main');
 }
 
 function _hasMilestonePassed(traineeId, key, lessonCount, traineeObj) {
@@ -10242,13 +10365,9 @@ function _hasMilestonePassed(traineeId, key, lessonCount, traineeObj) {
     // ר' תיעוד ב-#213/#214). testOrbus נספר לפי שיעורי אורבוס (chinuch-orbus,
     // ברירת מחדל 7), לא לפי סף נפרד.
     // 2026-10-01, #254: test50 משתמש ביעד האישי של החניך (sitadisTarget) אם הוגדר.
-    const thresholds = {
-        test10:    _getMilestoneThreshold('test10', 10),
-        test30:    _getMilestoneThreshold('test30', 30),
-        test50:    _sitadisTarget(traineeObj),
-        testOrbus: _getMilestoneThreshold('chinuch-orbus', 7)
-    };
-    return lessonCount >= (thresholds[key] || 99);
+    // 2026-11-11, מסלולים ספרינט 2: הסף נלקח מתפקיד השלב במסלול של החניך.
+    const thr = _trackMilestoneThreshold(traineeObj, key);
+    return lessonCount >= (thr || 99);
 }
 
 // 2026-09-09, לפי בקשת לביא: אחידות בין הפאנל הידני (updateChips) לטופס
@@ -10270,23 +10389,19 @@ function _checkMilestoneWarnings(traineeId) {
         }
     }
     if (!traineeObj) return;
-    let maxSitadis = 0, maxOrbus = 0;
-    (traineeObj.lessons || []).forEach(l => {
-        if (l.mission === 'קורס מעשי סיטאדיס' || l.mission === 'קורס מעשי' || l.mission === 'קורס')
-            (l.lessonNums || []).forEach(n => { if (n > maxSitadis) maxSitadis = n; });
-        if (l.mission === 'קורס מעשי אורבוס')
-            (l.lessonNums || []).forEach(n => { if (n > maxOrbus) maxOrbus = n; });
-    });
+    const maxSitadis = _trackMaxLesson(traineeObj, 'main'); // מסלולים ספרינט 1
+    const maxOrbus   = _trackMaxLesson(traineeObj, 'conv');
     const pending = [];
     // 2026-09-09, לפי בקשת לביא: chinuch-ms -> testOrbus. חשוב: testOrbus נספר
     // לפי שיעורי אורבוס (maxOrbus), לא סיטאדיס — אותו דפוס-שורש כמו הבאג
     // שתוקן בטולטיפ (_renderDetailMilestoneBadges).
-    ['test10', 'test30', 'test50', 'testOrbus'].forEach(key => {
+    // מסלולים ספרינט 2: מפתחות ומונים לפי תפקיד השלב במסלול.
+    _trackMilestoneKeys(traineeObj).forEach(key => {
         const mode = _getMilestoneMode(key);
         if (mode === 'ignore') return;
-        const count = key === 'testOrbus' ? maxOrbus : maxSitadis;
+        const count = _trackMilestoneRole(key) === 'conv' ? maxOrbus : maxSitadis;
         if (_hasMilestonePassed(traineeId, key, count, traineeObj)) return;
-        const label = { test10: 'טסט 10', test30: 'טסט 30', test50: 'טסט 50', testOrbus: 'טסט אורבוס' }[key];
+        const label = { test10: 'טסט 10', test30: 'טסט 30', test50: 'טסט 50', testOrbus: 'טסט ' + _trackStageVehicleLabel(traineeObj, 'conv') }[key];
         pending.push(label);
     });
     if (pending.length) {
@@ -12681,13 +12796,7 @@ function _loadCoursesForAssign() {
 // שהושלם בקורס מעשי סיטאדיס) — אותו חישוב המשמש בכל שאר הדשבורדים
 // (למשל בווידג'ט חלוקת הקבוצות).
 function _traineeCurrentLessonNum(tr) {
-  let max = 0;
-  (tr.lessons || []).forEach(l => {
-    if (l.mission === 'קורס מעשי סיטאדיס' || l.mission === 'קורס מעשי' || l.mission === 'קורס') {
-      (l.lessonNums || []).forEach(n => { if (n > max) max = n; });
-    }
-  });
-  return max;
+  return _trackMaxLesson(tr, 'main'); // מסלולים ספרינט 1
 }
 
 function _renderTraineeAssignList(courses, courseIdx, assigned) {
@@ -12756,10 +12865,7 @@ function _isTraineeInTechnicalStage(traineeId) {
   if (typeof TraineeSystem === 'undefined' || !TraineeSystem.trainees) return false;
   const t = TraineeSystem.trainees.find(tr => String(tr.id) === String(traineeId));
   if (!t) return false;
-  const sitadisLessons = (t.lessons || [])
-    .filter(l => l.mission === 'קורס מעשי סיטאדיס' || l.mission === 'קורס מעשי' || l.mission === 'קורס')
-    .flatMap(l => l.lessonNums || []);
-  const maxSitadis = sitadisLessons.length ? Math.max(...sitadisLessons) : 0;
+  const maxSitadis = _trackMaxLesson(t, 'main', { mathMax: true }); // מסלולים ספרינט 1
   const msEntry = (window._milestonePassMap || {})[traineeId] || {};
   const test10 = !!(msEntry.test10 || maxSitadis >= 10);
   return maxSitadis > 0 && !test10;
@@ -24405,11 +24511,18 @@ function _urRemoveFeedbackBlock(btn) {
 // לא על מספר שיעורים/היוריסטיקות אחרות. סיטאדיס הוא ברירת המחדל ההתחלתית.
 const _MISSION_ID_TO_NAME = {course:'קורס מעשי סיטאדיס', orbus:'קורס מעשי אורבוס', mt1:'חניכה', mt2:'כשירות מעשית/ שעות נוספות'};
 function _defaultMissionIdForTrainee(traineeId) {
-  if (!traineeId) return 'course';
+  // מסלולים ספרינט 1: מזהי המשימה של השלבים נלקחים מהמסלול של החניך
+  // (בברירת המחדל: course ← orbus ← mt1, בדיוק כמו קודם).
+  let _tr = null;
+  if (traineeId && typeof TraineeSystem !== 'undefined')
+    _tr = (TraineeSystem.trainees || []).find(x => String(x.id) === String(traineeId)) || null;
+  const _mainId = _trackStageMissionId(_tr, 'main') || 'course';
+  const _convId = _trackStageMissionId(_tr, 'conv');
+  if (!traineeId) return _mainId;
   const ms = (window._milestonePassMap || {})[String(traineeId)] || {};
   if (ms.testOrbus) return 'mt1';
-  if (ms.test50) return 'orbus';
-  return 'course';
+  if (ms.test50) return _convId || 'mt1';
+  return _mainId;
 }
 function _urOnTraineeChange(idx) {
   const sel = document.getElementById(`ur-fb-${idx}-trainee`);
@@ -24704,11 +24817,14 @@ function _urUpdateChips(idx) {
   });
 
   const isFree = (missionId === 'mt1' || missionName === 'חניכה');
-  const isOrbus = (missionId === 'orbus' || missionName === 'קורס מעשי אורבוס');
+  // מסלולים ספרינט 1: שייכות לשלב לפי המסלול של החניך (שמות המשתנים נשמרו).
+  // שים לב: הבדיקה לפי missionId נשמרה בדיוק כמו קודם — בזיהוי שלב עבור
+  // isOrbus/_isSitadis, אבל לא בהחרגה של isChinuchMission (שם רק לפי שם).
+  const isOrbus = (_trackRoleOfMission(trainee, missionName, missionId) === 'conv');
   const isChinuchMission = (isFree || missionName === 'חניכה') && !isOrbus
-    && !(missionName === 'קורס מעשי סיטאדיס' || missionName === 'קורס מעשי' || missionName === 'קורס');
-  const maxChip = isOrbus ? 7 : _sitadisTarget(trainee);
-  const _isSitadis = (missionId === 'course' || missionName === 'קורס מעשי סיטאדיס' || missionName === 'קורס מעשי' || missionName === 'קורס');
+    && _trackRoleOfMission(trainee, missionName) !== 'main';
+  const maxChip = isOrbus ? _trackStageTarget(trainee, 'conv') : _trackStageTarget(trainee, 'main');
+  const _isSitadis = (_trackRoleOfMission(trainee, missionName, missionId) === 'main');
 
   // 2026-08-31, לפי בקשת לביא: תיקון באג — הבלוק הזה היה בסוף הפונקציה, אז
   // כל "return" מוקדם (למשל חסימת אורבוס לפני טסט 50, למטה) דילג עליו לגמרי
@@ -24721,7 +24837,7 @@ function _urUpdateChips(idx) {
     if (isChinuchMission || !canExamine) {
       testWrap.innerHTML = '';
     } else {
-      const applies = _isSitadis ? 'sitadis' : isOrbus ? 'orbus' : null;
+      const applies = _trackTestAppliesForRole(_isSitadis ? 'main' : isOrbus ? 'conv' : null); // ספרינט 2
       const relevant = applies ? TEST_DEFS.filter(d => d.appliesTo === applies) : [];
       testWrap.innerHTML = !relevant.length ? '' : (
         '<div style="font-size:11.5px;font-weight:600;color:#8a6d1a;margin-bottom:5px;">🎯 שיעורי טסט (בוחן בלבד):</div>'
@@ -24742,11 +24858,7 @@ function _urUpdateChips(idx) {
   // 2026-09-09, לפי בקשת לביא: chinuch-ms הוסר כאבן דרך עצמאית (כפילות
   // לוגית ל-testOrbus). השער נבדק כעת ישירות מול testOrbus.
   if (isChinuchMission && traineeId && typeof _hasMilestonePassed === 'function') {
-    let _maxOrbusGate = 0;
-    (trainee?.lessons || []).forEach(l => {
-      if (l.mission === 'קורס מעשי אורבוס')
-        (l.lessonNums || []).forEach(n => { if (n > _maxOrbusGate) _maxOrbusGate = n; });
-    });
+    const _maxOrbusGate = _trackMaxLesson(trainee, 'conv');
     const _chinuchPassed = _hasMilestonePassed(traineeId, 'testOrbus', _maxOrbusGate, trainee);
     const _chinuchMode   = (typeof _getMilestoneMode === 'function') ? _getMilestoneMode('testOrbus') : 'warn';
     if (!_chinuchPassed && _chinuchMode === 'warn') {
@@ -24758,11 +24870,7 @@ function _urUpdateChips(idx) {
 
   // ── מיילסטון טסט-50: חסימת אורבוס ──────────────────────────────
   if (isOrbus && traineeId && typeof _hasMilestonePassed === 'function') {
-    let _maxSitadis = 0;
-    (trainee?.lessons || []).forEach(l => {
-      if (l.mission === 'קורס מעשי סיטאדיס' || l.mission === 'קורס מעשי' || l.mission === 'קורס')
-        (l.lessonNums || []).forEach(n => { if (n > _maxSitadis) _maxSitadis = n; });
-    });
+    const _maxSitadis = _trackMaxLesson(trainee, 'main');
     const _ms50passed = _hasMilestonePassed(traineeId, 'test50', _maxSitadis, trainee);
     const _ms50mode   = (typeof _getMilestoneMode === 'function') ? _getMilestoneMode('test50') : 'block';
     const _ms50target = (typeof _sitadisTarget === 'function') ? _sitadisTarget(trainee) : 50;
@@ -24782,11 +24890,7 @@ function _urUpdateChips(idx) {
   let _urMsBlockAbove = 0;
   let _urMsWarnAbove  = 0;
   if (_isSitadis && traineeId && typeof _hasMilestonePassed === 'function') {
-    let _maxSitadis2 = 0;
-    (trainee?.lessons || []).forEach(l => {
-      if (l.mission === 'קורס מעשי סיטאדיס' || l.mission === 'קורס מעשי' || l.mission === 'קורס')
-        (l.lessonNums || []).forEach(n => { if (n > _maxSitadis2) _maxSitadis2 = n; });
-    });
+    const _maxSitadis2 = _trackMaxLesson(trainee, 'main');
     const _msChecks = [{key:'test10', blockFrom:11}, {key:'test30', blockFrom:31}];
     for (const {key, blockFrom} of _msChecks) {
       const _passed = _hasMilestonePassed(traineeId, key, _maxSitadis2, trainee);
@@ -24810,7 +24914,7 @@ function _urUpdateChips(idx) {
       const _tTargetChips = (typeof _sitadisTarget === 'function') ? _sitadisTarget(trainee) : 50;
       if (_hasMilestonePassed(traineeId, 'test50', 0, trainee)) _passedTestChips[_tTargetChips] = true;
     } else if (isOrbus) {
-      if (_hasMilestonePassed(traineeId, 'testOrbus', 0, trainee)) _passedTestChips[7] = true;
+      if (_hasMilestonePassed(traineeId, 'testOrbus', 0, trainee)) _passedTestChips[_trackStageTarget(trainee, 'conv')] = true;
     }
   }
 
@@ -30170,9 +30274,11 @@ function _lessonMeetsScoreThreshold(l) {
   const lessonNum = (l.lessonNums && l.lessonNums.length) ? Math.max(...l.lessonNums) : null;
 
   let cutoff = null; // null = אין סף לשלב הזה — מילוי חלקי תמיד מספיק (כמו קודם)
-  if (l.mission === 'קורס מעשי סיטאדיס' || l.mission === 'קורס מעשי' || l.mission === 'קורס') {
+  // מסלולים ספרינט 1: לפי שלב (אין כאן הקשר חניך → מסלול ברירת מחדל, כמו קודם).
+  const _cutRole = _trackRoleOfMission(null, l.mission);
+  if (_cutRole === 'main') {
     cutoff = cfg.sitadisFullScoreFrom;
-  } else if (l.mission === 'קורס מעשי אורבוס') {
+  } else if (_cutRole === 'conv') {
     cutoff = cfg.orbusFullScoreFrom;
   }
 
@@ -30309,18 +30415,13 @@ function _traineeStageIsChinuch(t) {
   try {
     const passMap = window._milestonePassMap || {};
     const lessons = t.lessons || [];
-    const sitadisLessons = lessons
-      .filter(l => l.mission === 'קורס מעשי סיטאדיס' || l.mission === 'קורס מעשי' || l.mission === 'קורס')
-      .flatMap(l => l.lessonNums || []);
-    const maxSitadis = sitadisLessons.length ? Math.max(...sitadisLessons) : 0;
-    const orbusLessons = lessons
-      .filter(l => l.mission === 'קורס מעשי אורבוס')
-      .flatMap(l => l.lessonNums || []);
-    const maxOrbus = orbusLessons.length ? Math.max(...orbusLessons) : 0;
+    // מסלולים ספרינט 1: שלבים לפי המסלול של החניך.
+    const maxSitadis = _trackMaxLesson(t, 'main', { mathMax: true });
+    const maxOrbus = _trackMaxLesson(t, 'conv', { mathMax: true });
     const msEntry = passMap[(typeof TraineeSystem !== 'undefined' && TraineeSystem._fbKey) ? TraineeSystem._fbKey(t.id) : String(t.id)] || {}; // 2026-10-06, #259
     // 2026-09-09, לפי בקשת לביא: chinuch-ms הוסר (כפילות ל-testOrbus). מקור
     // האמת היחיד לזכאות-לחניכה הוא כעת testOrbus (ידני או אוטומטי לפי סף אורבוס).
-    const _thrOrbGate = (typeof _getMilestoneThreshold === 'function') ? _getMilestoneThreshold('chinuch-orbus', 7) : 7;
+    const _thrOrbGate = _trackMilestoneThreshold(t, 'testOrbus'); // מסלולים ספרינט 2
     const chinuchMs = !!(msEntry['testOrbus'] || maxOrbus >= _thrOrbGate);
     const maxChinuch = lessons.reduce((acc, l) => {
       if (l.mission === 'חניכה') acc += (l.lessonNums || []).length;
@@ -30349,23 +30450,10 @@ function _generateTraineeSummary() {
   const perTrainee = active.map(t => {
     const lessons = t.lessons || [];
 
-    // Citadis
-    const sitadisLessons = lessons
-      .filter(l =>
-        l.mission === 'קורס מעשי סיטאדיס' ||
-        l.mission === 'קורס מעשי'          ||
-        l.mission === 'קורס'
-      )
-      .flatMap(l => l.lessonNums || []);
-    const maxSitadis = sitadisLessons.length
-      ? Math.max(...sitadisLessons) : 0;
-
-    // Orbus
-    const orbusLessons = lessons
-      .filter(l => l.mission === 'קורס מעשי אורבוס')
-      .flatMap(l => l.lessonNums || []);
-    const maxOrbus = orbusLessons.length
-      ? Math.max(...orbusLessons) : 0;
+    // מסלולים ספרינט 1: הכשרה לנהג (main) והסבה לנייד (conv) לפי המסלול.
+    // שמות המשתנים maxSitadis/maxOrbus נשמרו — במסלול ברירת המחדל הם זהים.
+    const maxSitadis = _trackMaxLesson(t, 'main', { mathMax: true });
+    const maxOrbus = _trackMaxLesson(t, 'conv', { mathMax: true });
 
     // Extra hours
     const extraHoursCount = lessons.filter(l =>
@@ -30405,7 +30493,7 @@ function _generateTraineeSummary() {
     // Milestones — OR-based ("הגיע בכל דרך": ידני או סף-שיעורים אוטומטי) — עדיין
     // משמש להתרעות "שעות נוספות תקועות" בלבד (למטה), לא לקביעת stage יותר.
     const msEntry  = passMap[(typeof TraineeSystem !== 'undefined' && TraineeSystem._fbKey) ? TraineeSystem._fbKey(t.id) : String(t.id)] || {}; // 2026-10-06, #259
-    const _thrOrbGateSum = (typeof _getMilestoneThreshold === 'function') ? _getMilestoneThreshold('chinuch-orbus', 7) : 7;
+    const _thrOrbGateSum = _trackMilestoneThreshold(t, 'testOrbus'); // מסלולים ספרינט 2
     // 2026-10-01, #254: _thrSitadisTarget = יעד שיעורי סיטאדיס אישי לחניך (ברירת מחדל 50).
     const _thrSitadisTarget = (typeof _sitadisTarget === 'function') ? _sitadisTarget(t) : 50;
     const msStatus = {
@@ -30818,8 +30906,7 @@ function _openCourseReport(courseId) {
   // הקורס הפתוח כרגע: TS.trainees הוא העותק העדכני ביותר בזיכרון.
   const trainees = (course.id === TS.currentCourseId ? (TS.trainees || []) : (course.trainees || []));
   const isExtra = l => l.mission === 'כשירות מעשית/ שעות נוספות' || l.mission === 'שעות נוספות';
-  const isSit   = l => !l.testKey && (l.mission === 'קורס מעשי סיטאדיס' || l.mission === 'קורס מעשי' || l.mission === 'קורס');
-  const isOrb   = l => !l.testKey && l.mission === 'קורס מעשי אורבוס';
+
   const catOf   = t => t.archived ? ((t.archiveReason && t.archiveReason.category) || 'other') : 'active';
   const CAT_LABEL = { active:'פעיל', completed:'סיים בהצלחה', dropout:'נשר', transfer:'עבר מסלול/קורס', other:'אחר' };
   const avg = arr => arr.length ? arr.reduce((a,b)=>a+b,0) / arr.length : null;
@@ -30853,8 +30940,8 @@ function _openCourseReport(courseId) {
       firstAttempt[k].n++;
       if (first.testResult === 'pass') firstAttempt[k].pass++;
     });
-    const sitNums = lessons.filter(isSit).flatMap(l => l.lessonNums || []);
-    const orbNums = lessons.filter(isOrb).flatMap(l => l.lessonNums || []);
+    const sitNums = _trackLessonNums(t, 'main', { excludeTests: true }); // מסלולים ספרינט 1
+    const orbNums = _trackLessonNums(t, 'conv', { excludeTests: true });
     const scores = lessons.map(l => (typeof _lessonScoreAvg === 'function') ? _lessonScoreAvg(l) : null).filter(v => v !== null);
     const dates = lessons.map(l => l.date).filter(Boolean).sort();
     const startMs = dates.length ? new Date(dates[0] + 'T12:00:00').getTime()
