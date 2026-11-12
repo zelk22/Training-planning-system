@@ -16,7 +16,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 205</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 206</title>
 
 <style>
 
@@ -1439,7 +1439,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 269;
+  const APP_VERSION = 270;
 
   // 2026-09-07, לפי בקשת לביא: היה קשה לבדוק באיזו גרסה הדפדפן בפועל טוען
   // (כותרת הטאב נחתכת כשיש הרבה טאבים פתוחים, ואי אפשר תמיד לראות "DEPLOYED
@@ -5887,7 +5887,7 @@ window.TraineeSystem = {
             {key:'test10',     label:`טסט ${_thr10}`,                   threshold:_thr10},
             {key:'test30',     label:`טסט ${_thr30}`,                   threshold:_thr30},
             {key:'test50',     label:`טסט ${_thr50}`,                   threshold:_thr50},
-            {key:'testOrbus',  label:`טסט הסבה — תנאי לחניכה`,         threshold:_thrOrb, isOrbus:true}
+            {key:'testOrbus',  label:_trackNoChinuch(t) ? 'טסט הסבה — סיום מסלול' : 'טסט הסבה — תנאי לחניכה', threshold:_thrOrb, isOrbus:true}
         ].filter(d => _trackMilestoneKeys(t).includes(d.key));
         // 2026-11-12: תוויות נקיות — טסטי ההכשרה לנהג בלי שם רכב, וטסט ההסבה בשם
         // "טסט הסבה" (כמו בדשבורד). הרכב מופיע בכותרת התיק ("מסלול: …").
