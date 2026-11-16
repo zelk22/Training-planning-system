@@ -16,7 +16,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 207</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 208</title>
 
 <style>
 
@@ -1439,7 +1439,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 271;
+  const APP_VERSION = 272;
 
   // 2026-09-07, לפי בקשת לביא: היה קשה לבדוק באיזו גרסה הדפדפן בפועל טוען
   // (כותרת הטאב נחתכת כשיש הרבה טאבים פתוחים, ואי אפשר תמיד לראות "DEPLOYED
@@ -6559,7 +6559,8 @@ window.TraineeSystem = {
         // כדי לא להעמיס שדות לא-רלוונטיים על מדריכים רגילים.
         if (isChinuchMission || !canExamine) { wrap.innerHTML = ''; return; }
         const applies = _trackTestAppliesForRole(isSitadis ? 'main' : isOrbus ? 'conv' : null); // ספרינט 2
-        const relevant = applies ? TEST_DEFS.filter(d => d.appliesTo === applies) : [];
+        // 2026-11-12: רק הטסטים שרלוונטיים ליעד של החניך (יעד 7 → "טסט 7" בלבד).
+        const relevant = applies ? TEST_DEFS.filter(d => d.appliesTo === applies && (!t || _trackMilestoneKeys(t).includes(d.key))) : [];
         if (!relevant.length) { wrap.innerHTML = ''; return; }
         let h = '<div style="font-size:11.5px;font-weight:600;color:#8a6d1a;margin-bottom:5px;">🎯 שיעורי טסט (בוחן בלבד):</div><div style="display:flex;flex-wrap:wrap;gap:6px;">';
         relevant.forEach(d => {
@@ -10674,6 +10675,8 @@ function _getTrack(t) {
 // תווית צ'יפ טסט בטפסים: טסט ההסבה לפי רכב ההסבה של החניך.
 function _trackTestChipLabel(t, d) {
     if (d && d.key === 'testOrbus') return '🎯 טסט הסבה';
+    // טסט הסיום של ההכשרה לנהג — לפי היעד (למשל "טסט 7" במסלול אורבוס 7).
+    if (d && t && d.key === _trackMainFinalKey(t)) return '🎯 טסט ' + _trackStageTarget(t, 'main');
     return d ? d.label : '';
 }
 // שם המסלול נגזר מהשלבים: "סיטאדיס 50 ← אורבוס 7". personalTarget מחליף את
@@ -25385,7 +25388,8 @@ function _urUpdateChips(idx) {
       testWrap.innerHTML = '';
     } else {
       const applies = _trackTestAppliesForRole(_isSitadis ? 'main' : isOrbus ? 'conv' : null); // ספרינט 2
-      const relevant = applies ? TEST_DEFS.filter(d => d.appliesTo === applies) : [];
+      // 2026-11-12: רק הטסטים שרלוונטיים ליעד של החניך (יעד 7 → "טסט 7" בלבד).
+      const relevant = applies ? TEST_DEFS.filter(d => d.appliesTo === applies && (!trainee || _trackMilestoneKeys(trainee).includes(d.key))) : [];
       testWrap.innerHTML = !relevant.length ? '' : (
         '<div style="font-size:11.5px;font-weight:600;color:#8a6d1a;margin-bottom:5px;">🎯 שיעורי טסט (בוחן בלבד):</div>'
         + '<div style="display:flex;flex-wrap:wrap;gap:6px;">'
