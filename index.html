@@ -16,7 +16,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 209</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 211</title>
 
 <style>
 
@@ -1439,7 +1439,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 273;
+  const APP_VERSION = 275;
 
   // 2026-09-07, לפי בקשת לביא: היה קשה לבדוק באיזו גרסה הדפדפן בפועל טוען
   // (כותרת הטאב נחתכת כשיש הרבה טאבים פתוחים, ואי אפשר תמיד לראות "DEPLOYED
@@ -2598,7 +2598,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
         </div>
         <div style="display:flex;align-items:center;gap:8px;">
           <span id="todayTasksDate" style="font-size:12px;color:#888;"></span>
-          <button id="todayBackToTodayBtn" onclick="jumpToToday()" style="display:none;width:auto !important;padding:4px 8px;background:#fff3cd;border:1px solid #eab308;color:#8a6d1a;border-radius:7px;cursor:pointer;font-size:11px;font-weight:600;">היום</button>
+          <button id="todayBackToTodayBtn" onclick="jumpToToday()" style="display:none;width:auto !important;padding:4px 8px;background:#fff3cd;border:1px solid #eab308;color:#8a6d1a;border-radius:7px;cursor:pointer;font-size:11px;font-weight:600;">⤺ חזור להיום</button>
           <button class="today-action-btn" onclick="openInstrAddTask()" style="width:auto !important;padding:4px 10px;background:#f0f8ff;border:1.5px solid #3498db;color:#2980b9;border-radius:7px;cursor:pointer;font-size:12px;font-weight:600;">+ משימה</button>
           <button class="today-action-btn" onclick="openUnifiedReport()" style="width:auto !important;padding:4px 10px;background:#27ae60;color:white;border:none;border-radius:7px;cursor:pointer;font-size:12px;font-weight:600;">📝 סיכום יום</button>
         </div>
@@ -5265,7 +5265,7 @@ window.TraineeSystem = {
     },
 
     buildCourseTicks() {
-        this._buildInteractiveCells('course-ticks', 50, 'sitadis');
+        this._buildInteractiveCells('course-ticks', this._courseTicksN || 50, 'sitadis');
         this._buildInteractiveCells('orbus-ticks', this._orbusTicksN || 7, 'orbus');
         this._buildInteractiveCells('chinuch-ticks', 50, 'chinuch');
     },
@@ -6340,6 +6340,12 @@ window.TraineeSystem = {
         const _chinuchSub = !_trackHasChinuch(t) && !chinuchDone.size ? '' : ` • חניכה: ${chinuchDone.size}/50`;
         const _trackSub = _trk.isDefault ? '' : ` • מסלול: ${_trackLabelForTrainee(t)}`;
         this.$('det-sub').innerText  = `${len} דיווחים • קורס: שיעור ${maxL}/${_tTarget}${_orbusSub}${_chinuchSub}${_trackSub}`;
+        // 2026-11-16: מספר התאים בסרגל = יעד ההכשרה של החניך (היה תמיד 50) —
+        // מסלול "אורבוס 7" מציג 7 תאים, יעד אישי 35 מציג 35.
+        if (this._courseTicksN !== _tTarget) {
+            this._courseTicksN = _tTarget;
+            try { this._buildInteractiveCells('course-ticks', _tTarget, 'sitadis'); } catch(e) {}
+        }
         this.setTrain(maxL, _tTarget, _trackTechEnd(t), _trackOpEnd(t));
         try {
             const _tgtVal = this.$('target-edit-val');
@@ -24449,7 +24455,18 @@ function renderTodayTasks(){
     dateLbl.innerHTML=isReallyToday?dStr:`${dStr} <span style="background:#fff3cd;color:#8a6d1a;border-radius:5px;padding:1px 6px;font-size:10px;font-weight:bold;">לא היום</span>`;
   }
   const titleEl=document.getElementById('todayTasksTitle');
-  if(titleEl)titleEl.style.color=isReallyToday?'var(--primary)':'#b8860b';
+  if(titleEl){
+    titleEl.style.color=isReallyToday?'var(--primary)':'#b8860b';
+    // 2026-11-17, לפי בקשת לביא: הכותרת מציגה את היום שעליו עומדים (מחר/אתמול/שם היום)
+    // במקום "היום" קבוע כשעוברים לתאריך אחר.
+    let _ttl='היום';
+    if(!isReallyToday){
+      const _d0=new Date(_localDateStr(new Date())+'T12:00:00'), _d1=new Date(today+'T12:00:00');
+      const _diff=Math.round((_d1-_d0)/86400000);
+      _ttl=_diff===1?'מחר':_diff===-1?'אתמול':_d1.toLocaleDateString('he-IL',{weekday:'long'});
+    }
+    titleEl.textContent='📅 '+_ttl;
+  }
   // Fix #73: surface a quick "back to today" button once the instructor has browsed away
   const backBtn=document.getElementById('todayBackToTodayBtn');
   if(backBtn)backBtn.style.display=isReallyToday?'none':'inline-block';
