@@ -16,7 +16,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 211</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 212</title>
 
 <style>
 
@@ -1439,7 +1439,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 275;
+  const APP_VERSION = 276;
 
   // 2026-09-07, לפי בקשת לביא: היה קשה לבדוק באיזו גרסה הדפדפן בפועל טוען
   // (כותרת הטאב נחתכת כשיש הרבה טאבים פתוחים, ואי אפשר תמיד לראות "DEPLOYED
@@ -4694,6 +4694,8 @@ window.TraineeSystem = {
           <button onclick="_saveInsightsConfigFromUI()" style="width:auto;padding:8px 16px;background:var(--success);color:white;border:none;border-radius:8px;font-size:13px;font-weight:bold;cursor:pointer;align-self:flex-start;">💾 שמור ספים נוספים</button>
         </div>
       </div>
+      <!-- #284: סף בטיחותי-קריטי נפרד + טקסטים ניתנים לעריכה (נבנה ב-_renderInsightRulesSection) -->
+      <div id="ts-insight-rules" style="margin-top:20px;padding-top:16px;border-top:1.5px dashed #ddd;"></div>
     </div>
     <!-- Tab: Load limits -->
     <div class="ts-spanel" id="ts-panel-load">
@@ -7120,6 +7122,59 @@ window.TraineeSystem = {
         el.value = Math.max(1, Math.min(10, v + delta));
     },
 
+    // 2026-11-23, #284, לפי בקשת לביא: טקסטים של התובנות הקבועות ניתנים לעריכה
+    // בטאב "ספי התרעות" (settings.insightRules.texts, נשמר ב-Firebase עם שאר
+    // ההגדרות). שדה ריק = הטקסט הזה. {משתנה} מוחלף בזמן ריצה.
+    INSIGHT_TEXT_DEFAULTS: {
+        critical:       '{topics} — ציון {score} (מתחת לסף ההתרעה הבטיחותית). נושאים בטיחותיים מרכזיים בתוכנית ההכשרה מקבלים התרעה ייעודית גם אם הממוצע הכללי של החניך תקין.',
+        avgLow:         'הממוצע הכולל ({avg}) מתחת לסף ההתרעה. מומלץ לבחון לעומק ולשקול ליווי צמוד, גם בשלב מוקדם של ההכשרה.',
+        avgMid:         'הממוצע הכולל ({avg}) בטווח הבינוני. מומלץ להקפיד על מעקב צמוד בהמשך ההכשרה.',
+        declineSevere:  'שיעורים אחרונים מראים ירידה בולטת ביחס לקודמיהם. מומלץ לקיים שיחת משוב עם החניך ולבחון גורמים אפשריים כמו עומס, עייפות או קושי ספציפי בחומר.',
+        declineMild:    'זוהתה ירידה קלה בשיעורים האחרונים. כדאי לבדוק האם מדובר בתנודה זמנית או בקושי מתפתח.',
+        improveSevere:  'שיעורים אחרונים מראים עלייה בולטת לעומת הקודמים. החניך בפסגת הביצועים שלו — כדאי לנצל את המומנטום ולהתקדם לחומר מאתגר יותר.',
+        improveMild:    'ביצועי החניך בשיפור מתמיד בשיעורים האחרונים. כדאי לשמר את קצב ההתקדמות.',
+        gap:            'הידע המערכתי גבוה משמעותית מהיכולת המעשית בסטיק. נדרש תרגול פיזי מוגבר.',
+        ready:          'החניך מציג יציבות גבוהה בכל הפרמטרים. ניתן לקבוע מבחן מסכם.',
+        stickExcellent: 'ניתן להתקדם לתרגול קטעים מורכבים בקו.',
+        advancedStage:  'דגש על עמידה בלוחות זמנים ועל מסחריות מול נוסעים.',
+        nearEnd:        'החניך מתקרב לשיעור 50. מומלץ לתזמן סימולציית מבחן מסכם.',
+        normalProgress: 'החניך בשלבי למידה. מומלץ לוודא הבנה של מערכות הנהיגה הבסיסיות.',
+        inactivity:     'לא בוצע שיעור כבר {days} ימים. מומלץ לתזמן המשך הכשרה בהקדם.'
+    },
+    INSIGHT_TEXT_META: [
+        { key: 'critical',       label: '🛡️ נושא בטיחותי-קריטי',    vars: '{topics} {score} {lessons}' },
+        { key: 'avgLow',         label: '🔴 ממוצע ציונים נמוך',     vars: '{avg}' },
+        { key: 'avgMid',         label: '🟠 ממוצע ציונים בינוני',   vars: '{avg}' },
+        { key: 'declineSevere',  label: '📉 ירידה משמעותית בביצועים', vars: '' },
+        { key: 'declineMild',    label: '📉 ירידה קלה בביצועים',    vars: '' },
+        { key: 'improveSevere',  label: '📈 שיפור בולט בביצועים',   vars: '' },
+        { key: 'improveMild',    label: '📈 שיפור מתמיד',           vars: '' },
+        { key: 'gap',            label: '🟠 פער תפעולי',            vars: '' },
+        { key: 'ready',          label: '🟢 מוכן להסמכה',           vars: '' },
+        { key: 'stickExcellent', label: '✅ ביצועי סטיק מצוינים',    vars: '' },
+        { key: 'advancedStage',  label: '📊 שלב תפעולי מתקדם',      vars: '' },
+        { key: 'nearEnd',        label: '🏁 לקראת סיום הכשרה',      vars: '' },
+        { key: 'normalProgress', label: '💡 התקדמות תקינה',         vars: '' },
+        { key: 'inactivity',     label: '⏰ תזכורת המשך הכשרה',      vars: '{days}' }
+    ],
+    _insightText(key, vars) {
+        const custom = this.settings?.insightRules?.texts?.[key];
+        const tpl = (typeof custom === 'string' && custom.trim()) ? custom : (this.INSIGHT_TEXT_DEFAULTS[key] || '');
+        const esc = (typeof _esc === 'function') ? _esc : (x => String(x));
+        return esc(tpl).replace(/\{(\w+)\}/g, (m, k) => (vars && vars[k] !== undefined && vars[k] !== null) ? esc(vars[k]) : m);
+    },
+    // #284: סף ההתרעה הבטיחותית-קריטית — נפרד מטווחי הרמות. ערך ריק/חסר = יורש
+    // מטווחי הרמות בדשבורד (lowScoreRed/lowScoreOrange), כמו לפני השינוי.
+    _critAlertThresholds() {
+        const sc = (typeof _getTraineeSummaryConfig === 'function') ? _getTraineeSummaryConfig() : { lowScoreRed: 5, lowScoreOrange: 8 };
+        const r = this.settings?.insightRules || {};
+        const pick = (v, def) => (v === null || v === undefined || v === '' || !Number.isFinite(Number(v))) ? def : Number(v);
+        const orange = pick(r.critOrangeBelow, sc.lowScoreOrange ?? 8);
+        let red = pick(r.critRedBelow, sc.lowScoreRed ?? 5);
+        if (red > orange) red = orange;
+        return { red, orange, inheritedRed: sc.lowScoreRed ?? 5, inheritedOrange: sc.lowScoreOrange ?? 8 };
+    },
+
     renderAlerts(t, len, maxL, avgs) {
         const container = this.$('alerts-container');
         if (!container) return;
@@ -7141,7 +7196,7 @@ window.TraineeSystem = {
         // כל תנאי בודק null במפורש לפני השוואה לסף (לפני התיקון, null<70 היה true
         // ב-JS, כך שכל מיומנות ריקה הפעילה בטעות את ההתרעה החמורה ביותר האפשרית).
         if (len >= cfg.readyMinLessons && avgs.every(a => a !== null && a > cfg.readyMinAvgPct)) {
-            alerts.green.push({ icon: '🟢', title: 'מוכן להסמכה', msg: 'החניך מציג יציבות גבוהה בכל הפרמטרים. ניתן לקבוע מבחן מסכם.' });
+            alerts.green.push({ icon: '🟢', title: 'מוכן להסמכה', msg: this._insightText('ready') });
         }
 
         // 2026-08-19: חיבור אמיתי לטאב "ספי התרעות" הקיים בהגדרות (this.settings.
@@ -7164,7 +7219,7 @@ window.TraineeSystem = {
         });
 
         if (avgs[0] !== null && avgs[2] !== null && (avgs[0] - avgs[2]) >= cfg.knowledgeGapThreshold) {
-            alerts.orange.push({ icon: '🟠', title: 'פער תפעולי', msg: 'הידע המערכתי גבוה משמעותית מהיכולת המעשית בסטיק. נדרש תרגול פיזי מוגבר.' });
+            alerts.orange.push({ icon: '🟠', title: 'פער תפעולי', msg: this._insightText('gap') });
         }
 
         if (len >= 6) {
@@ -7177,9 +7232,9 @@ window.TraineeSystem = {
                 const avgP    = prev.reduce((a, b) => a + b, 0) / 3;
                 const diff    = avgR - avgP;
                 if (diff <= cfg.decliningSevereDiff) {
-                    alerts.orange.push({ icon: '📉', title: 'ירידה משמעותית בביצועים', msg: 'שיעורים אחרונים מראים ירידה בולטת ביחס לקודמיהם. מומלץ לקיים שיחת משוב עם החניך ולבחון גורמים אפשריים כמו עומס, עייפות או קושי ספציפי בחומר.' });
+                    alerts.orange.push({ icon: '📉', title: 'ירידה משמעותית בביצועים', msg: this._insightText('declineSevere') });
                 } else if (diff <= cfg.decliningModerateDiff) {
-                    alerts.orange.push({ icon: '📉', title: 'ירידה קלה בביצועים', msg: 'זוהתה ירידה קלה בשיעורים האחרונים. כדאי לבדוק האם מדובר בתנודה זמנית או בקושי מתפתח.' });
+                    alerts.orange.push({ icon: '📉', title: 'ירידה קלה בביצועים', msg: this._insightText('declineMild') });
                 }
             }
         }
@@ -7190,28 +7245,47 @@ window.TraineeSystem = {
         // המקרה שממוצע כללי מדלל: 8-9 טוב, אבל השיעור הקריטי הבודד נכשל.
         // סף: משתמשים ב-lowScoreOrange (בברירת מחדל 8) כך שגם "בינוני-בקושי"
         // בנושא בטיחותי כבר יעלה כתום, לא רק אדום מובהק.
+        // 2026-11-23, #284, לפי בקשת לביא: (1) התרעה אחת לכל דיווח — דיווח אחד שכיסה
+        // כמה שיעורים קריטיים (ציון אחד) הוצג קודם ככרטיס נפרד לכל שיעור; (2) סף נפרד
+        // (_critAlertThresholds) — ברירת מחדל יורשת מטווחי הרמות כמו קודם.
         if (typeof this.SITADIS_LESSON_TOPICS === 'object') {
-            const _critCfg = (typeof _getTraineeSummaryConfig === 'function')
-                ? _getTraineeSummaryConfig() : { lowScoreRed: 5, lowScoreOrange: 8 };
-            const _seenCritical = new Set(); // מספר שיעור → נמנע מהתרעה כפולה אם דווח כמה פעמים
+            const _ct = this._critAlertThresholds();
+            const _seenCritical = new Set(); // מספר שיעור|צבע → נמנע מכפילות בין דיווחים
+            const _fmtNums = nums => {
+                const out = []; let i = 0;
+                while (i < nums.length) {
+                    let j = i;
+                    while (j + 1 < nums.length && nums[j + 1] === nums[j] + 1) j++;
+                    out.push(j - i >= 2 ? `${nums[i]}–${nums[j]}` : (j > i ? `${nums[i]}, ${nums[j]}` : `${nums[i]}`));
+                    i = j + 1;
+                }
+                return out.join(', ');
+            };
             (t.lessons || []).forEach(l => {
                 if (!Array.isArray(l.lessonNums)) return;
                 const score = (typeof _lessonScoreAvg === 'function') ? _lessonScoreAvg(l) : null;
                 if (score === null) return;
+                if (score >= _ct.orange) return; // ציון תקין לנושאים בטיחותיים
+                const bucket = score < _ct.red ? 'red' : 'orange';
+                const nums = [];
                 l.lessonNums.forEach(num => {
-                    const topic = this.SITADIS_LESSON_TOPICS[num];
+                    const n = Number(num);
+                    const topic = this.SITADIS_LESSON_TOPICS[n];
                     if (!topic || !topic.critical) return;
-                    if (score >= _critCfg.lowScoreOrange) return; // ציון תקין על הנושא הזה
-                    const key = num + '|' + (score < _critCfg.lowScoreRed ? 'red' : 'orange');
-                    if (_seenCritical.has(key)) return;
+                    const key = n + '|' + bucket;
+                    if (_seenCritical.has(key) || nums.includes(n)) return;
                     _seenCritical.add(key);
-                    const bucket = score < _critCfg.lowScoreRed ? 'red' : 'orange';
-                    const icon = bucket === 'red' ? '🔴' : '🟠';
-                    alerts[bucket].push({
-                        icon,
-                        title: `נושא בטיחותי-קריטי: שיעור ${num}`,
-                        msg: `"${topic.title}" — ציון ${score.toFixed(1)} (מתחת לסף). זהו נושא בטיחותי מרכזי בתוכנית ההכשרה, ולכן מקבל התרעה ייעודית גם אם הממוצע הכללי של החניך תקין.`
-                    });
+                    nums.push(n);
+                });
+                if (!nums.length) return;
+                nums.sort((x, y) => x - y);
+                const multi = nums.length > 1;
+                const lessonsLbl = (multi ? 'שיעורים ' : 'שיעור ') + _fmtNums(nums);
+                const topics = nums.map(n => '"' + String(this.SITADIS_LESSON_TOPICS[n].title || '').replace(/^החניך יפעל על פי /, '') + '"').join(', ');
+                alerts[bucket].push({
+                    icon: bucket === 'red' ? '🔴' : '🟠',
+                    title: (multi ? 'נושאים בטיחותיים-קריטיים: ' : 'נושא בטיחותי-קריטי: ') + lessonsLbl,
+                    msg: this._insightText('critical', { topics, score: score.toFixed(1), lessons: lessonsLbl })
                 });
             });
         }
@@ -7229,9 +7303,9 @@ window.TraineeSystem = {
         const _summaryCfg = (typeof _getTraineeSummaryConfig === 'function')
             ? _getTraineeSummaryConfig() : { lowScoreRed: 5, lowScoreOrange: 8 };
         if (_overallAvg !== null && _overallAvg < _summaryCfg.lowScoreRed) {
-            alerts.red.push({ icon: '🔴', title: 'ממוצע ציונים נמוך', msg: `הממוצע הכולל (${_overallAvg.toFixed(1)}) מתחת לסף ההתרעה. מומלץ לבחון לעומק ולשקול ליווי צמוד, גם בשלב מוקדם של ההכשרה.` });
+            alerts.red.push({ icon: '🔴', title: 'ממוצע ציונים נמוך', msg: this._insightText('avgLow', { avg: _overallAvg.toFixed(1) }) });
         } else if (_overallAvg !== null && _overallAvg < _summaryCfg.lowScoreOrange) {
-            alerts.orange.push({ icon: '🟠', title: 'ממוצע ציונים בינוני', msg: `הממוצע הכולל (${_overallAvg.toFixed(1)}) בטווח הבינוני. מומלץ להקפיד על מעקב צמוד בהמשך ההכשרה.` });
+            alerts.orange.push({ icon: '🟠', title: 'ממוצע ציונים בינוני', msg: this._insightText('avgMid', { avg: _overallAvg.toFixed(1) }) });
         }
 
         const hasWarnings = alerts.red.length > 0 || alerts.orange.length > 0;
@@ -7244,23 +7318,23 @@ window.TraineeSystem = {
                     const prev    = lessons.slice(-6, -3).map(avgAll);
                     const diff    = (recent.reduce((a, b) => a + b, 0) / 3) - (prev.reduce((a, b) => a + b, 0) / 3);
                     if (diff >= cfg.improvingSevereDiff) {
-                        alerts.info.push({ icon: '📈', title: 'שיפור בולט בביצועים', msg: 'שיעורים אחרונים מראים עלייה בולטת לעומת הקודמים. החניך בפסגת הביצועים שלו — כדאי לנצל את המומנטום ולהתקדם לחומר מאתגר יותר.' });
+                        alerts.info.push({ icon: '📈', title: 'שיפור בולט בביצועים', msg: this._insightText('improveSevere') });
                     } else if (diff >= cfg.improvingModerateDiff) {
-                        alerts.info.push({ icon: '📈', title: 'שיפור מתמיד', msg: 'ביצועי החניך בשיפור מתמיד בשיעורים האחרונים. כדאי לשמר את קצב ההתקדמות.' });
+                        alerts.info.push({ icon: '📈', title: 'שיפור מתמיד', msg: this._insightText('improveMild') });
                     }
                 }
             }
             if (avgs[2] !== null && avgs[2] > 85 && maxL > 10) {
-                alerts.info.push({ icon: '✅', title: 'ביצועי סטיק מצוינים', msg: 'ניתן להתקדם לתרגול קטעים מורכבים בקו.' });
+                alerts.info.push({ icon: '✅', title: 'ביצועי סטיק מצוינים', msg: this._insightText('stickExcellent') });
             }
             if (maxL > 30 && maxL < 45) {
-                alerts.info.push({ icon: '📊', title: 'שלב תפעולי מתקדם', msg: 'דגש על עמידה בלוחות זמנים ועל מסחריות מול נוסעים.' });
+                alerts.info.push({ icon: '📊', title: 'שלב תפעולי מתקדם', msg: this._insightText('advancedStage') });
             }
             if (maxL >= 45) {
-                alerts.info.push({ icon: '🏁', title: 'לקראת סיום הכשרה', msg: 'החניך מתקרב לשיעור 50. מומלץ לתזמן סימולציית מבחן מסכם.' });
+                alerts.info.push({ icon: '🏁', title: 'לקראת סיום הכשרה', msg: this._insightText('nearEnd') });
             }
             if (!alerts.info.length && !alerts.green.length) {
-                alerts.info.push({ icon: '💡', title: 'התקדמות תקינה', msg: 'החניך בשלבי למידה. מומלץ לוודא הבנה של מערכות הנהיגה הבסיסיות.' });
+                alerts.info.push({ icon: '💡', title: 'התקדמות תקינה', msg: this._insightText('normalProgress') });
             }
         }
 
@@ -7269,7 +7343,7 @@ window.TraineeSystem = {
             if (lastLesson?.date) {
                 const days = Math.floor((Date.now() - new Date(lastLesson.date)) / 86400000);
                 if (days > cfg.inactivityDaysAlert) {
-                    alerts.info.push({ icon: '⏰', title: 'תזכורת המשך הכשרה', msg: `לא בוצע שיעור כבר ${days} ימים. מומלץ לתזמן המשך הכשרה בהקדם.` });
+                    alerts.info.push({ icon: '⏰', title: 'תזכורת המשך הכשרה', msg: this._insightText('inactivity', { days }) });
                 }
             }
         }
@@ -7536,7 +7610,9 @@ window.TraineeSystem = {
             })).filter(m => m.name);
         }
 
-        // Alert thresholds
+        // Alert thresholds — #284: רק אם הטאב נפתח בסשן הזה (אחרת הרשימה ב-DOM ריקה
+        // והייתה מוחקת את כל הכללים השמורים).
+        if (this._alertsTabRendered) {
         const alertRows = this.container.querySelectorAll('[data-ts-alert-idx]');
         this.settings.alertThresholds = Array.from(alertRows).map(row => ({
             id:        row.dataset.tsAlertId || ('at_' + Date.now() + Math.random()),
@@ -7546,6 +7622,28 @@ window.TraineeSystem = {
             severity:  row.querySelector('.ts-alert-sev')?.value || 'warning',
             message:   row.querySelector('.ts-alert-msg')?.value.trim() || ''
         }));
+
+        // #284: סף בטיחותי-קריטי + טקסטים של תובנות קבועות
+        const _rules = { ...(this.settings.insightRules || {}) };
+        const _numOrNull = id => {
+            const el = this.$(id); if (!el) return null;
+            const raw = String(el.value || '').trim(); if (raw === '') return null;
+            const n = parseFloat(raw); return Number.isFinite(n) ? n : null;
+        };
+        _rules.critOrangeBelow = _numOrNull('ts-crit-orange');
+        _rules.critRedBelow    = _numOrNull('ts-crit-red');
+        if (_rules.critOrangeBelow !== null && _rules.critRedBelow !== null && _rules.critRedBelow > _rules.critOrangeBelow) {
+            _rules.critRedBelow = _rules.critOrangeBelow;
+            try { showToast('סף אדום בטיחותי לא יכול להיות גבוה מהכתום — הושווה אליו', 'warning'); } catch(e) {}
+        }
+        const _texts = {};
+        this.container.querySelectorAll('[data-ts-ins-text]').forEach(ta => {
+            const val = String(ta.value || '').trim();
+            if (val) _texts[ta.dataset.tsInsText] = val;
+        });
+        _rules.texts = _texts;
+        this.settings.insightRules = _rules;
+        }
 
         // Load limits
         const loadRows = this.container.querySelectorAll('[data-ts-load-level]');
@@ -7600,6 +7698,7 @@ window.TraineeSystem = {
         const overlay = this.$('ts-settings-overlay');
         if (!overlay) return;
         overlay.classList.add('open');
+        this._alertsTabRendered = false; // #284
         this.switchSettingsTab('skills');
         this._applyLessonContentPermissions();
     },
@@ -8243,6 +8342,10 @@ window.TraineeSystem = {
     _renderTab_alerts() {
         const list = this.$('ts-alerts-list');
         if (!list || !this.settings) return;
+        // #284: הדגל מונע מ-_collectSettingsFromUI לדרוס את alertThresholds/insightRules
+        // כשנשמר בלי שהטאב נפתח (לפני כן: שמירה מטאב אחר מחקה את כל הכללים).
+        this._alertsTabRendered = true;
+        try { this._renderInsightRulesSection(); } catch(e) { console.warn('insightRules render:', e); }
         const alerts = this.settings.alertThresholds || [];
         // 2026-08-19: אכלוס שדות "ספים נוספים" (פער/מגמות/מוכנות/חוסר-פעילות) מהאחסון
         try {
@@ -8285,6 +8388,38 @@ window.TraineeSystem = {
                 this._renderTab_alerts();
             });
         });
+    },
+
+    _renderInsightRulesSection() {
+        const box = this.$('ts-insight-rules');
+        if (!box || !this.settings) return;
+        const r = this.settings.insightRules || {};
+        const ct = this._critAlertThresholds();
+        const texts = r.texts || {};
+        const v = x => (x === null || x === undefined) ? '' : _esc(String(x));
+        const inp = 'width:70px;padding:5px 8px;border:1px solid #ccc;border-radius:6px;font-size:13px;text-align:center;';
+        const rows = this.INSIGHT_TEXT_META.map(m => `
+            <div style="display:flex;flex-direction:column;gap:3px;">
+                <label style="font-size:12px;color:#333;font-weight:bold;">${m.label}${m.vars ? ` <span style="font-weight:normal;color:#888;font-size:11px;direction:ltr;unicode-bidi:isolate;">${_esc(m.vars)}</span>` : ''}</label>
+                <textarea data-ts-ins-text="${m.key}" rows="2" placeholder="${_esc(this.INSIGHT_TEXT_DEFAULTS[m.key] || '')}" style="width:100%;box-sizing:border-box;padding:6px 8px;border:1.5px solid #ddd;border-radius:7px;font-size:12px;font-family:inherit;direction:rtl;resize:vertical;">${v(texts[m.key])}</textarea>
+            </div>`).join('');
+        box.innerHTML = `
+            <p style="font-size:13px;font-weight:bold;color:#2c3e50;margin:0 0 4px;">🛡️ התרעה על נושא בטיחותי-קריטי</p>
+            <p style="font-size:12px;color:#888;margin:0 0 10px;">ציון בדיווח על שיעור המתויג בטיחותי-קריטי. שדה ריק = לפי טווחי הרמות בדשבורד (כרגע 🟠 מתחת ל-${ct.inheritedOrange}, 🔴 מתחת ל-${ct.inheritedRed}). ערך כאן משפיע רק על ההתרעה הבטיחותית — לא על סיווג הרמות.</p>
+            <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:18px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+                    <label style="font-size:12px;color:#555;flex:1;">🟠 התרעה כתומה: ציון מתחת ל-</label>
+                    <input type="number" id="ts-crit-orange" min="1" max="10" step="0.5" value="${v(r.critOrangeBelow)}" placeholder="${ct.inheritedOrange}" style="${inp}">
+                </div>
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+                    <label style="font-size:12px;color:#555;flex:1;">🔴 התרעה אדומה: ציון מתחת ל-</label>
+                    <input type="number" id="ts-crit-red" min="1" max="10" step="0.5" value="${v(r.critRedBelow)}" placeholder="${ct.inheritedRed}" style="${inp}">
+                </div>
+            </div>
+            <p style="font-size:13px;font-weight:bold;color:#2c3e50;margin:0 0 4px;">✏️ טקסטים של תובנות קבועות</p>
+            <p style="font-size:12px;color:#888;margin:0 0 10px;">שדה ריק = טקסט ברירת המחדל (מוצג באפור). משתנים בסוגריים מסולסלים מוחלפים אוטומטית בערך האמיתי.</p>
+            <div style="display:flex;flex-direction:column;gap:10px;">${rows}</div>
+            <p style="font-size:12px;color:#27ae60;margin:12px 0 0;">נשמר בלחיצה על "שמור" בתחתית החלון — משותף לכל המכשירים.</p>`;
     },
 
     addAlertRow() {
@@ -22070,7 +22205,7 @@ const GUIDE_SECTIONS = [
       <p><b>קורסים:</b> ניתן לנהל כמה קורסי חניכים במקביל (בורר "📚 קורס" בראש המסך). כל קורס שומר את החניכים שלו בנפרד.</p>
       <p><b>תיק חניך:</b> לחיצה על שם החניך פותחת תיק מלא — בר התקדמות ("הרכבת", עד שיעור 50), התקדמות אורבוס/חניכה, סטטוס כשירות לפי מיומנות, ותובנות והמלצות אוטומטיות.</p>
       <p><b>תג רמה:</b> ליד שם החניך — 🔴 מתקשה / 🟡 בינוני / 🟢 מתקדם, לפי ממוצע הציונים בפועל (לא צריך למלא את כל המיומנויות בכל שיעור — הממוצע מחושב רק ממה שבאמת מולא).</p>
-      <p><b>תובנות והמלצות:</b> כוללות התרעה על ממוצע ציונים נמוך/בינוני, התרעת "מתקרב לסף מתקשים" (ממוצע 5-6, למנהל בלבד), והתרעה ייעודית על ציון נמוך בשיעור המתויג "בטיחותי-קריטי" — גם אם הממוצע הכללי של החניך תקין.</p>
+      <p><b>תובנות והמלצות:</b> כוללות התרעה על ממוצע ציונים נמוך/בינוני, התרעת "מתקרב לסף מתקשים" (ממוצע 5-6, למנהל בלבד), והתרעה ייעודית על ציון נמוך בשיעור המתויג "בטיחותי-קריטי" — גם אם הממוצע הכללי של החניך תקין (כרטיס אחד לכל דיווח, סף נפרד בטאב "ספי התרעות"). הטקסטים של כל התובנות הקבועות ניתנים לעריכה באותו טאב.</p>
       <p><b>סימוני "עבר טסט" — אוטומטי מול ידני:</b> תג 🟡 כתום ("אוטומטי — טרם אושר") מציין שהחניך הגיע למספר השיעורים הנדרש, אך איש לא אישר בפועל שהוא ניגש לטסט וקיבל אותו — זו זכאות, לא אישור סופי. תג ✅ ירוק מלא מופיע רק אחרי סימון ידני. מנהל יכול לסמן/לבטל ידנית מתיק החניך; מדריך שנתקל בשיעור חסום (למשל שיעור 11 לפני שטסט 10 אושר) מקבל הסבר בלחיצה, ויכול לסמן בעצמו שהחניך עבר את הטסט אם המנהל שכח.</p>
       <p><b>סימון דיווחים:</b> כרטיס חניך עם דיווחים קיימים מסומן בתג ירוק בולט ("✅ N דיווחים"), לעומת תג אפור לחניך ללא דיווחים.</p>`
   },
