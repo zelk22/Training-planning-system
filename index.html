@@ -16,7 +16,7 @@
 
 <meta http-equiv="Expires" content="0">
 
-<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 213</title>
+<title>מערכת תכנון הדרכה - רכבת V100 - DEPLOYED 214</title>
 
 <style>
 
@@ -1439,7 +1439,7 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 <script>
   // גרסת קוד נוכחית — יש להעלות מספר זה ב-1 בכל deploy עתידי (ראה PROJECT_STATUS_7.txt, תיקון #65).
   // משמש למנגנון "טאב פתוח ישן מזהה גרסה חדשה ומציע רענון" למטה.
-  const APP_VERSION = 277;
+  const APP_VERSION = 278;
 
   // 2026-09-07, לפי בקשת לביא: היה קשה לבדוק באיזו גרסה הדפדפן בפועל טוען
   // (כותרת הטאב נחתכת כשיש הרבה טאבים פתוחים, ואי אפשר תמיד לראות "DEPLOYED
@@ -3937,6 +3937,47 @@ body.dark-mode .task-def-extra textarea,body.dark-mode .task-def-extra input{bac
 /* =========================================================
    TraineeSystem — מודול Vanilla JS מבודד
    ========================================================= */
+// (#286: הועבר לבלוק של TraineeSystem כדי שיהיה מוגדר לפני כל renderList) 2026-11-26, #285, לפי בקשת לביא: חניך עם סטטוס סופי (t.archived + archiveReason)
+// נשאר ברשימה, בממוצעים, בהתפלגויות ובבחירה בטפסים — רק מסומן בתג ולא נספר כ"פעיל".
+function _traineeFinalStatusMeta(t) {
+  if (!t || !t.archived) return null;
+  const cat = (t.archiveReason && t.archiveReason.category) || 'other';
+  const M = {
+    // #286: head = צבע כותרת הכרטיס; fg/bg/bd = תווית בתיק החניך
+    completed: { icon: '✅', label: 'סיים בהצלחה',  head: '#0C447C', fg: '#0C447C', bg: '#E6F1FB', bd: '#185FA5' },
+    dropout:   { icon: '🚪', label: 'נשר',          head: '#5F5E5A', fg: '#444441', bg: '#F1EFE8', bd: '#888780' },
+    transfer:  { icon: '↔️', label: 'עבר מסלול',    head: '#7D3C98', fg: '#5B2C6F', bg: '#F4ECF7', bd: '#BB8FCE' },
+    other:     { icon: '📦', label: 'אחר',          head: '#85837B', fg: '#444441', bg: '#F4F3EF', bd: '#B4B2A9' }
+  };
+  const m = Object.assign({ cat }, M[cat] || M.other);
+  if (cat === 'other' && t.archiveReason && t.archiveReason.categoryLabel) m.label = t.archiveReason.categoryLabel;
+  return m;
+}
+
+// #286: רמה מוקפאת ברגע קביעת סטטוס סופי (t.archiveReason.frozenLevel).
+function _computeTraineeLevelSnapshot(t) {
+  const cfg = (typeof _getTraineeSummaryConfig === 'function') ? _getTraineeSummaryConfig() : { lowScoreRed: 5, lowScoreOrange: 8 };
+  const scored = (t && t.lessons || []).filter(l => _lessonScoreAvg(l) !== null);
+  if (!scored.length) return { avg: null, level: null, at: Date.now() };
+  const avg = scored.reduce((sum, l) => sum + _lessonScoreAvg(l), 0) / scored.length;
+  const level = avg < cfg.lowScoreRed ? 'red' : avg < cfg.lowScoreOrange ? 'yellow' : 'green';
+  return { avg: Math.round(avg * 10) / 10, level, at: Date.now() };
+}
+function _frozenLevelOf(t) {
+  const fl = t && t.archiveReason && t.archiveReason.frozenLevel;
+  return fl || _computeTraineeLevelSnapshot(t); // גיבוי אם ההקפאה עוד לא נכתבה
+}
+function _levelChipHtml(fl) {
+  const M = { green: ['#27ae60', 'מתקדם'], yellow: ['#f39c12', 'בינוני'], red: ['#e74c3c', 'מתקשה'] };
+  const m = fl && fl.level && M[fl.level];
+  const dot = c => `<span style="width:8px;height:8px;border-radius:50%;display:inline-block;background:${c};"></span>`;
+  return m ? `${dot(m[0])} ${m[1]} · ${Number(fl.avg).toFixed(1)}` : `${dot('#b4b2a9')} ללא ציון`;
+}
+function _fsShortDate(ms) {
+  if (!ms) return '';
+  try { return new Date(ms).toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit', year: '2-digit' }); } catch(e) { return ''; }
+}
+
 const TRAINEE_INSIGHTS_CONFIG_KEY = 'v100_trainee_insights_config';
 function _getInsightsConfig() {
   const defaults = {
@@ -4103,6 +4144,17 @@ window.TraineeSystem = {
     .trainee-module .trainee-card.level-red { border-right-color: #e74c3c; }
     .trainee-module .trainee-card.level-red .card-top { background: linear-gradient(135deg, #7b241c, #e74c3c); }
     .trainee-module .trainee-card.level-red .card-bar-fill { background: #e74c3c; }
+    /* #286: כרטיס עם סטטוס סופי — צבע לפי סטטוס (לא לפי רמה) */
+    .trainee-module .trainee-card.fs-completed { border-right-color: #0C447C; }
+    .trainee-module .trainee-card.fs-completed .card-top { background: #0C447C; }
+    .trainee-module .trainee-card.fs-dropout { border-right-color: #5F5E5A; }
+    .trainee-module .trainee-card.fs-dropout .card-top { background: #5F5E5A; }
+    .trainee-module .trainee-card.fs-transfer { border-right-color: #7D3C98; }
+    .trainee-module .trainee-card.fs-transfer .card-top { background: #7D3C98; }
+    .trainee-module .trainee-card.fs-other { border-right-color: #85837B; }
+    .trainee-module .trainee-card.fs-other .card-top { background: #85837B; }
+    .trainee-module .card-fs-status { color: #fff; font-size: 0.92em; font-weight: 700; margin-top: 4px; }
+    .trainee-module .card-fs-sub { color: rgba(255,255,255,0.85); font-size: 0.78em; margin-top: 2px; }
     .trainee-module .card-name { color: white; font-size: 1.2em; font-weight: 700; margin: 0 0 3px 0; }
     .trainee-module .card-sub  { color: #a0b4c8; font-size: 0.82em; }
     .trainee-module .card-bar  { height: 5px; background: rgba(255,255,255,0.15); border-radius: 3px; margin-top: 12px; }
@@ -5471,6 +5523,7 @@ window.TraineeSystem = {
                 t.archived = true;
                 t.archivedAt = Date.now();
                 t.archiveReason = { category: cat, categoryLabel: catLabel, text, by: (typeof currentUserName !== 'undefined' ? currentUserName : '') };
+                t.archiveReason.frozenLevel = _computeTraineeLevelSnapshot(t); // #286
             }
             this.persist();
             this.renderList();
@@ -5527,6 +5580,7 @@ window.TraineeSystem = {
         t.archived = true;
         t.archivedAt = Date.now();
         t.archiveReason = { category: 'completed', categoryLabel: 'סיום מוצלח', text: '', by: (typeof currentUserName !== 'undefined' ? currentUserName : '') };
+        t.archiveReason.frozenLevel = _computeTraineeLevelSnapshot(t); // #286
         this.persist();
         this.renderList();
         this.renderDetail(); // נשארים בתיק — הכפתור מתחלף לירוק (#262)
@@ -5571,10 +5625,18 @@ window.TraineeSystem = {
         const _isDone = !!(t.archived && t.archiveReason && t.archiveReason.category === 'completed');
         const _doneDate = t.archivedAt ? new Date(t.archivedAt).toLocaleDateString('he-IL') : '';
         const _otherFinal = !!(t.archived && !_isDone);
-        const _btnHtml = _otherFinal
-            ? '<span style="display:inline-flex;align-items:center;gap:6px;padding:6px 14px;background:#f4f6f7;color:#5d6d7e;border:1.5px solid #ccd1d6;border-radius:8px;font-size:12.5px;font-weight:bold;">📦 סטטוס סופי: ' + _esc((t.archiveReason && t.archiveReason.categoryLabel) || 'הוסר') + (_doneDate ? ' · ' + _doneDate : '') + ((t.archiveReason && t.archiveReason.text) ? ' · ' + _esc(t.archiveReason.text) : '') + ' <a href="#" data-ts-reopen="1" style="color:#5d6d7e;font-weight:normal;text-decoration:underline;">[בטל]</a></span>'
-            : _isDone
-            ? '<span style="display:inline-flex;align-items:center;gap:8px;padding:6px 14px;background:#eafaf1;color:#1e8449;border:1.5px solid #27ae60;border-radius:8px;font-size:12.5px;font-weight:bold;">✅ סיים הכשרה בהצלחה' + (_doneDate ? ' · ' + _doneDate : '') + ' <a href="#" data-ts-reopen="1" style="color:#1e8449;font-weight:normal;text-decoration:underline;">[בטל]</a></span>'
+        // #286: תווית סטטוס סופי — צבע לפי סטטוס + פירוט + רמה מוקפאת
+        const _fsm = _traineeFinalStatusMeta(t);
+        const _fsPill = _fsm
+            ? '<span style="display:inline-flex;align-items:center;flex-wrap:wrap;gap:6px;padding:6px 14px;background:' + _fsm.bg + ';color:' + _fsm.fg + ';border:1.5px solid ' + _fsm.bd + ';border-radius:8px;font-size:12.5px;font-weight:bold;">'
+              + _fsm.icon + ' ' + _esc(_isDone ? 'סיים הכשרה בהצלחה' : _fsm.label)
+              + (_doneDate ? ' · ' + _doneDate : '')
+              + ((t.archiveReason && t.archiveReason.text) ? ' · ' + _esc(t.archiveReason.text) : '')
+              + ' · <span style="display:inline-flex;align-items:center;gap:4px;">' + _levelChipHtml(_frozenLevelOf(t)) + '</span>'
+              + ' <a href="#" data-ts-reopen="1" style="color:' + _fsm.fg + ';font-weight:normal;text-decoration:underline;">[בטל]</a></span>'
+            : '';
+        const _btnHtml = (_otherFinal || _isDone)
+            ? _fsPill
             : '<button type="button" data-ts-complete="1" style="width:auto;margin:0;padding:6px 14px;background:#fef9ec;color:#a6690b;border:1.5px solid #f0ad4e;border-radius:8px;cursor:pointer;font-size:12.5px;font-weight:bold;font-family:inherit;">🏁 סמן: סיים הכשרה בהצלחה</button>';
         const _trkBtn = '<button type="button" data-ts-track="1" title="שינוי מסלול ההכשרה של החניך" style="width:auto;margin:0;padding:5px 12px;background:#f5f9ff;color:#2c5282;border:1.5px solid #b5d4f4;border-radius:8px;cursor:pointer;font-size:12.5px;font-family:inherit;">🛤️ מסלול: '
             + _esc(_trackLabelForTrainee(t)) + (_getTrack(t).isDefault ? ' <span style="color:#8a9bb0;">(ברירת מחדל)</span>' : '') + '</button>';
@@ -6061,8 +6123,13 @@ window.TraineeSystem = {
             const _delBtnHtml = (_isAdminForDelete && !_fs)
                 ? `<button class="cab del" data-delete-trainee="${t.id}" data-name="${safeName}" title="סטטוס סופי (סיום/נשירה/מעבר)">🏷️</button>`
                 : '';
+            // #286: רמה מוקפאת בשורה התחתונה של כרטיס עם סטטוס סופי
             const _fsBadgeHtml = _fs
-                ? `<span title="${_esc((t.archiveReason && t.archiveReason.text) || '')}" style="padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;white-space:nowrap;background:${_fs.bg};color:${_fs.fg};border:1px solid ${_fs.bd};">${_fs.icon} ${_esc(_fs.label)}</span>`
+                ? `<span title="רמה בעת קביעת הסטטוס" style="padding:2px 8px;border-radius:10px;font-size:11px;white-space:nowrap;display:inline-flex;align-items:center;gap:4px;background:#fff;color:#2c3e50;border:1px solid #cfd6dd;">${_levelChipHtml(_frozenLevelOf(t))}</span>`
+                : '';
+            const _fsTopHtml = _fs
+                ? `<div class="card-fs-status">${_fs.icon} ${_esc(_fs.label)}</div>
+                   <div class="card-fs-sub">${_fsShortDate(t.archivedAt)}${t.archivedAt ? ' • ' : ''}${_fs.cat === 'completed' ? `שיעור ${maxL}/50` : `נעצר בשיעור ${maxL}`}</div>`
                 : '';
             const _editBtnHtml = _isAdminForDelete
                 ? `<button class="cab" data-edit-name="${t.id}" data-name="${safeName}" title="עריכת שם">✏️</button>`
@@ -6076,7 +6143,9 @@ window.TraineeSystem = {
                 : _avgScore < _levelCfg.lowScoreOrange ? 'level-yellow'
                 : 'level-green';
             const _reportCount = (t.lessons || []).length;
-            const _countBadgeStyle = _reportCount > 0
+            const _countBadgeStyle = _fs
+                ? 'background:#f1efe8;color:#5f5e5a;border:1px solid #e0ddd4;'
+                : _reportCount > 0
                 ? 'background:#eafaf1;color:#1e8449;border:1px solid #a9dfbf;font-weight:700;'
                 : 'background:#f4f4f4;color:#999;border:1px solid #e0e0e0;';
             // 2026-09-16, לפי בקשת לביא (#244, תיקון): התיבה לא מוצגת כברירת מחדל —
@@ -6088,22 +6157,45 @@ window.TraineeSystem = {
                   </label>`
                 : '';
             l.innerHTML += `
-            <div class="trainee-card ${_levelClass}" data-id="${t.id}">
+            <div class="trainee-card ${_fs ? 'fs-' + _fs.cat : _levelClass}" data-id="${t.id}">
                 <div class="card-top">
                     ${_selectCbHtml}
                     <div class="card-name">${_esc(t.name)}</div>
-                    <div class="card-sub">${phase} • שיעור ${maxL}/50</div>
-                    <div class="card-bar"><div class="card-bar-fill" style="width:${pct}%"></div></div>
+                    ${_fs ? _fsTopHtml : `<div class="card-sub">${phase} • שיעור ${maxL}/50</div>
+                    <div class="card-bar"><div class="card-bar-fill" style="width:${pct}%"></div></div>`}
                 </div>
                 <div class="card-bottom">
-                    <span class="card-count" style="padding:2px 8px;border-radius:10px;font-size:11px;${_countBadgeStyle}">${_reportCount > 0 ? '✅ ' : ''}${_reportCount} דיווחים</span>
                     ${_fsBadgeHtml}
+                    <span class="card-count" style="padding:2px 8px;border-radius:10px;font-size:11px;${_countBadgeStyle}">${(_reportCount > 0 && !_fs) ? '✅ ' : ''}${_reportCount} דיווחים</span>
                     <div class="card-acts">
                         ${_editBtnHtml}
                         ${_delBtnHtml}
                     </div>
                 </div>
             </div>`;
+        });
+        try { this._backfillFrozenLevels(); } catch(e) { console.warn('frozenLevel backfill:', e); }
+    },
+
+    // #286: הקפאה חד-פעמית לחניכים שקיבלו סטטוס סופי לפני שהיה מנגנון הקפאה.
+    // כתיבה ממוקדת ל-archiveReason/frozenLevel בלבד (לא persist() — לא נוגעים בשאר העץ).
+    _backfillFrozenLevels() {
+        if (typeof currentRole === 'undefined' || currentRole !== 'admin') return;
+        if (typeof _isDemoMode === 'function' && _isDemoMode()) return;
+        const courseId = this.currentCourseId;
+        if (!this.coursesRef || !courseId) return;
+        this._frozenBackfillDone = this._frozenBackfillDone || new Set();
+        (this.trainees || []).forEach(t => {
+            if (!t.archived || !t.archiveReason || t.archiveReason.frozenLevel) return;
+            const key = courseId + '|' + String(t.id);
+            if (this._frozenBackfillDone.has(key)) return;
+            this._frozenBackfillDone.add(key);
+            const snap = _computeTraineeLevelSnapshot(t);
+            snap.backfilled = true;
+            t.archiveReason.frozenLevel = snap;
+            this.coursesRef.child(courseId).child('trainees').child(this._fbKey(t.id))
+                .child('archiveReason').child('frozenLevel').set(snap)
+                .catch(err => console.warn('frozenLevel backfill write:', err));
         });
     },
 
@@ -31227,22 +31319,6 @@ function _traineeStageIsChinuch(t) {
     }, 0);
     return chinuchMs && maxChinuch > 0;
   } catch(e) { return false; }
-}
-
-// 2026-11-26, #285, לפי בקשת לביא: חניך עם סטטוס סופי (t.archived + archiveReason)
-// נשאר ברשימה, בממוצעים, בהתפלגויות ובבחירה בטפסים — רק מסומן בתג ולא נספר כ"פעיל".
-function _traineeFinalStatusMeta(t) {
-  if (!t || !t.archived) return null;
-  const cat = (t.archiveReason && t.archiveReason.category) || 'other';
-  const M = {
-    completed: { icon: '✅', label: 'סיים בהצלחה',  fg: '#1e8449', bg: '#eafaf1', bd: '#a9dfbf' },
-    dropout:   { icon: '🚪', label: 'נשר',          fg: '#c0392b', bg: '#fdecea', bd: '#f5b7b1' },
-    transfer:  { icon: '↔️', label: 'עבר מסלול/קורס', fg: '#8e44ad', bg: '#f4ecf7', bd: '#d2b4de' },
-    other:     { icon: '📦', label: 'סטטוס סופי',    fg: '#5d6d7e', bg: '#f4f6f7', bd: '#ccd1d6' }
-  };
-  const m = Object.assign({ cat }, M[cat] || M.other);
-  if (cat === 'other' && t.archiveReason && t.archiveReason.categoryLabel) m.label = t.archiveReason.categoryLabel;
-  return m;
 }
 
 function _generateTraineeSummary() {
